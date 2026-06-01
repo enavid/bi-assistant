@@ -11,18 +11,17 @@ from app.db.base import get_db
 from app.db.models import Experiment, Project, Section, Workspace
 from app.schemas.schemas import (
     ExperimentCreate,
-    ExperimentOut,
     ProjectCreate,
     ProjectOut,
     ProjectUpdate,
     SectionCreate,
-    SectionOut,
     SectionUpdate,
 )
 
 router = APIRouter(tags=["workspace"])
 
-_PROJECT_LOAD = [selectinload(Project.sections), selectinload(Project.experiments)]
+_PROJECT_LOAD = [selectinload(Project.sections),
+                 selectinload(Project.experiments)]
 
 
 async def _get_or_create_workspace(db: AsyncSession) -> Workspace:
@@ -51,7 +50,8 @@ async def _require_project(project_id: str, db: AsyncSession) -> Project:
 async def list_projects(db: AsyncSession = Depends(get_db)) -> list[Project]:
     ws = await _get_or_create_workspace(db)
     result = await db.execute(
-        select(Project).options(*_PROJECT_LOAD).where(Project.workspace_id == ws.id)
+        select(Project).options(
+            *_PROJECT_LOAD).where(Project.workspace_id == ws.id)
         .order_by(Project.created_at.asc())
     )
     return list(result.scalars().all())
@@ -60,7 +60,8 @@ async def list_projects(db: AsyncSession = Depends(get_db)) -> list[Project]:
 @router.post("/projects", response_model=ProjectOut)
 async def create_project(body: ProjectCreate, db: AsyncSession = Depends(get_db)) -> Project:
     ws = await _get_or_create_workspace(db)
-    project = Project(workspace_id=ws.id, name=body.name, description=body.description)
+    project = Project(workspace_id=ws.id, name=body.name,
+                      description=body.description)
     db.add(project)
     await db.flush()
     await db.refresh(project, ["sections", "experiments"])
@@ -100,7 +101,8 @@ async def delete_project(project_id: str, db: AsyncSession = Depends(get_db)) ->
 @router.post("/projects/{project_id}/sections", response_model=ProjectOut)
 async def create_section(project_id: str, body: SectionCreate, db: AsyncSession = Depends(get_db)) -> Project:
     project = await _require_project(project_id, db)
-    section = Section(project_id=project_id, name=body.name, content=body.content, order=body.order)
+    section = Section(project_id=project_id, name=body.name,
+                      content=body.content, order=body.order)
     db.add(section)
     project.updated_at = datetime.now(timezone.utc)
     await db.flush()
