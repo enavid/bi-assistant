@@ -21,7 +21,7 @@ export function Icon({ name, size = 16, className }: IconProps) {
       className={className}
       aria-hidden
     >
-      {(Array.isArray(paths) ? paths : [paths]).map((d, i) => (
+      {(Array.isArray(paths) ? paths as string[] : [paths as string]).map((d: string, i: number) => (
         <path key={i} d={d} />
       ))}
     </svg>
