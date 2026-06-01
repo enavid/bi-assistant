@@ -12,7 +12,7 @@ export function SettingsPage() {
   const { data: health, refetch, isFetching } = useOllamaHealth()
   const { defaultModelName, setDefaultModel } = useAppStore()
 
-  const NAV: { id: Section; label: string; icon: keyof Parameters<typeof Icon>[0]['name'] }[] = [
+  const NAV: { id: Section; label: string; icon: Parameters<typeof Icon>[0]['name'] }[] = [
     { id: 'ollama',     label: 'Ollama',      icon: 'server'    },
     { id: 'database',   label: 'Database',    icon: 'database'  },
     { id: 'appearance', label: 'Appearance',  icon: 'eye'       },

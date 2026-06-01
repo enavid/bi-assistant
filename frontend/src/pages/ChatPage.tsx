@@ -2,17 +2,15 @@ import { useState, useRef, useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { chatApi } from '@/services/api'
 import { useAppStore } from '@/store/appStore'
-import { useProjects, useSessions, useUpdateSession } from '@/hooks'
+import { useProjects, useSessions} from '@/hooks'
 import { Icon } from '@/components/ui/Icon'
 import { Button } from '@/components/ui/Button'
-import { clsx } from 'clsx'
 import type { ChatMessage, QueryResult } from '@/types'
 
 export function ChatPage() {
-  const { activeSessionId, setActiveSession } = useAppStore()
+  const { activeSessionId } = useAppStore()
   const { data: sessions } = useSessions()
   const { data: projects } = useProjects()
-  const updateSession = useUpdateSession()
   const qc = useQueryClient()
 
   const session = sessions?.find((s) => s.id === activeSessionId)
