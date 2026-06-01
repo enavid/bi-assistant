@@ -4,7 +4,7 @@ from datetime import datetime
 
 from fastapi import APIRouter, HTTPException
 
-from app.models.domain import ChatMessage, ChatSession, ExperimentEntry
+from app.models.domain import ChatSession, ExperimentEntry
 from app.schemas.requests import (
     GenerateRequest,
     GenerateResponse,
