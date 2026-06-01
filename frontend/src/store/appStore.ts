@@ -39,7 +39,7 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: 'bi-assistant-app',
-      partialState: (s) => ({
+      partialize: (s: AppState) => ({
         theme: s.theme,
         defaultModelName: s.defaultModelName,
       }),
