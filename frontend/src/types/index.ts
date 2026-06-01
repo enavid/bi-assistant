@@ -38,6 +38,15 @@ export interface Workspace {
   created_at: string
 }
 
+export interface PromptTemplate {
+  id: string
+  name: string
+  content: string
+  active: boolean
+  created_at: string
+  updated_at: string
+}
+
 // ---------------------------------------------------------------------------
 // Chat
 // ---------------------------------------------------------------------------

@@ -17,22 +17,22 @@ export function Sidebar() {
   const { data: health } = useOllamaHealth()
   const { data: sessions } = useSessions()
   const { data: templates } = useTemplates()
-  const { theme, toggleTheme, activeSessionId, setActiveSession } = useAppStore()
+  const { theme, toggleTheme, activeSessionId, setActiveSession, defaultModelName } = useAppStore()
   const createSession = useCreateSession()
 
   const activeTemplate = templates?.find((t) => t.active)
 
   const grouped = groupByDate(sessions ?? [])
 
-  async function handleNewChat() {
-    const templateName = activeTemplate?.name ?? 'Default'
-    const session = await createSession.mutateAsync({
-      title: 'New chat',
-      templateName,
-    })
-    setActiveSession(session.id)
-    navigate('/')
-  }
+async function handleNewChat() {
+  const session = await createSession.mutateAsync({
+    title: 'New chat',
+    model_name: activeTemplate?.name ?? defaultModelName,
+    project_id: null,
+  })
+  setActiveSession(session.id)
+  navigate('/')
+}
 
   return (
     <aside className="w-[236px] min-w-[236px] flex flex-col bg-bg-surface border-r border-border-default">
@@ -111,7 +111,7 @@ export function Sidebar() {
               style={{ background: health?.online ? 'var(--green)' : 'var(--text-3)' }}
             />
             <span className="text-[11px] text-text-2 truncate">
-              {health?.model_name ?? 'connecting…'}
+              {health?.models[0]?.name ?? 'connecting…'}
             </span>
           </div>
           <div className="w-[26px] h-[26px] rounded-full flex items-center justify-center bg-accent-bg border border-accent-border text-[10px] font-medium text-accent-text flex-shrink-0 cursor-pointer">
@@ -130,8 +130,7 @@ export function Sidebar() {
   )
 }
 
-type SessionItem = { id: string; title: string; prompt_template_name: string; created_at: string }
-
+type SessionItem = { id: string; title: string; prompt_template_name?: string; created_at: string }
 function groupByDate(sessions: SessionItem[]): Record<string, SessionItem[]> {
   const today = new Date()
   const yesterday = new Date(today)

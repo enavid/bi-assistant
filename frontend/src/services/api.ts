@@ -7,6 +7,7 @@ import type {
   QueryResult,
   Section,
   Workspace,
+  PromptTemplate
 } from '@/types'
 
 // ---------------------------------------------------------------------------
@@ -48,6 +49,13 @@ export const projectApi = {
     apiClient
       .delete<Project>(`/projects/${projectId}/sections/${sectionId}`)
       .then((r) => r.data),
+}
+
+export const templateApi = {
+  list: () => apiClient.get<PromptTemplate[]>('/templates').then((r) => r.data),
+  activate: (id: string) => apiClient.post<PromptTemplate>(`/templates/${id}/activate`).then((r) => r.data),
+  update: (id: string, payload: Partial<PromptTemplate>) => apiClient.patch<PromptTemplate>(`/templates/${id}`, payload).then((r) => r.data),
+  delete: (id: string) => apiClient.delete(`/templates/${id}`).then((r) => r.data),
 }
 
 // ---------------------------------------------------------------------------

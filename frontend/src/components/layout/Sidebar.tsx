@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/Button'
 import { Icon } from '@/components/ui/Icon'
 import type { AppPage } from '@/types'
 
-const NAV: { page: AppPage; label: string; icon: keyof Parameters<typeof Icon>[0]['name'] }[] = [
+const NAV: { page: AppPage; label: string; icon: Parameters<typeof Icon>[0]['name'] }[] = [
   { page: 'chat',     label: 'Chat',           icon: 'message' },
   { page: 'builder',  label: 'Prompt Builder', icon: 'layers'  },
   { page: 'settings', label: 'Settings',       icon: 'settings'},
@@ -28,7 +28,6 @@ export function Sidebar() {
   const grouped = groupSessionsByDate(sessions ?? [])
 
   async function handleCreateSession() {
-    const project = projects?.find((p) => p.id === selectedProjectId)
     const session = await createSession.mutateAsync({
       project_id: selectedProjectId || null,
       model_name: selectedModel,
