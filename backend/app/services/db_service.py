@@ -20,14 +20,15 @@ class QueryResult:
 
 
 def run_query(sql: str) -> QueryResult:
+    """Execute a SELECT query against the HR PostgreSQL database."""
     start = time.perf_counter()
     try:
         conn = psycopg2.connect(
-            host=settings.db_host,
-            port=settings.db_port,
-            dbname=settings.db_name,
-            user=settings.db_user,
-            password=settings.db_password,
+            host=settings.hr_db_host,
+            port=settings.hr_db_port,
+            dbname=settings.hr_db_name,
+            user=settings.hr_db_user,
+            password=settings.hr_db_password,
             connect_timeout=10,
         )
         df: pd.DataFrame = pd.read_sql_query(sql, conn)
@@ -35,10 +36,7 @@ def run_query(sql: str) -> QueryResult:
         elapsed_ms = round((time.perf_counter() - start) * 1000, 1)
         return QueryResult(
             columns=list(df.columns),
-            rows=[
-                [None if pd.isna(v) else v for v in row]
-                for row in df.values.tolist()
-            ],
+            rows=[[None if pd.isna(v) else v for v in row] for row in df.values.tolist()],
             row_count=len(df),
             elapsed_ms=elapsed_ms,
             success=True,

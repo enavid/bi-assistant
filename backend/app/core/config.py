@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import List
+from urllib.parse import quote_plus
 
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -9,7 +10,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=Path(__file__).parent.parent.parent / ".env",
         env_file_encoding="utf-8",
         extra="ignore",
     )
@@ -22,22 +23,26 @@ class Settings(BaseSettings):
     model_top_p: float = 0.5
     model_timeout: int = 120
 
-    # Storage
-    data_dir: Path = Path("./data")
-
-    # PostgreSQL
+    # App database (SQLAlchemy)
     db_host: str
     db_port: int = 5432
     db_name: str
     db_user: str
     db_password: str
 
-    # CORS — comma-separated string in .env, parsed to list
+    # HR database (psycopg2 — for running generated SQL)
+    hr_db_host: str
+    hr_db_port: int = 5432
+    hr_db_name: str
+    hr_db_user: str
+    hr_db_password: str
+
+    # CORS
     cors_origins: List[str] = ["http://localhost:5173"]
 
     @field_validator("cors_origins", mode="before")
     @classmethod
-    def parse_cors_origins(cls, v: object) -> List[str]:
+    def parse_cors(cls, v: object) -> List[str]:
         if isinstance(v, list):
             return v
         if isinstance(v, str):
@@ -45,19 +50,26 @@ class Settings(BaseSettings):
         return []
 
     @property
-    def db_dsn(self) -> str:
+    def async_db_url(self) -> str:
         return (
-            f"postgresql://{self.db_user}:{self.db_password}"
+            f"postgresql+asyncpg://{self.db_user}:{quote_plus(self.db_password)}"
             f"@{self.db_host}:{self.db_port}/{self.db_name}"
         )
 
     @property
-    def workspace_file(self) -> Path:
-        return self.data_dir / "workspace.json"
+    def sync_db_url(self) -> str:
+        return (
+            f"postgresql://{self.db_user}:{quote_plus(self.db_password)}"
+            f"@{self.db_host}:{self.db_port}/{self.db_name}"
+        )
 
     @property
-    def sessions_file(self) -> Path:
-        return self.data_dir / "sessions.json"
+    def hr_db_dsn(self) -> str:
+        return (
+            f"host={self.hr_db_host} port={self.hr_db_port} "
+            f"dbname={self.hr_db_name} user={self.hr_db_user} "
+            f"password={self.hr_db_password}"
+        )
 
 
 settings = Settings()

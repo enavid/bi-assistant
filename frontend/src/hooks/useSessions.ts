@@ -11,8 +11,8 @@ export function useSessions() {
 export function useCreateSession() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: ({ title, project_id, model_name }: { title: string; project_id?: string | null; model_name: string }) =>
-      chatApi.createSession({ title, project_id, model_name }),
+    mutationFn: ({ title, templateName }: { title: string; templateName: string }) =>
+      chatApi.createSession(title, templateName),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['sessions'] }),
   })
 }

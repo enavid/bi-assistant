@@ -1,26 +1,25 @@
 from __future__ import annotations
 
-from app.models.domain import Project
+from app.db.models import Project
 
 
 def assemble_prompt(project: Project, question: str) -> str:
     """
-    Assemble the final prompt string from a Project.
+    Assemble the final prompt from a Project's sections and output_format.
 
-    The output_format field is a template that references sections by their id:
-        {section_id_1}\\n\\n{section_id_2}\\n\\nQUESTION:\\n{question}\\n\\nSQL:
+    output_format references sections by their id: {section_id}.
+    The special placeholder {question} is always replaced with the question.
 
-    If output_format is empty, sections are joined with double newlines in order.
-    The special placeholder {question} is always replaced with the actual question.
+    If output_format is empty, sections are joined in order with double newlines,
+    followed by a default QUESTION/SQL footer.
     """
     section_map = {s.id: s.content for s in project.sections}
 
     if project.output_format:
         result = project.output_format
-        for section_id, content in section_map.items():
-            result = result.replace(f"{{{section_id}}}", content)
-        result = result.replace("{question}", question)
-        return result
+        for sid, content in section_map.items():
+            result = result.replace(f"{{{sid}}}", content)
+        return result.replace("{question}", question)
 
     parts = [
         s.content

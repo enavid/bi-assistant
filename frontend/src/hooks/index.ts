@@ -2,10 +2,6 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { chatApi, ollamaApi, projectApi } from '@/services/api'
 import type { Project, Section } from '@/types'
 
-// ---------------------------------------------------------------------------
-// Ollama
-// ---------------------------------------------------------------------------
-
 export function useOllamaHealth() {
   return useQuery({
     queryKey: ['ollama-health'],
@@ -14,10 +10,6 @@ export function useOllamaHealth() {
     retry: false,
   })
 }
-
-// ---------------------------------------------------------------------------
-// Projects
-// ---------------------------------------------------------------------------
 
 export function useProjects() {
   return useQuery({ queryKey: ['projects'], queryFn: projectApi.list })
@@ -75,15 +67,8 @@ export function useCreateSection() {
 export function useUpdateSection() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: ({
-      projectId,
-      sectionId,
-      payload,
-    }: {
-      projectId: string
-      sectionId: string
-      payload: Partial<Section>
-    }) => projectApi.updateSection(projectId, sectionId, payload),
+    mutationFn: ({ projectId, sectionId, payload }: { projectId: string; sectionId: string; payload: Partial<Section> }) =>
+      projectApi.updateSection(projectId, sectionId, payload),
     onSuccess: (_, { projectId }) => {
       qc.invalidateQueries({ queryKey: ['projects'] })
       qc.invalidateQueries({ queryKey: ['project', projectId] })
@@ -103,27 +88,22 @@ export function useDeleteSection() {
   })
 }
 
-// ---------------------------------------------------------------------------
-// Sessions
-// ---------------------------------------------------------------------------
-
 export function useSessions() {
   return useQuery({ queryKey: ['sessions'], queryFn: chatApi.listSessions })
+}
+
+export function useSession(id: string | null) {
+  return useQuery({
+    queryKey: ['session', id],
+    queryFn: () => chatApi.getSession(id!),
+    enabled: !!id,
+  })
 }
 
 export function useCreateSession() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: chatApi.createSession,
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['sessions'] }),
-  })
-}
-
-export function useUpdateSession() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: ({ id, payload }: { id: string; payload: Parameters<typeof chatApi.updateSession>[1] }) =>
-      chatApi.updateSession(id, payload),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['sessions'] }),
   })
 }

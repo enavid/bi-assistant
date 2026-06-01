@@ -20,10 +20,10 @@ function AppShell() {
   return (
     <div className="flex h-screen overflow-hidden" style={{ background: 'var(--bg-base)' }}>
       <Sidebar />
-      <main className="flex flex-1 overflow-hidden" style={{ background: 'var(--bg-base)' }}>
-        {activePage === 'chat'    && <ChatPage />}
-        {activePage === 'builder' && <BuilderPage />}
-        {activePage === 'settings'&& <SettingsPage />}
+      <main className="flex flex-1 overflow-hidden min-w-0" style={{ background: 'var(--bg-base)' }}>
+        {activePage === 'chat'     && <ChatPage />}
+        {activePage === 'builder'  && <BuilderPage />}
+        {activePage === 'settings' && <SettingsPage />}
       </main>
     </div>
   )

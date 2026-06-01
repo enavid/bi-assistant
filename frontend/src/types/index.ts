@@ -1,22 +1,19 @@
-// ---------------------------------------------------------------------------
-// Workspace / Project
-// ---------------------------------------------------------------------------
-
 export interface Section {
   id: string
   name: string
   content: string
   order: number
+  created_at: string
 }
 
 export interface ExperimentEntry {
   id: string
-  date: string
   question: string
   sql_output: string
   correct: boolean
   elapsed_ms: number
   comment: string
+  created_at: string
 }
 
 export interface Project {
@@ -24,43 +21,14 @@ export interface Project {
   name: string
   description: string
   notes: string
-  sections: Section[]
   output_format: string
+  sections: Section[]
   experiments: ExperimentEntry[]
   created_at: string
   updated_at: string
 }
 
-export interface Workspace {
-  id: string
-  name: string
-  projects: Project[]
-  created_at: string
-}
-
-export interface PromptTemplate {
-  id: string
-  name: string
-  content: string
-  active: boolean
-  created_at: string
-  updated_at: string
-}
-
-// ---------------------------------------------------------------------------
-// Chat
-// ---------------------------------------------------------------------------
-
-export interface QueryResult {
-  columns: string[]
-  rows: unknown[][]
-  row_count: number
-  elapsed_ms: number
-  success: boolean
-  error?: string | null
-}
-
-export interface ChatMessage {
+export interface Message {
   id: string
   role: 'user' | 'assistant'
   content: string
@@ -75,14 +43,25 @@ export interface ChatSession {
   title: string
   project_id: string | null
   model_name: string
-  messages: ChatMessage[]
+  messages: Message[]
   created_at: string
   updated_at: string
 }
 
-// ---------------------------------------------------------------------------
-// Ollama
-// ---------------------------------------------------------------------------
+export interface QueryResult {
+  columns: string[]
+  rows: unknown[][]
+  row_count: number
+  elapsed_ms: number
+  success: boolean
+  error?: string | null
+}
+
+export interface GenerateResponse {
+  sql: string
+  success: boolean
+  error?: string | null
+}
 
 export interface OllamaModel {
   name: string
@@ -94,20 +73,6 @@ export interface OllamaHealth {
   models: OllamaModel[]
   message: string
 }
-
-// ---------------------------------------------------------------------------
-// API responses
-// ---------------------------------------------------------------------------
-
-export interface GenerateResponse {
-  sql: string
-  success: boolean
-  error?: string | null
-}
-
-// ---------------------------------------------------------------------------
-// UI
-// ---------------------------------------------------------------------------
 
 export type Theme = 'dark' | 'light'
 export type AppPage = 'chat' | 'builder' | 'settings'

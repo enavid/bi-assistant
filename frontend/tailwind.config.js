@@ -3,10 +3,9 @@ export default {
   theme: {
     extend: {
       colors: {
-        'bg-base':    'var(--bg-base)',
-        'bg-surface': 'var(--bg-surface)',
-        'bg-raised':  'var(--bg-raised)',
-        'bg-hover':   'var(--bg-hover)',
+        'bg-base':       'var(--bg-base)',
+        'bg-surface':    'var(--bg-surface)',
+        'bg-raised':     'var(--bg-raised)',
         'border-subtle':  'var(--border-subtle)',
         'border-default': 'var(--border-default)',
         'border-strong':  'var(--border-strong)',

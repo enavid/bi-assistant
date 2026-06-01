@@ -6,7 +6,6 @@ const apiClient = axios.create({
   headers: { 'Content-Type': 'application/json' },
 })
 
-// Auth interceptor — when login is added, populate access_token in localStorage
 apiClient.interceptors.request.use((config) => {
   const token = localStorage.getItem('access_token')
   if (token) config.headers.Authorization = `Bearer ${token}`

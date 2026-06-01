@@ -10,7 +10,6 @@ RUN groupadd --gid 1001 appgroup && useradd --uid 1001 --gid appgroup --shell /b
 WORKDIR /app
 COPY --from=builder /install /usr/local
 COPY --chown=appuser:appgroup . .
-RUN mkdir -p /app/data && chown appuser:appgroup /app/data
 USER appuser
 EXPOSE 8000
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

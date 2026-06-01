@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
-from app.schemas.requests import OllamaHealthResponse, OllamaModel
+from app.schemas.schemas import OllamaHealthResponse, OllamaModel
 from app.services.llm_service import health_check
 
 router = APIRouter(prefix="/ollama", tags=["ollama"])

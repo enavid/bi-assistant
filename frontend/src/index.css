@@ -6,7 +6,6 @@
   --bg-base:    #13151f;
   --bg-surface: #161825;
   --bg-raised:  #1a1d2e;
-  --bg-hover:   #1e2235;
   --border-subtle:  #1e2235;
   --border-default: #252836;
   --border-strong:  #323548;
@@ -28,7 +27,6 @@
   --bg-base:    #f0f2f8;
   --bg-surface: #ffffff;
   --bg-raised:  #f8f9fc;
-  --bg-hover:   #eef0f8;
   --border-subtle:  #eef0f8;
   --border-default: #dde0ef;
   --border-strong:  #c8cce0;
@@ -56,19 +54,16 @@ body {
   overflow: hidden;
 }
 
-textarea, input, select {
-  color: var(--text-1);
+select, option {
   background: var(--bg-raised);
+  color: var(--text-1);
 }
-
-select option { background: var(--bg-surface); color: var(--text-1); }
 
 ::-webkit-scrollbar { width: 4px; height: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border-default); border-radius: 2px; }
 
 @keyframes bounce {
-  0%, 80%, 100% { transform: scale(0); opacity: 0.4; }
+  0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
   40% { transform: scale(1); opacity: 1; }
 }
-.animate-bounce { animation: bounce 1.2s infinite ease-in-out; }

@@ -15,7 +15,7 @@ class GenerationResult:
 
 
 @dataclass
-class OllamaModel:
+class OllamaModelInfo:
     name: str
     size: str = ""
 
@@ -23,7 +23,7 @@ class OllamaModel:
 @dataclass
 class HealthResult:
     online: bool
-    models: list[OllamaModel] = field(default_factory=list)
+    models: list[OllamaModelInfo] = field(default_factory=list)
     message: str = ""
 
 
@@ -61,10 +61,7 @@ async def health_check() -> HealthResult:
             response.raise_for_status()
             data = response.json()
             models = [
-                OllamaModel(
-                    name=m.get("name", ""),
-                    size=_format_size(m.get("size", 0)),
-                )
+                OllamaModelInfo(name=m.get("name", ""), size=_fmt_size(m.get("size", 0)))
                 for m in data.get("models", [])
             ]
             return HealthResult(online=True, models=models, message="online")
@@ -72,8 +69,7 @@ async def health_check() -> HealthResult:
         return HealthResult(online=False, models=[], message="unreachable")
 
 
-def _format_size(size_bytes: int) -> str:
-    if size_bytes == 0:
+def _fmt_size(size_bytes: int) -> str:
+    if not size_bytes:
         return ""
-    gb = size_bytes / 1_073_741_824
-    return f"{gb:.1f} GB"
+    return f"{size_bytes / 1_073_741_824:.1f} GB"

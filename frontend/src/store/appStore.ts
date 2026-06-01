@@ -7,7 +7,6 @@ interface AppState {
   activePage: AppPage
   activeSessionId: string | null
   defaultModelName: string
-
   setTheme: (t: Theme) => void
   toggleTheme: () => void
   setActivePage: (p: AppPage) => void
