@@ -1,0 +1,33 @@
+services:
+  backend:
+    build: { context: ./backend, dockerfile: Dockerfile }
+    container_name: bi-backend
+    restart: unless-stopped
+    expose: ["8000"]
+    env_file: ./backend/.env
+    volumes: ["./backend/data:/app/data"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      start_period: 15s
+      retries: 3
+
+  frontend:
+    build: { context: ./frontend, dockerfile: Dockerfile }
+    container_name: bi-frontend
+    restart: unless-stopped
+    expose: ["80"]
+    depends_on:
+      backend: { condition: service_healthy }
+
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: bi-nginx
+    restart: unless-stopped
+    ports: ["80:80", "443:443"]
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./nginx/auth:/etc/nginx/auth:ro
+      - /etc/ssl/bi-assistant:/etc/ssl/bi-assistant:ro
+    depends_on: [frontend, backend]

@@ -571,6 +571,27 @@ Temporary Items
 [Ss]cripts
 pyvenv.cfg
 pip-selfcheck.json
+.env
+.env.*
+!.env.example
+backend/data/workspace.json
+backend/data/sessions.json
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+node_modules/
+frontend/dist/
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+nginx/auth/
+
 
 ### VirtualEnv ###
 # Virtualenv
