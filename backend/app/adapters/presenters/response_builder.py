@@ -8,6 +8,8 @@ from pathlib import Path
 from typing import Any, Mapping, Sequence
 
 
+from app.infrastructure.metadata.service import get_metadata_service
+
 """
 response_builder.py
 -------------------
@@ -31,8 +33,6 @@ Design rules:
     - For SQL success, return sanitized data + visualization plan.
 """
 
-
-from app.infrastructure.metadata.service import MetadataService, get_metadata_service
 
 
 JsonDict = dict[str, Any]

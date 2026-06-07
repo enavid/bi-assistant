@@ -9,6 +9,9 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any, Iterable, Mapping
 
+from app.infrastructure.metadata.service import get_metadata_service
+from app.use_cases.hr_analytics.sql.llm_fallback import LLMSQLFallback
+
 """
 sql_generator.py
 ----------------
@@ -28,9 +31,6 @@ Important:
     It does not query raw tables, does not create JOINs, and does not execute SQL.
     Every generated query must still pass sql_validator.py before execution.
 """
-
-from app.infrastructure.metadata.service import MetadataService, get_metadata_service
-from app.use_cases.hr_analytics.sql.llm_fallback import LLMSQLFallback
 
 
 JsonDict = dict[str, Any]

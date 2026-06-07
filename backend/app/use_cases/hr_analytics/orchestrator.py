@@ -12,6 +12,8 @@ from datetime import datetime, timezone
 from typing import Any, Callable, Mapping, Protocol
 from dataclasses import asdict, dataclass, field, is_dataclass
 
+from app.infrastructure.metadata.service import MetadataService, get_metadata_service
+
 """
 llm_orchestrator.py
 -------------------
@@ -43,8 +45,6 @@ The goal is to keep controlled:
 - GAP route is used when data/definition is not available.
 - REJECT route is used for non-HR, unsafe, or individual employee questions.
 """
-
-from app.infrastructure.metadata.service import MetadataService, get_metadata_service
 
 
 JsonDict = dict[str, Any]

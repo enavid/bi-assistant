@@ -12,6 +12,9 @@ from pathlib import Path
 from typing import Any, Callable, Mapping, Sequence
 
 
+from app.infrastructure.metadata.service import get_metadata_service
+from app.use_cases.hr_analytics.sql.validator import SQLValidator
+
 """
 query_executor.py
 -----------------
@@ -36,9 +39,6 @@ Important:
     unless `trust_external_validation=False` and an internal validator is supplied.
 """
 
-
-from app.infrastructure.metadata.service import MetadataService, get_metadata_service
-from app.use_cases.hr_analytics.sql.validator import SQLValidator
 
 
 JsonDict = dict[str, Any]

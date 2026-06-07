@@ -2,6 +2,9 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass, field
 from typing import Any
 
+from app.infrastructure.llm.analytics_client import LLMClient
+from app.infrastructure.llm.prompt_builder import PromptBuilder
+
 """
 llm_sql_fallback.py
 -------------------
@@ -16,9 +19,6 @@ It is used only when:
 The generated SQL must still pass sql_validator.py before execution.
 """
 
-
-from app.infrastructure.llm.analytics_client import LLMClient
-from app.infrastructure.llm.prompt_builder import PromptBuilder
 
 JsonDict = dict[str, Any]
 

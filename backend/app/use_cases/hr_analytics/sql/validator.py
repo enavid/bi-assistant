@@ -5,6 +5,8 @@ from dataclasses import asdict, dataclass, field, is_dataclass
 from pathlib import Path
 from typing import Any, Mapping
 
+from app.infrastructure.metadata.service import get_metadata_service
+
 """
 sql_validator.py
 ----------------
@@ -34,8 +36,6 @@ can run without external dependencies in the MVP. For production, adding an AST
 parser such as sqlglot is recommended, but the same policy checks should remain.
 """
 
-
-from app.infrastructure.metadata.service import MetadataService, get_metadata_service
 
 
 JsonDict = dict[str, Any]

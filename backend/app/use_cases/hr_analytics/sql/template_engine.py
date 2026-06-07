@@ -8,6 +8,8 @@ from decimal import Decimal
 from pathlib import Path
 from typing import Any, Mapping
 
+from app.infrastructure.metadata.service import get_metadata_service
+
 """
 sql_template_engine.py
 ----------------------
@@ -26,8 +28,6 @@ This module does NOT execute SQL and does NOT replace sql_validator.py.
 It creates a SQL plan that must still pass sql_validator.py before execution.
 """
 
-
-from app.infrastructure.metadata.service import MetadataService, get_metadata_service
 
 
 JsonDict = dict[str, Any]
