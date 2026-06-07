@@ -1,4 +1,11 @@
 from __future__ import annotations
+import math
+from copy import deepcopy
+from dataclasses import asdict, dataclass, field, is_dataclass
+from datetime import date, datetime
+from decimal import Decimal
+from pathlib import Path
+from typing import Any, Mapping, Sequence
 
 """
 chart_builder.py
@@ -22,16 +29,6 @@ Design rules:
     - Prefer simple, readable visuals over decorative charts.
     - Keep this module deterministic and rule-based for the Controlled SQL-based MVP.
 """
-
-import asyncio
-import math
-import re
-from copy import deepcopy
-from dataclasses import asdict, dataclass, field, is_dataclass
-from datetime import date, datetime
-from decimal import Decimal
-from pathlib import Path
-from typing import Any, Mapping, Sequence
 
 try:  # package import when copied into backend/app/services
     from .metadata_service import MetadataService, get_metadata_service
@@ -76,7 +73,8 @@ NON_DATA_STATUSES = {
     "ACCESS_BLOCKED",
 }
 
-SUCCESS_STATUSES = {STATUS_SUCCESS, STATUS_VALID, STATUS_SUPPORTED, "OK", "DONE", "VALIDATED"}
+SUCCESS_STATUSES = {STATUS_SUCCESS, STATUS_VALID,
+                    STATUS_SUPPORTED, "OK", "DONE", "VALIDATED"}
 
 VIS_KPI_CARD = "kpi_card"
 VIS_KPI_CARD_GROUP = "kpi_card_group"
@@ -278,7 +276,8 @@ class ChartBuilderConfig:
     horizontal_bar_threshold: int = 6
     max_label_length_for_vertical_bar: int = 18
     min_group_size_default: int = 5
-    suppress_small_groups: bool = False  # response_builder normally applies this earlier.
+    # response_builder normally applies this earlier.
+    suppress_small_groups: bool = False
     suppress_label_fa: str = "غیرقابل نمایش"
     include_chart_spec: bool = True
     include_data_in_visualization: bool = True
@@ -345,14 +344,16 @@ class ChartBuilder:
         if metadata_service is not None:
             self.metadata = metadata_service
         elif get_metadata_service is not None:
-            self.metadata = get_metadata_service(metadata_dir=metadata_dir, strict=False)
+            self.metadata = get_metadata_service(
+                metadata_dir=metadata_dir, strict=False)
         else:
             self.metadata = None
 
         min_group_size = ChartBuilderConfig.min_group_size_default
         with _suppress_exceptions():
             if self.metadata is not None and hasattr(self.metadata, "get_min_group_size"):
-                min_group_size = int(self.metadata.get_min_group_size(default=min_group_size))
+                min_group_size = int(
+                    self.metadata.get_min_group_size(default=min_group_size))
 
         self.config = ChartBuilderConfig(
             max_table_rows=int(max_table_rows),
@@ -391,10 +392,14 @@ class ChartBuilder:
         """Build a frontend-ready visualization payload."""
         ctx = _to_mapping(context)
         status_payload_dict = dict(status_payload or {})
-        resolved_route = self._resolve_route(route=route, context=ctx, status_payload=status_payload_dict)
-        resolved_status = self._resolve_status(status=status, context=ctx, status_payload=status_payload_dict)
-        resolved_intent = self._first_non_empty(intent_id, _get_nested(ctx, "intent_result", "intent"), _get_nested(ctx, "intent_result", "intent_id"), ctx.get("detected_intent"))
-        resolved_report = self._first_non_empty(report_id, _get_nested(ctx, "route_result", "report_id"), _get_nested(ctx, "intent_result", "report_id"), ctx.get("report_id"))
+        resolved_route = self._resolve_route(
+            route=route, context=ctx, status_payload=status_payload_dict)
+        resolved_status = self._resolve_status(
+            status=status, context=ctx, status_payload=status_payload_dict)
+        resolved_intent = self._first_non_empty(intent_id, _get_nested(ctx, "intent_result", "intent"), _get_nested(
+            ctx, "intent_result", "intent_id"), ctx.get("detected_intent"))
+        resolved_report = self._first_non_empty(report_id, _get_nested(
+            ctx, "route_result", "report_id"), _get_nested(ctx, "intent_result", "report_id"), ctx.get("report_id"))
 
         if query_result is None:
             query_result = _as_dict(ctx.get("query_result"))
@@ -434,7 +439,8 @@ class ChartBuilder:
             payload = self._build_status_payload(
                 route=ROUTE_REJECT,
                 status=STATUS_ACCESS_DENIED,
-                status_payload={**status_payload_dict, "reason": "All output columns were blocked by chart privacy rules."},
+                status_payload={
+                    **status_payload_dict, "reason": "All output columns were blocked by chart privacy rules."},
                 intent_id=resolved_intent,
                 report_id=resolved_report,
                 title_fa=title_fa,
@@ -442,7 +448,8 @@ class ChartBuilder:
             return payload.to_dict()
 
         columns = list(sanitized_rows[0].keys())
-        dimension_columns, metric_columns = self._classify_columns(columns=columns, rows=sanitized_rows)
+        dimension_columns, metric_columns = self._classify_columns(
+            columns=columns, rows=sanitized_rows)
         safe_rows, suppression_warnings = self._apply_optional_small_group_suppression(
             rows=sanitized_rows,
             dimension_columns=dimension_columns,
@@ -475,7 +482,8 @@ class ChartBuilder:
             report_id=resolved_report,
             visual_type=visual_type,
         )
-        fallback = self._resolve_fallback_visualization(intent_id=resolved_intent, report_id=resolved_report, visual_type=visual_type)
+        fallback = self._resolve_fallback_visualization(
+            intent_id=resolved_intent, report_id=resolved_report, visual_type=visual_type)
 
         prepared_rows = self._prepare_rows_for_visualization(
             rows=safe_rows,
@@ -483,12 +491,17 @@ class ChartBuilder:
             metric_columns=metric_columns,
             dimension_columns=dimension_columns,
         )
-        x_axis = self._choose_x_axis(visual_type=visual_type, dimension_columns=dimension_columns, metric_columns=metric_columns, rows=prepared_rows)
-        y_axis = self._choose_y_axis(metric_columns=metric_columns, rows=prepared_rows)
-        series = self._choose_series(visual_type=visual_type, metric_columns=metric_columns, rows=prepared_rows)
+        x_axis = self._choose_x_axis(
+            visual_type=visual_type, dimension_columns=dimension_columns, metric_columns=metric_columns, rows=prepared_rows)
+        y_axis = self._choose_y_axis(
+            metric_columns=metric_columns, rows=prepared_rows)
+        series = self._choose_series(
+            visual_type=visual_type, metric_columns=metric_columns, rows=prepared_rows)
         show_percentage = any("percentage" in col for col in metric_columns)
-        show_total = visual_type in {VIS_KPI_CARD, VIS_KPI_CARD_GROUP, VIS_PIE} or "employee_count" in metric_columns
-        formatting = self._build_formatting(metric_columns=metric_columns, dimension_columns=dimension_columns, visualization_type=visual_type)
+        show_total = visual_type in {
+            VIS_KPI_CARD, VIS_KPI_CARD_GROUP, VIS_PIE} or "employee_count" in metric_columns
+        formatting = self._build_formatting(
+            metric_columns=metric_columns, dimension_columns=dimension_columns, visualization_type=visual_type)
 
         chart_spec: JsonDict | None = None
         kpi_cards: list[JsonDict] = []
@@ -508,9 +521,11 @@ class ChartBuilder:
             )
             extra_warnings.extend(spec_warnings)
         elif visual_type in {VIS_KPI_CARD, VIS_KPI_CARD_GROUP}:
-            kpi_cards = self._build_kpi_cards(rows=prepared_rows, metric_columns=metric_columns)
+            kpi_cards = self._build_kpi_cards(
+                rows=prepared_rows, metric_columns=metric_columns)
         elif visual_type == VIS_TABLE:
-            table = self._build_table(rows=prepared_rows, dimension_columns=dimension_columns, metric_columns=metric_columns)
+            table = self._build_table(
+                rows=prepared_rows, dimension_columns=dimension_columns, metric_columns=metric_columns)
         elif visual_type == VIS_STACKED_BAR:
             # Stacked bar is kept as a declared type, but for MVP it falls back to a normal bar
             # unless the data contains multiple comparable count series.
@@ -524,30 +539,36 @@ class ChartBuilder:
                 dimension_columns=dimension_columns,
                 metric_columns=metric_columns,
             )
-            extra_warnings.extend(["stacked_bar_chart فعلاً به bar_chart استاندارد تبدیل شد."] + spec_warnings)
+            extra_warnings.extend(
+                ["stacked_bar_chart فعلاً به bar_chart استاندارد تبدیل شد."] + spec_warnings)
 
         payload = ChartPayload(
             visualization_type=visual_type,
             title_fa=title,
-            subtitle_fa=self._build_subtitle(visual_type=visual_type, rows=prepared_rows),
+            subtitle_fa=self._build_subtitle(
+                visual_type=visual_type, rows=prepared_rows),
             dimension_columns=dimension_columns,
             metric_columns=metric_columns,
             x_axis=x_axis,
             y_axis=y_axis,
             series=series,
-            sort=self._infer_sort(visualization_type=visual_type, x_axis=x_axis),
-            top_n=self._infer_top_n(visualization_type=visual_type, rows=prepared_rows),
+            sort=self._infer_sort(
+                visualization_type=visual_type, x_axis=x_axis),
+            top_n=self._infer_top_n(
+                visualization_type=visual_type, rows=prepared_rows),
             show_percentage=show_percentage,
             show_total=show_total,
             formatting=formatting,
-            data_limitations=self._build_data_limitations(visualization_type=visual_type, dimension_columns=dimension_columns, rows=prepared_rows),
+            data_limitations=self._build_data_limitations(
+                visualization_type=visual_type, dimension_columns=dimension_columns, rows=prepared_rows),
             source=self.config.source_view,
             fallback_visualization_type=fallback,
             data=prepared_rows if self.config.include_data_in_visualization else [],
             chart_spec=chart_spec if self.config.include_chart_spec else None,
             kpi_cards=kpi_cards,
             table=table,
-            warnings=_dedupe(privacy_warnings + suppression_warnings + visual_warnings + extra_warnings),
+            warnings=_dedupe(
+                privacy_warnings + suppression_warnings + visual_warnings + extra_warnings),
             errors=[],
             metadata={
                 "source_module": self.config.source_name,
@@ -620,7 +641,8 @@ class ChartBuilder:
         }
 
     def _build_intent_visualization_index(self) -> dict[str, JsonDict]:
-        rows = self.visualization_rules.get("intent_visualization_map") or self.visualization_rules.get("intent_visualization_mapping") or []
+        rows = self.visualization_rules.get("intent_visualization_map") or self.visualization_rules.get(
+            "intent_visualization_mapping") or []
         index: dict[str, JsonDict] = {}
         if isinstance(rows, Sequence) and not isinstance(rows, (str, bytes, bytearray)):
             for item in rows:
@@ -629,7 +651,8 @@ class ChartBuilder:
         return index
 
     def _build_report_visualization_index(self) -> dict[str, JsonDict]:
-        rows = self.visualization_rules.get("report_visualization_map") or self.visualization_rules.get("report_visualization_mapping") or []
+        rows = self.visualization_rules.get("report_visualization_map") or self.visualization_rules.get(
+            "report_visualization_mapping") or []
         index: dict[str, JsonDict] = {}
         if isinstance(rows, Sequence) and not isinstance(rows, (str, bytes, bytearray)):
             for item in rows:
@@ -638,11 +661,13 @@ class ChartBuilder:
         return index
 
     def _load_status_templates(self) -> dict[str, JsonDict]:
-        templates = _as_dict(self.visualization_rules.get("status_message_templates"))
+        templates = _as_dict(self.visualization_rules.get(
+            "status_message_templates"))
         merged = deepcopy(DEFAULT_STATUS_TEMPLATES)
         for key, value in templates.items():
             if isinstance(value, Mapping):
-                merged[str(key).upper()] = {**merged.get(str(key).upper(), {}), **dict(value)}
+                merged[str(key).upper()] = {
+                    **merged.get(str(key).upper(), {}), **dict(value)}
         return merged
 
     # ------------------------------------------------------------------
@@ -660,11 +685,16 @@ class ChartBuilder:
         title_fa: str | None,
     ) -> ChartPayload:
         normalized_status = (status or STATUS_SQL_VALIDATION_FAILED).upper()
-        normalized_route = (route or _route_for_status(normalized_status)).upper()
-        template = self.status_templates.get(normalized_status, DEFAULT_STATUS_TEMPLATES.get(normalized_status, {}))
-        title = self._first_non_empty(title_fa, status_payload.get("title_fa"), template.get("title_fa"), "وضعیت پاسخ")
-        message = self._first_non_empty(status_payload.get("message_fa"), status_payload.get("reason_fa"), template.get("message_fa"), "خروجی قابل نمایش نیست.")
-        severity = self._first_non_empty(status_payload.get("severity"), template.get("severity"), "info")
+        normalized_route = (route or _route_for_status(
+            normalized_status)).upper()
+        template = self.status_templates.get(
+            normalized_status, DEFAULT_STATUS_TEMPLATES.get(normalized_status, {}))
+        title = self._first_non_empty(title_fa, status_payload.get(
+            "title_fa"), template.get("title_fa"), "وضعیت پاسخ")
+        message = self._first_non_empty(status_payload.get("message_fa"), status_payload.get(
+            "reason_fa"), template.get("message_fa"), "خروجی قابل نمایش نیست.")
+        severity = self._first_non_empty(status_payload.get(
+            "severity"), template.get("severity"), "info")
         status_message = {
             "status": normalized_status,
             "route": normalized_route,
@@ -699,15 +729,18 @@ class ChartBuilder:
         if rows is not None:
             return [_json_safe_dict(row) for row in rows if isinstance(row, Mapping)]
         qr = _as_dict(query_result)
-        candidate = qr.get("rows") or qr.get("data") or qr.get("result") or qr.get("records")
+        candidate = qr.get("rows") or qr.get(
+            "data") or qr.get("result") or qr.get("records")
         if isinstance(candidate, Sequence) and not isinstance(candidate, (str, bytes, bytearray)):
             result: list[JsonDict] = []
-            columns = qr.get("columns") if isinstance(qr.get("columns"), Sequence) else None
+            columns = qr.get("columns") if isinstance(
+                qr.get("columns"), Sequence) else None
             for item in candidate:
                 if isinstance(item, Mapping):
                     result.append(_json_safe_dict(item))
                 elif isinstance(item, Sequence) and columns and not isinstance(item, (str, bytes, bytearray)):
-                    result.append(_json_safe_dict(dict(zip([str(c) for c in columns], item))))
+                    result.append(_json_safe_dict(
+                        dict(zip([str(c) for c in columns], item))))
             return result
         return []
 
@@ -729,18 +762,21 @@ class ChartBuilder:
             if clean:
                 sanitized.append(clean)
         if removed_columns:
-            warnings.append("برخی ستون‌های حساس یا داخلی از خروجی نمودار حذف شدند: " + ", ".join(sorted(removed_columns)))
+            warnings.append(
+                "برخی ستون‌های حساس یا داخلی از خروجی نمودار حذف شدند: " + ", ".join(sorted(removed_columns)))
         return sanitized, warnings
 
     def _blocked_output_columns(self) -> set[str]:
-        blocked = {c.lower() for c in DEFAULT_SENSITIVE_COLUMNS | DEFAULT_IDENTIFIER_COLUMNS}
+        blocked = {c.lower() for c in DEFAULT_SENSITIVE_COLUMNS |
+                   DEFAULT_IDENTIFIER_COLUMNS}
         # employee_id can be visible only if it appears as a metric alias like employee_count,
         # not as the raw employee_id column.
         blocked.add("employee_id")
         if self.metadata is not None:
             with _suppress_exceptions():
                 if hasattr(self.metadata, "get_sensitive_columns"):
-                    blocked.update(str(c).lower() for c in self.metadata.get_sensitive_columns())
+                    blocked.update(str(c).lower()
+                                   for c in self.metadata.get_sensitive_columns())
         return blocked
 
     def _apply_optional_small_group_suppression(
@@ -766,7 +802,8 @@ class ChartBuilder:
             safe_rows.append(row)
         warnings: list[str] = []
         if suppressed:
-            warnings.append(f"{suppressed} گروه به دلیل کمتر بودن از حداقل تعداد مجاز نمایش داده نشدند.")
+            warnings.append(
+                f"{suppressed} گروه به دلیل کمتر بودن از حداقل تعداد مجاز نمایش داده نشدند.")
         return safe_rows, warnings
 
     # ------------------------------------------------------------------
@@ -774,8 +811,10 @@ class ChartBuilder:
     # ------------------------------------------------------------------
 
     def _classify_columns(self, *, columns: list[str], rows: list[JsonDict]) -> tuple[list[str], list[str]]:
-        role_dimensions = set(_as_dict(self.column_roles.get("dimension_columns")).keys()) or DEFAULT_DIMENSIONS
-        role_metrics = set(_as_dict(self.column_roles.get("metric_columns")).keys()) or DEFAULT_METRICS
+        role_dimensions = set(_as_dict(self.column_roles.get(
+            "dimension_columns")).keys()) or DEFAULT_DIMENSIONS
+        role_metrics = set(_as_dict(self.column_roles.get(
+            "metric_columns")).keys()) or DEFAULT_METRICS
         dimensions: list[str] = []
         metrics: list[str] = []
         for col in columns:
@@ -840,16 +879,17 @@ class ChartBuilder:
             if normalized_hint:
                 return self._ensure_visual_fits_data(normalized_hint, rows, dimension_columns, metric_columns)
 
-        mapped = self._mapped_visualization(intent_id=intent_id, report_id=report_id)
+        mapped = self._mapped_visualization(
+            intent_id=intent_id, report_id=report_id)
         if mapped:
-            visual, fit_warnings = self._ensure_visual_fits_data(mapped, rows, dimension_columns, metric_columns)
+            visual, fit_warnings = self._ensure_visual_fits_data(
+                mapped, rows, dimension_columns, metric_columns)
             if visual != mapped:
                 warnings.extend(fit_warnings)
             return visual, warnings
 
         row_count = len(rows)
         metric_count = len(metric_columns)
-        dimension_count = len(dimension_columns)
 
         if row_count == 1 and metric_count == 1:
             return VIS_KPI_CARD, warnings
@@ -875,12 +915,14 @@ class ChartBuilder:
     def _mapped_visualization(self, *, intent_id: str | None, report_id: str | None) -> str | None:
         if report_id and report_id in self.report_visualization_index:
             item = self.report_visualization_index[report_id]
-            visual = item.get("primary_visualization") or item.get("visualization")
+            visual = item.get("primary_visualization") or item.get(
+                "visualization")
             if visual:
                 return _normalize_visualization_type(str(visual))
         if intent_id and intent_id in self.intent_visualization_index:
             item = self.intent_visualization_index[intent_id]
-            visual = item.get("primary_visualization") or item.get("visualization")
+            visual = item.get("primary_visualization") or item.get(
+                "visualization")
             if visual:
                 return _normalize_visualization_type(str(visual))
         return None
@@ -919,7 +961,8 @@ class ChartBuilder:
             self.intent_visualization_index.get(intent_id or ""),
         ):
             if isinstance(item, Mapping):
-                fallback = item.get("fallback_visualization") or item.get("fallback_visual")
+                fallback = item.get("fallback_visualization") or item.get(
+                    "fallback_visual")
                 if fallback:
                     normalized = _normalize_visualization_type(str(fallback))
                     if normalized and normalized != visual_type:
@@ -977,7 +1020,8 @@ class ChartBuilder:
             "average_service_years",
             "headcount_gap",
         ]
-        normalized_to_original = {_normalize_column_name(col): col for col in metric_columns}
+        normalized_to_original = {_normalize_column_name(
+            col): col for col in metric_columns}
         for item in preferred_order:
             if item in normalized_to_original:
                 return normalized_to_original[item]
@@ -1014,7 +1058,8 @@ class ChartBuilder:
         if not rows or not x_axis or not series:
             return None, ["اطلاعات لازم برای ساخت chart_spec کامل نبود."]
         chart_type = RECHARTS_TYPE_BY_VISUAL.get(visualization_type, "bar")
-        description = self._build_chart_description(visualization_type=visualization_type, x_axis=x_axis, series=series)
+        description = self._build_chart_description(
+            visualization_type=visualization_type, x_axis=x_axis, series=series)
         if chart_type == "pie":
             value_key = series[0]
             spec: JsonDict = {
@@ -1122,7 +1167,8 @@ class ChartBuilder:
             role_map = _as_dict(self.column_roles.get(role_key))
             item = role_map.get(col) or role_map.get(normalized)
             if isinstance(item, Mapping):
-                label = item.get("label_fa") or item.get("title_fa") or item.get("label")
+                label = item.get("label_fa") or item.get(
+                    "title_fa") or item.get("label")
                 if label:
                     return str(label)
         return DEFAULT_FA_LABELS.get(normalized, col)
@@ -1181,7 +1227,8 @@ class ChartBuilder:
     def _build_data_limitations(self, *, visualization_type: str, dimension_columns: list[str], rows: list[JsonDict]) -> list[str]:
         notes: list[str] = []
         if len(rows) >= self.config.max_chart_rows and visualization_type in {VIS_BAR, VIS_HORIZONTAL_BAR, VIS_LINE, VIS_PIE}:
-            notes.append(f"برای خوانایی نمودار، حداکثر {self.config.max_chart_rows} ردیف نمایش داده شده است.")
+            notes.append(
+                f"برای خوانایی نمودار، حداکثر {self.config.max_chart_rows} ردیف نمایش داده شده است.")
         if any(_normalize_column_name(col) == "city" for col in dimension_columns):
             notes.append("تحلیل سطح شهر در MVP فعلی Data Gap محسوب می‌شود.")
         return notes
@@ -1272,7 +1319,8 @@ def get_chart_builder(*, metadata_dir: str | Path | None = None, metadata_servic
     """Return a reusable ChartBuilder instance."""
     global _chart_builder_singleton
     if reset or _chart_builder_singleton is None or metadata_service is not None:
-        _chart_builder_singleton = ChartBuilder(metadata_dir=metadata_dir, metadata_service=metadata_service)
+        _chart_builder_singleton = ChartBuilder(
+            metadata_dir=metadata_dir, metadata_service=metadata_service)
     return _chart_builder_singleton
 
 
@@ -1474,4 +1522,5 @@ if __name__ == "__main__":  # pragma: no cover - manual smoke test
         {"gender": "زن", "employee_count": 105, "percentage": 14.0},
         {"gender": "مرد", "employee_count": 645, "percentage": 86.0},
     ]
-    print(builder.build(rows=sample, intent_id="employee_count_by_gender", route="SQL", status="SUCCESS"))
+    print(builder.build(rows=sample, intent_id="employee_count_by_gender",
+          route="SQL", status="SUCCESS"))

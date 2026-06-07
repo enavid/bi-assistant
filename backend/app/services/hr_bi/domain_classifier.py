@@ -1,4 +1,9 @@
 from __future__ import annotations
+import math
+import re
+import unicodedata
+from dataclasses import asdict, dataclass, field
+from typing import Any, Mapping
 
 """
 domain_classifier.py
@@ -53,12 +58,6 @@ Returned dict examples:
             ...
         }
 """
-
-import math
-import re
-import unicodedata
-from dataclasses import asdict, dataclass, field
-from typing import Any, Mapping
 
 JsonDict = dict[str, Any]
 
@@ -194,7 +193,8 @@ class DomainClassifier:
     ) -> JsonDict:
         """Classify whether the question is in HR BI domain."""
         raw_question = question or _get_context_question(context) or ""
-        normalized_question = self._normalize_question(raw_question, metadata=metadata)
+        normalized_question = self._normalize_question(
+            raw_question, metadata=metadata)
 
         if not normalized_question or len(normalized_question.strip()) < 3:
             return DomainClassificationResult(
@@ -207,13 +207,17 @@ class DomainClassifier:
                 suggested_next_step="Ask the user to provide a clearer HR question.",
             ).to_dict()
 
-        matched_hr_terms, hr_score_from_terms = self._score_terms(normalized_question, self.hr_terms)
-        matched_non_hr_terms, non_hr_score = self._score_terms(normalized_question, self.non_hr_terms)
-        metadata_matches, hr_score_from_metadata = self._score_metadata_matches(normalized_question, metadata)
+        matched_hr_terms, hr_score_from_terms = self._score_terms(
+            normalized_question, self.hr_terms)
+        matched_non_hr_terms, non_hr_score = self._score_terms(
+            normalized_question, self.non_hr_terms)
+        metadata_matches, hr_score_from_metadata = self._score_metadata_matches(
+            normalized_question, metadata)
         safety_flags = self._detect_safety_flags(normalized_question)
 
         hr_score = hr_score_from_terms + hr_score_from_metadata
-        strong_hr_anchor = self._has_strong_hr_anchor(matched_hr_terms, metadata_matches)
+        strong_hr_anchor = self._has_strong_hr_anchor(
+            matched_hr_terms, metadata_matches)
         clear_non_hr = non_hr_score >= self.non_hr_threshold and not strong_hr_anchor and hr_score < self.hr_threshold
         clearly_hr = hr_score >= self.hr_threshold and (
             strong_hr_anchor
@@ -291,7 +295,8 @@ class DomainClassifier:
                 status=STATUS_OUT_OF_SCOPE,
                 domain=DOMAIN_NON_HR,
                 is_hr=False,
-                confidence=self._confidence(non_hr_score, hr_score, minimum=0.58),
+                confidence=self._confidence(
+                    non_hr_score, hr_score, minimum=0.58),
                 reason="No reliable HR concept was detected and non-HR terms were found.",
                 scores=scores,
                 matched_hr_terms=matched_hr_terms,
@@ -352,7 +357,8 @@ class DomainClassifier:
         if metadata is None or not hasattr(metadata, "find_semantic_matches"):
             return [], 0.0
         try:
-            raw_matches = metadata.find_semantic_matches(question, max_matches=self.max_metadata_matches)
+            raw_matches = metadata.find_semantic_matches(
+                question, max_matches=self.max_metadata_matches)
         except Exception:
             return [], 0.0
 
@@ -581,8 +587,10 @@ def _build_hr_terms() -> list[WeightedTerm]:
     ]
 
     terms: list[WeightedTerm] = []
-    terms.extend(WeightedTerm(term=t, weight=2.2, category="hr_anchor") for t in strong)
-    terms.extend(WeightedTerm(term=t, weight=0.75, category="hr_context") for t in weak)
+    terms.extend(WeightedTerm(term=t, weight=2.2, category="hr_anchor")
+                 for t in strong)
+    terms.extend(WeightedTerm(term=t, weight=0.75, category="hr_context")
+                 for t in weak)
     return terms
 
 

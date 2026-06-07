@@ -1,4 +1,12 @@
 from __future__ import annotations
+import math
+import re
+from copy import deepcopy
+from dataclasses import asdict, dataclass, field, is_dataclass
+from datetime import date, datetime
+from decimal import Decimal
+from pathlib import Path
+from typing import Any, Mapping, Sequence
 
 """
 explanation_generator.py
@@ -22,15 +30,6 @@ Design notes:
       generate / build / run / arun / __call__.
 """
 
-import asyncio
-import math
-import re
-from copy import deepcopy
-from dataclasses import asdict, dataclass, field, is_dataclass
-from datetime import date, datetime
-from decimal import Decimal
-from pathlib import Path
-from typing import Any, Mapping, Sequence
 
 try:  # package import when copied into backend/app/services
     from .metadata_service import MetadataService, get_metadata_service
@@ -61,7 +60,8 @@ STATUS_EXECUTION_FAILED = "EXECUTION_FAILED"
 STATUS_NO_DATA = "NO_DATA"
 STATUS_NOT_EXECUTED = "NOT_EXECUTED"
 
-SUCCESS_STATUSES = {STATUS_SUCCESS, STATUS_VALID, STATUS_SUPPORTED, "OK", "DONE"}
+SUCCESS_STATUSES = {STATUS_SUCCESS,
+                    STATUS_VALID, STATUS_SUPPORTED, "OK", "DONE"}
 NON_DATA_STATUSES = {
     STATUS_DATA_GAP,
     STATUS_ACCESS_DENIED,
@@ -292,7 +292,8 @@ class ExplanationGenerator:
         if metadata_service is not None:
             self.metadata = metadata_service
         elif get_metadata_service is not None:
-            self.metadata = get_metadata_service(metadata_dir=metadata_dir, strict=False)
+            self.metadata = get_metadata_service(
+                metadata_dir=metadata_dir, strict=False)
         else:
             self.metadata = None
 
@@ -302,7 +303,8 @@ class ExplanationGenerator:
             include_data_limitations=bool(include_data_limitations),
             include_followups=bool(include_followups),
             include_sql_reference=bool(include_sql_reference),
-            safe_managerial_interpretation=bool(safe_managerial_interpretation),
+            safe_managerial_interpretation=bool(
+                safe_managerial_interpretation),
         )
 
     # ------------------------------------------------------------------
@@ -332,9 +334,12 @@ class ExplanationGenerator:
         response_payload_dict = dict(response_payload or {})
         chart_payload_dict = dict(chart_payload or {})
 
-        resolved_question = question or str(ctx.get("question") or response_payload_dict.get("question") or "").strip()
-        resolved_route = self._resolve_route(route=route, context=ctx, response_payload=response_payload_dict, status_payload=status_payload_dict)
-        resolved_status = self._resolve_status(status=status, context=ctx, response_payload=response_payload_dict, status_payload=status_payload_dict)
+        resolved_question = question or str(
+            ctx.get("question") or response_payload_dict.get("question") or "").strip()
+        resolved_route = self._resolve_route(
+            route=route, context=ctx, response_payload=response_payload_dict, status_payload=status_payload_dict)
+        resolved_status = self._resolve_status(
+            status=status, context=ctx, response_payload=response_payload_dict, status_payload=status_payload_dict)
         resolved_intent = self._first_non_empty(
             intent_id,
             response_payload_dict.get("detected_intent"),
@@ -360,7 +365,8 @@ class ExplanationGenerator:
             ctx.get("generated_sql"),
         )
 
-        extracted_rows = self._extract_rows(rows=rows, query_result=query_result, context=ctx, response_payload=response_payload_dict)
+        extracted_rows = self._extract_rows(
+            rows=rows, query_result=query_result, context=ctx, response_payload=response_payload_dict)
         embedded_status = self._extract_embedded_status(extracted_rows)
         if embedded_status in NON_DATA_STATUSES:
             resolved_status = embedded_status
@@ -369,7 +375,8 @@ class ExplanationGenerator:
         if resolved_status in SUCCESS_STATUSES and resolved_route == ROUTE_SQL:
             resolved_status = STATUS_SUCCESS
 
-        title_fa = self._resolve_title_fa(intent_id=resolved_intent, report_id=resolved_report, response_payload=response_payload_dict)
+        title_fa = self._resolve_title_fa(
+            intent_id=resolved_intent, report_id=resolved_report, response_payload=response_payload_dict)
         if resolved_route != ROUTE_SQL or resolved_status in NON_DATA_STATUSES:
             payload = self._build_status_explanation(
                 route=resolved_route,
@@ -401,7 +408,8 @@ class ExplanationGenerator:
                 status=STATUS_ACCESS_DENIED,
                 title_fa="امکان نمایش اطلاعات وجود ندارد",
                 question=resolved_question,
-                status_payload={"reason": "All result columns were blocked by explanation safety rules."},
+                status_payload={
+                    "reason": "All result columns were blocked by explanation safety rules."},
                 intent_id=resolved_intent,
                 report_id=resolved_report,
             )
@@ -418,7 +426,8 @@ class ExplanationGenerator:
             chart_payload=chart_payload_dict,
             response_payload=response_payload_dict,
             explanation_level=explanation_level,
-            extra_warnings=safety_warnings + _as_list(response_payload_dict.get("warnings")) + _as_list(chart_payload_dict.get("warnings")),
+            extra_warnings=safety_warnings + _as_list(response_payload_dict.get(
+                "warnings")) + _as_list(chart_payload_dict.get("warnings")),
             **kwargs,
         )
         return payload.to_dict()
@@ -453,13 +462,19 @@ class ExplanationGenerator:
         intent_id: str | None,
         report_id: str | None,
     ) -> ExplanationPayload:
-        template = deepcopy(DEFAULT_STATUS_MESSAGES.get(status, DEFAULT_STATUS_MESSAGES[STATUS_NEEDS_CLARIFICATION]))
-        title = _clean_text(str(status_payload.get("title_fa") or template.get("title_fa") or title_fa))
-        summary = _clean_text(str(status_payload.get("message_fa") or status_payload.get("summary_fa") or template.get("summary_fa") or "وضعیت درخواست مشخص نیست."))
-        managerial_note = _clean_text(str(status_payload.get("managerial_note_fa") or template.get("managerial_note_fa") or "")) or None
-        next_step = _clean_text(str(status_payload.get("recommended_action_fa") or status_payload.get("next_step_fa") or template.get("next_step_fa") or ""))
+        template = deepcopy(DEFAULT_STATUS_MESSAGES.get(
+            status, DEFAULT_STATUS_MESSAGES[STATUS_NEEDS_CLARIFICATION]))
+        title = _clean_text(str(status_payload.get(
+            "title_fa") or template.get("title_fa") or title_fa))
+        summary = _clean_text(str(status_payload.get("message_fa") or status_payload.get(
+            "summary_fa") or template.get("summary_fa") or "وضعیت درخواست مشخص نیست."))
+        managerial_note = _clean_text(str(status_payload.get(
+            "managerial_note_fa") or template.get("managerial_note_fa") or "")) or None
+        next_step = _clean_text(str(status_payload.get("recommended_action_fa") or status_payload.get(
+            "next_step_fa") or template.get("next_step_fa") or ""))
 
-        reason = _clean_text(str(status_payload.get("reason_fa") or status_payload.get("reason") or ""))
+        reason = _clean_text(str(status_payload.get(
+            "reason_fa") or status_payload.get("reason") or ""))
         gap_code = _clean_text(str(status_payload.get("gap_code") or ""))
         missing_data = _as_list(status_payload.get("missing_data"))
 
@@ -477,7 +492,8 @@ class ExplanationGenerator:
         if next_step:
             next_steps.append(next_step)
 
-        followups = self._suggest_followups(intent_id=intent_id, report_id=report_id, status=status, question=question)
+        followups = self._suggest_followups(
+            intent_id=intent_id, report_id=report_id, status=status, question=question)
 
         return ExplanationPayload(
             route=route,
@@ -490,7 +506,8 @@ class ExplanationGenerator:
             next_steps=next_steps,
             follow_up_questions=followups if self.config.include_followups else [],
             technical_note=None,
-            confidence="high" if status in {STATUS_ACCESS_DENIED, STATUS_OUT_OF_SCOPE, STATUS_NEEDS_CLARIFICATION} else "medium",
+            confidence="high" if status in {
+                STATUS_ACCESS_DENIED, STATUS_OUT_OF_SCOPE, STATUS_NEEDS_CLARIFICATION} else "medium",
             warnings=_as_list(status_payload.get("warnings")),
             metadata={
                 "intent_id": intent_id,
@@ -521,7 +538,8 @@ class ExplanationGenerator:
     ) -> ExplanationPayload:
         analyzed_rows = rows[: self.config.max_rows_to_analyze]
         columns = list(analyzed_rows[0].keys()) if analyzed_rows else []
-        dimension_columns, metric_columns = self._classify_columns(columns, analyzed_rows)
+        dimension_columns, metric_columns = self._classify_columns(
+            columns, analyzed_rows)
 
         summary = self._build_summary_sentence(
             rows=analyzed_rows,
@@ -557,7 +575,8 @@ class ExplanationGenerator:
             dimension_columns=dimension_columns,
             metric_columns=metric_columns,
         )
-        followups = self._suggest_followups(intent_id=intent_id, report_id=report_id, status=STATUS_SUCCESS, question=question)
+        followups = self._suggest_followups(
+            intent_id=intent_id, report_id=report_id, status=STATUS_SUCCESS, question=question)
 
         if explanation_level == "short":
             key_findings = key_findings[:2]
@@ -568,11 +587,13 @@ class ExplanationGenerator:
 
         technical_note = None
         if self.config.include_technical_note:
-            technical_parts = ["پاسخ بر اساس View تحلیلی امن منابع انسانی ساخته شده است."]
+            technical_parts = [
+                "پاسخ بر اساس View تحلیلی امن منابع انسانی ساخته شده است."]
             if generated_sql and self.config.include_sql_reference:
                 technical_parts.append(f"SQL: {generated_sql}")
             if chart_payload:
-                chart_type = chart_payload.get("visualization_type") or chart_payload.get("type")
+                chart_type = chart_payload.get(
+                    "visualization_type") or chart_payload.get("type")
                 if chart_type:
                     technical_parts.append(f"نوع نمایش پیشنهادی: {chart_type}")
             technical_note = " ".join(technical_parts)
@@ -624,12 +645,15 @@ class ExplanationGenerator:
         dimension = self._select_primary_dimension(dimension_columns)
         if metric and dimension:
             top_row = self._max_row(rows, metric)
-            top_name = self._format_dimension_value(top_row.get(dimension), dimension) if top_row else "نامشخص"
-            top_value = self._format_value(top_row.get(metric), metric) if top_row else "نامشخص"
+            top_name = self._format_dimension_value(top_row.get(
+                dimension), dimension) if top_row else "نامشخص"
+            top_value = self._format_value(top_row.get(
+                metric), metric) if top_row else "نامشخص"
             return f"بر اساس داده فعلی، {title_fa} در {len(rows)} گروه محاسبه شد و بیشترین مقدار مربوط به «{top_name}» با مقدار {top_value} است."
 
         if metric:
-            values = [self._to_number(row.get(metric)) for row in rows if self._to_number(row.get(metric)) is not None]
+            values = [self._to_number(row.get(metric)) for row in rows if self._to_number(
+                row.get(metric)) is not None]
             if values:
                 return f"بر اساس داده فعلی، {title_fa} برای {len(values)} ردیف محاسبه شد."
 
@@ -651,11 +675,13 @@ class ExplanationGenerator:
         dimension = self._select_primary_dimension(dimension_columns)
 
         if len(rows) == 1 and metric:
-            findings.append(f"{self._label(metric)}: {self._format_value(rows[0].get(metric), metric)}")
+            findings.append(
+                f"{self._label(metric)}: {self._format_value(rows[0].get(metric), metric)}")
             # Add secondary metrics if present, e.g., count + percentage.
             for secondary in metric_columns:
                 if secondary != metric and secondary in rows[0]:
-                    findings.append(f"{self._label(secondary)}: {self._format_value(rows[0].get(secondary), secondary)}")
+                    findings.append(
+                        f"{self._label(secondary)}: {self._format_value(rows[0].get(secondary), secondary)}")
                     if len(findings) >= 3:
                         break
             return findings
@@ -673,7 +699,8 @@ class ExplanationGenerator:
                 )
 
             if self._is_time_dimension(dimension):
-                trend = self._trend_sentence(rows=rows, x_col=dimension, y_col=metric)
+                trend = self._trend_sentence(
+                    rows=rows, x_col=dimension, y_col=metric)
                 if trend:
                     findings.insert(0, trend)
 
@@ -687,8 +714,10 @@ class ExplanationGenerator:
 
         # Headcount gap special handling.
         if "headcount_gap" in metric_columns and dimension:
-            shortage_rows = [r for r in rows if (self._to_number(r.get("headcount_gap")) or 0) > 0]
-            surplus_rows = [r for r in rows if (self._to_number(r.get("headcount_gap")) or 0) < 0]
+            shortage_rows = [r for r in rows if (
+                self._to_number(r.get("headcount_gap")) or 0) > 0]
+            surplus_rows = [r for r in rows if (
+                self._to_number(r.get("headcount_gap")) or 0) < 0]
             if shortage_rows:
                 top_shortage = self._max_row(shortage_rows, "headcount_gap")
                 if top_shortage:
@@ -696,7 +725,8 @@ class ExplanationGenerator:
                         f"بیشترین کمبود نیرو در «{self._format_dimension_value(top_shortage.get(dimension), dimension)}» دیده می‌شود: {self._format_value(top_shortage.get('headcount_gap'), 'headcount_gap')}."
                     )
             if surplus_rows:
-                findings.append("برخی واحدها مقدار اختلاف منفی دارند؛ یعنی نیروی موجود از چارت مصوب بیشتر گزارش شده است.")
+                findings.append(
+                    "برخی واحدها مقدار اختلاف منفی دارند؛ یعنی نیروی موجود از چارت مصوب بیشتر گزارش شده است.")
 
         return _dedupe(findings)[:4]
 
@@ -714,7 +744,6 @@ class ExplanationGenerator:
             return None
 
         intent = intent_id or ""
-        metric = self._select_primary_metric(metric_columns, rows[0] if rows else {})
         dimension = self._select_primary_dimension(dimension_columns)
 
         # All notes below are deliberately cautious and avoid unsupported thresholds.
@@ -747,17 +776,22 @@ class ExplanationGenerator:
         extra_warnings: list[str],
     ) -> list[str]:
         limitations: list[str] = []
-        limitations.append("این پاسخ فقط بر اساس View تحلیلی امن و داده کارکنان فعال ساخته شده است.")
+        limitations.append(
+            "این پاسخ فقط بر اساس View تحلیلی امن و داده کارکنان فعال ساخته شده است.")
 
         intent = intent_id or ""
         if "city" in intent:
-            limitations.append("داده شهر در MVP فعلی قابل اتکا نیست و تحلیل شهری باید Data Gap شود.")
+            limitations.append(
+                "داده شهر در MVP فعلی قابل اتکا نیست و تحلیل شهری باید Data Gap شود.")
         if "retirement" in intent:
-            limitations.append("قانون رسمی آستانه بازنشستگی در Metadata فعلی تعریف نشده است.")
+            limitations.append(
+                "قانون رسمی آستانه بازنشستگی در Metadata فعلی تعریف نشده است.")
         if "headcount_gap" in intent:
-            limitations.append("اختلاف چارت مصوب با نیروی موجود یک شاخص اولیه است و جایگزین تحلیل ظرفیت واقعی واحدها نیست.")
+            limitations.append(
+                "اختلاف چارت مصوب با نیروی موجود یک شاخص اولیه است و جایگزین تحلیل ظرفیت واقعی واحدها نیست.")
         if "hiring" in intent:
-            limitations.append("سال جذب بر اساس سال شمسی موجود در View تحلیل شده است؛ تحلیل ماهانه در MVP فعلی پوشش داده نشده است.")
+            limitations.append(
+                "سال جذب بر اساس سال شمسی موجود در View تحلیل شده است؛ تحلیل ماهانه در MVP فعلی پوشش داده نشده است.")
 
         for warning in extra_warnings:
             warning_text = _clean_text(str(warning))
@@ -783,19 +817,26 @@ class ExplanationGenerator:
         steps: list[str] = []
 
         if "headcount_gap" in intent:
-            steps.append("واحدهای دارای بیشترین اختلاف را با چارت مصوب، اولویت عملیاتی و حساسیت نقش بازبینی کنید.")
+            steps.append(
+                "واحدهای دارای بیشترین اختلاف را با چارت مصوب، اولویت عملیاتی و حساسیت نقش بازبینی کنید.")
         elif "contractor" in intent:
-            steps.append("در صورت نیاز، سهم پیمانکاری را به تفکیک حوزه، واحد و نوع قرارداد بررسی کنید.")
+            steps.append(
+                "در صورت نیاز، سهم پیمانکاری را به تفکیک حوزه، واحد و نوع قرارداد بررسی کنید.")
         elif "hiring" in intent:
-            steps.append("روند جذب را کنار کمبود نیرو و برنامه جذب سالانه قرار دهید تا تحلیل کامل‌تر شود.")
+            steps.append(
+                "روند جذب را کنار کمبود نیرو و برنامه جذب سالانه قرار دهید تا تحلیل کامل‌تر شود.")
         elif "education" in intent:
-            steps.append("برای تحلیل تخصص، خروجی تحصیلات را با حداقل مدرک موردنیاز پست‌ها مقایسه کنید.")
+            steps.append(
+                "برای تحلیل تخصص، خروجی تحصیلات را با حداقل مدرک موردنیاز پست‌ها مقایسه کنید.")
         elif "age" in intent:
-            steps.append("برای تحلیل ریسک سنی، آستانه رسمی بازنشستگی و گروه‌های بحرانی را در Metadata تعریف کنید.")
+            steps.append(
+                "برای تحلیل ریسک سنی، آستانه رسمی بازنشستگی و گروه‌های بحرانی را در Metadata تعریف کنید.")
         elif "gender" in intent:
-            steps.append("ترکیب جنسیتی را در سطح حوزه، واحد یا گروه سنی هم بررسی کنید.")
+            steps.append(
+                "ترکیب جنسیتی را در سطح حوزه، واحد یا گروه سنی هم بررسی کنید.")
         else:
-            steps.append("در صورت نیاز، همین شاخص را به تفکیک حوزه، واحد یا استان بررسی کنید.")
+            steps.append(
+                "در صورت نیاز، همین شاخص را به تفکیک حوزه، واحد یا استان بررسی کنید.")
 
         return steps[:3]
 
@@ -949,7 +990,8 @@ class ExplanationGenerator:
             safe_row: JsonDict = {}
             for key, value in row.items():
                 if self._is_sensitive_column(key):
-                    warnings.append(f"ستون {key} به دلیل حساسیت از توضیح حذف شد.")
+                    warnings.append(
+                        f"ستون {key} به دلیل حساسیت از توضیح حذف شد.")
                     continue
                 # employee_id may be safe as aggregate count only, but not as visible output.
                 if key == "employee_id":
@@ -1053,15 +1095,18 @@ class ExplanationGenerator:
         return min(candidates, key=lambda x: x[0])[1]
 
     def _trend_sentence(self, *, rows: list[JsonDict], x_col: str, y_col: str) -> str | None:
-        sorted_rows = sorted(rows, key=lambda row: self._sort_key(row.get(x_col)))
+        sorted_rows = sorted(
+            rows, key=lambda row: self._sort_key(row.get(x_col)))
         if len(sorted_rows) < 2:
             return None
         first = self._to_number(sorted_rows[0].get(y_col))
         last = self._to_number(sorted_rows[-1].get(y_col))
         if first is None or last is None:
             return None
-        first_x = self._format_dimension_value(sorted_rows[0].get(x_col), x_col)
-        last_x = self._format_dimension_value(sorted_rows[-1].get(x_col), x_col)
+        first_x = self._format_dimension_value(
+            sorted_rows[0].get(x_col), x_col)
+        last_x = self._format_dimension_value(
+            sorted_rows[-1].get(x_col), x_col)
         if last > first:
             direction = "افزایش"
         elif last < first:
@@ -1315,7 +1360,8 @@ def get_explanation_generator(
 
 
 if __name__ == "__main__":  # pragma: no cover - local smoke test
-    generator = ExplanationGenerator(metadata_dir=Path(__file__).resolve().parent)
+    generator = ExplanationGenerator(
+        metadata_dir=Path(__file__).resolve().parent)
     sample = generator.generate(
         question="تعداد زن و مرد چند نفر است؟",
         intent_id="employee_count_by_gender",

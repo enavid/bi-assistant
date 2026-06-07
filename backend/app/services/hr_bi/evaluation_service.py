@@ -1,4 +1,18 @@
 from __future__ import annotations
+import asyncio
+import csv
+import inspect
+import json
+import re
+import statistics
+import time
+import uuid
+from copy import deepcopy
+from dataclasses import asdict, dataclass, field, is_dataclass
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any, Iterable, Mapping, Sequence
+
 
 """
 evaluation_service.py
@@ -24,19 +38,6 @@ This service is intentionally read-only and evaluation-focused. By default it ru
 with execute_sql=False so it can test SQL generation and routing without touching the database.
 """
 
-import asyncio
-import csv
-import inspect
-import json
-import re
-import statistics
-import time
-import uuid
-from copy import deepcopy
-from dataclasses import asdict, dataclass, field, is_dataclass
-from datetime import datetime, timezone
-from pathlib import Path
-from typing import Any, Callable, Iterable, Mapping, Sequence
 
 try:  # Package import when used under backend/app/services.
     from .metadata_service import MetadataService, get_metadata_service
@@ -255,9 +256,11 @@ class EvaluationService:
         if metadata_service is not None:
             self.metadata = metadata_service
         elif get_metadata_service is not None:
-            self.metadata = get_metadata_service(metadata_dir=metadata_dir)  # type: ignore[misc]
+            self.metadata = get_metadata_service(
+                metadata_dir=metadata_dir)  # type: ignore[misc]
         elif MetadataService is not Any:  # pragma: no cover
-            self.metadata = MetadataService(metadata_dir=metadata_dir)  # type: ignore[operator]
+            self.metadata = MetadataService(
+                metadata_dir=metadata_dir)  # type: ignore[operator]
         else:  # pragma: no cover
             raise RuntimeError("MetadataService is not available.")
 
@@ -275,10 +278,12 @@ class EvaluationService:
             else thresholds.get("minimum_acceptable_score", 80)
         )
         self.demo_ready_score = float(
-            demo_ready_score if demo_ready_score is not None else thresholds.get("demo_ready_score", 90)
+            demo_ready_score if demo_ready_score is not None else thresholds.get(
+                "demo_ready_score", 90)
         )
 
-        self.system_under_test = system_under_test or self._build_default_system_under_test(metadata_dir)
+        self.system_under_test = system_under_test or self._build_default_system_under_test(
+            metadata_dir)
 
     # ------------------------------------------------------------------
     # Public API
@@ -352,7 +357,8 @@ class EvaluationService:
 
         finished_at = utc_now_iso()
         duration_ms = round((time.perf_counter() - started) * 1000, 3)
-        summary = self._build_summary(run_id, started_at, finished_at, duration_ms, results)
+        summary = self._build_summary(
+            run_id, started_at, finished_at, duration_ms, results)
         return EvaluationRunResult(
             run_id=run_id,
             summary=summary,
@@ -400,7 +406,8 @@ class EvaluationService:
         user_role: str = "demo_user",
         runtime_params: Mapping[str, Any] | None = None,
     ) -> EvaluationCaseResult:
-        case = self.get_test_case(case_or_test_id) if isinstance(case_or_test_id, str) else dict(case_or_test_id)
+        case = self.get_test_case(case_or_test_id) if isinstance(
+            case_or_test_id, str) else dict(case_or_test_id)
         if not case:
             raise KeyError(f"Unknown evaluation test case: {case_or_test_id}")
 
@@ -415,7 +422,8 @@ class EvaluationService:
         try:
             response = await self._call_system_under_test(
                 question=str(case.get("question") or ""),
-                execute_sql=self.default_execute_sql if execute_sql is None else bool(execute_sql),
+                execute_sql=self.default_execute_sql if execute_sql is None else bool(
+                    execute_sql),
                 user_role=user_role,
                 runtime_params=effective_runtime_params,
             )
@@ -431,7 +439,8 @@ class EvaluationService:
             errors = [str(exc)]
 
         duration_ms = round((time.perf_counter() - started) * 1000, 3)
-        result = self.score_response(case, response, run_id=run_id or str(uuid.uuid4()), duration_ms=duration_ms)
+        result = self.score_response(case, response, run_id=run_id or str(
+            uuid.uuid4()), duration_ms=duration_ms)
         result.errors.extend(errors)
         return result
 
@@ -459,10 +468,12 @@ class EvaluationService:
         max_score = sum(check.weight for check in checks)
         score = round(sum(check.score for check in checks), 2)
         failed_checks = [check.name for check in checks if not check.passed]
-        critical_failures = self._detect_critical_failures(case, extracted, response_dict)
+        critical_failures = self._detect_critical_failures(
+            case, extracted, response_dict)
         critical_failure = bool(critical_failures)
 
-        passed = score >= self.minimum_acceptable_score and not (self.fail_on_critical_failure and critical_failure)
+        passed = score >= self.minimum_acceptable_score and not (
+            self.fail_on_critical_failure and critical_failure)
         demo_ready = score >= self.demo_ready_score and not critical_failure
 
         response_payload = response_dict if self.include_full_response else {}
@@ -477,12 +488,16 @@ class EvaluationService:
             actual_intent=optional_str(extracted.get("intent")),
             expected_route=optional_str(case.get("expected_route")),
             actual_route=optional_str(extracted.get("route")),
-            expected_status=optional_str(case.get("expected_validation_status") or case.get("expected_status")),
+            expected_status=optional_str(
+                case.get("expected_validation_status") or case.get("expected_status")),
             actual_status=optional_str(extracted.get("status")),
-            expected_sql_template_id=optional_str(case.get("expected_sql_template_id")),
-            actual_sql_template_id=optional_str(extracted.get("sql_template_id")),
+            expected_sql_template_id=optional_str(
+                case.get("expected_sql_template_id")),
+            actual_sql_template_id=optional_str(
+                extracted.get("sql_template_id")),
             generated_sql=optional_str(extracted.get("sql")),
-            expected_visualization=optional_str(case.get("expected_visualization") or case.get("expected_output_type")),
+            expected_visualization=optional_str(
+                case.get("expected_visualization") or case.get("expected_output_type")),
             actual_visualization=optional_str(extracted.get("visualization")),
             score=score,
             max_score=max_score,
@@ -511,19 +526,24 @@ class EvaluationService:
         test_ids: Sequence[str] | None = None,
         limit: int | None = None,
     ) -> list[JsonDict]:
-        cases = [dict(item) for item in self.goldset.get("test_cases", []) or []]
+        cases = [dict(item)
+                 for item in self.goldset.get("test_cases", []) or []]
         if suites:
             allowed = {normalize_key(item) for item in suites}
-            cases = [case for case in cases if normalize_key(case.get("suite")) in allowed]
+            cases = [case for case in cases if normalize_key(
+                case.get("suite")) in allowed]
         if categories:
             allowed = {normalize_key(item) for item in categories}
-            cases = [case for case in cases if normalize_key(case.get("category")) in allowed]
+            cases = [case for case in cases if normalize_key(
+                case.get("category")) in allowed]
         if priorities:
             allowed = {normalize_key(item) for item in priorities}
-            cases = [case for case in cases if normalize_key(case.get("priority")) in allowed]
+            cases = [case for case in cases if normalize_key(
+                case.get("priority")) in allowed]
         if test_ids:
             allowed = {normalize_key(item) for item in test_ids}
-            cases = [case for case in cases if normalize_key(case.get("test_id")) in allowed]
+            cases = [case for case in cases if normalize_key(
+                case.get("test_id")) in allowed]
         if limit is not None:
             cases = cases[: max(0, int(limit))]
         return cases
@@ -556,7 +576,8 @@ class EvaluationService:
         output_path = Path(path)
         output_path.parent.mkdir(parents=True, exist_ok=True)
         with output_path.open("w", encoding="utf-8") as f:
-            json.dump(run_result.to_dict(include_responses=include_responses), f, ensure_ascii=False, indent=2)
+            json.dump(run_result.to_dict(
+                include_responses=include_responses), f, ensure_ascii=False, indent=2)
         return output_path
 
     def export_jsonl(self, run_result: EvaluationRunResult, path: str | Path, *, include_responses: bool = False) -> Path:
@@ -564,7 +585,8 @@ class EvaluationService:
         output_path.parent.mkdir(parents=True, exist_ok=True)
         with output_path.open("w", encoding="utf-8") as f:
             for item in run_result.results:
-                f.write(json.dumps(item.to_dict(include_response=include_responses), ensure_ascii=False) + "\n")
+                f.write(json.dumps(item.to_dict(
+                    include_response=include_responses), ensure_ascii=False) + "\n")
         return output_path
 
     def export_csv(self, run_result: EvaluationRunResult, path: str | Path) -> Path:
@@ -644,7 +666,8 @@ class EvaluationService:
 
     def _build_default_system_under_test(self, metadata_dir: str | Path | None) -> Any:
         if LLMOrchestrator is None:
-            raise RuntimeError("LLMOrchestrator is not available. Pass system_under_test explicitly.")
+            raise RuntimeError(
+                "LLMOrchestrator is not available. Pass system_under_test explicitly.")
         return LLMOrchestrator(
             metadata_service=self.metadata,
             metadata_dir=metadata_dir,
@@ -686,11 +709,13 @@ class EvaluationService:
 
         # Callable fallback for tests/mocks.
         if callable(system):
-            result = system(question=question, execute_sql=execute_sql, user_role=user_role, runtime_params=runtime_params)
+            result = system(question=question, execute_sql=execute_sql,
+                            user_role=user_role, runtime_params=runtime_params)
             result = await maybe_await(result)
             return to_plain_dict(result)
 
-        raise TypeError("system_under_test must expose arun, run, or be callable.")
+        raise TypeError(
+            "system_under_test must expose arun, run, or be callable.")
 
     # ------------------------------------------------------------------
     # Internal: scoring checks
@@ -701,7 +726,8 @@ class EvaluationService:
         expected = optional_str(case.get("expected_domain"))
         if not expected:
             return pass_check("domain_match", weight, expected, actual.get("domain"), "No expected domain.")
-        actual_domain = optional_str(actual.get("domain")) or infer_domain_from_route(actual.get("route"), actual.get("status"))
+        actual_domain = optional_str(actual.get("domain")) or infer_domain_from_route(
+            actual.get("route"), actual.get("status"))
         passed = normalize_key(expected) == normalize_key(actual_domain)
         return EvaluationCheck(
             "domain_match",
@@ -720,7 +746,8 @@ class EvaluationService:
             return pass_check("intent_match", weight, expected, actual.get("intent"), "No expected intent.")
         actual_intent = optional_str(actual.get("intent"))
         aliases = self._intent_aliases(expected)
-        passed = normalize_key(actual_intent) in {normalize_key(expected), *{normalize_key(x) for x in aliases}}
+        passed = normalize_key(actual_intent) in {normalize_key(
+            expected), *{normalize_key(x) for x in aliases}}
         return EvaluationCheck(
             "intent_match",
             weight,
@@ -752,7 +779,8 @@ class EvaluationService:
         weight = self.weights.get("sql_safety", 25)
         sql = str(actual.get("sql") or "").strip()
         expected_route = normalize_route(case.get("expected_route"))
-        expected_status = normalize_status(case.get("expected_validation_status") or case.get("expected_status"))
+        expected_status = normalize_status(
+            case.get("expected_validation_status") or case.get("expected_status"))
 
         # Status-only SQL for GAP/REJECT is acceptable and still checked for safety.
         if not sql:
@@ -764,11 +792,13 @@ class EvaluationService:
         expected_must_not = case.get("expected_sql_must_not_contain") or []
         for token in expected_must_not:
             if contains_token(sql, str(token)):
-                violations.append(f"SQL contains forbidden expected token: {token}")
+                violations.append(
+                    f"SQL contains forbidden expected token: {token}")
 
         if expected_route == "SQL" and expected_status in {"VALID", "SUPPORTED", ""}:
             if "hr_mvp.vw_hr_employee_analytics" not in normalize_sql_text(sql):
-                violations.append("SQL does not reference the main analytics view.")
+                violations.append(
+                    "SQL does not reference the main analytics view.")
 
         passed = not violations
         return EvaluationCheck(
@@ -790,7 +820,8 @@ class EvaluationService:
             # For GAP/REJECT, semantic correctness is route/status correctness rather than SQL fragments.
             actual_route = normalize_route(actual.get("route"))
             status = normalize_status(actual.get("status"))
-            passed = actual_route == expected_route or status in {"DATA_GAP", "ACCESS_DENIED", "OUT_OF_SCOPE", "NEEDS_CLARIFICATION"}
+            passed = actual_route == expected_route or status in {
+                "DATA_GAP", "ACCESS_DENIED", "OUT_OF_SCOPE", "NEEDS_CLARIFICATION"}
             return EvaluationCheck(
                 "sql_semantic_correctness",
                 weight,
@@ -831,10 +862,13 @@ class EvaluationService:
         total_requirements = (
             len(case.get("expected_sql_should_contain") or [])
             + len(case.get("expected_group_by") or [])
-            + sum(2 if isinstance(f, Mapping) else 1 for f in (case.get("expected_filters") or []))
+            + sum(2 if isinstance(f, Mapping)
+                  else 1 for f in (case.get("expected_filters") or []))
         )
-        missing_count = len(missing_should_contain) + len(group_by_missing) + len(filter_missing)
-        semantic_ratio = 1.0 if total_requirements == 0 else max(0.0, (total_requirements - missing_count) / total_requirements)
+        missing_count = len(missing_should_contain) + \
+            len(group_by_missing) + len(filter_missing)
+        semantic_ratio = 1.0 if total_requirements == 0 else max(
+            0.0, (total_requirements - missing_count) / total_requirements)
 
         if forbidden_found:
             semantic_ratio = min(semantic_ratio, 0.5)
@@ -843,13 +877,17 @@ class EvaluationService:
         passed = missing_count == 0 and not forbidden_found
         details_parts = []
         if missing_should_contain:
-            details_parts.append("missing tokens: " + ", ".join(missing_should_contain[:8]))
+            details_parts.append("missing tokens: " +
+                                 ", ".join(missing_should_contain[:8]))
         if group_by_missing:
-            details_parts.append("missing group_by: " + ", ".join(group_by_missing[:8]))
+            details_parts.append("missing group_by: " +
+                                 ", ".join(group_by_missing[:8]))
         if filter_missing:
-            details_parts.append("missing filters: " + ", ".join(filter_missing[:8]))
+            details_parts.append("missing filters: " +
+                                 ", ".join(filter_missing[:8]))
         if forbidden_found:
-            details_parts.append("forbidden tokens: " + ", ".join(forbidden_found[:8]))
+            details_parts.append("forbidden tokens: " +
+                                 ", ".join(forbidden_found[:8]))
 
         return EvaluationCheck(
             "sql_semantic_correctness",
@@ -867,7 +905,8 @@ class EvaluationService:
 
     def _check_status(self, case: Mapping[str, Any], actual: Mapping[str, Any]) -> EvaluationCheck:
         weight = self.weights.get("status_match", 5)
-        expected = normalize_status(case.get("expected_validation_status") or case.get("expected_status"))
+        expected = normalize_status(
+            case.get("expected_validation_status") or case.get("expected_status"))
         actual_status = normalize_status(actual.get("status"))
         actual_route = normalize_route(actual.get("route"))
 
@@ -901,12 +940,14 @@ class EvaluationService:
 
     def _check_visualization(self, case: Mapping[str, Any], actual: Mapping[str, Any]) -> EvaluationCheck:
         weight = self.weights.get("visualization_match", 5)
-        expected = optional_str(case.get("expected_visualization") or case.get("expected_output_type"))
+        expected = optional_str(
+            case.get("expected_visualization") or case.get("expected_output_type"))
         actual_visual = optional_str(actual.get("visualization"))
         if not expected:
             return pass_check("visualization_match", weight, expected, actual_visual, "No expected visualization.")
 
-        expected_options = {normalize_visual_token(item) for item in split_or_options(expected)}
+        expected_options = {normalize_visual_token(
+            item) for item in split_or_options(expected)}
         actual_token = normalize_visual_token(actual_visual)
         passed = actual_token in expected_options
 
@@ -932,17 +973,20 @@ class EvaluationService:
     def _extract_actuals(self, response: Mapping[str, Any]) -> JsonDict:
         context = to_plain_dict(response.get("context") or {})
         domain_result = to_plain_dict(context.get("domain_result") or {})
-        validation_result = to_plain_dict(context.get("validation_result") or {})
+        validation_result = to_plain_dict(
+            context.get("validation_result") or {})
         semantic_result = to_plain_dict(context.get("semantic_result") or {})
         intent_result = to_plain_dict(context.get("intent_result") or {})
         route_result = to_plain_dict(context.get("route_result") or {})
         sql_plan = to_plain_dict(context.get("sql_plan") or {})
         sql_validation = to_plain_dict(context.get("sql_validation") or {})
         query_result = to_plain_dict(context.get("query_result") or {})
-        visualization_plan = to_plain_dict(context.get("visualization_plan") or {})
+        visualization_plan = to_plain_dict(
+            context.get("visualization_plan") or {})
         final_response = to_plain_dict(context.get("final_response") or {})
 
-        visualization_obj = response.get("visualization") or final_response.get("visualization") or visualization_plan
+        visualization_obj = response.get("visualization") or final_response.get(
+            "visualization") or visualization_plan
         return {
             "domain": first_present(
                 domain_result,
@@ -950,7 +994,8 @@ class EvaluationService:
             ),
             "intent": first_non_empty(
                 response.get("detected_intent"),
-                first_present(intent_result, ["intent", "intent_id", "detected_intent"]),
+                first_present(intent_result, [
+                              "intent", "intent_id", "detected_intent"]),
                 first_present(route_result, ["intent", "intent_id"]),
             ),
             "route": first_non_empty(
@@ -1008,7 +1053,8 @@ class EvaluationService:
         sql = str(actual.get("sql") or "")
         sql_norm = normalize_sql_text(sql)
         expected_route = normalize_route(case.get("expected_route"))
-        expected_status = normalize_status(case.get("expected_validation_status") or case.get("expected_status"))
+        expected_status = normalize_status(
+            case.get("expected_validation_status") or case.get("expected_status"))
         actual_route = normalize_route(actual.get("route"))
         actual_status = normalize_status(actual.get("status"))
 
@@ -1017,11 +1063,13 @@ class EvaluationService:
                 failures.append(violation)
 
             if "sum(v.department_approved_headcount)" in sql_norm:
-                failures.append("uses SUM(v.department_approved_headcount) directly over employee rows")
+                failures.append(
+                    "uses SUM(v.department_approved_headcount) directly over employee rows")
 
             if expected_route == "SQL" and "most_or_least_hiring_year" in normalize_key(case.get("expected_intent")):
                 if re.search(r"\b(max|min)\s*\(\s*v\.hire_year\s*\)", sql_norm):
-                    failures.append("uses MIN/MAX(hire_year) instead of aggregate count for most/least hiring year")
+                    failures.append(
+                        "uses MIN/MAX(hire_year) instead of aggregate count for most/least hiring year")
 
         if expected_route == "GAP" and actual_route == "SQL" and actual_status not in {"DATA_GAP", "NOT_EXECUTED"}:
             failures.append("generated SQL or answer for a Data Gap case")
@@ -1030,7 +1078,8 @@ class EvaluationService:
             failures.append(f"did not reject expected {expected_status} case")
 
         if expected_status == "NEEDS_CLARIFICATION" and actual_status not in {"NEEDS_CLARIFICATION"}:
-            failures.append("did not request clarification for ambiguous question")
+            failures.append(
+                "did not request clarification for ambiguous question")
 
         if expected_route == "REJECT" and actual_route == "SQL":
             failures.append("routed a rejected question to SQL")
@@ -1039,7 +1088,8 @@ class EvaluationService:
         if any(pattern in response_text for pattern in self.SENSITIVE_PATTERNS):
             # This catches exposing field names in generated SQL/context too. It is okay when expected_sql_must_not_contain
             # already contains them; we still flag them as critical if they appeared in the actual payload.
-            failures.append("response includes sensitive field name or sensitive output")
+            failures.append(
+                "response includes sensitive field name or sensitive output")
 
         return list(dict.fromkeys(failures))
 
@@ -1068,15 +1118,17 @@ class EvaluationService:
         for token in self.DANGEROUS_SQL_PATTERNS:
             if re.search(rf"\b{re.escape(token)}\b", sql_norm):
                 # Allow CREATE only inside a literal? This validator is conservative by design.
-                violations.append(f"uses dangerous SQL keyword: {token.upper()}")
+                violations.append(
+                    f"uses dangerous SQL keyword: {token.upper()}")
 
-        for field in self.SENSITIVE_PATTERNS:
-            if re.search(rf"\b{re.escape(field)}\b", sql_norm):
-                violations.append(f"uses sensitive field: {field}")
+        for pattern in self.SENSITIVE_PATTERNS:
+            if re.search(rf"\b{re.escape(pattern)}\b", sql_norm):
+                violations.append(f"uses sensitive field: {pattern}")
 
         if re.search(r"\bv\.employee_id\b", sql_norm) and not re.search(r"count\s*\(\s*v\.employee_id\s*\)", sql_norm):
             # If the only reference is COUNT(v.employee_id), it is fine. If any direct select/group/order exists, flag.
-            direct_employee_id = re.sub(r"count\s*\(\s*v\.employee_id\s*\)", "", sql_norm)
+            direct_employee_id = re.sub(
+                r"count\s*\(\s*v\.employee_id\s*\)", "", sql_norm)
             if "v.employee_id" in direct_employee_id:
                 violations.append("uses v.employee_id outside COUNT")
 
@@ -1111,16 +1163,21 @@ class EvaluationService:
             demo_ready_cases=demo_ready_cases,
             critical_failures=critical_failures,
             average_score=round(statistics.mean(scores), 2) if scores else 0.0,
-            median_score=round(statistics.median(scores), 2) if scores else 0.0,
+            median_score=round(statistics.median(
+                scores), 2) if scores else 0.0,
             min_score=round(min(scores), 2) if scores else 0.0,
             max_score=round(max(scores), 2) if scores else 0.0,
-            pass_rate=round((passed_cases * 100 / total_cases), 2) if total_cases else 0.0,
-            demo_ready_rate=round((demo_ready_cases * 100 / total_cases), 2) if total_cases else 0.0,
+            pass_rate=round((passed_cases * 100 / total_cases),
+                            2) if total_cases else 0.0,
+            demo_ready_rate=round(
+                (demo_ready_cases * 100 / total_cases), 2) if total_cases else 0.0,
             by_suite=self._group_stats(results, "suite"),
             by_category=self._group_stats(results, "category"),
             by_priority=self._group_stats(results, "priority"),
-            failed_test_ids=[item.test_id for item in results if not item.passed],
-            critical_failure_test_ids=[item.test_id for item in results if item.critical_failure],
+            failed_test_ids=[
+                item.test_id for item in results if not item.passed],
+            critical_failure_test_ids=[
+                item.test_id for item in results if item.critical_failure],
             warnings=self._summary_warnings(results),
         )
 
@@ -1148,9 +1205,11 @@ class EvaluationService:
     def _summary_warnings(results: Sequence[EvaluationCaseResult]) -> list[str]:
         warnings: list[str] = []
         if any(item.critical_failure for item in results):
-            warnings.append("Critical failures exist. Do not mark this build as demo-ready until reviewed.")
+            warnings.append(
+                "Critical failures exist. Do not mark this build as demo-ready until reviewed.")
         if any(item.score < 80 for item in results):
-            warnings.append("Some test cases are below the minimum acceptable score.")
+            warnings.append(
+                "Some test cases are below the minimum acceptable score.")
         return warnings
 
     def _metadata_health_dict(self) -> JsonDict:
@@ -1166,22 +1225,26 @@ class EvaluationService:
         except Exception:
             doc = {}
         if not isinstance(doc, Mapping) or not doc.get("test_cases"):
-            raise RuntimeError("evaluation_goldset metadata is missing or has no test_cases.")
+            raise RuntimeError(
+                "evaluation_goldset metadata is missing or has no test_cases.")
         return deepcopy(dict(doc))
 
     def _load_weights(self) -> dict[str, float]:
         weights = dict(self.DEFAULT_WEIGHTS)
-        criteria = ((self.goldset.get("scoring_rules") or {}).get("criteria") or [])
+        criteria = ((self.goldset.get("scoring_rules")
+                    or {}).get("criteria") or [])
         for item in criteria:
             if isinstance(item, Mapping) and item.get("name"):
                 try:
-                    weights[str(item["name"])] = float(item.get("weight", weights.get(str(item["name"]), 0)))
+                    weights[str(item["name"])] = float(
+                        item.get("weight", weights.get(str(item["name"]), 0)))
                 except Exception:
                     continue
         return weights
 
     def _intent_aliases(self, expected_intent: str) -> list[str]:
-        intent = self.metadata.get_intent(expected_intent) if hasattr(self.metadata, "get_intent") else None
+        intent = self.metadata.get_intent(expected_intent) if hasattr(
+            self.metadata, "get_intent") else None
         aliases: list[str] = []
         if isinstance(intent, Mapping):
             for key in ("aliases", "equivalent_intents", "fallback_intents"):
@@ -1229,7 +1292,8 @@ def run_coroutine_sync(coro: Any) -> Any:
         asyncio.get_running_loop()
     except RuntimeError:
         return asyncio.run(coro)
-    raise RuntimeError("An event loop is already running. Use the async method instead, e.g. await arun_goldset().")
+    raise RuntimeError(
+        "An event loop is already running. Use the async method instead, e.g. await arun_goldset().")
 
 
 async def maybe_await(value: Any) -> Any:
@@ -1463,19 +1527,30 @@ def get_evaluation_service(
 if __name__ == "__main__":  # pragma: no cover - convenience local runner.
     import argparse
 
-    parser = argparse.ArgumentParser(description="Run HR BI Assistant Goldset evaluation.")
-    parser.add_argument("--metadata-dir", default=None, help="Metadata directory path.")
-    parser.add_argument("--limit", type=int, default=None, help="Limit number of test cases.")
-    parser.add_argument("--suite", action="append", default=None, help="Filter by suite. Can be repeated.")
-    parser.add_argument("--category", action="append", default=None, help="Filter by category. Can be repeated.")
-    parser.add_argument("--output", default="evaluation_results.json", help="JSON output path.")
-    parser.add_argument("--csv", default=None, help="Optional CSV output path.")
-    parser.add_argument("--markdown", default=None, help="Optional Markdown output path.")
-    parser.add_argument("--execute-sql", action="store_true", help="Actually execute SQL. Off by default.")
+    parser = argparse.ArgumentParser(
+        description="Run HR BI Assistant Goldset evaluation.")
+    parser.add_argument("--metadata-dir", default=None,
+                        help="Metadata directory path.")
+    parser.add_argument("--limit", type=int, default=None,
+                        help="Limit number of test cases.")
+    parser.add_argument("--suite", action="append", default=None,
+                        help="Filter by suite. Can be repeated.")
+    parser.add_argument("--category", action="append", default=None,
+                        help="Filter by category. Can be repeated.")
+    parser.add_argument(
+        "--output", default="evaluation_results.json", help="JSON output path.")
+    parser.add_argument("--csv", default=None,
+                        help="Optional CSV output path.")
+    parser.add_argument("--markdown", default=None,
+                        help="Optional Markdown output path.")
+    parser.add_argument("--execute-sql", action="store_true",
+                        help="Actually execute SQL. Off by default.")
     args = parser.parse_args()
 
-    service = get_evaluation_service(metadata_dir=args.metadata_dir, default_execute_sql=args.execute_sql)
-    run = service.run_goldset(suites=args.suite, categories=args.category, limit=args.limit)
+    service = get_evaluation_service(
+        metadata_dir=args.metadata_dir, default_execute_sql=args.execute_sql)
+    run = service.run_goldset(
+        suites=args.suite, categories=args.category, limit=args.limit)
     service.export_json(run, args.output, include_responses=False)
     if args.csv:
         service.export_csv(run, args.csv)

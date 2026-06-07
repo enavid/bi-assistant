@@ -1,4 +1,6 @@
 from __future__ import annotations
+from dataclasses import asdict, dataclass, field
+from typing import Any
 
 """
 prompt_builder.py
@@ -10,9 +12,6 @@ Important principle:
     Pass only a safe, minimal summary: intent, metric, filters, group_by,
     required columns, allowed view, and security constraints.
 """
-
-from dataclasses import asdict, dataclass, field
-from typing import Any
 
 JsonDict = dict[str, Any]
 
@@ -42,7 +41,8 @@ class PromptBuilder:
         service = metadata or self.metadata
         schema = schema_context or self._build_schema_context(service)
         modular_context = self.build_safe_modular_context(context)
-        prompt = self._render_sql_prompt(question=question, schema_context=schema, modular_context=modular_context)
+        prompt = self._render_sql_prompt(
+            question=question, schema_context=schema, modular_context=modular_context)
         return SQLFallbackPrompt(prompt=prompt, modular_context=modular_context, schema_context=schema)
 
     def build_safe_modular_context(self, context: Any) -> JsonDict:
@@ -53,7 +53,8 @@ class PromptBuilder:
 
         group_by = intent.get("group_by") or route.get("group_by") or []
         filters = intent.get("filters") or semantic.get("filters") or []
-        required_columns = intent.get("required_columns") or route.get("required_columns") or []
+        required_columns = intent.get(
+            "required_columns") or route.get("required_columns") or []
         metrics = intent.get("metrics") or []
 
         return {
@@ -125,7 +126,8 @@ SQL OUTPUT ONLY:
 
     @staticmethod
     def _infer_metric(intent_payload: JsonDict) -> JsonDict:
-        intent = str(intent_payload.get("intent") or intent_payload.get("intent_id") or "")
+        intent = str(intent_payload.get("intent")
+                     or intent_payload.get("intent_id") or "")
         if intent == "average_age":
             return {"name": "average_age", "expression": "ROUND(AVG(v.age), 2)"}
         if intent == "average_service_years":

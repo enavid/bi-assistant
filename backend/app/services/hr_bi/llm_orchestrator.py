@@ -1,4 +1,15 @@
 from __future__ import annotations
+import asyncio
+import inspect
+import re
+import time
+import uuid
+from copy import deepcopy
+from dataclasses import asdict, dataclass, field, is_dataclass
+from datetime import datetime, timezone
+from enum import Enum
+from pathlib import Path
+from typing import Any, Callable, Mapping, Protocol
 
 """
 llm_orchestrator.py
@@ -31,18 +42,6 @@ The goal is to keep Phase 2 controlled:
 - GAP route is used when data/definition is not available.
 - REJECT route is used for non-HR, unsafe, or individual employee questions.
 """
-
-import asyncio
-import inspect
-import re
-import time
-import uuid
-from copy import deepcopy
-from dataclasses import asdict, dataclass, field, is_dataclass
-from datetime import datetime, timezone
-from enum import Enum
-from pathlib import Path
-from typing import Any, Callable, Mapping, Protocol
 
 try:  # When used inside backend/app/services as a package.
     from .metadata_service import MetadataService, get_metadata_service
@@ -203,7 +202,8 @@ class LLMOrchestrator:
         if metadata_service is not None:
             self.metadata = metadata_service
         elif get_metadata_service is not None:
-            self.metadata = get_metadata_service(metadata_dir=metadata_dir, strict=strict_metadata)
+            self.metadata = get_metadata_service(
+                metadata_dir=metadata_dir, strict=strict_metadata)
         else:  # pragma: no cover
             raise OrchestratorError("MetadataService is not available.")
 
@@ -329,16 +329,22 @@ class LLMOrchestrator:
     async def _load_metadata_health(self, context: RequestContext) -> None:
         started = time.perf_counter()
         health = self.metadata.health_check()
-        context.metadata_health = health.to_dict() if hasattr(health, "to_dict") else to_plain_dict(health)
+        context.metadata_health = health.to_dict() if hasattr(
+            health, "to_dict") else to_plain_dict(health)
         if not context.metadata_health.get("ok", False):
-            context.warnings.extend(context.metadata_health.get("warnings", []) or [])
-            context.errors.extend(context.metadata_health.get("errors", []) or [])
-        context.add_trace("metadata_health", "ok" if context.metadata_health.get("ok", False) else "warning", started)
+            context.warnings.extend(
+                context.metadata_health.get("warnings", []) or [])
+            context.errors.extend(
+                context.metadata_health.get("errors", []) or [])
+        context.add_trace("metadata_health", "ok" if context.metadata_health.get(
+            "ok", False) else "warning", started)
 
     async def _normalize_question(self, context: RequestContext) -> None:
         started = time.perf_counter()
-        context.normalized_question = self.metadata.normalize_question(context.question)
-        context.add_trace("normalize_question", "ok", started, {"normalized_question": context.normalized_question})
+        context.normalized_question = self.metadata.normalize_question(
+            context.question)
+        context.add_trace("normalize_question", "ok", started, {
+                          "normalized_question": context.normalized_question})
 
     async def _classify_domain(self, context: RequestContext) -> None:
         started = time.perf_counter()
@@ -353,7 +359,8 @@ class LLMOrchestrator:
         else:
             result = self._fallback_domain_classifier(context)
         context.domain_result = normalize_result(result)
-        context.add_trace("domain_classifier", context.domain_result.get("status", "ok"), started, context.domain_result)
+        context.add_trace("domain_classifier", context.domain_result.get(
+            "status", "ok"), started, context.domain_result)
 
     async def _validate_question(self, context: RequestContext) -> None:
         started = time.perf_counter()
@@ -368,7 +375,8 @@ class LLMOrchestrator:
         else:
             result = self._fallback_question_validator(context)
         context.validation_result = normalize_result(result)
-        context.add_trace("question_validator", context.validation_result.get("status", "ok"), started, context.validation_result)
+        context.add_trace("question_validator", context.validation_result.get(
+            "status", "ok"), started, context.validation_result)
 
     async def _map_semantics(self, context: RequestContext) -> None:
         started = time.perf_counter()
@@ -383,7 +391,8 @@ class LLMOrchestrator:
         else:
             result = self._fallback_semantic_mapper(context)
         context.semantic_result = normalize_result(result)
-        context.add_trace("semantic_mapper", context.semantic_result.get("status", "ok"), started, context.semantic_result)
+        context.add_trace("semantic_mapper", context.semantic_result.get(
+            "status", "ok"), started, context.semantic_result)
 
     async def _parse_intent(self, context: RequestContext) -> None:
         started = time.perf_counter()
@@ -398,7 +407,8 @@ class LLMOrchestrator:
         else:
             result = self._fallback_intent_parser(context)
         context.intent_result = normalize_result(result)
-        context.add_trace("intent_parser", context.intent_result.get("status", "ok"), started, context.intent_result)
+        context.add_trace("intent_parser", context.intent_result.get(
+            "status", "ok"), started, context.intent_result)
 
     async def _route(self, context: RequestContext) -> None:
         started = time.perf_counter()
@@ -413,7 +423,8 @@ class LLMOrchestrator:
         else:
             result = self._fallback_router(context)
         context.route_result = normalize_result(result)
-        context.add_trace("router", context.route_result.get("route", "unknown"), started, context.route_result)
+        context.add_trace("router", context.route_result.get(
+            "route", "unknown"), started, context.route_result)
 
     async def _plan_sql(self, context: RequestContext) -> None:
         started = time.perf_counter()
@@ -462,8 +473,10 @@ class LLMOrchestrator:
             )
             generated_plan = normalize_result(generated)
             if generated_plan.get("sql"):
-                generated_plan.setdefault("previous_plan_status", plan.get("status"))
-                generated_plan.setdefault("previous_plan_reason", plan.get("reason"))
+                generated_plan.setdefault(
+                    "previous_plan_status", plan.get("status"))
+                generated_plan.setdefault(
+                    "previous_plan_reason", plan.get("reason"))
                 plan = generated_plan
             else:
                 generated_plan.setdefault("previous_plan", plan)
@@ -471,7 +484,8 @@ class LLMOrchestrator:
             plan.setdefault("source", "sql_generator")
 
         context.sql_plan = plan
-        context.add_trace("sql_planner", plan.get("status", "ok"), started, redact_sql_for_trace(plan))
+        context.add_trace("sql_planner", plan.get(
+            "status", "ok"), started, redact_sql_for_trace(plan))
 
     def _template_plan_is_incomplete(self, context: RequestContext, plan: JsonDict) -> bool:
         sql = str(plan.get("sql") or "")
@@ -485,7 +499,8 @@ class LLMOrchestrator:
             return True
         missing = [col for col in requested_group_by if col not in grouped_in_sql]
         if missing:
-            context.warnings.append(f"Template coverage mismatch. Missing requested group_by columns: {missing}")
+            context.warnings.append(
+                f"Template coverage mismatch. Missing requested group_by columns: {missing}")
             return True
         return False
 
@@ -494,14 +509,16 @@ class LLMOrchestrator:
         # IntentParser is the canonical source because it already combines the
         # Semantic Mapper output into a clean list of column names.
         for source in (context.intent_result, context.route_result, context.semantic_result):
-            value = source.get("group_by") if isinstance(source, dict) else None
+            value = source.get("group_by") if isinstance(
+                source, dict) else None
             if not isinstance(value, list):
                 continue
             for item in value:
                 if isinstance(item, str):
                     col = self._normalize_column_name(item)
                 elif isinstance(item, dict):
-                    col = self._normalize_column_name(item.get("column") or item.get("name") or item.get("field"))
+                    col = self._normalize_column_name(
+                        item.get("column") or item.get("name") or item.get("field"))
                 else:
                     col = None
                 if col and col not in cols:
@@ -513,7 +530,8 @@ class LLMOrchestrator:
         return cols
 
     def _group_by_columns_in_sql(self, sql: str) -> list[str]:
-        m = re.search(r"\bGROUP\s+BY\s+(.*?)(?:\bORDER\s+BY\b|\bLIMIT\b|;|$)", sql, flags=re.IGNORECASE | re.DOTALL)
+        m = re.search(r"\bGROUP\s+BY\s+(.*?)(?:\bORDER\s+BY\b|\bLIMIT\b|;|$)",
+                      sql, flags=re.IGNORECASE | re.DOTALL)
         if not m:
             return []
         section = m.group(1)
@@ -547,7 +565,8 @@ class LLMOrchestrator:
         else:
             result = self._fallback_sql_validator(sql)
         context.sql_validation = normalize_result(result)
-        context.add_trace("sql_validator", context.sql_validation.get("status", "unknown"), started, context.sql_validation)
+        context.add_trace("sql_validator", context.sql_validation.get(
+            "status", "unknown"), started, context.sql_validation)
 
     async def _execute_sql(self, context: RequestContext) -> None:
         started = time.perf_counter()
@@ -584,7 +603,8 @@ class LLMOrchestrator:
                 metadata=self.metadata,
             )
             context.query_result = normalize_result(result)
-            context.query_result.setdefault("status", ValidationStatus.SUCCESS.value)
+            context.query_result.setdefault(
+                "status", ValidationStatus.SUCCESS.value)
             context.query_result.setdefault("execution_status", "SUCCESS")
         except Exception as exc:
             context.query_result = {
@@ -595,11 +615,13 @@ class LLMOrchestrator:
                 "rows": [],
             }
             context.errors.append(str(exc))
-        context.add_trace("query_executor", context.query_result.get("execution_status", "unknown"), started)
+        context.add_trace("query_executor", context.query_result.get(
+            "execution_status", "unknown"), started)
 
     async def _select_visualization(self, context: RequestContext) -> None:
         started = time.perf_counter()
-        intent_id = context.intent_result.get("intent") or context.intent_result.get("intent_id")
+        intent_id = context.intent_result.get(
+            "intent") or context.intent_result.get("intent_id")
         report_id = context.intent_result.get("report_id")
         visual = None
         if intent_id:
@@ -635,7 +657,8 @@ class LLMOrchestrator:
                 )
                 context.gap_result = normalize_result(result)
                 context.gap_result.setdefault("route", Route.GAP.value)
-                context.gap_result.setdefault("status", ValidationStatus.DATA_GAP.value)
+                context.gap_result.setdefault(
+                    "status", ValidationStatus.DATA_GAP.value)
             except Exception as exc:
                 context.gap_result = {
                     "route": Route.GAP.value,
@@ -652,7 +675,8 @@ class LLMOrchestrator:
                 "reason": gap_payload.get("reason") or "Required data or business rule is not available in the current MVP.",
                 **gap_payload,
             }
-        context.add_trace("gap_service", context.gap_result.get("status", "DATA_GAP"), started, context.gap_result)
+        context.add_trace("gap_service", context.gap_result.get(
+            "status", "DATA_GAP"), started, context.gap_result)
 
     async def _finalize(self, context: RequestContext, status_payload: JsonDict) -> OrchestratorResponse:
         started = time.perf_counter()
@@ -669,9 +693,12 @@ class LLMOrchestrator:
                 if response_dict:
                     return OrchestratorResponse(
                         request_id=context.request_id,
-                        route=str(response_dict.get("route") or status_payload.get("route") or context.route_result.get("route") or Route.REJECT.value),
-                        status=str(response_dict.get("status") or status_payload.get("status") or ValidationStatus.SUCCESS.value),
-                        message_fa=str(response_dict.get("message_fa") or response_dict.get("message") or "پاسخ آماده شد."),
+                        route=str(response_dict.get("route") or status_payload.get(
+                            "route") or context.route_result.get("route") or Route.REJECT.value),
+                        status=str(response_dict.get("status") or status_payload.get(
+                            "status") or ValidationStatus.SUCCESS.value),
+                        message_fa=str(response_dict.get("message_fa") or response_dict.get(
+                            "message") or "پاسخ آماده شد."),
                         detected_intent=(
                             response_dict.get("detected_intent")
                             or context.intent_result.get("intent")
@@ -680,15 +707,19 @@ class LLMOrchestrator:
                             or context.route_result.get("intent")
                             or context.route_result.get("intent_id")
                         ),
-                        generated_sql=response_dict.get("generated_sql") or context.sql_plan.get("sql"),
-                        data=response_dict.get("data") if "data" in response_dict else self._extract_rows(context),
-                        visualization=response_dict.get("visualization") or context.visualization_plan,
+                        generated_sql=response_dict.get(
+                            "generated_sql") or context.sql_plan.get("sql"),
+                        data=response_dict.get(
+                            "data") if "data" in response_dict else self._extract_rows(context),
+                        visualization=response_dict.get(
+                            "visualization") or context.visualization_plan,
                         warnings=context.warnings,
                         errors=context.errors,
                         context=context.to_dict(),
                     )
             except Exception as exc:
-                context.warnings.append(f"response_builder failed, fallback response used: {exc}")
+                context.warnings.append(
+                    f"response_builder failed, fallback response used: {exc}")
 
         response = self._fallback_response_builder(context, status_payload)
         context.final_response = response.to_dict()
@@ -717,7 +748,8 @@ class LLMOrchestrator:
         ]
         if any(term in question for term in out_of_scope_terms):
             # If it also contains strong HR terms, let later stages decide. Otherwise reject early.
-            hr_matches = self.metadata.find_semantic_matches(question, max_matches=5)
+            hr_matches = self.metadata.find_semantic_matches(
+                question, max_matches=5)
             if not hr_matches:
                 return {
                     "route": Route.REJECT.value,
@@ -737,7 +769,8 @@ class LLMOrchestrator:
                 "matched_concepts": matches[:5],
             }
 
-        weak_hr_terms = ["کارمند", "کارکنان", "پرسنل", "نیرو", "منابع انسانی", "استخدام", "قرارداد", "جذب", "مدرک", "سابقه"]
+        weak_hr_terms = ["کارمند", "کارکنان", "پرسنل", "نیرو",
+                         "منابع انسانی", "استخدام", "قرارداد", "جذب", "مدرک", "سابقه"]
         if any(term in question for term in weak_hr_terms):
             return {"route": None, "status": "OK", "is_hr": True, "confidence": 0.65, "matched_concepts": []}
 
@@ -796,7 +829,8 @@ class LLMOrchestrator:
         data_statuses: list[str] = []
 
         for match in matches:
-            maps_to = match.get("maps_to", {}) if isinstance(match.get("maps_to"), dict) else {}
+            maps_to = match.get("maps_to", {}) if isinstance(
+                match.get("maps_to"), dict) else {}
             if maps_to.get("column"):
                 columns.append(str(maps_to["column"]))
             if maps_to.get("metric"):
@@ -827,7 +861,8 @@ class LLMOrchestrator:
             return early
 
         candidates: list[tuple[float, JsonDict, list[str]]] = []
-        semantic_candidates = set(context.semantic_result.get("candidate_intents", []) or [])
+        semantic_candidates = set(
+            context.semantic_result.get("candidate_intents", []) or [])
 
         for intent in self.metadata.list_intents():
             score = 0.0
@@ -846,7 +881,8 @@ class LLMOrchestrator:
             for example in intent.get("user_examples", []) or []:
                 if not isinstance(example, str):
                     continue
-                overlap = token_overlap(question, self.metadata.normalize_question(example))
+                overlap = token_overlap(
+                    question, self.metadata.normalize_question(example))
                 if overlap >= 0.5:
                     score += 2.0 * overlap
                     reasons.append("example_overlap")
@@ -929,10 +965,13 @@ class LLMOrchestrator:
         }
 
     def _fallback_sql_template_engine(self, context: RequestContext) -> JsonDict:
-        intent_id = context.intent_result.get("intent") or context.intent_result.get("intent_id")
-        metadata_context = self.metadata.build_metadata_context_for_intent(str(intent_id)) if intent_id else {}
+        intent_id = context.intent_result.get(
+            "intent") or context.intent_result.get("intent_id")
+        metadata_context = self.metadata.build_metadata_context_for_intent(
+            str(intent_id)) if intent_id else {}
         template = metadata_context.get("sql_template") or {}
-        template_id = context.intent_result.get("sql_template_id") or template.get("template_id")
+        template_id = context.intent_result.get(
+            "sql_template_id") or template.get("template_id")
 
         if not template and template_id:
             template = self.metadata.get_sql_template(str(template_id)) or {}
@@ -960,7 +999,8 @@ class LLMOrchestrator:
             **(context.intent_result.get("params", {}) or {}),
             **context.runtime_params,
         }
-        sql = self._render_sql_template_text(str(template.get("sql", "")), params)
+        sql = self._render_sql_template_text(
+            str(template.get("sql", "")), params)
         return {
             "status": "OK",
             "route": Route.SQL.value,
@@ -998,7 +1038,8 @@ class LLMOrchestrator:
             # Status SQLs like SELECT 'DATA_GAP' AS status; are allowed.
             status_sql_pattern = r"^SELECT\s+'(DATA_GAP|ACCESS_DENIED|OUT_OF_SCOPE|NEEDS_CLARIFICATION|SQL_VALIDATION_FAILED)'\s+AS\s+status\s*;?$"
             if not re.match(status_sql_pattern, normalized, flags=re.IGNORECASE):
-                errors.append("SQL must use only hr_mvp.vw_hr_employee_analytics v, or a valid status SELECT.")
+                errors.append(
+                    "SQL must use only hr_mvp.vw_hr_employee_analytics v, or a valid status SELECT.")
 
         raw_tables = [
             "hr_mvp.hr_employees",
@@ -1022,7 +1063,8 @@ class LLMOrchestrator:
                 errors.append(f"Sensitive column is not allowed: {column}")
 
         if re.search(r"\bv\.employee_id\b", sql, flags=re.IGNORECASE) and not re.search(r"COUNT\s*\(\s*v\.employee_id\s*\)", sql, flags=re.IGNORECASE):
-            warnings.append("v.employee_id should only be used inside COUNT for aggregated output.")
+            warnings.append(
+                "v.employee_id should only be used inside COUNT for aggregated output.")
 
         if errors:
             return {
@@ -1039,9 +1081,12 @@ class LLMOrchestrator:
         }
 
     def _fallback_response_builder(self, context: RequestContext, status_payload: JsonDict) -> OrchestratorResponse:
-        status = str(status_payload.get("status") or context.query_result.get("status") or ValidationStatus.SUCCESS.value).upper()
-        route = str(status_payload.get("route") or context.route_result.get("route") or route_for_status(status)).upper()
-        intent = context.intent_result.get("intent") or context.intent_result.get("intent_id")
+        status = str(status_payload.get("status") or context.query_result.get(
+            "status") or ValidationStatus.SUCCESS.value).upper()
+        route = str(status_payload.get("route") or context.route_result.get(
+            "route") or route_for_status(status)).upper()
+        intent = context.intent_result.get(
+            "intent") or context.intent_result.get("intent_id")
         sql = context.sql_plan.get("sql")
 
         message = self._message_for_status(status, context, status_payload)
@@ -1055,8 +1100,10 @@ class LLMOrchestrator:
             generated_sql=str(sql) if sql else None,
             data=data,
             visualization=context.visualization_plan or None,
-            warnings=list(dict.fromkeys(context.warnings + (context.sql_validation.get("warnings", []) or []))),
-            errors=list(dict.fromkeys(context.errors + (context.sql_validation.get("errors", []) or []))),
+            warnings=list(dict.fromkeys(context.warnings +
+                          (context.sql_validation.get("warnings", []) or []))),
+            errors=list(dict.fromkeys(context.errors +
+                        (context.sql_validation.get("errors", []) or []))),
             context=None,
         )
 
@@ -1066,13 +1113,20 @@ class LLMOrchestrator:
 
     def _detect_gap_or_reject_intent(self, question: str) -> JsonDict | None:
         gap_rules = [
-            ("city_level_analysis", ["شهر", "شهری", "هر شهر"], "در MVP فعلی داده شهر قابل اتکا نیست."),
-            ("near_retirement_analysis", ["بازنشستگی", "بازنشسته", "آستانه بازنشستگی"], "قانون رسمی بازنشستگی هنوز تعریف نشده است."),
-            ("contractor_productivity_analysis", ["بهره وری پیمانکار", "بهره‌وری پیمانکار", "عملکرد پیمانکار"], "داده بهره‌وری پیمانکارها در MVP فعلی وجود ندارد."),
-            ("training_need_analysis", ["نیاز آموزشی", "آموزش", "دوره تخصصی"], "تعریف رسمی نیاز آموزشی و داده دوره‌ها در MVP فعلی کامل نیست."),
-            ("workload_hiring_alignment", ["افزایش کار", "حجم کار", "بار کاری"], "داده حجم کار سازمان برای مقایسه با جذب وجود ندارد."),
-            ("monthly_hiring_trend", ["ماهانه", "ماه جذب", "در هر ماه"], "تحلیل ماهانه جذب در MVP فعلی آماده نیست."),
-            ("aging_workforce_analysis", ["سالخوردگی", "پیر شدن", "ساختار سنی"], "برای تحلیل سالخوردگی باید آستانه و قاعده تحلیلی تعریف شود."),
+            ("city_level_analysis", ["شهر", "شهری", "هر شهر"],
+             "در MVP فعلی داده شهر قابل اتکا نیست."),
+            ("near_retirement_analysis", [
+             "بازنشستگی", "بازنشسته", "آستانه بازنشستگی"], "قانون رسمی بازنشستگی هنوز تعریف نشده است."),
+            ("contractor_productivity_analysis", [
+             "بهره وری پیمانکار", "بهره‌وری پیمانکار", "عملکرد پیمانکار"], "داده بهره‌وری پیمانکارها در MVP فعلی وجود ندارد."),
+            ("training_need_analysis", ["نیاز آموزشی", "آموزش", "دوره تخصصی"],
+             "تعریف رسمی نیاز آموزشی و داده دوره‌ها در MVP فعلی کامل نیست."),
+            ("workload_hiring_alignment", [
+             "افزایش کار", "حجم کار", "بار کاری"], "داده حجم کار سازمان برای مقایسه با جذب وجود ندارد."),
+            ("monthly_hiring_trend", [
+             "ماهانه", "ماه جذب", "در هر ماه"], "تحلیل ماهانه جذب در MVP فعلی آماده نیست."),
+            ("aging_workforce_analysis", ["سالخوردگی", "پیر شدن", "ساختار سنی"],
+             "برای تحلیل سالخوردگی باید آستانه و قاعده تحلیلی تعریف شود."),
         ]
         for intent_id, terms, reason in gap_rules:
             if any(term in question for term in terms):
@@ -1146,21 +1200,28 @@ class LLMOrchestrator:
 
         if "زن" in question and ("درصد" in question or intent_id == "gender_percentage"):
             params["gender_value"] = "زن"
-            filters.append({"column": "gender", "operator": "=", "value": "زن"})
+            filters.append(
+                {"column": "gender", "operator": "=", "value": "زن"})
         elif "مرد" in question and ("درصد" in question or intent_id == "gender_percentage"):
             params["gender_value"] = "مرد"
-            filters.append({"column": "gender", "operator": "=", "value": "مرد"})
+            filters.append(
+                {"column": "gender", "operator": "=", "value": "مرد"})
 
         age_number = extract_first_int(question)
         if intent_id == "employee_count_by_age_filter":
             if "زیر" in question or "کمتر از" in question:
-                params.update({"age_min": None, "age_max_exclusive": age_number or 30, "age_max_inclusive": None})
-                filters.append({"column": "age", "operator": "<", "value": age_number or 30})
+                params.update(
+                    {"age_min": None, "age_max_exclusive": age_number or 30, "age_max_inclusive": None})
+                filters.append(
+                    {"column": "age", "operator": "<", "value": age_number or 30})
             elif "به بالا" in question or "بالای" in question or "بیشتر از" in question:
-                params.update({"age_min": age_number or 60, "age_max_exclusive": None, "age_max_inclusive": None})
-                filters.append({"column": "age", "operator": ">=", "value": age_number or 60})
+                params.update({"age_min": age_number or 60,
+                              "age_max_exclusive": None, "age_max_inclusive": None})
+                filters.append(
+                    {"column": "age", "operator": ">=", "value": age_number or 60})
             else:
-                params.update({"age_min": None, "age_max_exclusive": None, "age_max_inclusive": None})
+                params.update(
+                    {"age_min": None, "age_max_exclusive": None, "age_max_inclusive": None})
 
         education_values = [
             "کمتر از سیکل", "زیر دیپلم", "دیپلم", "کاردانی", "کارشناسی ارشد", "کارشناسی", "دکترای تخصصی / حرفه‌ای", "دکترا",
@@ -1169,15 +1230,18 @@ class LLMOrchestrator:
             if value in question:
                 normalized_value = "دکترای تخصصی / حرفه‌ای" if value == "دکترا" else value
                 params["education_title"] = normalized_value
-                filters.append({"column": "education_title", "operator": "=", "value": normalized_value})
+                filters.append({"column": "education_title",
+                               "operator": "=", "value": normalized_value})
                 break
 
-        employment_values = ["رسمی - آزمایشی", "رسمی _ بیمه ای دائم", "شاغل در پیمانکاری", "قراردادی", "پیمانی", "رسمی"]
+        employment_values = ["رسمی - آزمایشی", "رسمی _ بیمه ای دائم",
+                             "شاغل در پیمانکاری", "قراردادی", "پیمانی", "رسمی"]
         if "نوع قرارداد" not in question:
             for value in employment_values:
                 if value in question:
                     params["employment_type"] = value
-                    filters.append({"column": "employment_type", "operator": "=", "value": value})
+                    filters.append({"column": "employment_type",
+                                   "operator": "=", "value": value})
                     break
 
         contract_values = [
@@ -1197,7 +1261,8 @@ class LLMOrchestrator:
             for value in contract_values:
                 if value in question:
                     params["contract_type"] = value
-                    filters.append({"column": "contract_type", "operator": "=", "value": value})
+                    filters.append({"column": "contract_type",
+                                   "operator": "=", "value": value})
                     break
 
         return {"params": params, "filters": filters}
@@ -1231,7 +1296,8 @@ class LLMOrchestrator:
         if status == ValidationStatus.NOT_EXECUTED.value:
             return "SQL امن تولید شد، ولی اجرای کوئری هنوز به Query Executor وصل نشده است."
         if status == ValidationStatus.DATA_GAP.value:
-            reason = payload.get("reason") or context.intent_result.get("reason") or "داده یا قانون کسب‌وکاری لازم در MVP فعلی موجود نیست."
+            reason = payload.get("reason") or context.intent_result.get(
+                "reason") or "داده یا قانون کسب‌وکاری لازم در MVP فعلی موجود نیست."
             return f"این سؤال مرتبط با منابع انسانی است، اما در نسخه فعلی داده/تعریف کافی برای پاسخ دقیق وجود ندارد. دلیل: {reason}"
         if status == ValidationStatus.ACCESS_DENIED.value:
             return "امکان پاسخ‌گویی به این سؤال وجود ندارد، چون درخواست شامل اطلاعات فردی یا حساس کارکنان است."
@@ -1291,7 +1357,8 @@ async def call_component(component: Any, method_names: list[str], **kwargs: Any)
                 break
 
     if callable_obj is None:
-        raise OrchestratorError(f"Component {component!r} does not expose any of: {method_names}")
+        raise OrchestratorError(
+            f"Component {component!r} does not expose any of: {method_names}")
 
     filtered_kwargs = filter_kwargs_for_callable(callable_obj, kwargs)
     result = callable_obj(**filtered_kwargs)
@@ -1464,7 +1531,8 @@ def get_llm_orchestrator(
 # ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
-    orchestrator = LLMOrchestrator(metadata_dir=Path(__file__).parent, default_execute_sql=False, strict_metadata=False)
+    orchestrator = LLMOrchestrator(metadata_dir=Path(
+        __file__).parent, default_execute_sql=False, strict_metadata=False)
     sample_questions = [
         "تعداد کل کارکنان چند نفر است؟",
         "چند درصد کارکنان زن هستند؟",
@@ -1476,7 +1544,8 @@ if __name__ == "__main__":
     for q in sample_questions:
         response = orchestrator.run(q, execute_sql=False)
         print("\nQUESTION:", q)
-        print("STATUS:", response.status, "ROUTE:", response.route, "INTENT:", response.detected_intent)
+        print("STATUS:", response.status, "ROUTE:",
+              response.route, "INTENT:", response.detected_intent)
         print("MESSAGE:", response.message_fa)
         if response.generated_sql:
             print("SQL:", response.generated_sql)

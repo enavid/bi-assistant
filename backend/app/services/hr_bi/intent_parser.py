@@ -1,4 +1,10 @@
 from __future__ import annotations
+import re
+import time
+from copy import deepcopy
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Any, Iterable, Mapping
 
 """
 intent_parser.py
@@ -21,14 +27,6 @@ Design principles for Phase 2:
     - Does not access raw HR tables.
     - Produces a safe route: SQL, GAP, REJECT or NEEDS_CLARIFICATION.
 """
-
-import asyncio
-import re
-import time
-from copy import deepcopy
-from dataclasses import dataclass, field
-from pathlib import Path
-from typing import Any, Iterable, Mapping
 
 JsonDict = dict[str, Any]
 
@@ -120,13 +118,20 @@ TERMINAL_STATUS_TO_INTENT: dict[str, tuple[str, str, str]] = {
 
 DATA_GAP_INTENT_KEYWORDS: list[tuple[str, list[str]]] = [
     ("city_level_analysis", ["شهر", "شهری", "هر شهر"]),
-    ("near_retirement_analysis", ["بازنشستگی", "آستانه بازنشستگی", "نزدیک بازنشستگی"]),
-    ("contractor_productivity_analysis", ["بهره وری پیمانکار", "بهره وری پیمانکاری", "عملکرد پیمانکار"]),
-    ("hiring_business_growth_alignment", ["افزایش کار", "رشد کار", "حجم کار", "هماهنگ بوده"]),
-    ("education_training_need_analysis", ["نیاز آموزشی", "دوره تخصصی", "آموزش", "کمبود تخصص"]),
-    ("workforce_aging_trend_analysis", ["سالخوردگی", "پیر شدن", "ساختار سنی", "به سمت سالخوردگی"]),
-    ("department_balance_analysis", ["تعادل", "متوازن", "چارت سازمانی و واقعیت", "واقعیت نیروی انسانی"]),
-    ("employment_stability_impact_analysis", ["ثبات سازمان", "تاثیر می گذارد", "اثر می گذارد"]),
+    ("near_retirement_analysis", ["بازنشستگی",
+     "آستانه بازنشستگی", "نزدیک بازنشستگی"]),
+    ("contractor_productivity_analysis", [
+     "بهره وری پیمانکار", "بهره وری پیمانکاری", "عملکرد پیمانکار"]),
+    ("hiring_business_growth_alignment", [
+     "افزایش کار", "رشد کار", "حجم کار", "هماهنگ بوده"]),
+    ("education_training_need_analysis", [
+     "نیاز آموزشی", "دوره تخصصی", "آموزش", "کمبود تخصص"]),
+    ("workforce_aging_trend_analysis", [
+     "سالخوردگی", "پیر شدن", "ساختار سنی", "به سمت سالخوردگی"]),
+    ("department_balance_analysis", [
+     "تعادل", "متوازن", "چارت سازمانی و واقعیت", "واقعیت نیروی انسانی"]),
+    ("employment_stability_impact_analysis", [
+     "ثبات سازمان", "تاثیر می گذارد", "اثر می گذارد"]),
 ]
 
 
@@ -175,13 +180,18 @@ class IntentParser:
         if metadata_service is not None:
             self.metadata = metadata_service
         elif get_metadata_service is not None:
-            self.metadata = get_metadata_service(strict=False)  # type: ignore[misc]
+            self.metadata = get_metadata_service(
+                strict=False)  # type: ignore[misc]
             try:
-                health = self.metadata.health_check().to_dict() if hasattr(self.metadata, "health_check") else {}
-                if not health.get("ok") and MetadataService is not Any:  # type: ignore[comparison-overlap]
+                health = self.metadata.health_check().to_dict() if hasattr(
+                    self.metadata, "health_check") else {}
+                # type: ignore[comparison-overlap]
+                if not health.get("ok") and MetadataService is not Any:
                     local_dir = Path(__file__).resolve().parent
                     if (local_dir / "Template_01_intent_catalog.yaml").exists() or (local_dir / "intent_catalog.yaml").exists():
-                        self.metadata = MetadataService(metadata_dir=local_dir, strict=False)  # type: ignore[operator]
+                        self.metadata = MetadataService(
+                            # type: ignore[operator]
+                            metadata_dir=local_dir, strict=False)
             except Exception:
                 pass
         else:
@@ -210,7 +220,8 @@ class IntentParser:
         raw_question = question or ""
         normalized_question = self.normalize_text(raw_question)
         runtime_params = self._get_runtime_params(context, kwargs)
-        current_shamsi_year = int(runtime_params.get("current_shamsi_year", self.config.current_shamsi_year))
+        current_shamsi_year = int(runtime_params.get(
+            "current_shamsi_year", self.config.current_shamsi_year))
 
         if not normalized_question:
             return self._terminal_result(
@@ -223,15 +234,18 @@ class IntentParser:
                 reason="Question is empty or unclear.",
             )
 
-        terminal = self._terminal_from_context(context, normalized_question, service)
+        terminal = self._terminal_from_context(
+            context, normalized_question, service)
         if terminal:
-            terminal.update({"duration_ms": round((time.perf_counter() - started) * 1000, 3)})
+            terminal.update({"duration_ms": round(
+                (time.perf_counter() - started) * 1000, 3)})
             return terminal
 
         intent_catalog = self._get_document(service, "intent_catalog")
         semantic_result = self._context_dict(context, "semantic_result")
         semantic_signals = self._collect_semantic_signals(semantic_result)
-        query_features = self._detect_query_features(normalized_question, semantic_result)
+        query_features = self._detect_query_features(
+            normalized_question, semantic_result)
 
         candidates = self._score_intents(
             question=normalized_question,
@@ -268,7 +282,8 @@ class IntentParser:
                 started=started,
                 reason="Intent confidence is too low for a safe SQL route.",
                 confidence=round(confidence, 3),
-                candidate_intents=[item.to_dict() for item in candidates[: self.config.max_candidate_intents]],
+                candidate_intents=[
+                    item.to_dict() for item in candidates[: self.config.max_candidate_intents]],
             )
 
         extraction = self._extract_structured_payload(
@@ -281,9 +296,11 @@ class IntentParser:
             service=service,
         )
 
-        route = str(intent.get("route") or extraction.get("route") or ROUTE_SQL)
+        route = str(intent.get("route")
+                    or extraction.get("route") or ROUTE_SQL)
         status = self._status_for_route_and_intent(route, intent)
-        sql_template_id = self._choose_sql_template_id(best.intent_id, intent, extraction, service)
+        sql_template_id = self._choose_sql_template_id(
+            best.intent_id, intent, extraction, service)
         report_id = intent.get("report_id") or extraction.get("report_id")
 
         # GAP / REJECT intents should not accidentally carry SQL templates.
@@ -323,11 +340,15 @@ class IntentParser:
         }
 
         if route == ROUTE_GAP:
-            result["gap_reason"] = intent.get("gap_reason") or intent.get("reject_reason") or extraction.get("gap_reason")
-            result["expected_status_sql"] = intent.get("expected_status_sql") or "SELECT 'DATA_GAP' AS status;"
+            result["gap_reason"] = intent.get("gap_reason") or intent.get(
+                "reject_reason") or extraction.get("gap_reason")
+            result["expected_status_sql"] = intent.get(
+                "expected_status_sql") or "SELECT 'DATA_GAP' AS status;"
         elif route in {ROUTE_REJECT, ROUTE_CLARIFICATION}:
-            result["reject_reason"] = intent.get("reject_reason") or extraction.get("reject_reason")
-            result["expected_status_sql"] = intent.get("expected_status_sql") or self._status_sql_for_route(route, status)
+            result["reject_reason"] = intent.get(
+                "reject_reason") or extraction.get("reject_reason")
+            result["expected_status_sql"] = intent.get(
+                "expected_status_sql") or self._status_sql_for_route(route, status)
 
         return result
 
@@ -360,7 +381,8 @@ class IntentParser:
             text = text.replace(src, dst)
         text = text.translate(DIGIT_TRANSLATION)
         for word, value in sorted(PERSIAN_NUMBER_WORDS.items(), key=lambda item: -len(item[0])):
-            text = re.sub(rf"(?<!\S){re.escape(word)}(?=\s*(?:سال|تا|و|$))", str(value), text)
+            text = re.sub(
+                rf"(?<!\S){re.escape(word)}(?=\s*(?:سال|تا|و|$))", str(value), text)
         text = re.sub(r"[\t\r\n]+", " ", text)
         text = re.sub(r"[؟?؛;،,]+", " ", text)
         text = re.sub(r"\s+", " ", text)
@@ -390,7 +412,8 @@ class IntentParser:
                 value = getattr(context, "runtime_params", {})
             if isinstance(value, Mapping):
                 params.update(dict(value))
-        params.update({k: v for k, v in kwargs.items() if k not in {"question", "metadata", "context"}})
+        params.update({k: v for k, v in kwargs.items() if k not in {
+                      "question", "metadata", "context"}})
         return params
 
     @staticmethod
@@ -444,7 +467,8 @@ class IntentParser:
                 return item if isinstance(item, dict) else None
             except Exception:
                 return None
-        data_dictionary = IntentParser._get_document(service, "data_dictionary")
+        data_dictionary = IntentParser._get_document(
+            service, "data_dictionary")
         for item in data_dictionary.get("columns", []) or []:
             if isinstance(item, dict) and item.get("name") == column_name:
                 return deepcopy(item)
@@ -492,10 +516,13 @@ class IntentParser:
                     status=STATUS_DATA_GAP,
                     question=question,
                     normalized_question=question,
-                    reason=semantic_payload.get("reason") or "Semantic mapper detected Data Gap.",
-                    confidence=float(semantic_payload.get("confidence", 0.9) or 0.9),
+                    reason=semantic_payload.get(
+                        "reason") or "Semantic mapper detected Data Gap.",
+                    confidence=float(semantic_payload.get(
+                        "confidence", 0.9) or 0.9),
                     started=time.perf_counter(),
-                    semantic_summary=self._collect_semantic_signals(semantic_payload),
+                    semantic_summary=self._collect_semantic_signals(
+                        semantic_payload),
                 )
             if route == ROUTE_REJECT and self.config.allow_reject_from_semantic_mapper:
                 return self._terminal_from_payload(semantic_payload, question, service)
@@ -515,7 +542,8 @@ class IntentParser:
                 status=mapped_status,
                 question=question,
                 normalized_question=question,
-                reason=payload.get("reason") or f"Terminal status from previous step: {status}",
+                reason=payload.get(
+                    "reason") or f"Terminal status from previous step: {status}",
                 confidence=float(payload.get("confidence", 1.0) or 1.0),
                 started=time.perf_counter(),
             )
@@ -528,7 +556,8 @@ class IntentParser:
                 status=STATUS_DATA_GAP,
                 question=question,
                 normalized_question=question,
-                reason=payload.get("reason") or "Previous step detected Data Gap.",
+                reason=payload.get(
+                    "reason") or "Previous step detected Data Gap.",
                 confidence=float(payload.get("confidence", 0.95) or 0.95),
                 started=time.perf_counter(),
             )
@@ -592,11 +621,13 @@ class IntentParser:
             value = payload.get(key)
             if isinstance(value, str) and value and value not in {"unknown", "DATA_GAP"}:
                 return value
-        hits = payload.get("data_gap_hits", []) or payload.get("gap_candidates", []) or []
+        hits = payload.get("data_gap_hits", []) or payload.get(
+            "gap_candidates", []) or []
         if isinstance(hits, list):
             for hit in hits:
                 if isinstance(hit, dict):
-                    concept = str(hit.get("concept_id") or hit.get("rule_id") or "")
+                    concept = str(hit.get("concept_id")
+                                  or hit.get("rule_id") or "")
                     if "city" in concept:
                         return "city_level_analysis"
                     if "retirement" in concept or "بازنشست" in concept:
@@ -627,7 +658,8 @@ class IntentParser:
         }
 
     def _detect_query_features(self, question: str, semantic_result: JsonDict) -> JsonDict:
-        semantic_features = semantic_result.get("query_features", {}) if isinstance(semantic_result.get("query_features"), dict) else {}
+        semantic_features = semantic_result.get("query_features", {}) if isinstance(
+            semantic_result.get("query_features"), dict) else {}
         features: JsonDict = deepcopy(semantic_features)
 
         features.update({
@@ -660,7 +692,8 @@ class IntentParser:
             "asks_individual": self._has_any(question, ["نام", "کد ملی", "شماره پرسنلی", "مشخصات", "لیست کارکنان", "افراد را نمایش"]),
         })
         features["age_filter"] = self._extract_age_filter(question)
-        features["comparison_dimension"] = self._infer_comparison_dimension(question, features)
+        features["comparison_dimension"] = self._infer_comparison_dimension(
+            question, features)
         return features
 
     @staticmethod
@@ -685,7 +718,8 @@ class IntentParser:
         def add(intent_id: str, points: float, reason: str) -> None:
             if not intent_id:
                 return
-            item = scores.setdefault(intent_id, IntentCandidate(intent_id=intent_id, score=0.0))
+            item = scores.setdefault(intent_id, IntentCandidate(
+                intent_id=intent_id, score=0.0))
             item.score += points
             item.reasons.append(reason)
 
@@ -697,13 +731,16 @@ class IntentParser:
         if self.config.prefer_semantic_mapper_candidates:
             for index, intent_id in enumerate(semantic_signals.get("candidate_intents", []) or []):
                 if isinstance(intent_id, str):
-                    add(intent_id, max(1.0, 5.0 - index), "semantic_mapper_candidate")
+                    add(intent_id, max(1.0, 5.0 - index),
+                        "semantic_mapper_candidate")
             for item in semantic_signals.get("candidate_intent_scores", []) or []:
                 if isinstance(item, dict):
-                    intent_id = str(item.get("intent_id") or item.get("intent") or "")
+                    intent_id = str(item.get("intent_id")
+                                    or item.get("intent") or "")
                     score = float(item.get("score", 0.0) or 0.0)
                     if intent_id:
-                        add(intent_id, min(6.0, 1.0 + score / 3), "semantic_mapper_score")
+                        add(intent_id, min(6.0, 1.0 + score / 3),
+                            "semantic_mapper_score")
 
         # Catalog triggers and examples.
         intents = self._list_intents(service, intent_catalog)
@@ -715,7 +752,8 @@ class IntentParser:
                 for term in intent.get("trigger_terms_fa", []) or []:
                     norm = self.normalize_text(str(term))
                     if norm and self._term_in_question(question, norm):
-                        add(intent_id, 4.5 + min(len(norm), 30) / 20, f"trigger:{term}")
+                        add(intent_id, 4.5 + min(len(norm), 30) /
+                            20, f"trigger:{term}")
             if self.config.use_catalog_examples:
                 for example in intent.get("user_examples", []) or []:
                     norm_example = self.normalize_text(str(example))
@@ -748,7 +786,8 @@ class IntentParser:
         if self._has_any(question, ["بازنشستگی", "نزدیک بازنشستگی", "آستانه بازنشستگی"]):
             add(("near_retirement_analysis", 90, "retirement_rule_gap"))
         if self._has_any(question, ["بهره وری پیمانکار", "بهره وری پیمانکاری", "عملکرد پیمانکار"]):
-            add(("contractor_productivity_analysis", 90, "contractor_productivity_gap"))
+            add(("contractor_productivity_analysis",
+                90, "contractor_productivity_gap"))
         if self._has_any(question, ["افزایش کار", "رشد کار", "حجم کار"]):
             add(("hiring_business_growth_alignment", 80, "business_growth_data_gap"))
         if self._has_any(question, ["سالخوردگی", "پیر شدن", "به سمت سالخوردگی"]):
@@ -777,21 +816,25 @@ class IntentParser:
 
         if f.get("explicit_education"):
             if f.get("explicit_service_domain"):
-                add(("education_distribution_by_service_domain", 82, "education_by_service_domain"))
+                add(("education_distribution_by_service_domain",
+                    82, "education_by_service_domain"))
             elif f.get("asks_most"):
                 add(("most_common_education", 70, "most_common_education"))
             elif f.get("asks_least"):
                 add(("least_common_education", 70, "least_common_education"))
             elif self._has_any(question, ["پست کارشناسی", "تحصیلات پایین", "پایین تر", "حداقل مدرک"]):
-                add(("low_education_in_expert_roles", 60, "low_education_expert_roles"))
+                add(("low_education_in_expert_roles",
+                    60, "low_education_expert_roles"))
             else:
-                add(("employee_count_by_education", 55, "education_distribution_or_filter"))
+                add(("employee_count_by_education", 55,
+                    "education_distribution_or_filter"))
 
         if f.get("explicit_employment_type"):
             add(("employee_count_by_employment_type", 70, "employment_type"))
         if f.get("explicit_contract_type"):
             if f.get("explicit_hiring") or f.get("asks_recent_year"):
-                add(("hiring_by_contract_type_recent_year", 70, "recent_hiring_contract_type"))
+                add(("hiring_by_contract_type_recent_year",
+                    70, "recent_hiring_contract_type"))
             else:
                 add(("employee_count_by_contract_type", 70, "contract_type"))
         if self._has_any(question, ["رسمی", "قراردادی", "پیمانی", "شاغل در پیمانکاری"]):
@@ -802,17 +845,21 @@ class IntentParser:
 
         if f.get("explicit_contractor"):
             if f.get("explicit_department") or self._has_any(question, ["در هر بخش", "در هر واحد", "به تفکیک بخش", "به تفکیک واحد", "به تفکیک دپارتمان"]):
-                add(("contractor_share_by_department", 84, "contractor_by_department"))
+                add(("contractor_share_by_department",
+                    84, "contractor_by_department"))
             elif f.get("explicit_service_domain") or "در هر حوزه" in question:
-                add(("contractor_share_by_service_domain", 80, "contractor_by_service_domain"))
+                add(("contractor_share_by_service_domain",
+                    80, "contractor_by_service_domain"))
             else:
                 add(("contractor_share", 75, "contractor_share"))
 
         if f.get("explicit_service_domain") and not f.get("explicit_contractor") and not f.get("explicit_education"):
             if f.get("asks_gap_or_shortage"):
-                add(("headcount_gap_by_service_domain", 82, "headcount_gap_service_domain"))
+                add(("headcount_gap_by_service_domain",
+                    82, "headcount_gap_service_domain"))
             else:
-                add(("employee_count_by_service_domain", 60, "service_domain_distribution"))
+                add(("employee_count_by_service_domain",
+                    60, "service_domain_distribution"))
         if f.get("explicit_department"):
             if f.get("asks_gap_or_shortage"):
                 add(("headcount_gap_by_department", 75, "headcount_gap_department"))
@@ -821,7 +868,8 @@ class IntentParser:
         if f.get("explicit_province"):
             add(("employee_count_by_province", 60, "province_distribution"))
         if f.get("explicit_work_location"):
-            add(("employee_count_by_work_location", 55, "work_location_distribution"))
+            add(("employee_count_by_work_location",
+                55, "work_location_distribution"))
 
         if f.get("explicit_hiring"):
             if f.get("explicit_monthly"):
@@ -831,13 +879,15 @@ class IntentParser:
             elif f.get("asks_most") or f.get("asks_least"):
                 add(("most_or_least_hiring_year", 75, "most_or_least_hiring_year"))
             elif f.get("explicit_contract_type") or f.get("asks_recent_year"):
-                add(("hiring_by_contract_type_recent_year", 70, "recent_hiring_by_contract_type"))
+                add(("hiring_by_contract_type_recent_year",
+                    70, "recent_hiring_by_contract_type"))
             else:
                 add(("hiring_trend_annual", 70, "annual_hiring_trend"))
 
         if f.get("explicit_service_years"):
             if f.get("asks_zero_service"):
-                add(("employee_count_without_service_years", 65, "without_service_years"))
+                add(("employee_count_without_service_years",
+                    65, "without_service_years"))
             elif f.get("asks_average"):
                 add(("average_service_years", 65, "average_service_years"))
             else:
@@ -862,23 +912,28 @@ class IntentParser:
     def _apply_candidate_cleanup(self, scores: dict[str, IntentCandidate], question: str, f: JsonDict) -> None:
         # Explicit contract vs employment wording should dominate.
         if f.get("explicit_contract_type"):
-            self._penalize(scores, "employee_count_by_employment_type", 10, "explicit_contract_type_penalty")
+            self._penalize(scores, "employee_count_by_employment_type",
+                           10, "explicit_contract_type_penalty")
         if f.get("explicit_employment_type") and not f.get("explicit_contract_type"):
-            self._penalize(scores, "employee_count_by_contract_type", 10, "explicit_employment_type_penalty")
+            self._penalize(scores, "employee_count_by_contract_type",
+                           10, "explicit_employment_type_penalty")
 
         # Last 15 years should not become generic annual trend.
         if f.get("asks_last_15_years"):
-            self._penalize(scores, "hiring_trend_annual", 12, "last_15_years_specificity")
+            self._penalize(scores, "hiring_trend_annual",
+                           12, "last_15_years_specificity")
 
         # Percentage of women/men is not a gender distribution if no group distribution phrase exists.
         if f.get("asks_percentage") and self._has_any(question, ["زن", "مرد"]) and not self._has_any(question, ["زن و مرد", "تفکیک جنسیت"]):
-            self._penalize(scores, "employee_count_by_gender", 8, "gender_percentage_specificity")
+            self._penalize(scores, "employee_count_by_gender",
+                           8, "gender_percentage_specificity")
 
         # City is a hard data gap in current MVP.
         if f.get("explicit_city"):
             for intent_id in list(scores):
                 if intent_id != "city_level_analysis":
-                    self._penalize(scores, intent_id, 999, "city_data_gap_wins")
+                    self._penalize(scores, intent_id, 999,
+                                   "city_data_gap_wins")
 
     @staticmethod
     def _penalize(scores: dict[str, IntentCandidate], intent_id: str, points: float, reason: str) -> None:
@@ -918,8 +973,10 @@ class IntentParser:
         current_shamsi_year: int,
         service: Any,
     ) -> JsonDict:
-        semantic_filters = semantic_result.get("filters", []) if isinstance(semantic_result.get("filters"), list) else []
-        semantic_group_by = semantic_result.get("group_by", []) if isinstance(semantic_result.get("group_by"), list) else []
+        semantic_filters = semantic_result.get("filters", []) if isinstance(
+            semantic_result.get("filters"), list) else []
+        semantic_group_by = semantic_result.get("group_by", []) if isinstance(
+            semantic_result.get("group_by"), list) else []
         filters = self._normalize_filter_list(semantic_filters)
         group_by = self._normalize_group_by_list(semantic_group_by)
         params: JsonDict = {}
@@ -930,10 +987,13 @@ class IntentParser:
 
         # Dimension extraction from wording.
         gender_value = self._extract_gender_value(question)
-        education_value = self._extract_allowed_value(question, service, "education_title")
-        employment_value = self._extract_employment_value(question, service, explicit_contract=False)
+        education_value = self._extract_allowed_value(
+            question, service, "education_title")
+        employment_value = self._extract_employment_value(
+            question, service, explicit_contract=False)
         contract_value = self._extract_contract_value(question, service)
-        age_filter = query_features.get("age_filter") or self._extract_age_filter(question)
+        age_filter = query_features.get(
+            "age_filter") or self._extract_age_filter(question)
 
         if gender_value:
             entities["gender"] = gender_value
@@ -948,12 +1008,15 @@ class IntentParser:
 
         # Intent-specific structured output.
         if best_intent_id == "gender_percentage":
-            params["gender_value"] = gender_value or ("زن" if "زن" in question else "مرد" if "مرد" in question else None)
+            params["gender_value"] = gender_value or (
+                "زن" if "زن" in question else "مرد" if "مرد" in question else None)
             if params["gender_value"]:
-                filters.append({"column": "gender", "operator": "=", "value": params["gender_value"]})
+                filters.append(
+                    {"column": "gender", "operator": "=", "value": params["gender_value"]})
                 required_columns.extend(["gender", "employee_id", "is_active"])
             else:
-                warnings.append("gender_percentage requires gender_value; fallback clarification may be needed.")
+                warnings.append(
+                    "gender_percentage requires gender_value; fallback clarification may be needed.")
 
         elif best_intent_id == "employee_count_by_age_filter":
             age_params = self._age_filter_to_params(age_filter)
@@ -969,88 +1032,113 @@ class IntentParser:
             if age_filter:
                 filters.append(age_filter)
             group_by = self._ensure_group_by(group_by, "gender")
-            required_columns.extend(["gender", "age", "employee_id", "is_active"])
+            required_columns.extend(
+                ["gender", "age", "employee_id", "is_active"])
 
         elif best_intent_id == "employee_count_by_age_group":
             group_by = self._ensure_group_by(group_by, "age_group_title")
-            required_columns.extend(["age_group_title", "employee_id", "is_active"])
+            required_columns.extend(
+                ["age_group_title", "employee_id", "is_active"])
 
         elif best_intent_id == "average_age":
             if "زن و مرد" in question or "تفکیک جنسیت" in question:
                 group_by = self._ensure_group_by(group_by, "gender")
             elif "هر حوزه" in question or "به تفکیک حوزه" in question:
                 group_by = self._ensure_group_by(group_by, "service_domain")
-            required_columns.extend(["age", "employee_id", "is_active", *group_by])
+            required_columns.extend(
+                ["age", "employee_id", "is_active", *group_by])
 
         elif best_intent_id == "employee_count_by_education":
             if education_value:
                 params["education_title"] = education_value
-                filters.append({"column": "education_title", "operator": "=", "value": education_value})
+                filters.append({"column": "education_title",
+                               "operator": "=", "value": education_value})
             else:
                 group_by = self._ensure_group_by(group_by, "education_title")
-            required_columns.extend(["education_title", "employee_id", "is_active"])
+            required_columns.extend(
+                ["education_title", "employee_id", "is_active"])
 
         elif best_intent_id in {"most_common_education", "least_common_education"}:
             group_by = ["education_title"]
-            order_by = ["employee_count DESC" if best_intent_id == "most_common_education" else "employee_count ASC"]
-            required_columns.extend(["education_title", "employee_id", "is_active"])
+            order_by = ["employee_count DESC" if best_intent_id ==
+                        "most_common_education" else "employee_count ASC"]
+            required_columns.extend(
+                ["education_title", "employee_id", "is_active"])
 
         elif best_intent_id == "low_education_in_expert_roles":
-            filters.append({"column": "education_rank", "operator": "<", "value_column": "min_education_rank"})
-            required_columns.extend(["education_rank", "min_education_rank", "is_expert_role", "employee_id", "is_active"])
+            filters.append({"column": "education_rank",
+                           "operator": "<", "value_column": "min_education_rank"})
+            required_columns.extend(
+                ["education_rank", "min_education_rank", "is_expert_role", "employee_id", "is_active"])
 
         elif best_intent_id == "employee_count_by_employment_type":
             if employment_value:
                 params["employment_type"] = employment_value
-                filters.append({"column": "employment_type", "operator": "=", "value": employment_value})
+                filters.append({"column": "employment_type",
+                               "operator": "=", "value": employment_value})
             else:
                 group_by = self._ensure_group_by(group_by, "employment_type")
-            required_columns.extend(["employment_type", "employee_id", "is_active"])
+            required_columns.extend(
+                ["employment_type", "employee_id", "is_active"])
 
         elif best_intent_id == "employee_count_by_contract_type":
             if contract_value:
                 params["contract_type"] = contract_value
-                filters.append({"column": "contract_type", "operator": "=", "value": contract_value})
+                filters.append({"column": "contract_type",
+                               "operator": "=", "value": contract_value})
             else:
                 group_by = self._ensure_group_by(group_by, "contract_type")
-            required_columns.extend(["contract_type", "employee_id", "is_active"])
+            required_columns.extend(
+                ["contract_type", "employee_id", "is_active"])
 
         elif best_intent_id == "contractor_share":
-            filters.append({"column": "is_contractor", "operator": "=", "value": True, "scope": "numerator"})
-            required_columns.extend(["is_contractor", "employee_id", "is_active"])
+            filters.append({"column": "is_contractor",
+                           "operator": "=", "value": True, "scope": "numerator"})
+            required_columns.extend(
+                ["is_contractor", "employee_id", "is_active"])
 
         elif best_intent_id == "contractor_share_by_service_domain":
-            filters.append({"column": "is_contractor", "operator": "=", "value": True, "scope": "numerator"})
+            filters.append({"column": "is_contractor",
+                           "operator": "=", "value": True, "scope": "numerator"})
             group_by = self._ensure_group_by(group_by, "service_domain")
-            required_columns.extend(["is_contractor", "service_domain", "employee_id", "is_active"])
+            required_columns.extend(
+                ["is_contractor", "service_domain", "employee_id", "is_active"])
 
         elif best_intent_id == "contractor_share_by_department":
-            filters.append({"column": "is_contractor", "operator": "=", "value": True, "scope": "numerator"})
+            filters.append({"column": "is_contractor",
+                           "operator": "=", "value": True, "scope": "numerator"})
             group_by = self._ensure_group_by(group_by, "department_name")
-            required_columns.extend(["is_contractor", "department_name", "employee_id", "is_active"])
+            required_columns.extend(
+                ["is_contractor", "department_name", "employee_id", "is_active"])
 
         elif best_intent_id in {"education_distribution_by_service_domain", "education_by_service_domain"}:
             group_by = ["service_domain", "education_title"]
-            required_columns.extend(["service_domain", "education_title", "education_rank", "employee_id", "is_active"])
+            required_columns.extend(
+                ["service_domain", "education_title", "education_rank", "employee_id", "is_active"])
 
         elif best_intent_id == "employee_count_by_service_domain":
             group_by = self._ensure_group_by(group_by, "service_domain")
-            required_columns.extend(["service_domain", "employee_id", "is_active"])
+            required_columns.extend(
+                ["service_domain", "employee_id", "is_active"])
 
         elif best_intent_id == "employee_count_by_department":
             group_by = self._ensure_group_by(group_by, "department_name")
-            required_columns.extend(["department_name", "employee_id", "is_active"])
+            required_columns.extend(
+                ["department_name", "employee_id", "is_active"])
 
         elif best_intent_id == "headcount_gap_by_department":
             group_by = ["department_id", "department_name"]
-            required_columns.extend(["department_id", "department_name", "department_approved_headcount", "employee_id", "is_active"])
+            required_columns.extend(["department_id", "department_name",
+                                    "department_approved_headcount", "employee_id", "is_active"])
 
         elif best_intent_id == "headcount_gap_by_service_domain":
             group_by = ["service_domain"]
-            required_columns.extend(["department_id", "department_name", "service_domain", "department_approved_headcount", "employee_id", "is_active"])
+            required_columns.extend(["department_id", "department_name", "service_domain",
+                                    "department_approved_headcount", "employee_id", "is_active"])
 
         elif best_intent_id == "monthly_hiring_trend":
-            required_columns.extend(["hire_date", "hire_year", "employee_id", "is_active"])
+            required_columns.extend(
+                ["hire_date", "hire_year", "employee_id", "is_active"])
 
         elif best_intent_id == "employee_count_by_province":
             group_by = self._ensure_group_by(group_by, "province")
@@ -1058,7 +1146,8 @@ class IntentParser:
 
         elif best_intent_id == "employee_count_by_work_location":
             group_by = self._ensure_group_by(group_by, "site_name")
-            required_columns.extend(["site_name", "province", "employee_id", "is_active"])
+            required_columns.extend(
+                ["site_name", "province", "employee_id", "is_active"])
 
         elif best_intent_id == "hiring_trend_annual":
             group_by = ["hire_year"]
@@ -1067,41 +1156,52 @@ class IntentParser:
 
         elif best_intent_id == "hiring_last_15_years":
             params["current_shamsi_year"] = current_shamsi_year
-            filters.append({"column": "hire_year", "operator": ">=", "value_expression": f"{current_shamsi_year} - 15"})
+            filters.append({"column": "hire_year", "operator": ">=",
+                           "value_expression": f"{current_shamsi_year} - 15"})
             group_by = ["hire_year"]
             order_by = ["hire_year ASC"]
             required_columns.extend(["hire_year", "employee_id", "is_active"])
 
         elif best_intent_id == "most_or_least_hiring_year":
             group_by = ["hire_year"]
-            order_by = ["employee_count ASC" if query_features.get("asks_least") else "employee_count DESC"]
+            order_by = ["employee_count ASC" if query_features.get(
+                "asks_least") else "employee_count DESC"]
             required_columns.extend(["hire_year", "employee_id", "is_active"])
 
         elif best_intent_id == "hiring_by_contract_type_recent_year":
             params["current_shamsi_year"] = current_shamsi_year
-            filters.append({"column": "hire_year", "operator": "=", "value": current_shamsi_year})
+            filters.append(
+                {"column": "hire_year", "operator": "=", "value": current_shamsi_year})
             group_by = ["contract_type"]
-            required_columns.extend(["contract_type", "hire_year", "employee_id", "is_active"])
+            required_columns.extend(
+                ["contract_type", "hire_year", "employee_id", "is_active"])
 
         elif best_intent_id == "average_service_years":
-            required_columns.extend(["service_years", "employee_id", "is_active"])
+            required_columns.extend(
+                ["service_years", "employee_id", "is_active"])
 
         elif best_intent_id == "employee_count_without_service_years":
-            filters.append({"column": "service_years", "operator": "=", "value": 0})
-            required_columns.extend(["service_years", "employee_id", "is_active"])
+            filters.append({"column": "service_years",
+                           "operator": "=", "value": 0})
+            required_columns.extend(
+                ["service_years", "employee_id", "is_active"])
 
         elif best_intent_id == "employee_count_by_marital_status":
             group_by = self._ensure_group_by(group_by, "marital_status")
-            required_columns.extend(["marital_status", "employee_id", "is_active"])
+            required_columns.extend(
+                ["marital_status", "employee_id", "is_active"])
 
         # Always include default active filter as a logical signal. SQL templates
         # already include it, so downstream engines should avoid duplicating it.
         if not any(item.get("column") == "is_active" for item in filters if isinstance(item, dict)):
-            filters.insert(0, {"column": "is_active", "operator": "=", "value": True, "source": "default_rule"})
+            filters.insert(0, {"column": "is_active", "operator": "=",
+                           "value": True, "source": "default_rule"})
 
         metrics = self._infer_metrics(best_intent_id, intent, query_features)
-        output_type = self._infer_output_type(best_intent_id, intent, group_by, query_features)
-        recommended_visualization = self._infer_visualization(best_intent_id, intent, output_type, group_by, query_features)
+        output_type = self._infer_output_type(
+            best_intent_id, intent, group_by, query_features)
+        recommended_visualization = self._infer_visualization(
+            best_intent_id, intent, output_type, group_by, query_features)
 
         return {
             "filters": self._dedupe_filters(filters),
@@ -1212,18 +1312,22 @@ class IntentParser:
 
     def _extract_age_filter(self, question: str) -> JsonDict | None:
         # 60 سال به بالا / بالای 60
-        m = re.search(r"(?:بالای|بالاتر از|بیشتر از)\s*(\d{1,3})\s*سال?", question)
+        m = re.search(
+            r"(?:بالای|بالاتر از|بیشتر از)\s*(\d{1,3})\s*سال?", question)
         if m:
             return {"column": "age", "operator": ">=", "value": int(m.group(1))}
-        m = re.search(r"(\d{1,3})\s*سال\s*(?:به بالا|و بالاتر|بیشتر)", question)
+        m = re.search(
+            r"(\d{1,3})\s*سال\s*(?:به بالا|و بالاتر|بیشتر)", question)
         if m:
             return {"column": "age", "operator": ">=", "value": int(m.group(1))}
         # زیر 30 / کمتر از 30
-        m = re.search(r"(?:زیر|کمتر از|پایین تر از)\s*(\d{1,3})\s*سال?", question)
+        m = re.search(
+            r"(?:زیر|کمتر از|پایین تر از)\s*(\d{1,3})\s*سال?", question)
         if m:
             return {"column": "age", "operator": "<", "value": int(m.group(1))}
         # بین 30 تا 40
-        m = re.search(r"(?:بین|از)\s*(\d{1,3})\s*(?:تا|الی)\s*(\d{1,3})", question)
+        m = re.search(
+            r"(?:بین|از)\s*(\d{1,3})\s*(?:تا|الی)\s*(\d{1,3})", question)
         if m:
             a, b = int(m.group(1)), int(m.group(2))
             return {"column": "age", "operator": "BETWEEN", "value": [min(a, b), max(a, b)]}
@@ -1231,7 +1335,8 @@ class IntentParser:
 
     @staticmethod
     def _age_filter_to_params(age_filter: JsonDict | None) -> JsonDict:
-        params: JsonDict = {"age_min": None, "age_max_exclusive": None, "age_max_inclusive": None}
+        params: JsonDict = {"age_min": None,
+                            "age_max_exclusive": None, "age_max_inclusive": None}
         if not age_filter:
             return params
         op = age_filter.get("operator")
@@ -1274,13 +1379,16 @@ class IntentParser:
     # ------------------------------------------------------------------
 
     def _infer_metrics(self, intent_id: str, intent: JsonDict, f: JsonDict) -> list[JsonDict]:
-        catalog_metrics = deepcopy(intent.get("metrics", [])) if isinstance(intent.get("metrics"), list) else []
+        catalog_metrics = deepcopy(intent.get("metrics", [])) if isinstance(
+            intent.get("metrics"), list) else []
         if catalog_metrics:
             return catalog_metrics
         if "percentage" in intent_id or f.get("asks_percentage") or "share" in intent_id:
             return [
-                {"name": "employee_count", "expression": "COUNT(v.employee_id)", "title_fa": "تعداد کارکنان"},
-                {"name": "percentage", "expression": "ROUND(... / NULLIF(...), 2)", "title_fa": "درصد"},
+                {"name": "employee_count",
+                    "expression": "COUNT(v.employee_id)", "title_fa": "تعداد کارکنان"},
+                {"name": "percentage",
+                    "expression": "ROUND(... / NULLIF(...), 2)", "title_fa": "درصد"},
             ]
         if intent_id == "average_age":
             return [{"name": "average_age", "expression": "ROUND(AVG(v.age), 2)", "title_fa": "میانگین سن"}]
@@ -1288,9 +1396,12 @@ class IntentParser:
             return [{"name": "average_service_years", "expression": "ROUND(AVG(v.service_years), 2)", "title_fa": "میانگین سابقه"}]
         if "headcount_gap" in intent_id:
             return [
-                {"name": "actual_headcount", "expression": "COUNT(v.employee_id)", "title_fa": "نیروی موجود"},
-                {"name": "approved_headcount", "expression": "MAX(v.department_approved_headcount)", "title_fa": "چارت مصوب"},
-                {"name": "headcount_gap", "expression": "MAX(v.department_approved_headcount) - COUNT(v.employee_id)", "title_fa": "اختلاف نیرو"},
+                {"name": "actual_headcount",
+                    "expression": "COUNT(v.employee_id)", "title_fa": "نیروی موجود"},
+                {"name": "approved_headcount",
+                    "expression": "MAX(v.department_approved_headcount)", "title_fa": "چارت مصوب"},
+                {"name": "headcount_gap",
+                    "expression": "MAX(v.department_approved_headcount) - COUNT(v.employee_id)", "title_fa": "اختلاف نیرو"},
             ]
         return [{"name": "employee_count", "expression": "COUNT(v.employee_id)", "title_fa": "تعداد کارکنان"}]
 
@@ -1416,8 +1527,10 @@ def token_overlap(a: str, b: str) -> float:
         "از", "به", "در", "را", "و", "یا", "که", "برای", "چقدر", "چند", "نفر",
         "است", "هست", "هستند", "داریم", "کند", "کن", "نمایش", "بده", "نشان",
     }
-    ta = {t for t in re.split(r"\s+", a.strip()) if len(t) > 1 and t not in stopwords}
-    tb = {t for t in re.split(r"\s+", b.strip()) if len(t) > 1 and t not in stopwords}
+    ta = {t for t in re.split(r"\s+", a.strip())
+          if len(t) > 1 and t not in stopwords}
+    tb = {t for t in re.split(r"\s+", b.strip())
+          if len(t) > 1 and t not in stopwords}
     if not ta or not tb:
         return 0.0
     return len(ta & tb) / max(1, min(len(ta), len(tb)))
@@ -1446,4 +1559,5 @@ if __name__ == "__main__":  # pragma: no cover - local smoke test.
     ]
     for sample in samples:
         result = parser.parse(sample)
-        print(sample, "=>", result.get("intent_id"), result.get("route"), result.get("sql_template_id"), result.get("params"))
+        print(sample, "=>", result.get("intent_id"), result.get("route"),
+              result.get("sql_template_id"), result.get("params"))

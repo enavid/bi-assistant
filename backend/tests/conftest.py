@@ -1,5 +1,12 @@
 from __future__ import annotations
 
+import sys
+from pathlib import Path
+
+import pytest
+
+from app.services.hr_bi.llm_orchestrator import LLMOrchestrator
+from app.services.hr_bi.metadata_service import get_metadata_service
 """
 conftest.py
 -----------
@@ -11,17 +18,10 @@ TDD contract:
 - metadata_service fixture loads from backend/metadata/
 """
 
-import sys
-from pathlib import Path
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
 if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
-
-import pytest
-
-from app.services.hr_bi.metadata_service import get_metadata_service
-from app.services.hr_bi.llm_orchestrator import LLMOrchestrator
 
 
 @pytest.fixture(scope="session")

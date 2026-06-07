@@ -1,4 +1,10 @@
 from __future__ import annotations
+import re
+import time
+from copy import deepcopy
+from pathlib import Path
+from dataclasses import dataclass, field
+from typing import Any, Iterable, Mapping
 
 """
 semantic_mapper.py
@@ -26,13 +32,6 @@ Expected metadata source:
     intent_catalog.yaml, access_policies.yaml and related metadata files.
 """
 
-import asyncio
-import re
-import time
-from copy import deepcopy
-from pathlib import Path
-from dataclasses import dataclass, field
-from typing import Any, Iterable, Mapping
 
 JsonDict = dict[str, Any]
 
@@ -154,15 +153,20 @@ class SemanticMapper:
             self.metadata = metadata_service
         elif get_metadata_service is not None:
             # strict=False keeps local/dev runs resilient while still returning warnings.
-            self.metadata = get_metadata_service(strict=False)  # type: ignore[misc]
+            self.metadata = get_metadata_service(
+                strict=False)  # type: ignore[misc]
             # Local smoke tests often keep metadata files beside this module rather than
             # in backend/metadata. If the singleton did not load metadata, try that folder.
             try:
-                health = self.metadata.health_check().to_dict() if hasattr(self.metadata, "health_check") else {}
-                if not health.get("ok") and MetadataService is not Any:  # type: ignore[comparison-overlap]
+                health = self.metadata.health_check().to_dict() if hasattr(
+                    self.metadata, "health_check") else {}
+                # type: ignore[comparison-overlap]
+                if not health.get("ok") and MetadataService is not Any:
                     local_dir = Path(__file__).resolve().parent
                     if (local_dir / "Template_03_semantic_layer.yaml").exists() or (local_dir / "semantic_layer.yaml").exists():
-                        self.metadata = MetadataService(metadata_dir=local_dir, strict=False)  # type: ignore[operator]
+                        self.metadata = MetadataService(
+                            # type: ignore[operator]
+                            metadata_dir=local_dir, strict=False)
             except Exception:
                 pass
         else:
@@ -206,29 +210,43 @@ class SemanticMapper:
         data_dictionary = self._get_document(service, "data_dictionary")
         intent_catalog = self._get_document(service, "intent_catalog")
 
-        reject_hits = self._detect_reject_semantics(normalized_question, semantic_layer)
-        gap_hits = self._detect_data_gap_semantics(normalized_question, semantic_layer)
+        reject_hits = self._detect_reject_semantics(
+            normalized_question, semantic_layer)
+        gap_hits = self._detect_data_gap_semantics(
+            normalized_question, semantic_layer)
 
-        concept_matches = self._match_semantic_concepts(normalized_question, semantic_layer)
-        index_matches = self._match_term_index(normalized_question, semantic_layer)
+        concept_matches = self._match_semantic_concepts(
+            normalized_question, semantic_layer)
+        index_matches = self._match_term_index(
+            normalized_question, semantic_layer)
         term_matches = self._merge_matches([*concept_matches, *index_matches])
 
-        mapped_concepts = self._build_mapped_concepts(term_matches, semantic_layer)
-        mapped_concepts = self._cleanup_mapped_concepts_for_context(mapped_concepts, normalized_question)
-        detected_terms = [match.to_dict() for match in term_matches[: self.config.max_matches]]
+        mapped_concepts = self._build_mapped_concepts(
+            term_matches, semantic_layer)
+        mapped_concepts = self._cleanup_mapped_concepts_for_context(
+            mapped_concepts, normalized_question)
+        detected_terms = [match.to_dict()
+                          for match in term_matches[: self.config.max_matches]]
 
-        metric_matches = self._match_metrics(normalized_question, semantic_layer)
-        value_filters = self._detect_value_filters(normalized_question, semantic_layer)
+        metric_matches = self._match_metrics(
+            normalized_question, semantic_layer)
+        value_filters = self._detect_value_filters(
+            normalized_question, semantic_layer)
         numeric_filters = self._detect_numeric_filters(normalized_question)
         filters = self._dedupe_filters([*value_filters, *numeric_filters])
 
-        group_by = self._detect_group_by(normalized_question, semantic_layer, filters, mapped_concepts)
+        group_by = self._detect_group_by(
+            normalized_question, semantic_layer, filters, mapped_concepts)
         query_features = self._detect_query_features(normalized_question)
-        filters = self._cleanup_filters_for_context(filters, group_by, query_features, normalized_question)
-        disambiguation_notes = self._apply_disambiguation(normalized_question, filters, group_by, mapped_concepts)
+        filters = self._cleanup_filters_for_context(
+            filters, group_by, query_features, normalized_question)
+        disambiguation_notes = self._apply_disambiguation(
+            normalized_question, filters, group_by, mapped_concepts)
 
-        mapped_columns = self._collect_columns(mapped_concepts, filters, group_by)
-        mapped_metrics = self._collect_metrics(mapped_concepts, metric_matches, query_features)
+        mapped_columns = self._collect_columns(
+            mapped_concepts, filters, group_by)
+        mapped_metrics = self._collect_metrics(
+            mapped_concepts, metric_matches, query_features)
         candidate_intents = self._rank_candidate_intents(
             normalized_question=normalized_question,
             semantic_layer=semantic_layer,
@@ -239,7 +257,8 @@ class SemanticMapper:
             group_by=group_by,
             query_features=query_features,
         )
-        candidate_routes = self._collect_routes(mapped_concepts, reject_hits, gap_hits)
+        candidate_routes = self._collect_routes(
+            mapped_concepts, reject_hits, gap_hits)
         data_statuses = self._collect_data_statuses(mapped_concepts, gap_hits)
 
         status, route, reason = self._decide_status_and_route(
@@ -328,7 +347,8 @@ class SemanticMapper:
         text = text.translate(DIGIT_TRANSLATION)
         # Normalize common Persian number words that matter for this MVP.
         for word, value in sorted(PERSIAN_NUMBER_WORDS.items(), key=lambda item: -len(item[0])):
-            text = re.sub(rf"(?<!\S){re.escape(word)}(?=\s*(?:سال|تا|و|$))", str(value), text)
+            text = re.sub(
+                rf"(?<!\S){re.escape(word)}(?=\s*(?:سال|تا|و|$))", str(value), text)
         text = re.sub(r"[\t\r\n]+", " ", text)
         text = re.sub(r"[؟?؛;،,]+", " ", text)
         text = re.sub(r"\s+", " ", text)
@@ -381,7 +401,8 @@ class SemanticMapper:
             category = concept.get("category")
             route = self._safe_maps_to(concept).get("route")
             priority = str(concept.get("priority", "medium"))
-            priority_bonus = {"high": 2.0, "medium": 1.0, "low": 0.3}.get(priority, 0.5)
+            priority_bonus = {"high": 2.0, "medium": 1.0,
+                              "low": 0.3}.get(priority, 0.5)
             for term in concept.get("user_terms_fa", []) or []:
                 normalized_term = self._normalize_term(term)
                 if len(normalized_term) < self.config.min_term_length:
@@ -397,20 +418,24 @@ class SemanticMapper:
                         category=str(category) if category else None,
                         route=str(route) if route else None,
                         source="semantic_concept",
-                        score=self._term_score(normalized_term, priority_bonus),
+                        score=self._term_score(
+                            normalized_term, priority_bonus),
                         start=start,
                         end=start + len(normalized_term),
-                        metadata={"priority": priority, "title_fa": concept.get("title_fa")},
+                        metadata={"priority": priority,
+                                  "title_fa": concept.get("title_fa")},
                     )
                 )
         return matches
 
     def _match_term_index(self, normalized_question: str, semantic_layer: JsonDict) -> list[TermMatch]:
         matches: list[TermMatch] = []
-        term_index = semantic_layer.get("term_index_for_semantic_mapper", []) or []
+        term_index = semantic_layer.get(
+            "term_index_for_semantic_mapper", []) or []
         if isinstance(term_index, dict):
             iterable: Iterable[Any] = [
-                {"term": term, **(value if isinstance(value, dict) else {"concept_id": value})}
+                {"term": term, **(value if isinstance(value, dict)
+                                  else {"concept_id": value})}
                 for term, value in term_index.items()
             ]
         else:
@@ -429,14 +454,18 @@ class SemanticMapper:
                 TermMatch(
                     term=str(term),
                     normalized_term=normalized_term,
-                    concept_id=str(item.get("concept_id")) if item.get("concept_id") else None,
-                    category=str(item.get("category")) if item.get("category") else None,
-                    route=str(item.get("route")) if item.get("route") else None,
+                    concept_id=str(item.get("concept_id")) if item.get(
+                        "concept_id") else None,
+                    category=str(item.get("category")) if item.get(
+                        "category") else None,
+                    route=str(item.get("route")) if item.get(
+                        "route") else None,
                     source="term_index",
                     score=self._term_score(normalized_term, 0.6),
                     start=start,
                     end=start + len(normalized_term),
-                    metadata={k: v for k, v in item.items() if k not in {"term", "concept_id", "category", "route"}},
+                    metadata={k: v for k, v in item.items() if k not in {
+                        "term", "concept_id", "category", "route"}},
                 )
             )
         return matches
@@ -492,9 +521,11 @@ class SemanticMapper:
             item["matched_terms"].append(match.term)
             item["score"] = max(float(item.get("score", 0.0)), match.score)
         mapped = list(grouped.values())
-        mapped.sort(key=lambda item: (-float(item.get("score", 0.0)), str(item.get("concept_id"))))
+        mapped.sort(key=lambda item: (-float(item.get("score", 0.0)),
+                    str(item.get("concept_id"))))
         for item in mapped:
-            item["matched_terms"] = list(dict.fromkeys(item.get("matched_terms", [])))[:8]
+            item["matched_terms"] = list(
+                dict.fromkeys(item.get("matched_terms", [])))[:8]
             item["score"] = round(float(item.get("score", 0.0)), 4)
         return mapped
 
@@ -503,7 +534,8 @@ class SemanticMapper:
         """Remove concepts caused by ambiguous words when a clearer phrase exists."""
         cleaned = list(mapped_concepts)
         if "نوع استخدام" in normalized_question and not any(term in normalized_question for term in ["جذب", "سال جذب", "روند جذب", "اخیر"]):
-            cleaned = [item for item in cleaned if item.get("concept_id") not in {"hiring", "hiring_trend_annual", "hiring_last_15_years"}]
+            cleaned = [item for item in cleaned if item.get(
+                "concept_id") not in {"hiring", "hiring_trend_annual", "hiring_last_15_years"}]
         if "نوع قرارداد" in normalized_question or "قرارداد" in normalized_question:
             # رسمی/قراردادی/پیمانی can be employment values, but explicit contract context wins.
             # We keep contract_type concepts and let filter disambiguation map values to contract_type.
@@ -560,8 +592,10 @@ class SemanticMapper:
         if not isinstance(value_aliases, dict):
             return filters
 
-        question_mentions_contract_type = any(term in normalized_question for term in ["نوع قرارداد", "قراردادهای", "قرارداد ", " قرارداد"])
-        question_mentions_position_expert = any(term in normalized_question for term in ["پست کارشناسی", "نقش کارشناسی", "پست کارشناس", "عنوان پست کارشناسی"])
+        question_mentions_contract_type = any(term in normalized_question for term in [
+                                              "نوع قرارداد", "قراردادهای", "قرارداد ", " قرارداد"])
+        question_mentions_position_expert = any(term in normalized_question for term in [
+                                                "پست کارشناسی", "نقش کارشناسی", "پست کارشناس", "عنوان پست کارشناسی"])
 
         for column, entries in value_aliases.items():
             if not isinstance(entries, list):
@@ -583,7 +617,8 @@ class SemanticMapper:
                 operator = "="
                 value: Any = canonical
                 filter_sql = entry.get("filter_sql")
-                confidence = 0.72 + min(len(max(matched_aliases, key=len)), 20) / 100
+                confidence = 0.72 + \
+                    min(len(max(matched_aliases, key=len)), 20) / 100
 
                 # Disambiguation: پیمانکاری is better represented by is_contractor for shares/counts.
                 if mapped_column == "employment_type" and str(canonical) == "شاغل در پیمانکاری":
@@ -626,7 +661,8 @@ class SemanticMapper:
             for match in re.finditer(pattern, normalized_question):
                 value = int(match.group(1))
                 if 0 < value < 100:
-                    filters.append(self._numeric_filter("age", "<", value, match.group(0), f"v.age < {value}"))
+                    filters.append(self._numeric_filter(
+                        "age", "<", value, match.group(0), f"v.age < {value}"))
 
         # Age: بالای / بیشتر از / N به بالا
         for pattern in [r"(?:بالای|بالاتر از|بیشتر از|بیش از)\s+(\d{1,3})\s*(?:سال)?", r"(\d{1,3})\s*(?:سال)?\s*به بالا"]:
@@ -634,7 +670,8 @@ class SemanticMapper:
                 value = int(match.group(1))
                 if 0 < value < 100:
                     # Prompt contract uses >= for "above/senior" age buckets in MVP.
-                    filters.append(self._numeric_filter("age", ">=", value, match.group(0), f"v.age >= {value}"))
+                    filters.append(self._numeric_filter(
+                        "age", ">=", value, match.group(0), f"v.age >= {value}"))
 
         # Age range: بین A و B / A تا B سال
         for pattern in [r"بین\s+(\d{1,3})\s*(?:و|تا)\s*(\d{1,3})\s*(?:سال)?", r"(\d{1,3})\s*تا\s*(\d{1,3})\s*سال"]:
@@ -655,10 +692,12 @@ class SemanticMapper:
 
         # Service years: بدون سابقه / سابقه صفر
         if any(term in normalized_question for term in ["بدون سابقه", "سابقه صفر", "صفر سابقه"]):
-            filters.append(self._numeric_filter("service_years", "=", 0, "بدون سابقه", "COALESCE(v.service_years, 0) = 0"))
+            filters.append(self._numeric_filter(
+                "service_years", "=", 0, "بدون سابقه", "COALESCE(v.service_years, 0) = 0"))
 
         # Last N years of hiring.
-        last_years_match = re.search(r"(\d{1,2})\s*سال\s*اخیر", normalized_question)
+        last_years_match = re.search(
+            r"(\d{1,2})\s*سال\s*اخیر", normalized_question)
         if last_years_match and any(term in normalized_question for term in ["جذب", "استخدام"]):
             n = int(last_years_match.group(1))
             if 1 <= n <= 50:
@@ -718,8 +757,10 @@ class SemanticMapper:
                 )
 
         # Generic grouping cues + known dimensions.
-        grouping_cues = ["به تفکیک", "بر اساس", "براساس", "در هر", "برای هر", "سهم هر", "توزیع", "نسبت", "روند"]
-        has_grouping_cue = any(cue in normalized_question for cue in grouping_cues)
+        grouping_cues = ["به تفکیک", "بر اساس", "براساس",
+                         "در هر", "برای هر", "سهم هر", "توزیع", "نسبت", "روند"]
+        has_grouping_cue = any(
+            cue in normalized_question for cue in grouping_cues)
         dimension_columns = {
             "gender", "marital_status", "age_group_title", "education_title", "education_category",
             "employment_type", "contract_type", "service_domain", "department_name", "province", "city",
@@ -728,19 +769,23 @@ class SemanticMapper:
 
         # Special case: زن و مرد means group by gender, not two filters.
         if any(term in normalized_question for term in ["زن و مرد", "مرد و زن", "زنان و مردان", "تعداد زن و مرد"]):
-            group_by.append(self._group_item("gender", "gender_pair_expression", ["زن و مرد"], 0.96))
+            group_by.append(self._group_item(
+                "gender", "gender_pair_expression", ["زن و مرد"], 0.96))
 
         # Special case: trend / روند جذب => group by hire_year.
         if "روند" in normalized_question and any(term in normalized_question for term in ["جذب", "استخدام"]):
-            group_by.append(self._group_item("hire_year", "trend_hiring", ["روند جذب"], 0.95, preferred_visualization="line_chart"))
+            group_by.append(self._group_item("hire_year", "trend_hiring", [
+                            "روند جذب"], 0.95, preferred_visualization="line_chart"))
 
         if any(term in normalized_question for term in ["بیشترین جذب", "کمترین جذب", "سال بیشترین جذب", "سال کمترین جذب"]):
-            group_by.append(self._group_item("hire_year", "most_or_least_hiring_year", ["بیشترین/کمترین جذب"], 0.93, preferred_visualization="table"))
+            group_by.append(self._group_item("hire_year", "most_or_least_hiring_year", [
+                            "بیشترین/کمترین جذب"], 0.93, preferred_visualization="table"))
 
         # If grouping cues exist, concepts can imply group_by dimensions.
         if has_grouping_cue:
             for concept in mapped_concepts:
-                maps_to = concept.get("maps_to", {}) if isinstance(concept.get("maps_to"), dict) else {}
+                maps_to = concept.get("maps_to", {}) if isinstance(
+                    concept.get("maps_to"), dict) else {}
                 column = maps_to.get("column")
                 if column in dimension_columns and column not in filter_columns:
                     # "نوع استخدام" contains the word استخدام but is not a hiring-year grouping request.
@@ -749,18 +794,23 @@ class SemanticMapper:
                     if column == "hire_year" and not any(term in normalized_question for term in ["جذب", "سال جذب", "روند جذب", "استخدام سالانه"]):
                         continue
                     if column == "city":
-                        group_by.append(self._group_item("city", "city_data_gap_dimension", concept.get("matched_terms", []), 0.89, sql="DATA_GAP"))
+                        group_by.append(self._group_item("city", "city_data_gap_dimension", concept.get(
+                            "matched_terms", []), 0.89, sql="DATA_GAP"))
                     else:
-                        group_by.append(self._group_item(str(column), "concept_dimension", concept.get("matched_terms", []), 0.84))
+                        group_by.append(self._group_item(
+                            str(column), "concept_dimension", concept.get("matched_terms", []), 0.84))
 
         # Phrases without explicit "به تفکیک" can still imply grouping.
         implicit_group_patterns: list[tuple[list[str], str, str]] = [
             (["گروه سنی"], "age_group_title", "implicit_age_group"),
-            (["مدرک تحصیلی", "تحصیلات مختلف", "بر اساس مدرک"], "education_title", "implicit_education"),
+            (["مدرک تحصیلی", "تحصیلات مختلف", "بر اساس مدرک"],
+             "education_title", "implicit_education"),
             (["نوع استخدام"], "employment_type", "implicit_employment_type"),
             (["نوع قرارداد"], "contract_type", "implicit_contract_type"),
-            (["حوزه خدمت", "هر حوزه", "حوزه"], "service_domain", "implicit_service_domain"),
-            (["هر بخش", "هر واحد", "بخش", "واحد", "اداره", "دپارتمان"], "department_name", "implicit_department"),
+            (["حوزه خدمت", "هر حوزه", "حوزه"],
+             "service_domain", "implicit_service_domain"),
+            (["هر بخش", "هر واحد", "بخش", "واحد", "اداره", "دپارتمان"],
+             "department_name", "implicit_department"),
             (["هر استان", "استان"], "province", "implicit_province"),
             (["سال جذب", "جذب سالانه"], "hire_year", "implicit_hire_year"),
         ]
@@ -814,7 +864,8 @@ class SemanticMapper:
         has_gender_pair = bool(query_features.get("mentions_gender_pair")) or any(
             term in normalized_question for term in ["زن و مرد", "مرد و زن", "زنان و مردان"]
         )
-        has_numeric_age_filter = any(item.get("column") == "age" for item in filters)
+        has_numeric_age_filter = any(
+            item.get("column") == "age" for item in filters)
 
         for item in filters:
             item = deepcopy(item)
@@ -867,25 +918,33 @@ class SemanticMapper:
         notes: list[JsonDict] = []
 
         if any(term in normalized_question for term in ["نوع استخدام", "استخدام"]):
-            notes.append({"rule_id": "DISAMBIG_001", "applied": True, "mapping": "employment_type", "reason": "User mentioned نوع استخدام/استخدام."})
+            notes.append({"rule_id": "DISAMBIG_001", "applied": True,
+                         "mapping": "employment_type", "reason": "User mentioned نوع استخدام/استخدام."})
         if any(term in normalized_question for term in ["نوع قرارداد", "قرارداد"]):
-            notes.append({"rule_id": "DISAMBIG_001", "applied": True, "mapping": "contract_type", "reason": "User mentioned نوع قرارداد/قرارداد."})
+            notes.append({"rule_id": "DISAMBIG_001", "applied": True,
+                         "mapping": "contract_type", "reason": "User mentioned نوع قرارداد/قرارداد."})
 
         if "پیمانکاری" in normalized_question:
-            notes.append({"rule_id": "DISAMBIG_002", "applied": True, "mapping": "is_contractor = TRUE", "reason": "Contractor concepts use is_contractor for shares/counts."})
+            notes.append({"rule_id": "DISAMBIG_002", "applied": True, "mapping": "is_contractor = TRUE",
+                         "reason": "Contractor concepts use is_contractor for shares/counts."})
             # Prefer is_contractor and suppress duplicate employment_type contractor filters.
-            has_contractor_bool = any(f.get("column") == "is_contractor" for f in filters)
+            has_contractor_bool = any(
+                f.get("column") == "is_contractor" for f in filters)
             if has_contractor_bool:
-                filters[:] = [f for f in filters if not (f.get("column") == "employment_type" and f.get("value") == "شاغل در پیمانکاری")]
+                filters[:] = [f for f in filters if not (
+                    f.get("column") == "employment_type" and f.get("value") == "شاغل در پیمانکاری")]
 
         if any(term in normalized_question for term in ["پست کارشناسی", "نقش کارشناسی", "پست کارشناس"]):
-            notes.append({"rule_id": "DISAMBIG_003", "applied": True, "mapping": "is_expert_role", "reason": "کارشناسی appears in position context."})
+            notes.append({"rule_id": "DISAMBIG_003", "applied": True,
+                         "mapping": "is_expert_role", "reason": "کارشناسی appears in position context."})
 
         if any(term in normalized_question for term in ["شهر", "هر شهر", "تحلیل شهری"]):
-            notes.append({"rule_id": "DISAMBIG_008", "applied": True, "mapping": "DATA_GAP", "reason": "City-level data is not reliable in MVP."})
+            notes.append({"rule_id": "DISAMBIG_008", "applied": True, "mapping": "DATA_GAP",
+                         "reason": "City-level data is not reliable in MVP."})
 
         if any(term in normalized_question for term in ["آستانه بازنشستگی", "نزدیک بازنشستگی"]):
-            notes.append({"rule_id": "DISAMBIG_007", "applied": True, "mapping": "DATA_GAP", "reason": "No formal retirement rule is defined."})
+            notes.append({"rule_id": "DISAMBIG_007", "applied": True,
+                         "mapping": "DATA_GAP", "reason": "No formal retirement rule is defined."})
 
         return notes
 
@@ -982,15 +1041,18 @@ class SemanticMapper:
         def add_score(intent_id: str, score: float, reason: str) -> None:
             if not intent_id:
                 return
-            item = scores.setdefault(intent_id, {"intent_id": intent_id, "score": 0.0, "reasons": []})
+            item = scores.setdefault(
+                intent_id, {"intent_id": intent_id, "score": 0.0, "reasons": []})
             item["score"] += score
             item["reasons"].append(reason)
 
         # Semantic concepts can point directly to related intents.
         for concept in mapped_concepts:
-            maps_to = concept.get("maps_to", {}) if isinstance(concept.get("maps_to"), dict) else {}
+            maps_to = concept.get("maps_to", {}) if isinstance(
+                concept.get("maps_to"), dict) else {}
             for intent_id in maps_to.get("related_intents", []) or []:
-                add_score(str(intent_id), 5.0 + float(concept.get("score", 0)) / 2, f"semantic:{concept.get('concept_id')}")
+                add_score(str(intent_id), 5.0 + float(concept.get("score", 0)
+                                                      ) / 2, f"semantic:{concept.get('concept_id')}")
 
         # Intent trigger terms and examples.
         for intent in intent_catalog.get("intents", []) or []:
@@ -1000,16 +1062,17 @@ class SemanticMapper:
             for term in intent.get("trigger_terms_fa", []) or []:
                 normalized_term = self._normalize_term(term)
                 if normalized_term and self._find_term(normalized_question, normalized_term) >= 0:
-                    add_score(intent_id, 4.5 + min(len(normalized_term), 25) / 10, f"trigger:{term}")
+                    add_score(
+                        intent_id, 4.5 + min(len(normalized_term), 25) / 10, f"trigger:{term}")
             if self.config.include_example_overlap:
                 for example in intent.get("user_examples", []) or []:
-                    overlap = self._token_overlap(normalized_question, self._normalize_term(example))
+                    overlap = self._token_overlap(
+                        normalized_question, self._normalize_term(example))
                     if overlap >= 0.45:
                         add_score(intent_id, 2.2 * overlap, "example_overlap")
 
         # Heuristic intent boosts for common HR BI questions.
         group_columns = {str(item.get("column")) for item in group_by}
-        filter_columns = {str(item.get("column")) for item in filters}
         metric_ids = {str(item.get("metric_id")) for item in metric_matches}
 
         if query_features.get("asks_average") and (
@@ -1019,48 +1082,64 @@ class SemanticMapper:
         ):
             add_score("average_age", 10.0, "heuristic_average_age")
         if (query_features.get("asks_average") and "سابقه" in normalized_question) or "average_service_years" in metric_ids:
-            add_score("average_service_years", 7.0, "heuristic_average_service_years")
+            add_score("average_service_years", 7.0,
+                      "heuristic_average_service_years")
         if "gender" in group_columns:
-            add_score("employee_count_by_gender", 5.5, "heuristic_group_gender")
+            add_score("employee_count_by_gender",
+                      5.5, "heuristic_group_gender")
         if "education_title" in group_columns:
-            add_score("employee_count_by_education", 5.0, "heuristic_group_education")
+            add_score("employee_count_by_education",
+                      5.0, "heuristic_group_education")
         if "employment_type" in group_columns:
-            add_score("employee_count_by_employment_type", 5.0, "heuristic_group_employment_type")
+            add_score("employee_count_by_employment_type",
+                      5.0, "heuristic_group_employment_type")
         if "contract_type" in group_columns:
-            add_score("employee_count_by_contract_type", 5.0, "heuristic_group_contract_type")
+            add_score("employee_count_by_contract_type",
+                      5.0, "heuristic_group_contract_type")
         if "service_domain" in group_columns and query_features.get("mentions_contractors"):
-            add_score("contractor_share_by_service_domain", 6.0, "heuristic_contractor_by_domain")
+            add_score("contractor_share_by_service_domain",
+                      6.0, "heuristic_contractor_by_domain")
         elif "service_domain" in group_columns:
-            add_score("employee_count_by_service_domain", 4.5, "heuristic_group_service_domain")
+            add_score("employee_count_by_service_domain",
+                      4.5, "heuristic_group_service_domain")
         if "province" in group_columns:
-            add_score("employee_count_by_province", 4.5, "heuristic_group_province")
+            add_score("employee_count_by_province",
+                      4.5, "heuristic_group_province")
         if "department_name" in group_columns and query_features.get("asks_gap"):
-            add_score("headcount_gap_by_department", 6.0, "heuristic_headcount_gap_department")
+            add_score("headcount_gap_by_department", 6.0,
+                      "heuristic_headcount_gap_department")
         elif "department_name" in group_columns:
-            add_score("employee_count_by_department", 4.5, "heuristic_group_department")
+            add_score("employee_count_by_department",
+                      4.5, "heuristic_group_department")
         if "hire_year" in group_columns and (query_features.get("asks_trend") or query_features.get("mentions_hiring")):
             add_score("hiring_trend_annual", 5.5, "heuristic_hiring_trend")
         if any(f.get("column") == "hire_year" and "current_shamsi_year" in str(f.get("value")) for f in filters):
             add_score("hiring_last_15_years", 6.0, "heuristic_last_n_hiring")
         if query_features.get("asks_most") and query_features.get("mentions_hiring"):
-            add_score("most_or_least_hiring_year", 5.0, "heuristic_most_hiring")
+            add_score("most_or_least_hiring_year",
+                      5.0, "heuristic_most_hiring")
         if query_features.get("asks_least") and query_features.get("mentions_hiring"):
-            add_score("most_or_least_hiring_year", 5.0, "heuristic_least_hiring")
+            add_score("most_or_least_hiring_year",
+                      5.0, "heuristic_least_hiring")
         if query_features.get("mentions_contractors") and query_features.get("asks_percentage") and "service_domain" not in group_columns:
             add_score("contractor_share", 5.5, "heuristic_contractor_share")
         if query_features.get("asks_count") and not group_by and not filters and not scores:
             add_score("total_employee_count", 4.0, "heuristic_total_count")
         if any(f.get("column") == "age" for f in filters):
-            add_score("employee_count_by_age_filter", 5.0, "heuristic_age_filter")
+            add_score("employee_count_by_age_filter",
+                      5.0, "heuristic_age_filter")
         if any(f.get("column") == "gender" for f in filters) and query_features.get("asks_percentage"):
             add_score("gender_percentage", 5.5, "heuristic_gender_percentage")
         if any(f.get("column") == "contract_type" for f in filters) and query_features.get("asks_count"):
-            add_score("employee_count_by_contract_type", 16.0, "heuristic_contract_type_filter")
+            add_score("employee_count_by_contract_type",
+                      16.0, "heuristic_contract_type_filter")
         if any(f.get("column") == "employment_type" for f in filters) and query_features.get("asks_count"):
-            add_score("employee_count_by_employment_type", 8.0, "heuristic_employment_type_filter")
+            add_score("employee_count_by_employment_type",
+                      8.0, "heuristic_employment_type_filter")
 
         ranked = list(scores.values())
-        ranked.sort(key=lambda item: (-float(item.get("score", 0.0)), str(item.get("intent_id"))))
+        ranked.sort(key=lambda item: (-float(item.get("score", 0.0)),
+                    str(item.get("intent_id"))))
         for item in ranked:
             item["score"] = round(float(item.get("score", 0.0)), 4)
             item["reasons"] = list(dict.fromkeys(item.get("reasons", [])))[:8]
@@ -1081,18 +1160,22 @@ class SemanticMapper:
     def _collect_columns(self, mapped_concepts: list[JsonDict], filters: list[JsonDict], group_by: list[JsonDict]) -> list[str]:
         columns: list[str] = []
         for concept in mapped_concepts:
-            maps_to = concept.get("maps_to", {}) if isinstance(concept.get("maps_to"), dict) else {}
+            maps_to = concept.get("maps_to", {}) if isinstance(
+                concept.get("maps_to"), dict) else {}
             column = maps_to.get("column")
             if column:
                 columns.append(str(column))
-        columns.extend(str(f.get("column")) for f in filters if f.get("column"))
-        columns.extend(str(g.get("column")) for g in group_by if g.get("column"))
+        columns.extend(str(f.get("column"))
+                       for f in filters if f.get("column"))
+        columns.extend(str(g.get("column"))
+                       for g in group_by if g.get("column"))
         return sorted(set(c for c in columns if c and c != "None"))
 
     def _collect_metrics(self, mapped_concepts: list[JsonDict], metric_matches: list[JsonDict], query_features: JsonDict) -> list[str]:
         metrics: list[str] = []
         for concept in mapped_concepts:
-            maps_to = concept.get("maps_to", {}) if isinstance(concept.get("maps_to"), dict) else {}
+            maps_to = concept.get("maps_to", {}) if isinstance(
+                concept.get("maps_to"), dict) else {}
             metric = maps_to.get("metric")
             if metric:
                 metrics.append(str(metric))
@@ -1116,7 +1199,8 @@ class SemanticMapper:
         if gap_hits:
             routes.append(ROUTE_GAP)
         for concept in mapped_concepts:
-            maps_to = concept.get("maps_to", {}) if isinstance(concept.get("maps_to"), dict) else {}
+            maps_to = concept.get("maps_to", {}) if isinstance(
+                concept.get("maps_to"), dict) else {}
             route = maps_to.get("route")
             if route:
                 routes.append(str(route))
@@ -1181,7 +1265,8 @@ class SemanticMapper:
             return 0.95
         score = 0.15
         if term_matches:
-            score += min(0.35, len(term_matches) * 0.045 + max(m.score for m in term_matches) / 60)
+            score += min(0.35, len(term_matches) * 0.045 +
+                         max(m.score for m in term_matches) / 60)
         if metric_matches:
             score += 0.12
         if filters:
@@ -1205,14 +1290,19 @@ class SemanticMapper:
         disambiguation_notes: list[JsonDict],
     ) -> list[str]:
         warnings: list[str] = []
-        columns = {str(col.get("name")) for col in data_dictionary.get("columns", []) or [] if isinstance(col, dict)}
-        missing = [col for col in mapped_columns if columns and col not in columns]
+        columns = {str(col.get("name")) for col in data_dictionary.get(
+            "columns", []) or [] if isinstance(col, dict)}
+        missing = [
+            col for col in mapped_columns if columns and col not in columns]
         if missing:
-            warnings.append("Mapped columns not found in data_dictionary: " + ", ".join(sorted(set(missing))))
+            warnings.append(
+                "Mapped columns not found in data_dictionary: " + ", ".join(sorted(set(missing))))
         if any(item.get("column") == "city" for item in group_by) or "شهر" in normalized_question:
-            warnings.append("City-level questions should be handled as DATA_GAP in the current MVP.")
+            warnings.append(
+                "City-level questions should be handled as DATA_GAP in the current MVP.")
         if any(item.get("column") == "department_approved_headcount" for item in filters) or any("چارت مصوب" in str(item) for item in disambiguation_notes):
-            warnings.append("For approved headcount, do not SUM department_approved_headcount over employee rows.")
+            warnings.append(
+                "For approved headcount, do not SUM department_approved_headcount over employee rows.")
         return list(dict.fromkeys(warnings))
 
     # ------------------------------------------------------------------
@@ -1310,7 +1400,8 @@ if __name__ == "__main__":  # pragma: no cover - local smoke test.
     for q in sample_questions:
         result = mapper.map(q)
         print("\nQUESTION:", q)
-        print("STATUS:", result["status"], "ROUTE:", result["route"], "INTENT:", result["detected_intent"])
+        print("STATUS:", result["status"], "ROUTE:",
+              result["route"], "INTENT:", result["detected_intent"])
         print("COLUMNS:", result["mapped_columns"])
         print("FILTERS:", result["filters"])
         print("GROUP_BY:", result["group_by"])

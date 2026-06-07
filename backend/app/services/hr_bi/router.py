@@ -1,4 +1,10 @@
 from __future__ import annotations
+import re
+import time
+from copy import deepcopy
+from dataclasses import asdict, dataclass, field, is_dataclass
+from pathlib import Path
+from typing import Any, Mapping
 
 """
 router.py
@@ -28,13 +34,6 @@ Design principles:
     - The router is metadata-aware but works even if metadata is partially missing.
 """
 
-import asyncio
-import re
-import time
-from copy import deepcopy
-from dataclasses import asdict, dataclass, field, is_dataclass
-from pathlib import Path
-from typing import Any, Mapping
 
 JsonDict = dict[str, Any]
 
@@ -149,13 +148,18 @@ class DecisionRouter:
         if metadata_service is not None:
             self.metadata = metadata_service
         elif get_metadata_service is not None:
-            self.metadata = get_metadata_service(strict=False)  # type: ignore[misc]
+            self.metadata = get_metadata_service(
+                strict=False)  # type: ignore[misc]
             try:
-                health = self.metadata.health_check().to_dict() if hasattr(self.metadata, "health_check") else {}
-                if not health.get("ok") and MetadataService is not Any:  # type: ignore[comparison-overlap]
+                health = self.metadata.health_check().to_dict() if hasattr(
+                    self.metadata, "health_check") else {}
+                # type: ignore[comparison-overlap]
+                if not health.get("ok") and MetadataService is not Any:
                     local_dir = Path(__file__).resolve().parent
                     if (local_dir / "Template_00_data_dictionary.yaml").exists() or (local_dir / "data_dictionary.yaml").exists():
-                        self.metadata = MetadataService(metadata_dir=local_dir, strict=False)  # type: ignore[operator]
+                        self.metadata = MetadataService(
+                            # type: ignore[operator]
+                            metadata_dir=local_dir, strict=False)
             except Exception:
                 pass
         else:
@@ -195,12 +199,14 @@ class DecisionRouter:
 
         metadata_health = self._metadata_health(service)
         if metadata_health and metadata_health.get("errors"):
-            warnings.extend(str(item) for item in metadata_health.get("errors", [])[:5])
+            warnings.extend(str(item)
+                            for item in metadata_health.get("errors", [])[:5])
 
         # 1) Previous terminal results win. This preserves privacy and safety.
         terminal = self._terminal_from_previous_steps(context, service)
         if terminal:
-            terminal["warnings"] = list(dict.fromkeys((terminal.get("warnings") or []) + warnings))[: self.config.max_warnings]
+            terminal["warnings"] = list(dict.fromkeys(
+                (terminal.get("warnings") or []) + warnings))[: self.config.max_warnings]
             terminal["duration_ms"] = self._elapsed_ms(started)
             return terminal
 
@@ -220,7 +226,8 @@ class DecisionRouter:
                 started=started,
             )
             if semantic_terminal:
-                semantic_terminal["warnings"] = list(dict.fromkeys((semantic_terminal.get("warnings") or []) + warnings))[: self.config.max_warnings]
+                semantic_terminal["warnings"] = list(dict.fromkeys(
+                    (semantic_terminal.get("warnings") or []) + warnings))[: self.config.max_warnings]
                 semantic_terminal["duration_ms"] = self._elapsed_ms(started)
                 return semantic_terminal
 
@@ -235,7 +242,8 @@ class DecisionRouter:
                 warnings=warnings,
             )
 
-        intent_id = self._first_present(intent_result, "intent_id", "intent", "detected_intent")
+        intent_id = self._first_present(
+            intent_result, "intent_id", "intent", "detected_intent")
         confidence = self._safe_float(intent_result.get("confidence"))
         intent_route = str(intent_result.get("route") or "").upper().strip()
         intent_status = str(intent_result.get("status") or "").upper().strip()
@@ -243,17 +251,21 @@ class DecisionRouter:
         # 3) Terminal route/status from intent parser wins, but normalized.
         if intent_route in {ROUTE_GAP, ROUTE_REJECT, ROUTE_CLARIFICATION} or intent_status in TERMINAL_STATUS_TO_ROUTE:
             status = self._status_for_terminal(intent_route, intent_status)
-            route = self._route_for_status_or_route(status=status, route=intent_route)
+            route = self._route_for_status_or_route(
+                status=status, route=intent_route)
             return self._decision(
                 route=route,
                 status=status,
-                reason=str(intent_result.get("reason") or intent_result.get("gap_reason") or intent_result.get("reject_reason") or "Terminal intent decision."),
+                reason=str(intent_result.get("reason") or intent_result.get(
+                    "gap_reason") or intent_result.get("reject_reason") or "Terminal intent decision."),
                 decision_source="intent_parser.terminal",
                 intent_id=str(intent_id) if intent_id else None,
                 report_id=self._str_or_none(intent_result.get("report_id")),
                 confidence=confidence,
-                output_type=self._str_or_none(intent_result.get("output_type")) or "status_message",
-                recommended_visualization=self._str_or_none(intent_result.get("recommended_visualization")) or "status_message",
+                output_type=self._str_or_none(
+                    intent_result.get("output_type")) or "status_message",
+                recommended_visualization=self._str_or_none(
+                    intent_result.get("recommended_visualization")) or "status_message",
                 expected_status_sql=self._status_sql(status, service),
                 started=started,
                 service=service,
@@ -278,7 +290,8 @@ class DecisionRouter:
                 confidence=confidence,
                 output_type="status_message",
                 recommended_visualization="status_message",
-                expected_status_sql=self._status_sql(STATUS_NEEDS_CLARIFICATION, service),
+                expected_status_sql=self._status_sql(
+                    STATUS_NEEDS_CLARIFICATION, service),
                 started=started,
                 service=service,
                 user_role=user_role,
@@ -286,20 +299,27 @@ class DecisionRouter:
             )
 
         # 5) Metadata context check for SQL intents.
-        intent_meta = self._get_intent(service, str(intent_id)) if intent_id else None
+        intent_meta = self._get_intent(
+            service, str(intent_id)) if intent_id else None
         if not intent_meta and intent_id:
-            warnings.append(f"Intent '{intent_id}' was not found in intent_catalog metadata.")
+            warnings.append(
+                f"Intent '{intent_id}' was not found in intent_catalog metadata.")
 
-        catalog_route = str((intent_meta or {}).get("route") or "").upper().strip()
+        catalog_route = str((intent_meta or {}).get(
+            "route") or "").upper().strip()
         if catalog_route in {ROUTE_GAP, ROUTE_REJECT, ROUTE_CLARIFICATION}:
-            status = self._status_for_terminal(catalog_route, str((intent_meta or {}).get("status") or ""))
+            status = self._status_for_terminal(
+                catalog_route, str((intent_meta or {}).get("status") or ""))
             return self._decision(
-                route=self._route_for_status_or_route(status=status, route=catalog_route),
+                route=self._route_for_status_or_route(
+                    status=status, route=catalog_route),
                 status=status,
-                reason=str((intent_meta or {}).get("gap_reason") or (intent_meta or {}).get("reject_reason") or "Metadata catalog routes this intent away from SQL."),
+                reason=str((intent_meta or {}).get("gap_reason") or (intent_meta or {}).get(
+                    "reject_reason") or "Metadata catalog routes this intent away from SQL."),
                 decision_source="intent_catalog.terminal",
                 intent_id=str(intent_id) if intent_id else None,
-                report_id=self._str_or_none(intent_result.get("report_id") or (intent_meta or {}).get("report_id")),
+                report_id=self._str_or_none(intent_result.get(
+                    "report_id") or (intent_meta or {}).get("report_id")),
                 confidence=confidence,
                 output_type="status_message",
                 recommended_visualization="status_message",
@@ -321,7 +341,8 @@ class DecisionRouter:
                 reason="This HR intent is not supported in the current Controlled SQL-based MVP.",
                 decision_source="router.unsupported_phase2",
                 intent_id=str(intent_id) if intent_id else None,
-                report_id=self._str_or_none(intent_result.get("report_id") or (intent_meta or {}).get("report_id")),
+                report_id=self._str_or_none(intent_result.get(
+                    "report_id") or (intent_meta or {}).get("report_id")),
                 confidence=confidence,
                 output_type="status_message",
                 recommended_visualization="status_message",
@@ -333,17 +354,20 @@ class DecisionRouter:
             )
 
         # 7) Ensure required columns exist and are allowed for aggregated analytics.
-        required_columns = self._merge_lists(intent_result.get("required_columns"), (intent_meta or {}).get("required_columns"))
+        required_columns = self._merge_lists(intent_result.get(
+            "required_columns"), (intent_meta or {}).get("required_columns"))
         missing_columns = self._missing_columns(required_columns, service)
         if missing_columns:
-            warnings.append("Some required columns are missing from data_dictionary: " + ", ".join(missing_columns))
+            warnings.append(
+                "Some required columns are missing from data_dictionary: " + ", ".join(missing_columns))
             return self._decision(
                 route=ROUTE_GAP,
                 status=STATUS_DATA_GAP,
                 reason="The detected intent needs columns that are not available in the current analytics View metadata.",
                 decision_source="router.missing_columns",
                 intent_id=str(intent_id) if intent_id else None,
-                report_id=self._str_or_none(intent_result.get("report_id") or (intent_meta or {}).get("report_id")),
+                report_id=self._str_or_none(intent_result.get(
+                    "report_id") or (intent_meta or {}).get("report_id")),
                 confidence=confidence,
                 required_columns=required_columns,
                 missing_columns=missing_columns,
@@ -357,14 +381,17 @@ class DecisionRouter:
             )
 
         # 8) Resolve report and SQL template for supported SQL route.
-        report_id = self._str_or_none(intent_result.get("report_id") or (intent_meta or {}).get("report_id"))
-        report_meta = self._get_report(service, report_id) if report_id else None
+        report_id = self._str_or_none(intent_result.get(
+            "report_id") or (intent_meta or {}).get("report_id"))
+        report_meta = self._get_report(
+            service, report_id) if report_id else None
         report_status = str((report_meta or {}).get("status") or "").lower()
         if report_status in {"data_gap", "unsupported", "not_ready"}:
             return self._decision(
                 route=ROUTE_GAP,
                 status=STATUS_DATA_GAP,
-                reason=str((report_meta or {}).get("gap_reason") or "The related report is marked as Data Gap / not ready."),
+                reason=str((report_meta or {}).get(
+                    "gap_reason") or "The related report is marked as Data Gap / not ready."),
                 decision_source="report_catalog.data_gap",
                 intent_id=str(intent_id) if intent_id else None,
                 report_id=report_id,
@@ -395,16 +422,21 @@ class DecisionRouter:
                 warnings=warnings,
             )
         if report_status == "partial_for_demo":
-            warnings.append("The related report is marked as partial_for_demo; output should show a limitation note.")
+            warnings.append(
+                "The related report is marked as partial_for_demo; output should show a limitation note.")
 
-        sql_template_id = self._resolve_template_id(intent_result, intent_meta, report_meta, service)
-        sql_template = self._get_sql_template(service, sql_template_id) if sql_template_id else None
+        sql_template_id = self._resolve_template_id(
+            intent_result, intent_meta, report_meta, service)
+        sql_template = self._get_sql_template(
+            service, sql_template_id) if sql_template_id else None
         if sql_template_id and not sql_template:
-            warnings.append(f"SQL template '{sql_template_id}' was referenced but not found.")
+            warnings.append(
+                f"SQL template '{sql_template_id}' was referenced but not found.")
 
         if self.config.require_template_for_sql and not sql_template:
             if self.config.allow_dynamic_sql_fallback:
-                warnings.append("No SQL template found; dynamic SQL generator fallback is allowed by config.")
+                warnings.append(
+                    "No SQL template found; dynamic SQL generator fallback is allowed by config.")
                 execution_mode = "dynamic_sql_generator"
             else:
                 return self._decision(
@@ -419,7 +451,8 @@ class DecisionRouter:
                     required_columns=required_columns,
                     output_type="status_message",
                     recommended_visualization="status_message",
-                    expected_status_sql=self._status_sql(STATUS_NEEDS_CLARIFICATION, service),
+                    expected_status_sql=self._status_sql(
+                        STATUS_NEEDS_CLARIFICATION, service),
                     started=started,
                     service=service,
                     user_role=user_role,
@@ -429,12 +462,14 @@ class DecisionRouter:
             execution_mode = "sql_template" if sql_template else "dynamic_sql_generator"
 
         # 9) Role and policy hints. Detailed enforcement remains in access_policy_engine/sql_validator.
-        policy_hints = self._build_policy_hints(user_role=user_role, intent_result=intent_result, service=service)
+        policy_hints = self._build_policy_hints(
+            user_role=user_role, intent_result=intent_result, service=service)
         if policy_hints.get("deny_sql"):
             return self._decision(
                 route=ROUTE_REJECT,
                 status=STATUS_ACCESS_DENIED,
-                reason=str(policy_hints.get("reason") or "User role is not allowed to run this request."),
+                reason=str(policy_hints.get("reason")
+                           or "User role is not allowed to run this request."),
                 decision_source="router.access_policy_hint",
                 intent_id=str(intent_id) if intent_id else None,
                 report_id=report_id,
@@ -443,7 +478,8 @@ class DecisionRouter:
                 required_columns=required_columns,
                 output_type="status_message",
                 recommended_visualization="status_message",
-                expected_status_sql=self._status_sql(STATUS_ACCESS_DENIED, service),
+                expected_status_sql=self._status_sql(
+                    STATUS_ACCESS_DENIED, service),
                 started=started,
                 service=service,
                 user_role=user_role,
@@ -451,7 +487,8 @@ class DecisionRouter:
                 policy_hints=policy_hints,
             )
 
-        output_type = self._str_or_none(intent_result.get("output_type") or (sql_template or {}).get("output_type"))
+        output_type = self._str_or_none(intent_result.get(
+            "output_type") or (sql_template or {}).get("output_type"))
         recommended_visualization = self._str_or_none(
             intent_result.get("recommended_visualization")
             or (report_meta or {}).get("recommended_visualization")
@@ -532,25 +569,31 @@ class DecisionRouter:
 
         if raw_status in TERMINAL_STATUS_TO_ROUTE or raw_route in {ROUTE_GAP, ROUTE_REJECT, ROUTE_CLARIFICATION}:
             status = self._status_for_terminal(raw_route, raw_status)
-            route = self._route_for_status_or_route(status=status, route=raw_route)
-            intent_id = self._first_present(payload, "intent_id", "intent", "detected_intent")
+            route = self._route_for_status_or_route(
+                status=status, route=raw_route)
+            intent_id = self._first_present(
+                payload, "intent_id", "intent", "detected_intent")
             return self._decision(
                 route=route,
                 status=status,
-                reason=str(payload.get("reason") or payload.get("gap_reason") or payload.get("reject_reason") or f"Terminal decision from {source}."),
+                reason=str(payload.get("reason") or payload.get("gap_reason") or payload.get(
+                    "reject_reason") or f"Terminal decision from {source}."),
                 decision_source=source,
                 intent_id=str(intent_id) if intent_id else None,
                 report_id=self._str_or_none(payload.get("report_id")),
                 sql_template_id=None,
                 confidence=self._safe_float(payload.get("confidence")),
-                output_type=self._str_or_none(payload.get("output_type")) or "status_message",
-                recommended_visualization=self._str_or_none(payload.get("recommended_visualization")) or "status_message",
+                output_type=self._str_or_none(
+                    payload.get("output_type")) or "status_message",
+                recommended_visualization=self._str_or_none(
+                    payload.get("recommended_visualization")) or "status_message",
                 expected_status_sql=self._status_sql(status, service),
                 started=started,
                 service=service,
                 user_role=user_role,
                 warnings=self._as_str_list(payload.get("warnings")),
-                extra_metadata={"source_payload_status": raw_status, "source_payload_route": raw_route},
+                extra_metadata={"source_payload_status": raw_status,
+                                "source_payload_route": raw_route},
             )
         return None
 
@@ -607,8 +650,10 @@ class DecisionRouter:
             recommended_visualization=recommended_visualization,
             required_columns=required_columns or [],
             missing_columns=missing_columns or [],
-            warnings=list(dict.fromkeys((warnings or [])[: self.config.max_warnings])),
-            policy_hints=policy_hints or self._build_policy_hints(user_role=user_role, intent_result={}, service=service),
+            warnings=list(dict.fromkeys((warnings or [])
+                          [: self.config.max_warnings])),
+            policy_hints=policy_hints or self._build_policy_hints(
+                user_role=user_role, intent_result={}, service=service),
             metadata={
                 "phase": self.config.phase_name,
                 "main_view": self.config.main_view,
@@ -673,7 +718,8 @@ class DecisionRouter:
                     pass
                 return value
 
-        intent_id = self._first_present(intent_result, "intent_id", "intent", "detected_intent")
+        intent_id = self._first_present(
+            intent_result, "intent_id", "intent", "detected_intent")
         if service and intent_id:
             try:
                 if hasattr(service, "list_sql_templates"):
@@ -812,7 +858,8 @@ class DecisionRouter:
         for value in (
             kwargs.get("user_role"),
             self._get_context_value(context, "user_role"),
-            self._get_context_dict_value(context, "runtime_params", "user_role"),
+            self._get_context_dict_value(
+                context, "runtime_params", "user_role"),
         ):
             if value:
                 return str(value)
@@ -893,7 +940,8 @@ class DecisionRouter:
             if isinstance(value, str):
                 items.append(value)
             elif isinstance(value, list | tuple | set):
-                items.extend(str(item) for item in value if item not in (None, ""))
+                items.extend(str(item)
+                             for item in value if item not in (None, ""))
         return list(dict.fromkeys(items))
 
     @staticmethod
@@ -913,7 +961,8 @@ _ROUTER_SINGLETON: DecisionRouter | None = None
 def get_router(*, reload: bool = False, metadata_service: Any | None = None, config: RouterConfig | None = None) -> DecisionRouter:
     global _ROUTER_SINGLETON
     if reload or _ROUTER_SINGLETON is None or metadata_service is not None or config is not None:
-        _ROUTER_SINGLETON = DecisionRouter(metadata_service=metadata_service, config=config)
+        _ROUTER_SINGLETON = DecisionRouter(
+            metadata_service=metadata_service, config=config)
     return _ROUTER_SINGLETON
 
 
@@ -955,4 +1004,5 @@ if __name__ == "__main__":  # pragma: no cover - manual smoke test
     router = DecisionRouter()
     for sample in samples:
         decision = router.route("تست", context=Ctx(sample))
-        print(sample["intent_id"], "=>", decision["route"], decision["status"], decision.get("sql_template_id"))
+        print(sample["intent_id"], "=>", decision["route"],
+              decision["status"], decision.get("sql_template_id"))

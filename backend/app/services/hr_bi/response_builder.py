@@ -1,4 +1,12 @@
 from __future__ import annotations
+import math
+from copy import deepcopy
+from dataclasses import asdict, dataclass, field, is_dataclass
+from datetime import date, datetime, timezone
+from decimal import Decimal
+from pathlib import Path
+from typing import Any, Mapping, Sequence
+
 
 """
 response_builder.py
@@ -23,15 +31,6 @@ Design rules:
     - For SQL success, return sanitized data + visualization plan.
 """
 
-import asyncio
-import math
-import re
-from copy import deepcopy
-from dataclasses import asdict, dataclass, field, is_dataclass
-from datetime import date, datetime, timezone
-from decimal import Decimal
-from pathlib import Path
-from typing import Any, Mapping, Sequence
 
 try:  # package import when copied into backend/app/services
     from .metadata_service import MetadataService, get_metadata_service

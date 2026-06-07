@@ -1,4 +1,10 @@
 from __future__ import annotations
+import json
+import os
+import re
+import urllib.request
+from dataclasses import asdict, dataclass, field
+from typing import Any
 
 """
 llm_client.py
@@ -24,12 +30,6 @@ Supported providers through environment variables:
    No external/model call is made.
 """
 
-import json
-import os
-import re
-import urllib.request
-from dataclasses import asdict, dataclass, field
-from typing import Any
 
 JsonDict = dict[str, Any]
 
@@ -40,17 +40,26 @@ class LLMClientError(RuntimeError):
 
 @dataclass
 class LLMClientConfig:
-    provider: str = field(default_factory=lambda: os.getenv("LLM_PROVIDER", "none").strip().lower())
-    timeout_seconds: int = field(default_factory=lambda: int(os.getenv("LLM_TIMEOUT_SECONDS", "60")))
-    max_tokens: int = field(default_factory=lambda: int(os.getenv("LLM_MAX_TOKENS", "1200")))
-    temperature: float = field(default_factory=lambda: float(os.getenv("LLM_TEMPERATURE", "0")))
+    provider: str = field(default_factory=lambda: os.getenv(
+        "LLM_PROVIDER", "none").strip().lower())
+    timeout_seconds: int = field(default_factory=lambda: int(
+        os.getenv("LLM_TIMEOUT_SECONDS", "60")))
+    max_tokens: int = field(default_factory=lambda: int(
+        os.getenv("LLM_MAX_TOKENS", "1200")))
+    temperature: float = field(default_factory=lambda: float(
+        os.getenv("LLM_TEMPERATURE", "0")))
 
-    ollama_base_url: str = field(default_factory=lambda: os.getenv("OLLAMA_BASE_URL", "http://localhost:11434").rstrip("/"))
-    ollama_model: str = field(default_factory=lambda: os.getenv("OLLAMA_MODEL", "llama3.1:8b"))
+    ollama_base_url: str = field(default_factory=lambda: os.getenv(
+        "OLLAMA_BASE_URL", "http://localhost:11434").rstrip("/"))
+    ollama_model: str = field(
+        default_factory=lambda: os.getenv("OLLAMA_MODEL", "llama3.1:8b"))
 
-    openai_base_url: str = field(default_factory=lambda: os.getenv("OPENAI_COMPATIBLE_BASE_URL", "").rstrip("/"))
-    openai_api_key: str = field(default_factory=lambda: os.getenv("OPENAI_API_KEY", ""))
-    openai_model: str = field(default_factory=lambda: os.getenv("OPENAI_MODEL", "gpt-4o-mini"))
+    openai_base_url: str = field(default_factory=lambda: os.getenv(
+        "OPENAI_COMPATIBLE_BASE_URL", "").rstrip("/"))
+    openai_api_key: str = field(
+        default_factory=lambda: os.getenv("OPENAI_API_KEY", ""))
+    openai_model: str = field(
+        default_factory=lambda: os.getenv("OPENAI_MODEL", "gpt-4o-mini"))
 
 
 @dataclass
@@ -90,18 +99,22 @@ class LLMClient:
                 status="LLM_NOT_CONFIGURED",
                 provider=self.config.provider,
                 prompt_used=False,
-                warnings=["LLM provider is not configured; fallback prompt was not sent to a model."],
+                warnings=[
+                    "LLM provider is not configured; fallback prompt was not sent to a model."],
             )
 
         try:
             if self.config.provider == "ollama":
-                text = self._generate_ollama(prompt=prompt, system_prompt=system_prompt)
+                text = self._generate_ollama(
+                    prompt=prompt, system_prompt=system_prompt)
                 model = self.config.ollama_model
             elif self.config.provider in {"openai", "openai_compatible"}:
-                text = self._generate_openai_compatible(prompt=prompt, system_prompt=system_prompt)
+                text = self._generate_openai_compatible(
+                    prompt=prompt, system_prompt=system_prompt)
                 model = self.config.openai_model
             else:
-                raise LLMClientError(f"Unsupported LLM_PROVIDER: {self.config.provider}")
+                raise LLMClientError(
+                    f"Unsupported LLM_PROVIDER: {self.config.provider}")
             sql = self.extract_sql(text)
             return LLMResult(status="OK" if sql else "NO_SQL_EXTRACTED", provider=self.config.provider, model=model, text=text, sql=sql, prompt_used=True)
         except Exception as exc:
@@ -138,7 +151,8 @@ class LLMClient:
 
     def _post_json(self, url: str, payload: JsonDict, *, headers: JsonDict | None = None) -> JsonDict:
         body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
-        req = urllib.request.Request(url, data=body, headers={"Content-Type": "application/json", **(headers or {})}, method="POST")
+        req = urllib.request.Request(url, data=body, headers={
+                                     "Content-Type": "application/json", **(headers or {})}, method="POST")
         with urllib.request.urlopen(req, timeout=self.config.timeout_seconds) as resp:  # noqa: S310 - configured internal endpoint/API
             return json.loads(resp.read().decode("utf-8"))
 
@@ -147,7 +161,8 @@ class LLMClient:
         if not text:
             return None
         raw = text.strip()
-        fenced = re.search(r"```(?:sql)?\s*(.*?)```", raw, flags=re.IGNORECASE | re.DOTALL)
+        fenced = re.search(r"```(?:sql)?\s*(.*?)```", raw,
+                           flags=re.IGNORECASE | re.DOTALL)
         if fenced:
             raw = fenced.group(1).strip()
         # Remove common prose before the SQL statement.

@@ -1,4 +1,9 @@
 from __future__ import annotations
+import asyncio
+import re
+from dataclasses import asdict, dataclass, field, is_dataclass
+from pathlib import Path
+from typing import Any, Mapping
 
 """
 sql_validator.py
@@ -29,11 +34,6 @@ can run without external dependencies in the MVP. For production, adding an AST
 parser such as sqlglot is recommended, but the same policy checks should remain.
 """
 
-import asyncio
-import re
-from dataclasses import asdict, dataclass, field, is_dataclass
-from pathlib import Path
-from typing import Any, Mapping
 
 try:  # package import when used inside backend/app/services
     from .metadata_service import MetadataService, get_metadata_service
@@ -238,7 +238,8 @@ class SQLValidator:
         if metadata_service is not None:
             self.metadata = metadata_service
         elif get_metadata_service is not None:
-            self.metadata = get_metadata_service(metadata_dir=metadata_dir, strict=False)
+            self.metadata = get_metadata_service(
+                metadata_dir=metadata_dir, strict=False)
         else:
             self.metadata = None
 
@@ -283,7 +284,8 @@ class SQLValidator:
                 ],
                 warnings=[],
                 policy_hints=[],
-                route_hint=self._route_hint(route_result=route_result, intent_result=intent_result),
+                route_hint=self._route_hint(
+                    route_result=route_result, intent_result=intent_result),
             ).to_dict()
 
         normalized_sql = self._normalize_sql(sql_text)
@@ -307,7 +309,8 @@ class SQLValidator:
                 is_status_only=True,
                 status_value=status_value,
                 statement_type="SELECT",
-                policy_hints=["Status-only SQL should go directly to the response layer and should not be executed as an analytic query."],
+                policy_hints=[
+                    "Status-only SQL should go directly to the response layer and should not be executed as an analytic query."],
                 metadata={"status_only_sql": True},
             ).to_dict()
 
@@ -318,20 +321,27 @@ class SQLValidator:
 
         cte_names = self._extract_cte_names(normalized_sql)
         detected_relations = self._extract_relations(normalized_sql)
-        referenced_columns = sorted(set(self._extract_qualified_columns(normalized_sql)))
-        selected_expressions = self._extract_selected_expressions(normalized_sql)
-        selected_columns = sorted(set(self._extract_direct_selected_columns(selected_expressions)))
+        referenced_columns = sorted(
+            set(self._extract_qualified_columns(normalized_sql)))
+        selected_expressions = self._extract_selected_expressions(
+            normalized_sql)
+        selected_columns = sorted(
+            set(self._extract_direct_selected_columns(selected_expressions)))
 
         # 3) Relation, alias and column checks.
         issues.extend(self._validate_relations(detected_relations, cte_names))
         issues.extend(self._validate_columns(referenced_columns))
-        issues.extend(self._validate_sensitive_columns(normalized_sql, selected_columns))
-        issues.extend(self._validate_visible_restricted_columns(selected_columns, selected_expressions, normalized_sql))
+        issues.extend(self._validate_sensitive_columns(
+            normalized_sql, selected_columns))
+        issues.extend(self._validate_visible_restricted_columns(
+            selected_columns, selected_expressions, normalized_sql))
 
         # 4) Business / semantic rules.
         issues.extend(self._validate_active_filter(normalized_sql))
-        issues.extend(self._validate_semantic_rules(normalized_sql, question_text))
-        issues.extend(self._validate_data_gap_rules(normalized_sql, question_text))
+        issues.extend(self._validate_semantic_rules(
+            normalized_sql, question_text))
+        issues.extend(self._validate_data_gap_rules(
+            normalized_sql, question_text))
         issues.extend(self._validate_limit(normalized_sql))
 
         # 5) Helpful non-blocking policy hints.
@@ -340,7 +350,8 @@ class SQLValidator:
                 f"Post-execution suppression must enforce minimum_group_size >= {self.config.minimum_group_size}."
             )
         if service is None:
-            warnings.append("Metadata service was not available; validator used built-in defaults.")
+            warnings.append(
+                "Metadata service was not available; validator used built-in defaults.")
 
         result = self._finalize(
             sql=sql_text,
@@ -348,7 +359,8 @@ class SQLValidator:
             issues=issues,
             warnings=warnings,
             policy_hints=policy_hints,
-            route_hint=self._route_hint(route_result=route_result, intent_result=intent_result),
+            route_hint=self._route_hint(
+                route_result=route_result, intent_result=intent_result),
             detected_relations=detected_relations,
             cte_names=cte_names,
             referenced_columns=referenced_columns,
@@ -838,12 +850,14 @@ class SQLValidator:
         statement_type: str | None = None,
     ) -> SQLValidationResult:
         fatal_issues = [issue for issue in issues if issue.severity == "error"]
-        warning_issues = [issue for issue in issues if issue.severity != "error"]
+        warning_issues = [
+            issue for issue in issues if issue.severity != "error"]
         warnings = [*warnings, *[issue.message for issue in warning_issues]]
 
         if fatal_issues:
             status = self._status_from_issues(fatal_issues)
-            route = self.STATUS_ROUTE_BY_VALUE.get(status, route_hint or "REJECT")
+            route = self.STATUS_ROUTE_BY_VALUE.get(
+                status, route_hint or "REJECT")
             return SQLValidationResult(
                 status=status,
                 validation_status=status,
@@ -863,7 +877,8 @@ class SQLValidator:
                 warnings=list(dict.fromkeys(warnings)),
                 policy_hints=list(dict.fromkeys(policy_hints)),
                 errors=[issue.message for issue in fatal_issues],
-                metadata={"fatal_issue_count": len(fatal_issues), "warning_issue_count": len(warning_issues)},
+                metadata={"fatal_issue_count": len(
+                    fatal_issues), "warning_issue_count": len(warning_issues)},
             )
 
         return SQLValidationResult(
@@ -885,14 +900,16 @@ class SQLValidator:
             warnings=list(dict.fromkeys(warnings)),
             policy_hints=list(dict.fromkeys(policy_hints)),
             errors=[],
-            metadata={"fatal_issue_count": 0, "warning_issue_count": len(warning_issues)},
+            metadata={"fatal_issue_count": 0,
+                      "warning_issue_count": len(warning_issues)},
         )
 
     @staticmethod
     def _status_from_issues(issues: list[SQLValidationIssue]) -> str:
         # Privacy/security denial is the highest priority, then known data gaps,
         # then generic SQL validation failures.
-        priorities = ["ACCESS_DENIED", "DATA_GAP", "OUT_OF_SCOPE", "NEEDS_CLARIFICATION", "SQL_VALIDATION_FAILED"]
+        priorities = ["ACCESS_DENIED", "DATA_GAP", "OUT_OF_SCOPE",
+                      "NEEDS_CLARIFICATION", "SQL_VALIDATION_FAILED"]
         statuses = {issue.status for issue in issues}
         for status in priorities:
             if status in statuses:
@@ -910,7 +927,8 @@ class SQLValidator:
         text = re.sub(r"^```(?:sql)?\s*", "", text, flags=re.IGNORECASE)
         text = re.sub(r"\s*```$", "", text)
         # Normalize smart quotes that may come from copy/paste.
-        text = text.replace("‘", "'").replace("’", "'").replace("“", '"').replace("”", '"')
+        text = text.replace("‘", "'").replace(
+            "’", "'").replace("“", '"').replace("”", '"')
         # Trim trailing whitespace but keep SQL formatting for readable logs.
         lines = [line.rstrip() for line in text.splitlines()]
         return "\n".join(lines).strip()
@@ -1013,7 +1031,8 @@ class SQLValidator:
                     depth -= 1
                 elif depth == 0 and upper.startswith(keyword_upper, i):
                     before = upper[i - 1] if i > 0 else " "
-                    after = upper[i + len(keyword_upper)] if i + len(keyword_upper) < len(sql) else " "
+                    after = upper[i + len(keyword_upper)] if i + \
+                        len(keyword_upper) < len(sql) else " "
                     if not (before.isalnum() or before == "_") and not (after.isalnum() or after == "_"):
                         positions.append(i)
                         i += len(keyword_upper)
@@ -1044,7 +1063,8 @@ class SQLValidator:
             # Avoid treating SQL clauses as aliases when no alias exists.
             if alias and alias.upper() in {"WHERE", "GROUP", "ORDER", "HAVING", "LIMIT", "UNION", "WINDOW"}:
                 alias = None
-            relations.append({"name": relation_name, "alias": alias, "start": match.start(), "end": match.end()})
+            relations.append({"name": relation_name, "alias": alias,
+                             "start": match.start(), "end": match.end()})
         return relations
 
     def _extract_qualified_columns(self, sql: str) -> list[str]:
@@ -1053,18 +1073,21 @@ class SQLValidator:
         return [m.group(1) for m in re.finditer(rf"\b{alias}\s*\.\s*([A-Za-z_][A-Za-z0-9_]*)\b", masked, flags=re.IGNORECASE)]
 
     def _extract_selected_expressions(self, sql: str) -> list[str]:
-        select_positions = self._find_top_level_keyword_positions(sql, "SELECT")
+        select_positions = self._find_top_level_keyword_positions(
+            sql, "SELECT")
         if not select_positions:
             return []
         select_pos = select_positions[-1]
-        from_pos = self._find_next_top_level_keyword_position(sql, "FROM", start=select_pos + len("SELECT"))
+        from_pos = self._find_next_top_level_keyword_position(
+            sql, "FROM", start=select_pos + len("SELECT"))
         if from_pos is None:
             return []
-        select_list = sql[select_pos + len("SELECT") : from_pos].strip()
+        select_list = sql[select_pos + len("SELECT"): from_pos].strip()
         return self._split_top_level_commas(select_list)
 
     def _find_next_top_level_keyword_position(self, sql: str, keyword: str, *, start: int = 0) -> int | None:
-        positions = self._find_top_level_keyword_positions(sql[start:], keyword)
+        positions = self._find_top_level_keyword_positions(
+            sql[start:], keyword)
         if not positions:
             return None
         return start + positions[0]
@@ -1102,9 +1125,12 @@ class SQLValidator:
     def _extract_direct_selected_columns(self, selected_expressions: list[str]) -> list[str]:
         selected: list[str] = []
         for expression in selected_expressions:
-            cleaned = re.sub(r"\s+AS\s+[A-Za-z_][A-Za-z0-9_]*\s*$", "", expression, flags=re.IGNORECASE).strip()
-            cleaned = re.sub(r"\s+[A-Za-z_][A-Za-z0-9_]*\s*$", "", cleaned).strip()
-            match = re.fullmatch(r"(?:v\s*\.\s*)?([A-Za-z_][A-Za-z0-9_]*)", cleaned, flags=re.IGNORECASE)
+            cleaned = re.sub(
+                r"\s+AS\s+[A-Za-z_][A-Za-z0-9_]*\s*$", "", expression, flags=re.IGNORECASE).strip()
+            cleaned = re.sub(
+                r"\s+[A-Za-z_][A-Za-z0-9_]*\s*$", "", cleaned).strip()
+            match = re.fullmatch(
+                r"(?:v\s*\.\s*)?([A-Za-z_][A-Za-z0-9_]*)", cleaned, flags=re.IGNORECASE)
             if match:
                 selected.append(match.group(1))
         return selected
@@ -1119,19 +1145,25 @@ class SQLValidator:
             try:
                 view = service.get_main_view()
                 config.main_view = str(view.get("name") or config.main_view)
-                config.required_alias = str(view.get("alias") or config.required_alias)
+                config.required_alias = str(
+                    view.get("alias") or config.required_alias)
             except Exception:
                 pass
             try:
                 rules = service.get_document("sql_validator_rules")
-                allowed_sql = rules.get("allowed_sql", {}) if isinstance(rules.get("allowed_sql"), dict) else {}
-                config.max_limit = int((allowed_sql.get("allowed_limit") or {}).get("max_limit", config.max_limit))
-                contract = rules.get("validator_contract", {}) if isinstance(rules.get("validator_contract"), dict) else {}
-                config.allow_status_only_sql = bool(contract.get("allow_status_only_sql_without_view", config.allow_status_only_sql))
+                allowed_sql = rules.get("allowed_sql", {}) if isinstance(
+                    rules.get("allowed_sql"), dict) else {}
+                config.max_limit = int((allowed_sql.get("allowed_limit") or {}).get(
+                    "max_limit", config.max_limit))
+                contract = rules.get("validator_contract", {}) if isinstance(
+                    rules.get("validator_contract"), dict) else {}
+                config.allow_status_only_sql = bool(contract.get(
+                    "allow_status_only_sql_without_view", config.allow_status_only_sql))
             except Exception:
                 pass
             try:
-                config.minimum_group_size = int(service.get_min_group_size(default=config.minimum_group_size))
+                config.minimum_group_size = int(
+                    service.get_min_group_size(default=config.minimum_group_size))
             except Exception:
                 pass
         config.require_active_filter = strict
@@ -1190,7 +1222,8 @@ class SQLValidator:
         values = set(self.DEFAULT_SENSITIVE_COLUMNS)
         if service is not None:
             try:
-                values.update(str(col) for col in service.get_sensitive_columns())
+                values.update(str(col)
+                              for col in service.get_sensitive_columns())
             except Exception:
                 pass
         return values
@@ -1315,5 +1348,6 @@ def get_sql_validator(
     """Return a process-wide SQLValidator singleton."""
     global _validator
     if reload or _validator is None or metadata_service is not None or metadata_dir is not None:
-        _validator = SQLValidator(metadata_service=metadata_service, metadata_dir=metadata_dir, strict=strict)
+        _validator = SQLValidator(
+            metadata_service=metadata_service, metadata_dir=metadata_dir, strict=strict)
     return _validator

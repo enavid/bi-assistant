@@ -1,4 +1,13 @@
 from __future__ import annotations
+import asyncio
+import os
+import re
+import time
+import textwrap
+from copy import deepcopy
+from dataclasses import asdict, dataclass, field
+from pathlib import Path
+from typing import Any, Iterable, Mapping
 
 """
 sql_generator.py
@@ -19,16 +28,6 @@ Important:
     It does not query raw tables, does not create JOINs, and does not execute SQL.
     Every generated query must still pass sql_validator.py before execution.
 """
-
-import asyncio
-import os
-import re
-import time
-import textwrap
-from copy import deepcopy
-from dataclasses import asdict, dataclass, field
-from pathlib import Path
-from typing import Any, Iterable, Mapping
 
 try:  # package import when used inside backend/app/services
     from .metadata_service import MetadataService, get_metadata_service
@@ -74,7 +73,8 @@ DIGIT_TRANSLATION = str.maketrans(
 
 SAFE_COLUMN_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 SAFE_ALIAS_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
-SAFE_ARITHMETIC_EXPRESSION_RE = re.compile(r"^\s*\d{1,4}\s*(?:[+\-]\s*\d{1,4})?\s*$")
+SAFE_ARITHMETIC_EXPRESSION_RE = re.compile(
+    r"^\s*\d{1,4}\s*(?:[+\-]\s*\d{1,4})?\s*$")
 
 TERMINAL_STATUSES = {
     STATUS_DATA_GAP,
@@ -165,7 +165,8 @@ class SQLGeneratorConfig:
     reject_unknown_columns: bool = True
     allow_select_birth_or_date_columns: bool = False
     # This generator deliberately stays rule-based in Phase 2.
-    allow_llm_freeform_sql: bool = field(default_factory=lambda: os.getenv("ENABLE_LLM_SQL_FALLBACK", "true").strip().lower() in {"1", "true", "yes", "on"})
+    allow_llm_freeform_sql: bool = field(default_factory=lambda: os.getenv(
+        "ENABLE_LLM_SQL_FALLBACK", "true").strip().lower() in {"1", "true", "yes", "on"})
 
 
 @dataclass
@@ -227,7 +228,8 @@ class SQLGenerator:
         if metadata_service is not None:
             self.metadata = metadata_service
         elif get_metadata_service is not None:
-            self.metadata = get_metadata_service(metadata_dir=metadata_dir, strict=False)
+            self.metadata = get_metadata_service(
+                metadata_dir=metadata_dir, strict=False)
         else:
             self.metadata = None
 
@@ -238,12 +240,14 @@ class SQLGenerator:
 
         main_view = self._read_main_view(self.metadata)
         if main_view:
-            self.config.main_view = main_view.get("name") or main_view.get("relation") or self.config.main_view
+            self.config.main_view = main_view.get("name") or main_view.get(
+                "relation") or self.config.main_view
             self.config.alias = main_view.get("alias") or self.config.alias
 
         if self.llm_sql_fallback is None and LLMSQLFallback is not None and self.config.allow_llm_freeform_sql:
             try:
-                self.llm_sql_fallback = LLMSQLFallback(metadata_service=self.metadata)
+                self.llm_sql_fallback = LLMSQLFallback(
+                    metadata_service=self.metadata)
             except Exception:
                 self.llm_sql_fallback = None
 
@@ -294,11 +298,16 @@ class SQLGenerator:
                 started=started,
             ).to_dict()
 
-        intent_payload = self._payload_from(context, "intent_result", intent_result)
-        semantic_payload = self._payload_from(context, "semantic_result", semantic_result)
-        route_payload = self._payload_from(context, "route_result", route_result)
-        validation_payload = self._payload_from(context, "validation_result", validation_result)
-        runtime_payload = self._runtime_params_from(context, runtime_params, kwargs)
+        intent_payload = self._payload_from(
+            context, "intent_result", intent_result)
+        semantic_payload = self._payload_from(
+            context, "semantic_result", semantic_result)
+        route_payload = self._payload_from(
+            context, "route_result", route_result)
+        validation_payload = self._payload_from(
+            context, "validation_result", validation_result)
+        runtime_payload = self._runtime_params_from(
+            context, runtime_params, kwargs)
 
         raw_question = (
             question
@@ -320,11 +329,13 @@ class SQLGenerator:
         if terminal is not None:
             return terminal.to_dict()
 
-        route = self._first_non_empty(route_payload.get("route"), intent_payload.get("route"), ROUTE_SQL)
+        route = self._first_non_empty(route_payload.get(
+            "route"), intent_payload.get("route"), ROUTE_SQL)
         if str(route).upper() != ROUTE_SQL:
             return self._status_result(
                 service,
-                status=STATUS_DATA_GAP if str(route).upper() == ROUTE_GAP else STATUS_NEEDS_CLARIFICATION,
+                status=STATUS_DATA_GAP if str(route).upper(
+                ) == ROUTE_GAP else STATUS_NEEDS_CLARIFICATION,
                 route=str(route).upper(),
                 reason="Non-SQL route was selected before SQL generation.",
                 started=started,
@@ -349,14 +360,19 @@ class SQLGenerator:
             ).to_dict()
 
         allowed_columns = self._allowed_column_map(service)
-        params = self._merge_params(intent_payload, semantic_payload, route_payload, runtime_payload)
-        filters = self._collect_filters(intent_payload, semantic_payload, runtime_payload)
-        group_by = self._collect_group_by(intent_id, intent_payload, semantic_payload)
-        order_by = self._normalize_order_by(intent_payload.get("order_by") or route_payload.get("order_by") or [])
+        params = self._merge_params(
+            intent_payload, semantic_payload, route_payload, runtime_payload)
+        filters = self._collect_filters(
+            intent_payload, semantic_payload, runtime_payload)
+        group_by = self._collect_group_by(
+            intent_id, intent_payload, semantic_payload)
+        order_by = self._normalize_order_by(intent_payload.get(
+            "order_by") or route_payload.get("order_by") or [])
 
         # Runtime/year placeholders must be resolved outside the LLM. If upstream
         # did not provide one, use config default.
-        params.setdefault("current_shamsi_year", self.config.current_shamsi_year)
+        params.setdefault("current_shamsi_year",
+                          self.config.current_shamsi_year)
 
         try:
             sql, result_columns, output_type = self._build_sql_for_intent(
@@ -391,7 +407,8 @@ class SQLGenerator:
                 route=ROUTE_GAP,
                 reason=str(exc),
                 started=started,
-                warnings=["Controlled SQL generator could not safely build a query and LLM fallback was not allowed."],
+                warnings=[
+                    "Controlled SQL generator could not safely build a query and LLM fallback was not allowed."],
             ).to_dict()
         except Exception as exc:  # pragma: no cover - defensive runtime safety
             return self._result(
@@ -425,8 +442,10 @@ class SQLGenerator:
             or intent_payload.get("visualization_hint")
             or intent_payload.get("output_type")
         )
-        report_id = self._first_non_empty(intent_payload.get("report_id"), route_payload.get("report_id"))
-        template_id = self._first_non_empty(intent_payload.get("sql_template_id"), route_payload.get("sql_template_id"))
+        report_id = self._first_non_empty(intent_payload.get(
+            "report_id"), route_payload.get("report_id"))
+        template_id = self._first_non_empty(intent_payload.get(
+            "sql_template_id"), route_payload.get("sql_template_id"))
 
         return self._result(
             status=STATUS_OK,
@@ -438,13 +457,16 @@ class SQLGenerator:
             detected_intent=intent_id,
             report_id=str(report_id) if report_id else None,
             template_id=str(template_id) if template_id else None,
-            output_type=output_type or self._infer_output_type(intent_id, group_by),
-            visualization_hint=str(visualization_hint) if visualization_hint else None,
+            output_type=output_type or self._infer_output_type(
+                intent_id, group_by),
+            visualization_hint=str(
+                visualization_hint) if visualization_hint else None,
             result_columns=result_columns,
             params=params,
             reason="SQL was generated by controlled metadata-based fallback rules.",
             generation_mode="controlled_dynamic",
-            confidence=float(intent_payload.get("confidence")) if self._is_number(intent_payload.get("confidence")) else None,
+            confidence=float(intent_payload.get("confidence")) if self._is_number(
+                intent_payload.get("confidence")) else None,
             metadata={
                 "question": normalized_question,
                 "schema_context_supplied": bool(schema_context),
@@ -478,13 +500,16 @@ class SQLGenerator:
     ) -> bool:
         if not self.config.allow_llm_freeform_sql or self.llm_sql_fallback is None:
             return False
-        route = str(route_payload.get("route") or intent_payload.get("route") or "SQL").upper()
-        status = str(validation_payload.get("status") or intent_payload.get("status") or "VALID").upper()
+        route = str(route_payload.get("route")
+                    or intent_payload.get("route") or "SQL").upper()
+        status = str(validation_payload.get("status")
+                     or intent_payload.get("status") or "VALID").upper()
         if route != ROUTE_SQL:
             return False
         if status in TERMINAL_STATUSES and status != STATUS_VALID:
             return False
-        required_columns = intent_payload.get("required_columns") or route_payload.get("required_columns") or []
+        required_columns = intent_payload.get(
+            "required_columns") or route_payload.get("required_columns") or []
         for col in required_columns:
             if isinstance(col, str) and col and col not in allowed_columns:
                 return False
@@ -508,7 +533,8 @@ class SQLGenerator:
                 can_execute_sql=False,
                 reason=f"Controlled generator could not build SQL and LLM fallback is not configured: {reason}",
                 generation_mode="llm_fallback_required",
-                warnings=["Configure ENABLE_LLM_SQL_FALLBACK and LLM_PROVIDER to enable model fallback."],
+                warnings=[
+                    "Configure ENABLE_LLM_SQL_FALLBACK and LLM_PROVIDER to enable model fallback."],
                 started=started,
             ).to_dict()
         try:
@@ -522,8 +548,10 @@ class SQLGenerator:
             out.setdefault("route", ROUTE_SQL)
             out.setdefault("source", "llm_sql_fallback")
             out.setdefault("generation_mode", "llm_fallback")
-            out.setdefault("reason", f"Controlled generator fallback was used because: {reason}")
-            out.setdefault("duration_ms", round((time.perf_counter() - started) * 1000, 3))
+            out.setdefault(
+                "reason", f"Controlled generator fallback was used because: {reason}")
+            out.setdefault("duration_ms", round(
+                (time.perf_counter() - started) * 1000, 3))
             return out
         except Exception as exc:
             return self._result(
@@ -560,8 +588,10 @@ class SQLGenerator:
         }:
             effective_filters = filters
             if intent_id == "employee_count_without_service_years":
-                effective_filters = self._ensure_filter(filters, "service_years", "=", 0)
-            sql = self._count_sql(filters=effective_filters, allowed_columns=allowed_columns)
+                effective_filters = self._ensure_filter(
+                    filters, "service_years", "=", 0)
+            sql = self._count_sql(filters=effective_filters,
+                                  allowed_columns=allowed_columns)
             return sql, [{"name": "employee_count", "data_type": "integer"}], "kpi_card"
 
         if intent_id in {
@@ -580,9 +610,11 @@ class SQLGenerator:
             # If a specific value is filtered (e.g. "چند نفر کارشناسی دارند؟"),
             # return a KPI count. Otherwise return grouped count.
             if not group_by or self._has_specific_filter_for_group(group_by, filters):
-                group_by = self._group_by_if_no_specific_filter(intent_id, group_by, filters)
+                group_by = self._group_by_if_no_specific_filter(
+                    intent_id, group_by, filters)
             if not group_by:
-                sql = self._count_sql(filters=filters, allowed_columns=allowed_columns)
+                sql = self._count_sql(
+                    filters=filters, allowed_columns=allowed_columns)
                 return sql, [{"name": "employee_count", "data_type": "integer"}], "kpi_card"
             return self._grouped_count_sql(
                 group_by=group_by,
@@ -594,11 +626,14 @@ class SQLGenerator:
             ), self._columns_for_grouped_count(group_by), self._visual_for_grouped_count(group_by)
 
         if intent_id == "gender_percentage":
-            gender_value = params.get("gender_value") or self._extract_filter_value(filters, "gender")
+            gender_value = params.get(
+                "gender_value") or self._extract_filter_value(filters, "gender")
             if gender_value not in {"زن", "مرد"}:
-                raise SQLGeneratorError("gender_percentage requires a safe gender_value of 'زن' or 'مرد'.")
+                raise SQLGeneratorError(
+                    "gender_percentage requires a safe gender_value of 'زن' or 'مرد'.")
             sql = self._percentage_sql(
-                numerator_condition=self._condition("gender", "=", gender_value, allowed_columns),
+                numerator_condition=self._condition(
+                    "gender", "=", gender_value, allowed_columns),
                 count_alias="matched_employee_count",
                 percentage_alias="percentage",
                 filters=self._drop_filter(filters, "gender"),
@@ -641,14 +676,18 @@ class SQLGenerator:
             return sql, self._columns_for_grouped_count(["education_title"], include_percentage=False), "kpi_card_or_table"
 
         if intent_id == "low_education_in_expert_roles":
-            effective_filters = self._ensure_filter(filters, "education_rank", "<", None, value_column="min_education_rank")
-            effective_filters = self._ensure_filter(effective_filters, "is_expert_role", "=", True)
-            sql = self._count_sql(filters=effective_filters, allowed_columns=allowed_columns)
+            effective_filters = self._ensure_filter(
+                filters, "education_rank", "<", None, value_column="min_education_rank")
+            effective_filters = self._ensure_filter(
+                effective_filters, "is_expert_role", "=", True)
+            sql = self._count_sql(filters=effective_filters,
+                                  allowed_columns=allowed_columns)
             return sql, [{"name": "employee_count", "data_type": "integer"}], "kpi_card"
 
         if intent_id == "contractor_share":
             sql = self._percentage_sql(
-                numerator_condition=self._condition("is_contractor", "=", True, allowed_columns),
+                numerator_condition=self._condition(
+                    "is_contractor", "=", True, allowed_columns),
                 count_alias="contractor_count",
                 percentage_alias="contractor_percentage",
                 filters=self._drop_filter(filters, "is_contractor"),
@@ -664,7 +703,8 @@ class SQLGenerator:
             effective_group_by = group_by or ["service_domain"]
             sql = self._grouped_percentage_sql(
                 group_by=effective_group_by,
-                numerator_condition=self._condition("is_contractor", "=", True, allowed_columns),
+                numerator_condition=self._condition(
+                    "is_contractor", "=", True, allowed_columns),
                 count_alias="contractor_count",
                 percentage_alias="contractor_percentage",
                 filters=self._drop_filter(filters, "is_contractor"),
@@ -672,7 +712,8 @@ class SQLGenerator:
                 order_by=["contractor_percentage DESC"],
             )
             return sql, [
-                *[{"name": col, "data_type": self._column_type(col, allowed_columns)} for col in effective_group_by],
+                *[{"name": col, "data_type": self._column_type(
+                    col, allowed_columns)} for col in effective_group_by],
                 {"name": "contractor_count", "data_type": "integer"},
                 {"name": "total_employee_count", "data_type": "integer"},
                 {"name": "contractor_percentage", "data_type": "numeric"},
@@ -689,8 +730,10 @@ class SQLGenerator:
             return sql, self._columns_for_grouped_count(["hire_year"], include_percentage=False), "line_chart"
 
         if intent_id == "hiring_last_15_years":
-            year = int(params.get("current_shamsi_year") or self.config.current_shamsi_year)
-            effective_filters = self._ensure_filter(filters, "hire_year", ">=", None, value_expression=f"{year} - 15")
+            year = int(params.get("current_shamsi_year")
+                       or self.config.current_shamsi_year)
+            effective_filters = self._ensure_filter(
+                filters, "hire_year", ">=", None, value_expression=f"{year} - 15")
             sql = self._grouped_count_sql(
                 group_by=["hire_year"],
                 filters=effective_filters,
@@ -701,7 +744,8 @@ class SQLGenerator:
             return sql, self._columns_for_grouped_count(["hire_year"], include_percentage=False), "line_chart_or_table"
 
         if intent_id == "most_or_least_hiring_year":
-            direction = "ASC" if self._asks_least(question, order_by) else "DESC"
+            direction = "ASC" if self._asks_least(
+                question, order_by) else "DESC"
             sql = self._grouped_count_sql(
                 group_by=["hire_year"],
                 filters=filters,
@@ -713,8 +757,10 @@ class SQLGenerator:
             return sql, self._columns_for_grouped_count(["hire_year"], include_percentage=False), "kpi_card_or_table"
 
         if intent_id == "hiring_by_contract_type_recent_year":
-            year = int(params.get("current_shamsi_year") or self.config.current_shamsi_year)
-            effective_filters = self._ensure_filter(filters, "hire_year", "=", year)
+            year = int(params.get("current_shamsi_year")
+                       or self.config.current_shamsi_year)
+            effective_filters = self._ensure_filter(
+                filters, "hire_year", "=", year)
             sql = self._grouped_count_sql(
                 group_by=["contract_type"],
                 filters=effective_filters,
@@ -725,10 +771,13 @@ class SQLGenerator:
             return sql, self._columns_for_grouped_count(["contract_type"]), "horizontal_bar_chart_or_table"
 
         if intent_id == "headcount_gap_by_department":
-            sql = self._headcount_gap_sql(filters=filters, allowed_columns=allowed_columns, question=question)
+            sql = self._headcount_gap_sql(
+                filters=filters, allowed_columns=allowed_columns, question=question)
             return sql, [
-                {"name": "department_id", "data_type": self._column_type("department_id", allowed_columns)},
-                {"name": "department_name", "data_type": self._column_type("department_name", allowed_columns)},
+                {"name": "department_id", "data_type": self._column_type(
+                    "department_id", allowed_columns)},
+                {"name": "department_name", "data_type": self._column_type(
+                    "department_name", allowed_columns)},
                 {"name": "actual_headcount", "data_type": "integer"},
                 {"name": "approved_headcount", "data_type": "integer"},
                 {"name": "headcount_gap", "data_type": "integer"},
@@ -743,7 +792,8 @@ class SQLGenerator:
             "workforce_aging_trend_analysis",
             "department_balance_analysis",
         }:
-            raise SQLGeneratorError(f"Intent '{intent_id}' is a Data Gap intent, not a SQL intent.")
+            raise SQLGeneratorError(
+                f"Intent '{intent_id}' is a Data Gap intent, not a SQL intent.")
 
         # Last safe fallback: if upstream provided a valid group_by, generate a
         # grouped count. Otherwise, do not guess.
@@ -758,7 +808,8 @@ class SQLGenerator:
             )
             return sql, self._columns_for_grouped_count(group_by), self._visual_for_grouped_count(group_by)
 
-        raise SQLGeneratorError(f"No controlled dynamic SQL rule exists for intent '{intent_id}'.")
+        raise SQLGeneratorError(
+            f"No controlled dynamic SQL rule exists for intent '{intent_id}'.")
 
     # ------------------------------------------------------------------
     # SQL fragments
@@ -788,7 +839,8 @@ class SQLGenerator:
     ) -> str:
         safe_group_by = self._safe_columns(group_by, allowed_columns)
         if not safe_group_by:
-            raise SQLGeneratorError("Grouped count requires at least one safe group_by column.")
+            raise SQLGeneratorError(
+                "Grouped count requires at least one safe group_by column.")
 
         select_group = ",\n    ".join(f"v.{col}" for col in safe_group_by)
         group_by_sql = ", ".join(f"v.{col}" for col in safe_group_by)
@@ -796,7 +848,8 @@ class SQLGenerator:
         percentage_sql = ""
         if include_percentage:
             percentage_sql = ",\n    ROUND(COUNT(v.employee_id) * 100.0 / NULLIF(SUM(COUNT(v.employee_id)) OVER (), 0), 2) AS percentage"
-        order_sql = self._order_by_clause(order_by, safe_group_by=safe_group_by, allowed_aliases={"employee_count", "percentage"})
+        order_sql = self._order_by_clause(order_by, safe_group_by=safe_group_by, allowed_aliases={
+                                          "employee_count", "percentage"})
         effective_limit = limit if limit is not None else maybe_limit
         limit_sql = self._limit_clause(effective_limit)
         return self._format_sql(
@@ -888,14 +941,16 @@ class SQLGenerator:
     ) -> str:
         safe_group_by = self._safe_columns(group_by, allowed_columns)
         if not safe_group_by:
-            raise SQLGeneratorError("Grouped percentage requires at least one safe group_by column.")
+            raise SQLGeneratorError(
+                "Grouped percentage requires at least one safe group_by column.")
         select_group = ",\n    ".join(f"v.{col}" for col in safe_group_by)
         group_by_sql = ", ".join(f"v.{col}" for col in safe_group_by)
         where_sql = self._where_clause(filters, allowed_columns)
         order_sql = self._order_by_clause(
             order_by or [f"{percentage_alias} DESC"],
             safe_group_by=safe_group_by,
-            allowed_aliases={count_alias, "total_employee_count", percentage_alias},
+            allowed_aliases={count_alias,
+                             "total_employee_count", percentage_alias},
         )
         return self._format_sql(
             f"""
@@ -1003,25 +1058,30 @@ class SQLGenerator:
             return f"v.{column} {op} v.{other_column}"
 
         if value_expression is not None:
-            expression = str(value_expression).translate(DIGIT_TRANSLATION).strip()
+            expression = str(value_expression).translate(
+                DIGIT_TRANSLATION).strip()
             if not SAFE_ARITHMETIC_EXPRESSION_RE.fullmatch(expression):
-                raise SQLGeneratorError(f"Unsafe value_expression for filter on {column}: {expression}")
+                raise SQLGeneratorError(
+                    f"Unsafe value_expression for filter on {column}: {expression}")
             return f"v.{column} {op} ({expression})"
 
         if op == "BETWEEN":
             values = value if isinstance(value, list | tuple) else None
             if not values or len(values) != 2:
-                raise SQLGeneratorError(f"BETWEEN filter for {column} requires exactly two values.")
+                raise SQLGeneratorError(
+                    f"BETWEEN filter for {column} requires exactly two values.")
             return f"v.{column} BETWEEN {self._sql_literal(values[0])} AND {self._sql_literal(values[1])}"
 
         if op == "IN":
             if not isinstance(value, list | tuple | set):
-                raise SQLGeneratorError(f"IN filter for {column} requires a list of values.")
+                raise SQLGeneratorError(
+                    f"IN filter for {column} requires a list of values.")
             rendered = ", ".join(self._sql_literal(v) for v in value)
             return f"v.{column} IN ({rendered})"
 
         if value is None:
-            raise SQLGeneratorError(f"Filter for {column} requires a value, value_column or value_expression.")
+            raise SQLGeneratorError(
+                f"Filter for {column} requires a value, value_column or value_expression.")
 
         self._validate_allowed_value(column, value, allowed_columns)
         return f"v.{column} {op} {self._sql_literal(value)}"
@@ -1042,7 +1102,8 @@ class SQLGenerator:
             "LE": "<=",
         }
         op = aliases.get(op, op)
-        allowed = {"=", "!=", ">", ">=", "<", "<=", "BETWEEN", "IN", "IS NULL", "IS NOT NULL"}
+        allowed = {"=", "!=", ">", ">=", "<", "<=",
+                   "BETWEEN", "IN", "IS NULL", "IS NOT NULL"}
         if op not in allowed:
             raise SQLGeneratorError(f"Unsupported filter operator: {operator}")
         return op
@@ -1052,13 +1113,15 @@ class SQLGenerator:
         allowed_values = column_meta.get("allowed_values")
         if not allowed_values:
             return
-        values_to_check = list(value) if isinstance(value, list | tuple | set) else [value]
+        values_to_check = list(value) if isinstance(
+            value, list | tuple | set) else [value]
         allowed_as_text = {str(v) for v in allowed_values}
         for item in values_to_check:
             if isinstance(item, bool | int | float):
                 continue
             if str(item) not in allowed_as_text:
-                raise SQLGeneratorError(f"Value '{item}' is not allowed for column '{column}'.")
+                raise SQLGeneratorError(
+                    f"Value '{item}' is not allowed for column '{column}'.")
 
     @staticmethod
     def _sql_literal(value: Any) -> str:
@@ -1079,7 +1142,8 @@ class SQLGenerator:
     def _safe_columns(self, columns: Iterable[Any], allowed_columns: dict[str, JsonDict]) -> list[str]:
         safe: list[str] = []
         for item in columns or []:
-            column = str(item.get("column") if isinstance(item, dict) else item).strip()
+            column = str(item.get("column") if isinstance(
+                item, dict) else item).strip()
             if not column:
                 continue
             self._assert_safe_column(column, allowed_columns)
@@ -1091,9 +1155,11 @@ class SQLGenerator:
         if not SAFE_COLUMN_RE.fullmatch(column):
             raise SQLGeneratorError(f"Unsafe column name: {column}")
         if column in SENSITIVE_COLUMNS:
-            raise SQLGeneratorError(f"Sensitive column is not allowed in SQL output: {column}")
+            raise SQLGeneratorError(
+                f"Sensitive column is not allowed in SQL output: {column}")
         if self.config.reject_unknown_columns and column not in allowed_columns:
-            raise SQLGeneratorError(f"Unknown or unavailable View column: {column}")
+            raise SQLGeneratorError(
+                f"Unknown or unavailable View column: {column}")
         if column in {"birth_date", "hire_date", "contract_start_date", "contract_end_date"} and not self.config.allow_select_birth_or_date_columns:
             # These can be used as filters only if explicitly allowed elsewhere;
             # the controlled generator avoids selecting/grouping by them.
@@ -1114,7 +1180,8 @@ class SQLGenerator:
         if not order_by:
             return ""
         clauses: list[str] = []
-        allowed_terms = {*(f"v.{col}" for col in safe_group_by), *safe_group_by, *allowed_aliases}
+        allowed_terms = {*(f"v.{col}" for col in safe_group_by),
+                         *safe_group_by, *allowed_aliases}
         for item in order_by:
             raw = str(item or "").strip()
             if not raw:
@@ -1182,7 +1249,8 @@ class SQLGenerator:
             params.update(deepcopy(dict(runtime_params)))
         if context is not None:
             for attr in ["runtime_params", "params"]:
-                value = context.get(attr) if isinstance(context, Mapping) else getattr(context, attr, None)
+                value = context.get(attr) if isinstance(
+                    context, Mapping) else getattr(context, attr, None)
                 if isinstance(value, Mapping):
                     params.update(deepcopy(dict(value)))
         for key in ["current_shamsi_year", "user_role", "locale"]:
@@ -1346,19 +1414,22 @@ class SQLGenerator:
             if not isinstance(payload, Mapping):
                 continue
             route = str(payload.get("route") or "").upper()
-            status = str(payload.get("status") or payload.get("validation_status") or "").upper()
+            status = str(payload.get("status") or payload.get(
+                "validation_status") or "").upper()
             if status in TERMINAL_STATUSES:
                 return self._status_result(
                     service,
                     status=status,
                     route=route or self._route_for_status(status),
-                    reason=str(payload.get("reason") or payload.get("reject_reason") or payload.get("gap_reason") or "Terminal status from previous module."),
+                    reason=str(payload.get("reason") or payload.get("reject_reason") or payload.get(
+                        "gap_reason") or "Terminal status from previous module."),
                     started=started,
                 )
             if route == ROUTE_GAP:
                 return self._status_result(service, status=STATUS_DATA_GAP, route=ROUTE_GAP, reason="GAP route selected.", started=started)
             if route == ROUTE_REJECT:
-                fallback_status = STATUS_ACCESS_DENIED if payload.get("safety_flags") else STATUS_OUT_OF_SCOPE
+                fallback_status = STATUS_ACCESS_DENIED if payload.get(
+                    "safety_flags") else STATUS_OUT_OF_SCOPE
                 return self._status_result(service, status=fallback_status, route=ROUTE_REJECT, reason="REJECT route selected.", started=started)
             if route == ROUTE_CLARIFICATION:
                 return self._status_result(service, status=STATUS_NEEDS_CLARIFICATION, route=ROUTE_CLARIFICATION, reason="Clarification route selected.", started=started)
@@ -1469,7 +1540,8 @@ class SQLGenerator:
                 return None
         raw = getattr(service, "_raw", {}) if service is not None else {}
         for key in ["data_dictionary", "report_catalog", "sql_templates"]:
-            view = raw.get(key, {}).get("main_view") if isinstance(raw, Mapping) else None
+            view = raw.get(key, {}).get(
+                "main_view") if isinstance(raw, Mapping) else None
             if isinstance(view, dict):
                 return deepcopy(view)
         return None
@@ -1483,13 +1555,17 @@ class SQLGenerator:
         if isinstance(raw, Mapping):
             candidates.extend(
                 [
-                    raw.get("data_dictionary", {}).get("runtime_defaults", {}).get("current_shamsi_year"),
-                    raw.get("sql_templates", {}).get("runtime_defaults", {}).get("current_shamsi_year"),
-                    raw.get("semantic_layer", {}).get("runtime_defaults", {}).get("current_shamsi_year"),
+                    raw.get("data_dictionary", {}).get(
+                        "runtime_defaults", {}).get("current_shamsi_year"),
+                    raw.get("sql_templates", {}).get(
+                        "runtime_defaults", {}).get("current_shamsi_year"),
+                    raw.get("semantic_layer", {}).get(
+                        "runtime_defaults", {}).get("current_shamsi_year"),
                 ]
             )
             # Fallback from schema context note in generated metadata.
-            candidates.append(raw.get("data_dictionary", {}).get("current_shamsi_year"))
+            candidates.append(raw.get("data_dictionary", {}
+                                      ).get("current_shamsi_year"))
         for item in candidates:
             try:
                 if item is not None:
@@ -1510,7 +1586,8 @@ class SQLGenerator:
         if not columns:
             raw = getattr(service, "_raw", {})
             if isinstance(raw, Mapping):
-                columns = raw.get("data_dictionary", {}).get("columns", []) or []
+                columns = raw.get("data_dictionary", {}).get(
+                    "columns", []) or []
         result: dict[str, JsonDict] = {}
         for column in columns:
             if isinstance(column, Mapping) and column.get("name"):
@@ -1518,8 +1595,10 @@ class SQLGenerator:
                 if SAFE_COLUMN_RE.fullmatch(name) and name not in SENSITIVE_COLUMNS:
                     result[name] = deepcopy(dict(column))
         # employee_id is required for COUNT; allow it even if marked restricted.
-        result.setdefault("employee_id", {"name": "employee_id", "data_type": "integer"})
-        result.setdefault("is_active", {"name": "is_active", "data_type": "boolean"})
+        result.setdefault(
+            "employee_id", {"name": "employee_id", "data_type": "integer"})
+        result.setdefault(
+            "is_active", {"name": "is_active", "data_type": "boolean"})
         return result
 
     @staticmethod
@@ -1609,14 +1688,16 @@ class SQLGenerator:
         if normalized.count(";") > 1:
             warnings.append("Generated SQL contains multiple statements.")
         if self.config.main_view.lower() not in normalized:
-            warnings.append("Generated SQL does not use the configured main View.")
+            warnings.append(
+                "Generated SQL does not use the configured main View.")
         if " join " in normalized:
             warnings.append("Generated SQL contains JOIN.")
         if "select *" in normalized:
             warnings.append("Generated SQL contains SELECT *.")
         for token in DANGEROUS_SQL_TOKENS:
             if re.search(rf"\b{re.escape(token)}\b", normalized):
-                warnings.append(f"Generated SQL contains blocked token: {token}")
+                warnings.append(
+                    f"Generated SQL contains blocked token: {token}")
         for table_name in [
             "hr_employees",
             "hr_contracts",
@@ -1629,10 +1710,12 @@ class SQLGenerator:
         ]:
             if table_name in normalized and self.config.main_view.lower() not in table_name:
                 # main_view contains employee_analytics, so this is a true raw table reference.
-                warnings.append(f"Generated SQL appears to reference raw table: {table_name}")
+                warnings.append(
+                    f"Generated SQL appears to reference raw table: {table_name}")
         for column in SENSITIVE_COLUMNS:
             if re.search(rf"\b{re.escape(column.lower())}\b", normalized):
-                warnings.append(f"Generated SQL references sensitive column: {column}")
+                warnings.append(
+                    f"Generated SQL references sensitive column: {column}")
         return warnings
 
     # ------------------------------------------------------------------
@@ -1681,4 +1764,5 @@ if __name__ == "__main__":  # pragma: no cover - manual smoke test
         },
         "route_result": {"route": "SQL"},
     }
-    print(generator.generate(question="سهم پیمانکاری در هر حوزه چند درصد است؟", context=sample_context)["sql"])
+    print(generator.generate(
+        question="سهم پیمانکاری در هر حوزه چند درصد است؟", context=sample_context)["sql"])

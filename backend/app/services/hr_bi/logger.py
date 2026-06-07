@@ -40,7 +40,7 @@ from datetime import date, datetime, timezone
 from decimal import Decimal
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, Iterable, Iterator, List, Mapping, Optional, Sequence, Tuple, Union
+from typing import Any, Dict, Iterator, List, Mapping, Optional, Sequence, Union
 
 
 JsonDict = Dict[str, Any]

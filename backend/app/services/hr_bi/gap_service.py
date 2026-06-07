@@ -1,4 +1,15 @@
 from __future__ import annotations
+import asyncio
+import hashlib
+import json
+import os
+import re
+import time
+from dataclasses import asdict, dataclass, field, is_dataclass
+from datetime import datetime, timezone
+from pathlib import Path
+from threading import Lock
+from typing import Any, Mapping, Sequence
 
 """
 gap_service.py
@@ -30,18 +41,6 @@ Design principles:
     - Do not store or return sensitive employee-level data.
     - Prefer deterministic gap_id for duplicate detection.
 """
-
-import asyncio
-import hashlib
-import json
-import os
-import re
-import time
-from dataclasses import asdict, dataclass, field, is_dataclass
-from datetime import datetime, timezone
-from pathlib import Path
-from threading import Lock
-from typing import Any, Mapping, Sequence
 
 JsonDict = dict[str, Any]
 
@@ -278,20 +277,23 @@ class GapService:
             self.metadata = metadata_service
         elif get_metadata_service is not None:
             try:
-                self.metadata = get_metadata_service(metadata_dir=metadata_dir, strict=False)
+                self.metadata = get_metadata_service(
+                    metadata_dir=metadata_dir, strict=False)
             except Exception:
                 self.metadata = None
         else:
             self.metadata = None
 
         self.config = GapServiceConfig(
-            default_metadata_dir=str(metadata_dir) if metadata_dir is not None else None,
+            default_metadata_dir=str(
+                metadata_dir) if metadata_dir is not None else None,
             persist_to_jsonl=bool(persist_to_jsonl),
             allow_duplicate_records=bool(allow_duplicate_records),
             duplicate_window_seconds=int(duplicate_window_seconds),
         )
 
-        self.registry_path = Path(registry_path) if registry_path else self._default_registry_path(metadata_dir)
+        self.registry_path = Path(
+            registry_path) if registry_path else self._default_registry_path(metadata_dir)
         self._lock = Lock()
         self._cache_by_id: dict[str, GapRecord] = {}
         self._loaded = False
@@ -343,15 +345,20 @@ class GapService:
         question_text = str(payload.get("question") or "").strip()
         if not question_text and context_dict.get("question"):
             question_text = str(context_dict["question"]).strip()
-        normalized = str(payload.get("normalized_question") or normalize_persian_text(question_text)).strip()
+        normalized = str(payload.get("normalized_question")
+                         or normalize_persian_text(question_text)).strip()
 
         rule_match = self._match_known_gap_rule(normalized, payload)
-        metadata_match = self._match_metadata_gap(normalized, payload, metadata_service)
-        effective_rule = {**rule_match, **metadata_match} if rule_match or metadata_match else {}
+        metadata_match = self._match_metadata_gap(
+            normalized, payload, metadata_service)
+        effective_rule = {**rule_match, **
+                          metadata_match} if rule_match or metadata_match else {}
 
-        gap_type = str(payload.get("gap_type") or effective_rule.get("gap_type") or self._infer_gap_type(normalized, payload))
+        gap_type = str(payload.get("gap_type") or effective_rule.get(
+            "gap_type") or self._infer_gap_type(normalized, payload))
         status = self._status_for_gap_type(gap_type)
-        gap_code = payload.get("gap_code") or effective_rule.get("gap_code") or self._build_gap_code(gap_type, payload.get("intent"))
+        gap_code = payload.get("gap_code") or effective_rule.get(
+            "gap_code") or self._build_gap_code(gap_type, payload.get("intent"))
 
         missing_items = normalize_list(
             payload.get("missing_data")
@@ -365,7 +372,8 @@ class GapService:
             payload.get("reason"),
             self._default_reason_fa(gap_type),
         )
-        reason_text = first_non_empty(payload.get("reason"), reason_fa, self._default_reason_en(gap_type))
+        reason_text = first_non_empty(payload.get(
+            "reason"), reason_fa, self._default_reason_en(gap_type))
         required_action = first_non_empty(
             payload.get("required_action"),
             effective_rule.get("required_action"),
@@ -373,21 +381,27 @@ class GapService:
         )
         suggested_next_step = first_non_empty(
             payload.get("suggested_next_step"),
-            self._build_suggested_next_step(gap_type, missing_items, required_action),
+            self._build_suggested_next_step(
+                gap_type, missing_items, required_action),
         )
 
-        clean_question = redact_sensitive_text(question_text) if self.config.redact_sensitive_terms else question_text
-        clean_normalized = redact_sensitive_text(normalized) if self.config.redact_sensitive_terms else normalized
+        clean_question = redact_sensitive_text(
+            question_text) if self.config.redact_sensitive_terms else question_text
+        clean_normalized = redact_sensitive_text(
+            normalized) if self.config.redact_sensitive_terms else normalized
 
         record = GapRecord(
-            gap_id=self._make_gap_id(clean_normalized, payload.get("intent"), gap_code),
+            gap_id=self._make_gap_id(
+                clean_normalized, payload.get("intent"), gap_code),
             status=status,
             route=ROUTE_GAP,
             gap_type=gap_type,
             gap_code=str(gap_code) if gap_code else None,
             question=truncate(clean_question, self.config.max_question_length),
-            normalized_question=truncate(clean_normalized, self.config.max_question_length),
-            intent=as_optional_str(payload.get("intent") or payload.get("intent_id")),
+            normalized_question=truncate(
+                clean_normalized, self.config.max_question_length),
+            intent=as_optional_str(payload.get(
+                "intent") or payload.get("intent_id")),
             report_id=as_optional_str(payload.get("report_id")),
             kpi_id=as_optional_str(payload.get("kpi_id")),
             reason=as_optional_str(reason_text),
@@ -395,10 +409,14 @@ class GapService:
             missing_data=missing_items,
             required_action=as_optional_str(required_action),
             suggested_next_step=as_optional_str(suggested_next_step),
-            severity=str(payload.get("severity") or effective_rule.get("severity") or self._infer_severity(gap_type, normalized)),
-            priority=str(payload.get("priority") or effective_rule.get("priority") or self._infer_priority(gap_type, payload)),
-            user_role=as_optional_str(payload.get("user_role") or context_dict.get("user_role")),
-            created_by=str(payload.get("created_by") or self.config.default_created_by),
+            severity=str(payload.get("severity") or effective_rule.get(
+                "severity") or self._infer_severity(gap_type, normalized)),
+            priority=str(payload.get("priority") or effective_rule.get(
+                "priority") or self._infer_priority(gap_type, payload)),
+            user_role=as_optional_str(payload.get(
+                "user_role") or context_dict.get("user_role")),
+            created_by=str(payload.get("created_by")
+                           or self.config.default_created_by),
             source=self.config.source_name,
             sql=DEFAULT_STATUS_SQL if self.config.include_status_sql else None,
             metadata={
@@ -463,7 +481,8 @@ class GapService:
         """Return recent gap records from cache/registry."""
         self._ensure_loaded()
         records = list(self._cache_by_id.values())
-        records.sort(key=lambda r: r.last_seen_at or r.created_at, reverse=True)
+        records.sort(
+            key=lambda r: r.last_seen_at or r.created_at, reverse=True)
         filtered: list[GapRecord] = []
         for record in records:
             if status and record.status != status:
@@ -500,7 +519,8 @@ class GapService:
                 score += 5
             if score:
                 scored.append((score, record))
-        scored.sort(key=lambda item: (item[0], item[1].last_seen_at or item[1].created_at), reverse=True)
+        scored.sort(key=lambda item: (
+            item[0], item[1].last_seen_at or item[1].created_at), reverse=True)
         return [record.to_dict() for _, record in scored[:limit]]
 
     def health_check(self) -> JsonDict:
@@ -585,7 +605,8 @@ class GapService:
                     matched_terms.append(str(term))
             if score > best_score:
                 best_score = score
-                best = {**rule, "matched_terms": matched_terms, "match_score": score}
+                best = {**rule, "matched_terms": matched_terms,
+                        "match_score": score}
         return best if best_score > 0 else {}
 
     def _match_metadata_gap(self, normalized_question: str, payload: Mapping[str, Any], metadata_service: Any | None) -> JsonDict:
@@ -597,11 +618,13 @@ class GapService:
 
         # MetadataService in this project exposes .bundle or individual dictionaries depending on usage.
         try:
-            semantic = getattr(metadata_service, "semantic_layer", None) or getattr(getattr(metadata_service, "bundle", None), "semantic_layer", None)
+            semantic = getattr(metadata_service, "semantic_layer", None) or getattr(
+                getattr(metadata_service, "bundle", None), "semantic_layer", None)
             if not semantic and hasattr(metadata_service, "get_bundle"):
                 semantic = metadata_service.get_bundle().semantic_layer
             for item in (semantic or {}).get("data_gap_semantics", []) or []:
-                item_terms = item.get("terms") or item.get("aliases") or item.get("trigger_terms") or []
+                item_terms = item.get("terms") or item.get(
+                    "aliases") or item.get("trigger_terms") or []
                 score = 0
                 matched_terms = []
                 for term in item_terms:
@@ -612,17 +635,21 @@ class GapService:
                 if payload.get("intent") and item.get("intent") == payload.get("intent"):
                     score += 5
                 if score:
-                    matches.append({**item, "matched_terms": matched_terms, "match_score": score})
+                    matches.append(
+                        {**item, "matched_terms": matched_terms, "match_score": score})
         except Exception:
             pass
 
         try:
-            access = getattr(metadata_service, "access_policies", None) or getattr(getattr(metadata_service, "bundle", None), "access_policies", None)
+            access = getattr(metadata_service, "access_policies", None) or getattr(
+                getattr(metadata_service, "bundle", None), "access_policies", None)
             if not access and hasattr(metadata_service, "get_bundle"):
                 access = metadata_service.get_bundle().access_policies
-            known_gaps = ((access or {}).get("data_gap_policy") or {}).get("known_data_gaps", []) or []
+            known_gaps = ((access or {}).get("data_gap_policy")
+                          or {}).get("known_data_gaps", []) or []
             for item in known_gaps:
-                item_terms = item.get("terms") or item.get("triggers") or item.get("questions") or []
+                item_terms = item.get("terms") or item.get(
+                    "triggers") or item.get("questions") or []
                 score = 0
                 matched_terms = []
                 for term in item_terms:
@@ -633,13 +660,15 @@ class GapService:
                 if payload.get("intent") and item.get("intent") == payload.get("intent"):
                     score += 5
                 if score:
-                    matches.append({**item, "matched_terms": matched_terms, "match_score": score})
+                    matches.append(
+                        {**item, "matched_terms": matched_terms, "match_score": score})
         except Exception:
             pass
 
         if not matches:
             return {}
-        matches.sort(key=lambda m: int(m.get("match_score") or 0), reverse=True)
+        matches.sort(key=lambda m: int(
+            m.get("match_score") or 0), reverse=True)
         top = matches[0]
 
         # Normalize likely key names from metadata files.
@@ -656,7 +685,8 @@ class GapService:
         return {k: v for k, v in normalized.items() if v not in (None, "", [])}
 
     def _infer_gap_type(self, normalized_question: str, payload: Mapping[str, Any]) -> str:
-        text = " ".join([normalized_question, str(payload.get("reason") or ""), str(payload.get("intent") or "")])
+        text = " ".join([normalized_question, str(payload.get(
+            "reason") or ""), str(payload.get("intent") or "")])
         if any(term in text for term in ["قانون", "قاعده", "آستانه", "تعریف", "تعادل", "سالخوردگی", "ریسک"]):
             return GAP_TYPE_BUSINESS_RULE
         if any(term in text for term in ["سیاست", "آیین نامه", "آیین‌نامه", "دستورالعمل"]):
@@ -675,7 +705,8 @@ class GapService:
         return STATUS_DATA_GAP
 
     def _build_gap_code(self, gap_type: str, intent: Any) -> str:
-        cleaned_intent = re.sub(r"[^A-Za-z0-9_]+", "_", str(intent or "unknown_intent")).strip("_").upper()
+        cleaned_intent = re.sub(
+            r"[^A-Za-z0-9_]+", "_", str(intent or "unknown_intent")).strip("_").upper()
         return f"{gap_type}_{cleaned_intent}"
 
     def _default_reason_fa(self, gap_type: str) -> str:
@@ -765,10 +796,12 @@ class GapService:
         return payload
 
     def _build_user_message(self, record: GapRecord) -> str:
-        reason = record.reason_fa or record.reason or self._default_reason_fa(record.gap_type)
+        reason = record.reason_fa or record.reason or self._default_reason_fa(
+            record.gap_type)
         missing = ""
         if record.missing_data:
-            missing = " داده/تعریف موردنیاز: " + "، ".join(record.missing_data[:5]) + "."
+            missing = " داده/تعریف موردنیاز: " + \
+                "، ".join(record.missing_data[:5]) + "."
         next_step = f" پیشنهاد: {record.suggested_next_step}" if record.suggested_next_step else ""
         return f"این سؤال مرتبط است، اما در نسخه فعلی داده یا تعریف کافی برای پاسخ دقیق وجود ندارد. {reason}.{missing}{next_step}".replace("..", ".")
 
@@ -801,7 +834,8 @@ class GapService:
                             continue
                         try:
                             data = json.loads(line)
-                            record = GapRecord(**filter_gap_record_fields(data))
+                            record = GapRecord(
+                                **filter_gap_record_fields(data))
                             self._cache_by_id[record.gap_id] = record
                         except Exception:
                             continue
@@ -832,7 +866,8 @@ class GapService:
             if self.config.persist_to_jsonl:
                 self.registry_path.parent.mkdir(parents=True, exist_ok=True)
                 with self.registry_path.open("a", encoding="utf-8") as fh:
-                    fh.write(json.dumps(saved.to_dict(), ensure_ascii=False, sort_keys=True) + "\n")
+                    fh.write(json.dumps(saved.to_dict(),
+                             ensure_ascii=False, sort_keys=True) + "\n")
             return saved, duplicate_of
 
     def _make_gap_id(self, normalized_question: str, intent: Any, gap_code: Any) -> str:
@@ -842,7 +877,8 @@ class GapService:
             str(gap_code or ""),
         ])
         digest = hashlib.sha256(base.encode("utf-8")).hexdigest()[:16]
-        prefix = re.sub(r"[^A-Za-z0-9_]+", "_", str(gap_code or "GAP")).strip("_").upper()[:32]
+        prefix = re.sub(r"[^A-Za-z0-9_]+", "_",
+                        str(gap_code or "GAP")).strip("_").upper()[:32]
         return f"{prefix}_{digest}"
 
 
@@ -877,7 +913,8 @@ def normalize_persian_text(text: str | None) -> str:
 def redact_sensitive_text(text: str) -> str:
     value = str(text or "")
     for term in sorted(SENSITIVE_TERMS, key=len, reverse=True):
-        value = re.sub(re.escape(term), "[REDACTED]", value, flags=re.IGNORECASE)
+        value = re.sub(re.escape(term),
+                       "[REDACTED]", value, flags=re.IGNORECASE)
     # Redact long digit sequences that could be national/personnel identifiers.
     value = re.sub(r"\b\d{8,12}\b", "[REDACTED_NUMBER]", value)
     return value
@@ -929,7 +966,8 @@ def normalize_list(value: Sequence[Any] | str | Any | None) -> list[str]:
                 if item.strip():
                     out.append(item.strip())
             elif isinstance(item, Mapping):
-                label = item.get("name") or item.get("field") or item.get("column") or item.get("title") or item.get("description")
+                label = item.get("name") or item.get("field") or item.get(
+                    "column") or item.get("title") or item.get("description")
                 if label:
                     out.append(str(label))
             else:
@@ -984,16 +1022,21 @@ def filter_gap_record_fields(data: Mapping[str, Any]) -> JsonDict:
     allowed = set(GapRecord.__dataclass_fields__.keys())
     filtered = {k: v for k, v in data.items() if k in allowed}
     # Dataclass compatibility defaults for older registry lines.
-    filtered.setdefault("gap_id", str(data.get("gap_id") or data.get("id") or hashlib.sha256(json.dumps(data, ensure_ascii=False).encode("utf-8")).hexdigest()[:16]))
+    filtered.setdefault("gap_id", str(data.get("gap_id") or data.get("id") or hashlib.sha256(
+        json.dumps(data, ensure_ascii=False).encode("utf-8")).hexdigest()[:16]))
     filtered.setdefault("status", str(data.get("status") or STATUS_DATA_GAP))
     filtered.setdefault("route", str(data.get("route") or ROUTE_GAP))
     filtered.setdefault("gap_type", str(data.get("gap_type") or GAP_TYPE_DATA))
     filtered.setdefault("gap_code", data.get("gap_code"))
     filtered.setdefault("question", str(data.get("question") or ""))
-    filtered.setdefault("normalized_question", str(data.get("normalized_question") or normalize_persian_text(data.get("question") or "")))
-    filtered.setdefault("missing_data", normalize_list(data.get("missing_data")))
-    filtered.setdefault("created_at", str(data.get("created_at") or utc_now_iso()))
-    filtered.setdefault("occurrence_count", int(data.get("occurrence_count") or 1))
+    filtered.setdefault("normalized_question", str(data.get(
+        "normalized_question") or normalize_persian_text(data.get("question") or "")))
+    filtered.setdefault(
+        "missing_data", normalize_list(data.get("missing_data")))
+    filtered.setdefault("created_at", str(
+        data.get("created_at") or utc_now_iso()))
+    filtered.setdefault("occurrence_count", int(
+        data.get("occurrence_count") or 1))
     filtered.setdefault("metadata", dict(data.get("metadata") or {}))
     return filtered
 
@@ -1022,11 +1065,13 @@ def get_gap_service(
 
 
 if __name__ == "__main__":  # pragma: no cover - manual smoke test
-    service = GapService(metadata_dir=Path(__file__).parent, registry_path=Path("/tmp/hr_bi_gap_registry.jsonl"))
+    service = GapService(metadata_dir=Path(__file__).parent,
+                         registry_path=Path("/tmp/hr_bi_gap_registry.jsonl"))
     samples = [
         "تعداد کارکنان هر شهر چقدر است؟",
         "چند نفر در آستانه بازنشستگی هستند؟",
         "آیا بهره‌وری پیمانکارها مناسب است؟",
     ]
     for q in samples:
-        print(json.dumps(service.create_gap(question=q, created_by="smoke_test"), ensure_ascii=False, indent=2))
+        print(json.dumps(service.create_gap(question=q,
+              created_by="smoke_test"), ensure_ascii=False, indent=2))
