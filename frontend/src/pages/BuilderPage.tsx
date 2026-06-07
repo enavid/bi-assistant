@@ -130,14 +130,18 @@ export function BuilderPage() {
 
   async function handleTest() {
     if (!selected || !testQuestion.trim()) return
-    setTestLoading(true); setTestResult(null)
-    const result = await chatApi.generate(testQuestion, selected.id, defaultModelName)
-    setTestResult({
-      sql: result.success ? result.sql : `-- ${result.error ?? 'No SQL generated'}`,
-      route: result.route ?? undefined,
-      intent: result.detected_intent ?? undefined,
-    })
-    setTestLoading(false)
+    setTestLoading(true)
+    setTestResult(null)
+    try {
+      const result = await chatApi.generate(testQuestion, selected.id, defaultModelName)
+      setTestResult({
+        sql: result.success ? result.sql : `-- ${result.error ?? 'No SQL generated'}`,
+        route: result.route ?? undefined,
+        intent: result.detected_intent ?? undefined,
+      })
+    } finally {
+      setTestLoading(false)
+    }
   }
 
   const preview = buildPreview(selected)

@@ -8,6 +8,8 @@ import type {
   Section,
 } from '@/types'
 
+
+
 export const projectApi = {
   list: () =>
     apiClient.get<Project[]>('/projects').then((r) => r.data),
@@ -72,16 +74,3 @@ export const ollamaApi = {
     apiClient.get<OllamaHealth>('/ollama/health').then((r) => r.data),
 }
 
-export const templateApi = {
-  list: () =>
-    apiClient.get<import('@/types').PromptTemplate[]>('/templates').then((r) => r.data),
-
-  activate: (id: string) =>
-    apiClient.post<import('@/types').PromptTemplate>(`/templates/${id}/activate`).then((r) => r.data),
-
-  update: (id: string, payload: Partial<import('@/types').PromptTemplate>) =>
-    apiClient.patch<import('@/types').PromptTemplate>(`/templates/${id}`, payload).then((r) => r.data),
-
-  delete: (id: string) =>
-    apiClient.delete(`/templates/${id}`).then((r) => r.data),
-}

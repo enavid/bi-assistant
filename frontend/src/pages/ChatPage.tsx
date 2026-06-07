@@ -65,28 +65,31 @@ export function ChatPage() {
     if (textareaRef.current) textareaRef.current.style.height = 'auto'
     setSending(true)
 
-    const userSession = await chatApi.addMessage(session.id, { role: 'user', content: q })
-    qc.setQueryData(['session', session.id], userSession)
+    try {
+      const userSession = await chatApi.addMessage(session.id, { role: 'user', content: q })
+      qc.setQueryData(['session', session.id], userSession)
 
-    if (userSession.title === 'New chat') {
-      const updated = await chatApi.updateSession(session.id, { title: q.slice(0, 60) })
-      qc.invalidateQueries({ queryKey: ['sessions'] })
-      qc.setQueryData(['session', session.id], { ...updated, messages: userSession.messages })
+      if (userSession.title === 'New chat') {
+        const updated = await chatApi.updateSession(session.id, { title: q.slice(0, 60) })
+        qc.invalidateQueries({ queryKey: ['sessions'] })
+        qc.setQueryData(['session', session.id], { ...updated, messages: userSession.messages })
+      }
+
+      const result = await chatApi.generate(q, session.project_id, session.model_name)
+      const isBlocked = !result.success && !!STATUS_FA[result.status ?? '']
+
+      const aiSession = await chatApi.addMessage(session.id, {
+        role: 'assistant', content: '',
+        sql: result.success ? result.sql : null,
+        error: isBlocked ? `BLOCKED:${result.status}` : (result.error ?? null),
+      })
+      qc.setQueryData(['session', session.id], aiSession)
+
+      const lastMsg = aiSession.messages[aiSession.messages.length - 1]
+      if (lastMsg) setPipelineInfo((prev) => ({ ...prev, [lastMsg.id]: result }))
+    } finally {
+      setSending(false)
     }
-
-    const result = await chatApi.generate(q, session.project_id, session.model_name)
-    const isBlocked = !result.success && !!STATUS_FA[result.status ?? '']
-
-    const aiSession = await chatApi.addMessage(session.id, {
-      role: 'assistant', content: '',
-      sql: result.success ? result.sql : null,
-      error: isBlocked ? `BLOCKED:${result.status}` : (result.error ?? null),
-    })
-    qc.setQueryData(['session', session.id], aiSession)
-
-    const lastMsg = aiSession.messages[aiSession.messages.length - 1]
-    if (lastMsg) setPipelineInfo((prev) => ({ ...prev, [lastMsg.id]: result }))
-    setSending(false)
   }
 
   async function handleRunQuery(msg: Message) {
@@ -169,7 +172,7 @@ export function ChatPage() {
                   </div>
                 ) : msg.error && !msg.error.startsWith('BLOCKED:') ? (
                   <div className="text-[13px] pt-1" style={{ color: 'var(--text-3)' }}>{msg.error}</div>
-                ) : (
+                ) : msg.sql ? (
                   <div className="flex-1 min-w-0 max-w-[calc(100%-44px)]" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)', borderRadius: '4px 12px 12px 12px', overflow: 'hidden' }}>
                     {/* SQL header */}
                     <div className="flex items-center gap-2 px-3 py-1.5" style={{ borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-raised)' }}>
@@ -205,7 +208,7 @@ export function ChatPage() {
                       </div>
                     )}
                   </div>
-                )}
+                ) : null}
               </div>
 
               {/* Query results */}

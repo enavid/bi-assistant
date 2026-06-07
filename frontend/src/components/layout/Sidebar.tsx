@@ -164,7 +164,11 @@ export function Sidebar() {
                       </p>
                     </div>
                     <button
-                      onClick={(e) => { e.stopPropagation(); deleteSession.mutate(s.id) }}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        deleteSession.mutate(s.id)
+                        if (activeSessionId === s.id) setActiveSession(null)
+                      }}
                       className="opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
                       style={{ color: 'var(--text-3)' }}
                       onMouseEnter={(e) => e.currentTarget.style.color = '#f87171'}

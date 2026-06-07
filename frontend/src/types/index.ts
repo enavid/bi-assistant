@@ -81,14 +81,5 @@ export interface OllamaHealth {
   message: string
 }
 
-export interface PromptTemplate {
-  id: string
-  name: string
-  content: string
-  active: boolean
-  created_at: string
-  updated_at: string
-}
-
 export type Theme = 'dark' | 'light'
 export type AppPage = 'chat' | 'builder' | 'settings'
