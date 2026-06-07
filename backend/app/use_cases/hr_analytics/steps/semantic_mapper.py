@@ -13,8 +13,6 @@ semantic_mapper.py
 ------------------
 Semantic mapper for HR BI Assistant Phase 2 / Controlled SQL-based MVP.
 
-Place this file in:
-    backend/app/services/semantic_mapper.py
 
 Purpose:
     Convert a Persian HR question into metadata-grounded semantic signals:

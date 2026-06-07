@@ -12,8 +12,6 @@ sql_validator.py
 ----------------
 Strict SQL guardrail validator for HR BI Assistant Phase 2.
 
-Place this file in:
-    backend/app/services/sql_validator.py
 
 Responsibility:
     - Validate every SQL statement before query_executor.py runs it.

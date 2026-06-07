@@ -17,8 +17,6 @@ sql_generator.py
 ----------------
 Controlled dynamic SQL generator for HR BI Assistant Phase 2.
 
-Place this file in:
-    backend/app/services/sql_generator.py
 
 Responsibility:
     - Build a safe fallback SQL statement when sql_template_engine.py cannot

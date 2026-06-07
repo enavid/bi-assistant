@@ -15,8 +15,6 @@ sql_template_engine.py
 ----------------------
 Controlled SQL template renderer for HR BI Assistant Phase 2.
 
-Place this file in:
-    backend/app/services/sql_template_engine.py
 
 Responsibility:
     - Choose the safest SQL template for the detected intent/report.

@@ -12,8 +12,6 @@ metadata_service.py
 -------------------
 Central loader and accessor for the HR BI Assistant Phase 2 metadata layer.
 
-Place this file in:
-    backend/app/services/metadata_service.py
 
 Recommended metadata folder:
     backend/metadata/

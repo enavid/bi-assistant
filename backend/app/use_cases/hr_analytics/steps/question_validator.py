@@ -9,8 +9,6 @@ question_validator.py
 ---------------------
 Question validator for HR BI Assistant Phase 2: Controlled SQL-based MVP.
 
-Place this file in:
-    backend/app/services/question_validator.py
 
 Purpose:
     Validate a normalized user question after domain classification and before

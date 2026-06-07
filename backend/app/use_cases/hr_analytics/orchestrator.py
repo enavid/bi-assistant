@@ -19,8 +19,6 @@ llm_orchestrator.py
 -------------------
 Central orchestration layer for HR BI Assistant, Controlled SQL-based MVP.
 
-Place this file in:
-    backend/app/services/llm_orchestrator.py
 
 Recommended surrounding modules:
     backend/app/services/metadata_service.py

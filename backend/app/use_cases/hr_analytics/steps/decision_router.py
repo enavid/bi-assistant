@@ -13,8 +13,6 @@ router.py
 ---------
 Decision Router for HR BI Assistant Phase 2 / Controlled SQL-based MVP.
 
-Place this file in:
-    backend/app/services/router.py
 
 Purpose:
     Decide the final execution path after domain classification, question validation,

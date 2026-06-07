@@ -20,8 +20,6 @@ query_executor.py
 -----------------
 Safe query execution service for HR BI Assistant, Controlled SQL-based MVP.
 
-Place this file in:
-    backend/app/services/query_executor.py
 
 Responsibility:
     - Execute ONLY SQL that has already passed sql_validator.py.

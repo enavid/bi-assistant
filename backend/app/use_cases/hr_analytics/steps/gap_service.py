@@ -18,8 +18,6 @@ gap_service.py
 --------------
 Gap Manager for HR BI Assistant Phase 2 / Controlled SQL-based MVP.
 
-Place this file in:
-    backend/app/services/gap_service.py
 
 Purpose:
     - Register Data Gap / Knowledge Gap / Business Rule Gap cases in a stable shape.

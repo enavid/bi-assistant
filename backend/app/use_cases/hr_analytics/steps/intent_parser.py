@@ -13,8 +13,6 @@ intent_parser.py
 ----------------
 Intent Parser for HR BI Assistant Phase 2 / Controlled SQL-based MVP.
 
-Place this file in:
-    backend/app/services/intent_parser.py
 
 Purpose:
     Convert a validated Persian HR question into a structured, metadata-grounded

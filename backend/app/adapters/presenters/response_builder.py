@@ -15,8 +15,6 @@ response_builder.py
 -------------------
 Final response builder for HR BI Assistant Phase 2: Controlled SQL-based MVP.
 
-Place this file in:
-    backend/app/services/response_builder.py
 
 Responsibility:
     - Convert SQL / GAP / REJECT / validation outputs into a stable final answer payload.
