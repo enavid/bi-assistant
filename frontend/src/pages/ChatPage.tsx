@@ -48,6 +48,7 @@ export function ChatPage() {
   const project = projects?.find((p) => p.id === session?.project_id)
   const [question, setQuestion] = useState('')
   const [sending, setSending] = useState(false)
+  const [inputFocused, setInputFocused] = useState(false)
   const [queryResults, setQueryResults] = useState<Record<string, QueryResult>>({})
   const [pipelineInfo, setPipelineInfo] = useState<Record<string, GenerateResponse>>({})
   const [dismissed, setDismissed] = useState<Set<string>>(new Set())
@@ -241,12 +242,23 @@ export function ChatPage() {
       </div>
 
       {/* Input */}
-      <div className="px-6 pb-5 pt-3 flex-shrink-0" style={{ borderTop: '1px solid var(--border-default)', background: 'var(--bg-surface)' }}>
+      <div
+        className="px-4 pb-4 pt-3 flex-shrink-0"
+        style={{ borderTop: '1px solid var(--border-default)', background: 'var(--bg-surface)' }}
+      >
         <div
-          className="flex gap-3 items-end rounded-[14px] px-4 py-3 transition-all"
-          style={{ background: 'var(--bg-raised)', border: '1.5px solid var(--border-default)' }}
-          onFocus={(e) => e.currentTarget.style.borderColor = 'var(--accent)'}
-          onBlur={(e) => e.currentTarget.style.borderColor = 'var(--border-default)'}
+          className="relative rounded-[16px] transition-all duration-150"
+          style={{
+            background: 'var(--bg-raised)',
+            border: `1.5px solid ${inputFocused ? 'var(--accent)' : 'var(--border-default)'}`,
+            boxShadow: inputFocused
+              ? '0 0 0 3px var(--accent-bg), 0 2px 8px rgba(0,0,0,0.1)'
+              : '0 1px 3px rgba(0,0,0,0.06)',
+          }}
+          onFocus={() => setInputFocused(true)}
+          onBlur={(e) => {
+            if (!e.currentTarget.contains(e.relatedTarget as Node)) setInputFocused(false)
+          }}
         >
           <textarea
             ref={textareaRef}
@@ -254,35 +266,69 @@ export function ChatPage() {
             onChange={(e) => {
               setQuestion(e.target.value)
               e.target.style.height = 'auto'
-              e.target.style.height = Math.min(e.target.scrollHeight, 140) + 'px'
+              e.target.style.height = Math.min(e.target.scrollHeight, 180) + 'px'
             }}
-            onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() } }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() }
+            }}
             placeholder="سوال خود را بپرسید…"
             rows={1}
+            className="placeholder:text-[var(--text-3)] w-full block"
             style={{
-              direction: 'rtl', textAlign: 'right',
-              minHeight: '24px', maxHeight: '140px',
-              background: 'transparent', border: 'none', outline: 'none',
-              resize: 'none', fontSize: '14px', lineHeight: '1.6',
-              color: 'var(--text-1)', fontFamily: 'inherit',
-              flex: 1,
+              direction: 'rtl',
+              textAlign: 'right',
+              padding: '14px 16px 52px',
+              maxHeight: '180px',
+              background: 'transparent',
+              border: 'none',
+              outline: 'none',
+              resize: 'none',
+              fontSize: '14px',
+              lineHeight: '1.65',
+              color: 'var(--text-1)',
+              fontFamily: 'inherit',
             }}
-            className="placeholder:text-[var(--text-3)]"
           />
-          <button
-            onClick={handleSend}
-            disabled={sending || !question.trim()}
-            className="flex-shrink-0 w-9 h-9 rounded-[10px] flex items-center justify-center transition-all"
-            style={{
-              background: sending || !question.trim() ? 'var(--bg-surface)' : 'var(--accent)',
-              color: sending || !question.trim() ? 'var(--text-3)' : '#fff',
-              border: sending || !question.trim() ? '1px solid var(--border-default)' : 'none',
-            }}
-          >
-            <Icon name="send" size={15} />
-          </button>
+
+          {/* Bottom bar inside the input box */}
+          <div className="absolute bottom-0 left-0 right-0 flex items-center px-3 pb-3 pointer-events-none">
+            {session?.model_name && (
+              <span
+                className="text-[10px] font-mono px-1.5 py-0.5 rounded-[4px] truncate max-w-[140px] select-none"
+                style={{
+                  background: 'var(--bg-surface)',
+                  color: 'var(--text-3)',
+                  border: '1px solid var(--border-subtle)',
+                }}
+              >
+                {session.model_name.split(':')[0]}
+              </span>
+            )}
+            <button
+              onClick={handleSend}
+              disabled={sending || !question.trim()}
+              className="pointer-events-auto ml-auto w-8 h-8 rounded-[10px] flex items-center justify-center transition-all"
+              style={{
+                background: !sending && question.trim() ? 'var(--accent)' : 'var(--bg-surface)',
+                color: !sending && question.trim() ? '#fff' : 'var(--text-3)',
+                border: !sending && question.trim() ? 'none' : '1px solid var(--border-default)',
+                transform: !sending && question.trim() ? 'scale(1.04)' : 'scale(1)',
+              }}
+            >
+              {sending
+                ? <div className="w-3 h-3 rounded-full border-2 border-current border-t-transparent animate-spin" />
+                : <Icon name="send" size={13} />
+              }
+            </button>
+          </div>
         </div>
-        <p className="text-center text-[10px] mt-2" style={{ color: 'var(--text-3)' }}>Enter to send · Shift+Enter for new line</p>
+
+        {/* Keyboard hint */}
+        <p className="text-center text-[10px] mt-2 select-none" style={{ color: 'var(--text-3)' }}>
+          <span className="font-mono opacity-70">↵</span> ارسال
+          <span className="mx-1.5 opacity-40">·</span>
+          <span className="font-mono opacity-70">⇧↵</span> خط جدید
+        </p>
       </div>
     </div>
   )
