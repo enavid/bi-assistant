@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from app.services.hr_bi.domain_classifier import DomainClassifier
-from app.services.hr_bi.question_validator import QuestionValidator
+from app.use_cases.hr_analytics.steps.domain_classifier import DomainClassifier
+from app.use_cases.hr_analytics.steps.question_validator import QuestionValidator
 
 
 def test_domain_classifier_accepts_hr_question(metadata_service):

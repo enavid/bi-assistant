@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from app.services.hr_bi.llm_orchestrator import LLMOrchestrator
+from app.use_cases.hr_analytics.orchestrator import LLMOrchestrator
 
 
 def test_orchestrator_generates_sql_for_total_employee_count(metadata_service):
