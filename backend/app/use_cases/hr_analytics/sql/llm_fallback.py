@@ -17,12 +17,8 @@ The generated SQL must still pass sql_validator.py before execution.
 """
 
 
-try:
-    from .llm_client import LLMClient
-    from .prompt_builder import PromptBuilder
-except Exception:  # pragma: no cover
-    from llm_client import LLMClient  # type: ignore
-    from prompt_builder import PromptBuilder  # type: ignore
+from app.infrastructure.llm.analytics_client import LLMClient
+from app.infrastructure.llm.prompt_builder import PromptBuilder
 
 JsonDict = dict[str, Any]
 

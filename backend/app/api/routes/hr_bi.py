@@ -8,7 +8,7 @@ from fastapi import APIRouter, HTTPException
 from app.api.dependencies import get_hr_bi_orchestrator
 from app.api.schemas import HRBIRequest, HRBIResponse
 from app.core.config import settings
-from app.use_cases.hr_bi.orchestrate import HRBIOrchestrationUseCase
+from app.use_cases.hr_analytics.orchestrate import HRBIOrchestrationUseCase
 
 logger = logging.getLogger(__name__)
 

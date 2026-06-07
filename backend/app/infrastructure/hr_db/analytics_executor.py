@@ -37,22 +37,8 @@ Important:
 """
 
 
-try:  # package import when used inside backend/app/services
-    from .metadata_service import MetadataService, get_metadata_service
-except Exception:  # pragma: no cover - local/script execution fallback
-    try:
-        from metadata_service import MetadataService, get_metadata_service  # type: ignore
-    except Exception:  # pragma: no cover
-        MetadataService = Any  # type: ignore
-        get_metadata_service = None  # type: ignore
-
-try:  # optional local validator
-    from .sql_validator import SQLValidator
-except Exception:  # pragma: no cover
-    try:
-        from sql_validator import SQLValidator  # type: ignore
-    except Exception:  # pragma: no cover
-        SQLValidator = None  # type: ignore
+from app.infrastructure.metadata.service import MetadataService, get_metadata_service
+from app.use_cases.hr_analytics.sql.validator import SQLValidator
 
 
 JsonDict = dict[str, Any]

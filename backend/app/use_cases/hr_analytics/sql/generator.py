@@ -29,17 +29,8 @@ Important:
     Every generated query must still pass sql_validator.py before execution.
 """
 
-try:  # package import when used inside backend/app/services
-    from .metadata_service import MetadataService, get_metadata_service
-    from .llm_sql_fallback import LLMSQLFallback
-except Exception:  # pragma: no cover - local/script execution fallback
-    try:
-        from metadata_service import MetadataService, get_metadata_service  # type: ignore
-        from llm_sql_fallback import LLMSQLFallback  # type: ignore
-    except Exception:  # pragma: no cover
-        MetadataService = Any  # type: ignore
-        get_metadata_service = None  # type: ignore
-        LLMSQLFallback = None  # type: ignore
+from app.infrastructure.metadata.service import MetadataService, get_metadata_service
+from app.use_cases.hr_analytics.sql.llm_fallback import LLMSQLFallback
 
 
 JsonDict = dict[str, Any]

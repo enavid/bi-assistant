@@ -44,14 +44,7 @@ Design principles:
 
 JsonDict = dict[str, Any]
 
-try:  # package-relative import when copied into backend/app/services
-    from .metadata_service import MetadataService, get_metadata_service
-except Exception:  # pragma: no cover - local/script execution fallback
-    try:
-        from metadata_service import MetadataService, get_metadata_service  # type: ignore
-    except Exception:  # pragma: no cover
-        MetadataService = Any  # type: ignore
-        get_metadata_service = None  # type: ignore
+from app.infrastructure.metadata.service import MetadataService, get_metadata_service
 
 
 ROUTE_GAP = "GAP"

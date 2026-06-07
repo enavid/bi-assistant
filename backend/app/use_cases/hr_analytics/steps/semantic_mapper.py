@@ -35,14 +35,7 @@ Expected metadata source:
 
 JsonDict = dict[str, Any]
 
-try:  # Works when files are copied directly into backend/app/services.
-    from metadata_service import MetadataService, get_metadata_service  # type: ignore
-except Exception:  # pragma: no cover - supports package-relative imports.
-    try:
-        from .metadata_service import MetadataService, get_metadata_service  # type: ignore
-    except Exception:  # pragma: no cover - lets tests inject metadata explicitly.
-        MetadataService = Any  # type: ignore
-        get_metadata_service = None  # type: ignore
+from app.infrastructure.metadata.service import MetadataService, get_metadata_service
 
 
 PERSIAN_DIGITS = "۰۱۲۳۴۵۶۷۸۹"

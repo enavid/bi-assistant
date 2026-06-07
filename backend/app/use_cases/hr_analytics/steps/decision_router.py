@@ -37,14 +37,7 @@ Design principles:
 
 JsonDict = dict[str, Any]
 
-try:  # Works when copied beside metadata_service.py.
-    from metadata_service import MetadataService, get_metadata_service  # type: ignore
-except Exception:  # pragma: no cover - package-relative import fallback.
-    try:
-        from .metadata_service import MetadataService, get_metadata_service  # type: ignore
-    except Exception:  # pragma: no cover - tests can inject metadata explicitly.
-        MetadataService = Any  # type: ignore
-        get_metadata_service = None  # type: ignore
+from app.infrastructure.metadata.service import MetadataService, get_metadata_service
 
 
 ROUTE_SQL = "SQL"

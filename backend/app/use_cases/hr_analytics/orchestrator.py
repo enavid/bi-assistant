@@ -44,14 +44,7 @@ The goal is to keep controlled:
 - REJECT route is used for non-HR, unsafe, or individual employee questions.
 """
 
-try:  # When used inside backend/app/services as a package.
-    from .metadata_service import MetadataService, get_metadata_service
-except Exception:  # pragma: no cover - local/script execution fallback.
-    try:
-        from metadata_service import MetadataService, get_metadata_service  # type: ignore
-    except Exception:  # pragma: no cover - type checking and early boot fallback.
-        MetadataService = Any  # type: ignore
-        get_metadata_service = None  # type: ignore
+from app.infrastructure.metadata.service import MetadataService, get_metadata_service
 
 
 JsonDict = dict[str, Any]
