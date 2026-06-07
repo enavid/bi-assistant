@@ -247,12 +247,12 @@ export function ChatPage() {
         style={{ borderTop: '1px solid var(--border-default)', background: 'var(--bg-surface)' }}
       >
         <div
-          className="relative rounded-[16px] transition-all duration-150"
+          className="rounded-[16px] transition-all duration-150 overflow-hidden"
           style={{
             background: 'var(--bg-raised)',
             border: `1.5px solid ${inputFocused ? 'var(--accent)' : 'var(--border-default)'}`,
             boxShadow: inputFocused
-              ? '0 0 0 3px var(--accent-bg), 0 2px 8px rgba(0,0,0,0.1)'
+              ? '0 0 0 3px var(--accent-bg), 0 2px 8px rgba(0,0,0,0.08)'
               : '0 1px 3px rgba(0,0,0,0.06)',
           }}
           onFocus={() => setInputFocused(true)}
@@ -277,7 +277,7 @@ export function ChatPage() {
             style={{
               direction: 'rtl',
               textAlign: 'right',
-              padding: '14px 16px 52px',
+              padding: '12px 16px 6px',
               maxHeight: '180px',
               background: 'transparent',
               border: 'none',
@@ -290,8 +290,8 @@ export function ChatPage() {
             }}
           />
 
-          {/* Bottom bar inside the input box */}
-          <div className="absolute bottom-0 left-0 right-0 flex items-center px-3 pb-3 pointer-events-none">
+          {/* Bottom bar — natural flow, not absolute */}
+          <div className="flex items-center gap-2 px-3 pb-2.5">
             {session?.model_name && (
               <span
                 className="text-[10px] font-mono px-1.5 py-0.5 rounded-[4px] truncate max-w-[140px] select-none"
@@ -307,17 +307,17 @@ export function ChatPage() {
             <button
               onClick={handleSend}
               disabled={sending || !question.trim()}
-              className="pointer-events-auto ml-auto w-8 h-8 rounded-[10px] flex items-center justify-center transition-all"
+              className="ml-auto w-7 h-7 rounded-[9px] flex items-center justify-center transition-all"
               style={{
-                background: !sending && question.trim() ? 'var(--accent)' : 'var(--bg-surface)',
+                background: !sending && question.trim() ? 'var(--accent)' : 'transparent',
                 color: !sending && question.trim() ? '#fff' : 'var(--text-3)',
                 border: !sending && question.trim() ? 'none' : '1px solid var(--border-default)',
-                transform: !sending && question.trim() ? 'scale(1.04)' : 'scale(1)',
+                transform: !sending && question.trim() ? 'scale(1.05)' : 'scale(1)',
               }}
             >
               {sending
                 ? <div className="w-3 h-3 rounded-full border-2 border-current border-t-transparent animate-spin" />
-                : <Icon name="send" size={13} />
+                : <Icon name="send" size={12} />
               }
             </button>
           </div>
