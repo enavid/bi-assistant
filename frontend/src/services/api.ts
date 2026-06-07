@@ -9,7 +9,6 @@ import type {
 } from '@/types'
 
 
-
 export const projectApi = {
   list: () =>
     apiClient.get<Project[]>('/projects').then((r) => r.data),

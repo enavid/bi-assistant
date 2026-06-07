@@ -126,9 +126,9 @@ export function SettingsPage() {
                   <span className="text-[13px] font-medium text-text-1">Branding</span>
                 </div>
                 <p className="text-[11px] text-text-2 mb-3.5">Company logo shown in the sidebar.</p>
-                <div className="border border-dashed border-border-strong rounded-[8px] p-4 text-center cursor-pointer hover:border-accent transition-colors">
+                <div className="border border-dashed border-border-strong rounded-[8px] p-4 text-center opacity-50">
                   <div className="w-11 h-11 rounded-[8px] bg-accent-bg border border-accent-border flex items-center justify-center text-[13px] font-medium text-accent-text mx-auto mb-2">BI</div>
-                  <div className="text-[11px] text-text-3">Click to upload · PNG or SVG</div>
+                  <div className="text-[11px] text-text-3">Logo upload — coming soon</div>
                 </div>
               </div>
             </div>
