@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import re
 import time
 import uuid
@@ -46,6 +47,7 @@ The goal is to keep controlled:
 
 
 JsonDict = dict[str, Any]
+logger = logging.getLogger(__name__)
 
 
 class OrchestratorError(RuntimeError):
@@ -261,16 +263,29 @@ class LLMOrchestrator:
                 **dict(runtime_params or {}),
             },
         )
+        _started = time.perf_counter()
+        logger.info(
+            "pipeline start request_id=%s role=%s execute_sql=%s q_chars=%d",
+            context.request_id, context.user_role, context.execute_sql, len(question),
+        )
 
         try:
             await self._load_metadata_health(context)
             await self._normalize_question(context)
             await self._classify_domain(context)
             if self._is_terminal(context.domain_result):
+                logger.info(
+                    "pipeline early-exit step=domain_classifier request_id=%s status=%s",
+                    context.request_id, context.domain_result.get("status"),
+                )
                 return await self._finalize(context, context.domain_result)
 
             await self._validate_question(context)
             if self._is_terminal(context.validation_result):
+                logger.info(
+                    "pipeline early-exit step=question_validator request_id=%s status=%s",
+                    context.request_id, context.validation_result.get("status"),
+                )
                 return await self._finalize(context, context.validation_result)
 
             await self._map_semantics(context)
@@ -278,6 +293,12 @@ class LLMOrchestrator:
             await self._route(context)
 
             route = str(context.route_result.get("route") or "").upper()
+            logger.debug(
+                "pipeline routed request_id=%s route=%s intent=%s",
+                context.request_id, route,
+                context.intent_result.get("intent") or context.intent_result.get("intent_id"),
+            )
+
             if route == Route.GAP.value:
                 await self._handle_gap(context)
                 return await self._finalize(context, context.gap_result or context.route_result)
@@ -289,6 +310,10 @@ class LLMOrchestrator:
                 await self._plan_sql(context)
                 await self._validate_sql(context)
                 if self._is_terminal(context.sql_validation):
+                    logger.warning(
+                        "pipeline sql-validation-failed request_id=%s status=%s",
+                        context.request_id, context.sql_validation.get("status"),
+                    )
                     return await self._finalize(context, context.sql_validation)
                 await self._execute_sql(context)
                 await self._select_visualization(context)
@@ -304,6 +329,10 @@ class LLMOrchestrator:
                 },
             )
         except Exception as exc:  # Defensive: the API should return a structured response.
+            logger.error(
+                "pipeline exception request_id=%s: %s",
+                context.request_id, exc, exc_info=True,
+            )
             context.errors.append(str(exc))
             return await self._finalize(
                 context,
@@ -312,6 +341,11 @@ class LLMOrchestrator:
                     "status": ValidationStatus.METADATA_ERROR.value,
                     "reason": str(exc),
                 },
+            )
+        finally:
+            logger.info(
+                "pipeline done request_id=%s duration_ms=%.0f",
+                context.request_id, (time.perf_counter() - _started) * 1000,
             )
 
     # ------------------------------------------------------------------
@@ -586,6 +620,10 @@ class LLMOrchestrator:
             context.add_trace("query_executor", "not_configured", started)
             return
 
+        logger.debug(
+            "executing sql request_id=%s sql_chars=%d",
+            context.request_id, len(sql),
+        )
         try:
             result = await call_component(
                 self.query_executor,
@@ -598,7 +636,16 @@ class LLMOrchestrator:
             context.query_result.setdefault(
                 "status", ValidationStatus.SUCCESS.value)
             context.query_result.setdefault("execution_status", "SUCCESS")
+            logger.debug(
+                "sql executed request_id=%s rows=%s",
+                context.request_id,
+                len(context.query_result.get("rows") or []),
+            )
         except Exception as exc:
+            logger.error(
+                "sql execution failed request_id=%s: %s",
+                context.request_id, exc, exc_info=True,
+            )
             context.query_result = {
                 "status": ValidationStatus.EXECUTION_FAILED.value,
                 "execution_status": "FAILED",
@@ -670,7 +717,7 @@ class LLMOrchestrator:
         context.add_trace("gap_service", context.gap_result.get(
             "status", "DATA_GAP"), started, context.gap_result)
 
-    async def _finalize(self, context: RequestContext, status_payload: JsonDict) -> OrchestratorResponse:
+    async def _finalize(self, context: RequestContext, status_payload: JsonDict) -> OrchestratorResponse:  # noqa: PLR0912
         started = time.perf_counter()
         if self.response_builder is not None:
             try:
@@ -717,6 +764,11 @@ class LLMOrchestrator:
         context.final_response = response.to_dict()
         context.add_trace("response_builder", response.status, started)
         response.context = context.to_dict()
+        logger.info(
+            "pipeline finalized request_id=%s route=%s status=%s warnings=%d errors=%d",
+            context.request_id, response.route, response.status,
+            len(context.warnings), len(context.errors),
+        )
         return response
 
     # ------------------------------------------------------------------

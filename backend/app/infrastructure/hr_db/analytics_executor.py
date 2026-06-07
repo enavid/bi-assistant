@@ -1,6 +1,7 @@
 from __future__ import annotations
 import asyncio
 import inspect
+import logging
 import os
 import re
 import time
@@ -40,6 +41,8 @@ Important:
 
 
 JsonDict = dict[str, Any]
+logger = logging.getLogger(__name__)
+
 _STATUS_SQL_RE = re.compile(
     r"^\s*SELECT\s+'(?P<status>DATA_GAP|ACCESS_DENIED|OUT_OF_SCOPE|NEEDS_CLARIFICATION|SQL_VALIDATION_FAILED)'\s+AS\s+status\s*;?\s*$",
     flags=re.IGNORECASE,
@@ -243,6 +246,7 @@ class QueryExecutor:
         guard = self._pre_execution_guard(
             sql_text, context=context, validation_result=validation_result, metadata=metadata)
         if not guard.get("ok", False):
+            logger.warning("sql execution blocked reason=%s", guard.get("reason"))
             return self._failure(
                 status="EXECUTION_BLOCKED",
                 execution_status="FAILED",
@@ -254,19 +258,27 @@ class QueryExecutor:
             )
         warnings.extend(guard.get("warnings", []))
 
+        logger.debug("executing sql sql_chars=%d max_rows=%d", len(sql_text), limit)
         try:
             executor = self._select_sync_executor()
             result = executor(sql_text, params=params or {}, max_rows=limit)
+            adapter = result.get("adapter") if isinstance(result, dict) else "unknown"
+            logger.debug(
+                "sql done adapter=%s rows=%s duration_ms=%.0f",
+                adapter,
+                result.get("row_count") if isinstance(result, dict) else "?",
+                (time.perf_counter() - started) * 1000,
+            )
             return self._success_from_raw_result(
                 result,
                 sql=sql_text,
                 started=started,
                 max_rows=limit,
                 warnings=warnings,
-                database={"adapter": result.get("adapter") if isinstance(
-                    result, dict) else "unknown"},
+                database={"adapter": adapter},
             )
         except QueryExecutorNotConfiguredError as exc:
+            logger.warning("sql executor not configured: %s", exc)
             return self._failure(
                 status="NOT_EXECUTED",
                 execution_status="NOT_EXECUTED",
@@ -276,6 +288,7 @@ class QueryExecutor:
                 warnings=warnings,
             )
         except Exception as exc:
+            logger.error("sql execution failed: %s", exc, exc_info=True)
             return self._failure(
                 status="EXECUTION_FAILED",
                 execution_status="FAILED",

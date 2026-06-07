@@ -1,5 +1,6 @@
 from __future__ import annotations
 import json
+import logging
 import os
 import re
 from copy import deepcopy
@@ -43,6 +44,7 @@ except ImportError:  # pragma: no cover - handled at runtime with a clear error.
 
 
 JsonDict = dict[str, Any]
+logger = logging.getLogger(__name__)
 
 
 class MetadataServiceError(RuntimeError):
@@ -284,6 +286,7 @@ class MetadataService:
 
     def reload(self, *, strict: bool | None = None) -> MetadataBundle:
         strict_mode = self.strict if strict is None else strict
+        logger.info("loading metadata dir=%s strict=%s", self.metadata_dir, strict_mode)
         self._raw.clear()
         self._resolved_paths.clear()
         self._file_statuses.clear()
@@ -338,6 +341,8 @@ class MetadataService:
         self._validate_minimum_structure(strict=strict_mode)
         self._build_indexes()
         self._cross_validate_references(strict=False)
+        loaded = sum(1 for s in self._file_statuses if s.loaded)
+        logger.info("metadata loaded files=%d/%d warnings=%d", loaded, len(self._file_statuses), len(self._warnings))
         return self.bundle
 
     def _resolve_file(self, spec: MetadataFileSpec) -> Path | None:

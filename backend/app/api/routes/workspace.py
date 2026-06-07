@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -22,6 +23,8 @@ from app.infrastructure.db.models import (
     WorkspaceORM,
 )
 from app.infrastructure.db.session import get_db
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["workspace"])
 

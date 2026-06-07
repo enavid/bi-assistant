@@ -98,15 +98,21 @@ async def add_message(session_id: str, body: dict, db: AsyncSession = Depends(ge
 async def generate(
     body: GenerateRequest,
 ) -> GenerateResponse:
-    orchestrator = get_hr_bi_orchestrator()
-    uc = HRBIOrchestrationUseCase(orchestrator)
-    result = await uc.generate(body.question, model=body.model_name)
-    return GenerateResponse(
-        sql=result.sql, success=result.success, error=result.error,
-        message_fa=result.message,
-        route=result.route, status=result.status,
-        detected_intent=result.detected_intent, warnings=result.warnings,
-    )
+    try:
+        orchestrator = get_hr_bi_orchestrator()
+        uc = HRBIOrchestrationUseCase(orchestrator)
+        result = await uc.generate(body.question, model=body.model_name)
+        if not result.success:
+            logger.warning("generate returned non-success route=%s status=%s", result.route, result.status)
+        return GenerateResponse(
+            sql=result.sql, success=result.success, error=result.error,
+            message_fa=result.message,
+            route=result.route, status=result.status,
+            detected_intent=result.detected_intent, warnings=result.warnings,
+        )
+    except Exception as exc:
+        logger.error("generate failed: %s", exc, exc_info=True)
+        raise
 
 
 @router.post("/query", response_model=QueryResponse, summary="Execute SQL against HR database")
@@ -115,6 +121,7 @@ async def run_query(
     db: AsyncSession = Depends(get_db),
     use_case: RunQueryUseCase = Depends(get_run_query_use_case),
 ) -> QueryResponse:
+    logger.debug("run_query sql_chars=%d session_id=%s", len(body.sql), body.session_id)
     if settings.validate_sql_before_execution:
         orchestrator = get_hr_bi_orchestrator()
         validator = getattr(orchestrator, "sql_validator", None)
