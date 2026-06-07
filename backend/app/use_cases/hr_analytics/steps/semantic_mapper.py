@@ -6,6 +6,8 @@ from pathlib import Path
 from dataclasses import dataclass, field
 from typing import Any, Iterable, Mapping
 
+from app.infrastructure.metadata.service import MetadataService, get_metadata_service
+
 """
 semantic_mapper.py
 ------------------
@@ -34,8 +36,6 @@ Expected metadata source:
 
 
 JsonDict = dict[str, Any]
-
-from app.infrastructure.metadata.service import MetadataService, get_metadata_service
 
 
 PERSIAN_DIGITS = "۰۱۲۳۴۵۶۷۸۹"

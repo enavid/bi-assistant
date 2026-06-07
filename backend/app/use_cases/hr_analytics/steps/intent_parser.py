@@ -6,6 +6,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Iterable, Mapping
 
+from app.infrastructure.metadata.service import MetadataService, get_metadata_service
+
 """
 intent_parser.py
 ----------------
@@ -29,8 +31,6 @@ Design principles for Phase 2:
 """
 
 JsonDict = dict[str, Any]
-
-from app.infrastructure.metadata.service import MetadataService, get_metadata_service
 
 
 ROUTE_SQL = "SQL"

@@ -6,6 +6,8 @@ from dataclasses import asdict, dataclass, field, is_dataclass
 from pathlib import Path
 from typing import Any, Mapping
 
+from app.infrastructure.metadata.service import MetadataService, get_metadata_service
+
 """
 router.py
 ---------
@@ -36,8 +38,6 @@ Design principles:
 
 
 JsonDict = dict[str, Any]
-
-from app.infrastructure.metadata.service import MetadataService, get_metadata_service
 
 
 ROUTE_SQL = "SQL"

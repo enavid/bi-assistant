@@ -11,6 +11,8 @@ from pathlib import Path
 from threading import Lock
 from typing import Any, Mapping, Sequence
 
+from app.infrastructure.metadata.service import get_metadata_service
+
 """
 gap_service.py
 --------------
@@ -43,8 +45,6 @@ Design principles:
 """
 
 JsonDict = dict[str, Any]
-
-from app.infrastructure.metadata.service import MetadataService, get_metadata_service
 
 
 ROUTE_GAP = "GAP"
