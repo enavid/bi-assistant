@@ -8,16 +8,23 @@ import { Icon } from '@/components/ui/Icon'
 import type { AppPage } from '@/types'
 
 const NAV: { page: AppPage; label: string; icon: Parameters<typeof Icon>[0]['name'] }[] = [
-  { page: 'chat',     label: 'Chat',           icon: 'message'  },
-  { page: 'builder',  label: 'Prompt Builder', icon: 'layers'   },
-  { page: 'settings', label: 'Settings',       icon: 'settings' },
+  { page: 'chat',    label: 'Chat',           icon: 'message' },
+  { page: 'builder', label: 'Prompt Builder', icon: 'layers'  },
 ]
 
-type Session = { id: string; title: string; project_id: string | null; model_name: string; created_at: string; updated_at: string }
+type Session = {
+  id: string
+  title: string
+  project_id: string | null
+  model_name: string
+  created_at: string
+  updated_at: string
+}
 
 function groupByDate(sessions: Session[]): Record<string, Session[]> {
   const now = new Date()
-  const yest = new Date(now); yest.setDate(yest.getDate() - 1)
+  const yest = new Date(now)
+  yest.setDate(yest.getDate() - 1)
   const groups: Record<string, Session[]> = {}
   for (const s of sessions) {
     const d = new Date(s.updated_at || s.created_at)
@@ -32,11 +39,16 @@ function groupByDate(sessions: Session[]): Record<string, Session[]> {
 }
 
 function sameDay(a: Date, b: Date) {
-  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate()
+  return (
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
+  )
 }
 
 export function Sidebar() {
-  const { theme, toggleTheme, activePage, setActivePage, activeSessionId, setActiveSession, defaultModelName } = useAppStore()
+  const { theme, toggleTheme, activePage, setActivePage, activeSessionId, setActiveSession, defaultModelName } =
+    useAppStore()
   const { data: health } = useOllamaHealth()
   const { data: sessions } = useSessions()
   const { data: projects } = useProjects()
@@ -49,6 +61,13 @@ export function Sidebar() {
   const [selectedModel, setSelectedModel] = useState(defaultModelName)
 
   const grouped = groupByDate((sessions ?? []) as Session[])
+  const isOnline = health?.online ?? false
+  const modelName = health?.models[0]?.name?.split(':')[0] ?? ''
+
+  function openNewChat() {
+    setSelectedModel(defaultModelName)
+    setNewChatOpen(true)
+  }
 
   async function handleCreateSession() {
     const session = await createSession.mutateAsync({
@@ -61,33 +80,89 @@ export function Sidebar() {
     setNewChatOpen(false)
   }
 
+  // ── COLLAPSED ──────────────────────────────────────────────────────────────
   if (collapsed) {
     return (
-      <aside className="w-[56px] min-w-[56px] flex flex-col" style={{ background: 'var(--bg-surface)', borderRight: '1px solid var(--border-default)' }}>
-        <div className="p-3 flex flex-col items-center gap-3" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-          <div className="w-8 h-8 rounded-[9px] flex items-center justify-center" style={{ background: 'var(--accent-bg)', border: '1px solid var(--accent-border)' }}>
-            <Icon name="bar-chart" size={16} className="text-accent-text" />
+      <aside
+        className="w-[56px] min-w-[56px] flex flex-col"
+        style={{ background: 'var(--bg-surface)', borderRight: '1px solid var(--border-default)' }}
+      >
+        {/* Brand mark */}
+        <div
+          className="py-3 flex justify-center flex-shrink-0"
+          style={{ borderBottom: '1px solid var(--border-subtle)' }}
+        >
+          <div
+            className="w-8 h-8 rounded-[9px] flex items-center justify-center text-[11px] font-bold"
+            style={{ background: 'var(--accent-bg)', border: '1px solid var(--accent-border)', color: 'var(--accent-text)' }}
+          >
+            AR
           </div>
-          <button onClick={() => setCollapsed(false)} className="w-7 h-7 rounded-[7px] flex items-center justify-center transition-colors hover:opacity-70" style={{ color: 'var(--text-3)' }} title="Expand">
+        </div>
+
+        {/* Expand + Nav */}
+        <div className="flex flex-col items-center gap-1 p-2 pt-3">
+          <button
+            onClick={() => setCollapsed(false)}
+            className="w-7 h-7 rounded-[7px] flex items-center justify-center transition-opacity hover:opacity-70"
+            style={{ color: 'var(--text-3)' }}
+            title="Expand"
+          >
             <Icon name="arrow-right" size={14} />
           </button>
-        </div>
-        <nav className="flex flex-col items-center gap-1 p-2 pt-3">
+          <div className="h-px w-6 my-1" style={{ background: 'var(--border-subtle)' }} />
           {NAV.map((item) => (
-            <button key={item.page} onClick={() => setActivePage(item.page)} title={item.label}
+            <button
+              key={item.page}
+              onClick={() => setActivePage(item.page)}
+              title={item.label}
               className="w-9 h-9 rounded-[8px] flex items-center justify-center transition-colors"
               style={{
                 background: activePage === item.page ? 'var(--accent-bg)' : 'transparent',
                 color: activePage === item.page ? 'var(--accent-text)' : 'var(--text-3)',
-              }}>
+              }}
+            >
               <Icon name={item.icon} size={17} />
             </button>
           ))}
-        </nav>
+        </div>
+
         <div className="flex-1" />
-        <div className="p-2 flex flex-col items-center gap-2" style={{ borderTop: '1px solid var(--border-default)' }}>
-          <div className="w-2 h-2 rounded-full" style={{ background: health?.online ? '#22c55e' : 'var(--text-3)' }} />
-          <button onClick={toggleTheme} className="w-8 h-8 rounded-[8px] flex items-center justify-center border transition-colors hover:opacity-80" style={{ border: '1px solid var(--border-default)', color: 'var(--text-2)' }}>
+
+        {/* Bottom actions */}
+        <div
+          className="p-2 flex flex-col items-center gap-2 flex-shrink-0"
+          style={{ borderTop: '1px solid var(--border-default)' }}
+        >
+          <button
+            onClick={openNewChat}
+            title="New chat"
+            className="w-8 h-8 rounded-[8px] flex items-center justify-center transition-opacity hover:opacity-80"
+            style={{ background: 'var(--accent)', color: '#fff' }}
+          >
+            <Icon name="plus" size={15} />
+          </button>
+          <button
+            onClick={() => setActivePage('settings')}
+            title="Settings"
+            className="w-8 h-8 rounded-[8px] flex items-center justify-center transition-colors"
+            style={{
+              background: activePage === 'settings' ? 'var(--accent-bg)' : 'transparent',
+              color: activePage === 'settings' ? 'var(--accent-text)' : 'var(--text-3)',
+            }}
+          >
+            <Icon name="settings" size={14} />
+          </button>
+          <div
+            className="w-2 h-2 rounded-full"
+            style={{ background: isOnline ? '#22c55e' : 'var(--text-3)' }}
+            title={isOnline ? 'Ollama online' : 'Ollama offline'}
+          />
+          <button
+            onClick={toggleTheme}
+            className="w-8 h-8 rounded-[8px] flex items-center justify-center border transition-colors hover:opacity-80"
+            style={{ border: '1px solid var(--border-default)', color: 'var(--text-2)' }}
+          >
             <Icon name={theme === 'dark' ? 'sun' : 'moon'} size={14} />
           </button>
         </div>
@@ -95,43 +170,50 @@ export function Sidebar() {
     )
   }
 
+  // ── EXPANDED ───────────────────────────────────────────────────────────────
   return (
     <>
-      <aside className="w-[224px] min-w-[224px] flex flex-col" style={{ background: 'var(--bg-surface)', borderRight: '1px solid var(--border-default)' }}>
-
-        {/* Header */}
-        <div className="px-4 py-3 flex-shrink-0" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-          <div className="flex items-center gap-2.5 mb-3">
-            <div className="w-8 h-8 rounded-[9px] flex items-center justify-center flex-shrink-0" style={{ background: 'var(--accent-bg)', border: '1px solid var(--accent-border)' }}>
-              <Icon name="bar-chart" size={16} className="text-accent-text" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-[13px] font-semibold" style={{ color: 'var(--text-1)' }}>BI Assistant</p>
-              <p className="text-[10px]" style={{ color: 'var(--text-3)' }}>HR Analytics</p>
-            </div>
-            <button onClick={() => setCollapsed(true)} className="w-6 h-6 rounded-[6px] flex items-center justify-center flex-shrink-0 transition-colors hover:opacity-70" style={{ color: 'var(--text-3)' }} title="Collapse">
-              <Icon name="arrow-left" size={13} />
-            </button>
-          </div>
-
-          <button
-            onClick={() => { setSelectedModel(defaultModelName); setNewChatOpen(true) }}
-            className="w-full flex items-center justify-center gap-2 py-2 rounded-[10px] text-xs font-medium transition-opacity hover:opacity-90"
-            style={{ background: 'var(--accent)', color: '#fff' }}
+      <aside
+        className="w-[224px] min-w-[224px] flex flex-col"
+        style={{ background: 'var(--bg-surface)', borderRight: '1px solid var(--border-default)' }}
+      >
+        {/* ── Brand header ── */}
+        <div
+          className="px-3.5 py-3 flex items-center gap-2.5 flex-shrink-0"
+          style={{ borderBottom: '1px solid var(--border-subtle)' }}
+        >
+          <div
+            className="w-8 h-8 rounded-[9px] flex items-center justify-center text-[11px] font-bold flex-shrink-0"
+            style={{ background: 'var(--accent-bg)', border: '1px solid var(--accent-border)', color: 'var(--accent-text)' }}
           >
-            <Icon name="plus" size={14} /> New chat
+            AR
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-[13px] font-semibold truncate" style={{ color: 'var(--text-1)' }}>AminRaay</p>
+            <p className="text-[10px]" style={{ color: 'var(--text-3)' }}>BI Assistant</p>
+          </div>
+          <button
+            onClick={() => setCollapsed(true)}
+            className="w-6 h-6 rounded-[6px] flex items-center justify-center flex-shrink-0 transition-opacity hover:opacity-70"
+            style={{ color: 'var(--text-3)' }}
+            title="Collapse"
+          >
+            <Icon name="arrow-left" size={13} />
           </button>
         </div>
 
-        {/* Nav */}
+        {/* ── Nav (Chat + Builder only) ── */}
         <nav className="px-2 pt-2 flex-shrink-0">
           {NAV.map((item) => (
-            <button key={item.page} onClick={() => setActivePage(item.page)}
+            <button
+              key={item.page}
+              onClick={() => setActivePage(item.page)}
               className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-[8px] text-[12.5px] mb-0.5 transition-colors text-left"
               style={{
                 background: activePage === item.page ? 'var(--accent-bg)' : 'transparent',
                 color: activePage === item.page ? 'var(--accent-text)' : 'var(--text-2)',
-              }}>
+              }}
+            >
               <Icon name={item.icon} size={15} />
               {item.label}
             </button>
@@ -139,11 +221,16 @@ export function Sidebar() {
           <div className="h-px my-2 mx-1" style={{ background: 'var(--border-subtle)' }} />
         </nav>
 
-        {/* Session list */}
+        {/* ── Session list ── */}
         <div className="flex-1 overflow-y-auto px-2 pb-2">
           {Object.entries(grouped).map(([group, items]) => (
             <div key={group}>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.8px] px-2 pt-3 pb-1.5" style={{ color: 'var(--text-3)' }}>{group}</p>
+              <p
+                className="text-[10px] font-semibold uppercase tracking-[0.8px] px-2 pt-3 pb-1.5"
+                style={{ color: 'var(--text-3)' }}
+              >
+                {group}
+              </p>
               {items.map((s) => {
                 const isActive = activeSessionId === s.id
                 return (
@@ -156,7 +243,10 @@ export function Sidebar() {
                     onMouseLeave={(e) => { if (!isActive) e.currentTarget.style.background = 'transparent' }}
                   >
                     <div className="flex-1 min-w-0">
-                      <p className="text-[12px] truncate" style={{ color: isActive ? 'var(--accent-text)' : 'var(--text-1)' }}>
+                      <p
+                        className="text-[12px] truncate"
+                        style={{ color: isActive ? 'var(--accent-text)' : 'var(--text-1)' }}
+                      >
                         {s.title}
                       </p>
                       <p className="text-[10px] mt-0.5" style={{ color: 'var(--text-3)' }}>
@@ -171,8 +261,8 @@ export function Sidebar() {
                       }}
                       className="opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
                       style={{ color: 'var(--text-3)' }}
-                      onMouseEnter={(e) => e.currentTarget.style.color = '#f87171'}
-                      onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-3)'}
+                      onMouseEnter={(e) => (e.currentTarget.style.color = '#f87171')}
+                      onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-3)')}
                     >
                       <Icon name="trash" size={13} />
                     </button>
@@ -183,34 +273,93 @@ export function Sidebar() {
           ))}
         </div>
 
-        {/* Footer */}
-        <div className="px-3 py-2.5 flex items-center gap-2 flex-shrink-0" style={{ borderTop: '1px solid var(--border-default)' }}>
-          <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: health?.online ? '#22c55e' : 'var(--text-3)' }} />
-          <span className="text-[11px] flex-1 truncate" style={{ color: 'var(--text-2)' }}>
-            {health?.online ? (health.models[0]?.name?.split(':')[0] ?? 'online') : 'offline'}
-          </span>
-          <button onClick={toggleTheme}
+        {/* ── New chat button ── */}
+        <div
+          className="px-2 py-2 flex-shrink-0"
+          style={{ borderTop: '1px solid var(--border-subtle)' }}
+        >
+          <button
+            onClick={openNewChat}
+            className="w-full flex items-center justify-center gap-2 py-2 rounded-[10px] text-xs font-medium transition-opacity hover:opacity-90"
+            style={{ background: 'var(--accent)', color: '#fff' }}
+          >
+            <Icon name="plus" size={14} /> New chat
+          </button>
+        </div>
+
+        {/* ── Footer: Settings + Ollama status + Theme ── */}
+        <div
+          className="px-3 py-2.5 flex items-center gap-2 flex-shrink-0"
+          style={{ borderTop: '1px solid var(--border-default)' }}
+        >
+          <button
+            onClick={() => setActivePage('settings')}
+            className={clsx(
+              'flex items-center gap-1.5 text-[11px] transition-opacity hover:opacity-80 flex-shrink-0',
+            )}
+            style={{ color: activePage === 'settings' ? 'var(--accent-text)' : 'var(--text-3)' }}
+          >
+            <Icon name="settings" size={13} />
+            Settings
+          </button>
+
+          <div className="flex items-center gap-1.5 flex-1 justify-end min-w-0 overflow-hidden">
+            <div
+              className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+              style={{ background: isOnline ? '#22c55e' : 'var(--text-3)' }}
+            />
+            {modelName && (
+              <span className="text-[10px] truncate" style={{ color: 'var(--text-3)' }}>
+                {modelName}
+              </span>
+            )}
+          </div>
+
+          <button
+            onClick={toggleTheme}
             className="w-7 h-7 rounded-[7px] flex items-center justify-center flex-shrink-0 transition-colors hover:opacity-80"
-            style={{ border: '1px solid var(--border-default)', color: 'var(--text-2)' }}>
+            style={{ border: '1px solid var(--border-default)', color: 'var(--text-2)' }}
+          >
             <Icon name={theme === 'dark' ? 'sun' : 'moon'} size={14} />
           </button>
         </div>
       </aside>
 
+      {/* ── New chat modal ── */}
       <Modal open={newChatOpen} title="New chat" onClose={() => setNewChatOpen(false)}>
         <div className="flex flex-col gap-3">
           <div>
-            <label className="text-[11px] font-medium block mb-1.5" style={{ color: 'var(--text-2)' }}>Project</label>
-            <select value={selectedProjectId} onChange={(e) => setSelectedProjectId(e.target.value)} className="w-full rounded-[7px] px-3 py-2 text-xs outline-none" style={{ background: 'var(--bg-raised)', border: '1px solid var(--border-default)', color: 'var(--text-1)' }}>
+            <label className="text-[11px] font-medium block mb-1.5" style={{ color: 'var(--text-2)' }}>
+              Project
+            </label>
+            <select
+              value={selectedProjectId}
+              onChange={(e) => setSelectedProjectId(e.target.value)}
+              className="w-full rounded-[7px] px-3 py-2 text-xs outline-none"
+              style={{ background: 'var(--bg-raised)', border: '1px solid var(--border-default)', color: 'var(--text-1)' }}
+            >
               <option value="">No project</option>
-              {projects?.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+              {projects?.map((p) => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
             </select>
           </div>
           <div>
-            <label className="text-[11px] font-medium block mb-1.5" style={{ color: 'var(--text-2)' }}>Model</label>
-            <select value={selectedModel} onChange={(e) => setSelectedModel(e.target.value)} className="w-full rounded-[7px] px-3 py-2 text-xs outline-none" style={{ background: 'var(--bg-raised)', border: '1px solid var(--border-default)', color: 'var(--text-1)' }}>
+            <label className="text-[11px] font-medium block mb-1.5" style={{ color: 'var(--text-2)' }}>
+              Model
+            </label>
+            <select
+              value={selectedModel}
+              onChange={(e) => setSelectedModel(e.target.value)}
+              className="w-full rounded-[7px] px-3 py-2 text-xs outline-none"
+              style={{ background: 'var(--bg-raised)', border: '1px solid var(--border-default)', color: 'var(--text-1)' }}
+            >
               {health?.models.length
-                ? health.models.map((m) => <option key={m.name} value={m.name}>{m.name}{m.size ? ` · ${m.size}` : ''}</option>)
+                ? health.models.map((m) => (
+                    <option key={m.name} value={m.name}>
+                      {m.name}{m.size ? ` · ${m.size}` : ''}
+                    </option>
+                  ))
                 : <option value={defaultModelName}>{defaultModelName}</option>}
             </select>
           </div>
