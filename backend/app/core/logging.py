@@ -28,18 +28,25 @@ class _RequestIdFilter(logging.Filter):
 
 def setup_logging() -> None:
     level = getattr(logging, settings.log_level.upper(), logging.INFO)
-    fmt = logging.Formatter(
-        fmt="%(asctime)s %(levelname)-8s %(name)s [%(request_id)s] %(message)s",
-        datefmt="%Y-%m-%dT%H:%M:%S%z",
-    )
-    handler = logging.StreamHandler(sys.stdout)
-    handler.setFormatter(fmt)
-    handler.addFilter(_RequestIdFilter())
-
     root = logging.getLogger()
-    root.handlers.clear()
-    root.addHandler(handler)
-    root.setLevel(level)
 
-    for noisy in ("uvicorn.access", "sqlalchemy.engine"):
-        logging.getLogger(noisy).setLevel(logging.WARNING)
+    already_configured = any(
+        isinstance(f, _RequestIdFilter)
+        for h in root.handlers
+        for f in h.filters
+    )
+
+    if not already_configured:
+        fmt = logging.Formatter(
+            fmt="%(asctime)s %(levelname)-8s %(name)s [%(request_id)s] %(message)s",
+            datefmt="%Y-%m-%dT%H:%M:%S%z",
+        )
+        handler = logging.StreamHandler(sys.stdout)
+        handler.setFormatter(fmt)
+        handler.addFilter(_RequestIdFilter())
+        root.handlers.clear()
+        root.addHandler(handler)
+        for noisy in ("uvicorn.access", "sqlalchemy.engine"):
+            logging.getLogger(noisy).setLevel(logging.WARNING)
+
+    root.setLevel(level)

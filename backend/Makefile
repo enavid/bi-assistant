@@ -1,7 +1,6 @@
 VENV   := venv
 PYTHON := $(VENV)/bin/python3
 PIP    := $(VENV)/bin/pip
-UV     := $(VENV)/bin/uvicorn
 PYTEST := $(VENV)/bin/pytest
 RUFF   := $(VENV)/bin/ruff
 ALEMBIC:= $(VENV)/bin/alembic
@@ -29,10 +28,10 @@ install:
 	$(PIP) install -r requirements.txt
 
 run:
-	$(UV) app.main:app --host 0.0.0.0 --port 8000
+	$(PYTHON) run.py
 
 dev:
-	$(UV) app.main:app --reload --host 0.0.0.0 --port 8000
+	$(PYTHON) run.py --reload
 
 test:
 	$(PYTEST) tests -q
