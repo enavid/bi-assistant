@@ -4,12 +4,43 @@ import { chatApi } from '@/services/api'
 import { useAppStore } from '@/store/appStore'
 import { useSession, useProjects } from '@/hooks'
 import { Icon } from '@/components/ui/Icon'
-import { Button } from '@/components/ui/Button'
+import { SqlBlock } from '@/components/ui/SqlBlock'
+import { QueryResultView } from '@/components/chat/QueryResult'
 import { clsx } from 'clsx'
-import type { Message, QueryResult } from '@/types'
+import type { GenerateResponse, Message, QueryResult } from '@/types'
+
+const STATUS_FA: Record<string, string> = {
+  DATA_GAP:              'این اطلاعات در سیستم موجود نیست یا هنوز تعریف نشده.',
+  ACCESS_DENIED:         'دسترسی به این اطلاعات مجاز نیست.',
+  OUT_OF_SCOPE:          'این سوال مرتبط با حوزه منابع انسانی نیست.',
+  SQL_VALIDATION_FAILED: 'SQL تولید شده از نظر امنیتی تأیید نشد.',
+  NEEDS_CLARIFICATION:   'لطفاً سوال را واضح‌تر بیان کنید.',
+}
+
+function getBlockedText(msg: Message, info?: GenerateResponse): string | null {
+  if (!msg.error?.startsWith('BLOCKED:')) return null
+  if (info?.message_fa) return info.message_fa
+  const status = msg.error.replace('BLOCKED:', '')
+  return STATUS_FA[status] ?? null
+}
+
+function KpiCard({ columns, rows }: { columns: string[]; rows: unknown[][] }) {
+  if (rows.length !== 1 || columns.length !== 1) return null
+  const value = rows[0][0]
+  const num = Number(value)
+  if (isNaN(num) && typeof value !== 'string') return null
+  return (
+    <div className="inline-flex flex-col items-start rounded-[12px] px-5 py-4 min-w-[160px]" style={{ background: 'var(--bg-raised)', border: '1px solid var(--border-default)' }}>
+      <span className="text-[10px] font-medium uppercase tracking-[.8px] mb-1" style={{ color: 'var(--text-3)' }}>{columns[0]}</span>
+      <span className="text-3xl font-semibold tabular-nums" style={{ color: 'var(--text-1)' }}>
+        {isNaN(num) ? String(value) : num.toLocaleString('fa-IR')}
+      </span>
+    </div>
+  )
+}
 
 export function ChatPage() {
-  const { activeSessionId, setActiveSession } = useAppStore()
+  const { activeSessionId } = useAppStore()
   const { data: session, isLoading } = useSession(activeSessionId)
   const { data: projects } = useProjects()
   const qc = useQueryClient()
@@ -18,8 +49,10 @@ export function ChatPage() {
   const [question, setQuestion] = useState('')
   const [sending, setSending] = useState(false)
   const [queryResults, setQueryResults] = useState<Record<string, QueryResult>>({})
+  const [pipelineInfo, setPipelineInfo] = useState<Record<string, GenerateResponse>>({})
   const [dismissed, setDismissed] = useState<Set<string>>(new Set())
   const bodyRef = useRef<HTMLDivElement>(null)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   useEffect(() => {
     bodyRef.current?.scrollTo({ top: bodyRef.current.scrollHeight, behavior: 'smooth' })
@@ -29,178 +62,224 @@ export function ChatPage() {
     const q = question.trim()
     if (!q || sending || !session) return
     setQuestion('')
+    if (textareaRef.current) textareaRef.current.style.height = 'auto'
     setSending(true)
 
     const userSession = await chatApi.addMessage(session.id, { role: 'user', content: q })
     qc.setQueryData(['session', session.id], userSession)
 
-    const firstUserMsg = userSession.messages.find((m) => m.role === 'user')
-    if (userSession.title === 'New chat' && firstUserMsg) {
+    if (userSession.title === 'New chat') {
       const updated = await chatApi.updateSession(session.id, { title: q.slice(0, 60) })
       qc.invalidateQueries({ queryKey: ['sessions'] })
       qc.setQueryData(['session', session.id], { ...updated, messages: userSession.messages })
     }
 
     const result = await chatApi.generate(q, session.project_id, session.model_name)
+    const isBlocked = !result.success && !!STATUS_FA[result.status ?? '']
+
     const aiSession = await chatApi.addMessage(session.id, {
-      role: 'assistant',
-      content: '',
+      role: 'assistant', content: '',
       sql: result.success ? result.sql : null,
-      error: result.error ?? null,
+      error: isBlocked ? `BLOCKED:${result.status}` : (result.error ?? null),
     })
     qc.setQueryData(['session', session.id], aiSession)
+
+    const lastMsg = aiSession.messages[aiSession.messages.length - 1]
+    if (lastMsg) setPipelineInfo((prev) => ({ ...prev, [lastMsg.id]: result }))
     setSending(false)
   }
 
   async function handleRunQuery(msg: Message) {
     if (!msg.sql || !session) return
-    const userQuestion = [...(session.messages ?? [])].reverse().find((m) => m.role === 'user' && new Date(m.created_at) < new Date(msg.created_at))?.content
-    const result = await chatApi.runQuery(msg.sql, {
-      session_id: session.id,
-      question: userQuestion,
-      project_id: session.project_id,
-    })
+    const userQuestion = [...(session.messages ?? [])].reverse()
+      .find((m) => m.role === 'user' && new Date(m.created_at) < new Date(msg.created_at))?.content
+    const result = await chatApi.runQuery(msg.sql, { session_id: session.id, question: userQuestion, project_id: session.project_id })
     setQueryResults((prev) => ({ ...prev, [msg.id]: result }))
   }
 
   if (!activeSessionId) {
     return (
-      <div className="flex flex-col flex-1 items-center justify-center gap-3">
-        <Icon name="message" size={32} className="text-text-3" />
-        <p className="text-sm text-text-2">Select a chat or create a new one</p>
+      <div className="flex flex-col flex-1 items-center justify-center gap-4" style={{ color: 'var(--text-3)' }}>
+        <div className="w-16 h-16 rounded-2xl flex items-center justify-center" style={{ background: 'var(--bg-raised)', border: '1px solid var(--border-default)' }}>
+          <Icon name="message" size={28} />
+        </div>
+        <div className="text-center">
+          <p className="text-sm font-medium" style={{ color: 'var(--text-2)' }}>No chat selected</p>
+          <p className="text-xs mt-1">Create a new chat from the sidebar</p>
+        </div>
       </div>
     )
   }
 
   if (isLoading) {
-    return <div className="flex flex-1 items-center justify-center text-sm text-text-2">Loading…</div>
+    return <div className="flex flex-1 items-center justify-center text-sm" style={{ color: 'var(--text-3)' }}>Loading…</div>
   }
 
   const messages = session?.messages ?? []
 
   return (
     <div className="flex flex-col flex-1 overflow-hidden">
-      <div className="h-[46px] border-b border-border-default flex items-center px-5 gap-3 flex-shrink-0 bg-bg-surface">
-        <span className="text-[13px] font-medium text-text-1 flex-1 truncate">{session?.title ?? 'Chat'}</span>
+      {/* Header */}
+      <div className="h-[52px] flex items-center px-6 gap-3 flex-shrink-0" style={{ borderBottom: '1px solid var(--border-default)', background: 'var(--bg-surface)' }}>
+        <div className="flex-1 min-w-0">
+          <p className="text-[13px] font-medium truncate" style={{ color: 'var(--text-1)' }}>{session?.title ?? 'Chat'}</p>
+        </div>
         {project && (
-          <span className="text-[11px] px-2.5 py-1 rounded-full bg-accent-bg text-accent-text border border-accent-border whitespace-nowrap">
+          <span className="text-[11px] px-2.5 py-1 rounded-full font-medium flex-shrink-0" style={{ background: 'var(--accent-bg)', color: 'var(--accent-text)', border: '1px solid var(--accent-border)' }}>
             {project.name}
           </span>
         )}
-        <span className="text-[11px] text-text-3 hidden sm:block">{session?.model_name}</span>
+        <span className="text-[11px] hidden sm:block flex-shrink-0" style={{ color: 'var(--text-3)' }}>{session?.model_name?.split(':')[0]}</span>
       </div>
 
-      <div ref={bodyRef} className="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-4">
-        {messages.map((msg) => (
-          <div key={msg.id}>
-            {msg.role === 'user' ? (
-              <div className="flex flex-row-reverse gap-2.5 items-start">
-                <div className="w-[27px] h-[27px] rounded-[7px] flex items-center justify-center bg-[var(--tag-opt-bg)] border border-[var(--green-border)] text-[10px] font-medium text-[var(--tag-opt-text)] flex-shrink-0">U</div>
-                <div className="max-w-[62%] bg-accent-bg border border-accent-border rounded-[10px_10px_2px_10px] px-3.5 py-2.5 text-[13px] text-accent-text" style={{ direction: 'rtl', textAlign: 'right' }}>
+      {/* Messages */}
+      <div ref={bodyRef} className="flex-1 overflow-y-auto px-6 py-6 flex flex-col gap-3">
+        {messages.map((msg) => {
+          if (msg.role === 'user') {
+            return (
+              <div key={msg.id} className="flex justify-end">
+                <div
+                  className="max-w-[65%] px-4 py-2.5 rounded-[18px_18px_4px_18px] text-[13px] leading-[1.6]"
+                  style={{ background: 'var(--accent)', color: '#fff', direction: 'rtl', textAlign: 'right' }}
+                >
                   {msg.content}
                 </div>
               </div>
-            ) : (
-              <div className="flex flex-col gap-2">
-                <div className="flex gap-2.5 items-start">
-                  <div className="w-[27px] h-[27px] rounded-[7px] flex items-center justify-center bg-accent-bg border border-accent-border text-[10px] font-medium text-accent-text flex-shrink-0">AI</div>
-                  {msg.error ? (
-                    <div className="text-[13px] text-red-400 pt-1">{msg.error}</div>
-                  ) : (
-                    <div className="flex-1 max-w-[90%] bg-bg-surface border border-border-default rounded-[10px] overflow-hidden">
-                      <div className="bg-bg-raised px-3 py-1.5 flex items-center justify-between border-b border-border-subtle">
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-accent-bg text-accent-text border border-accent-border font-mono">PostgreSQL</span>
-                        <Button variant="ghost" size="sm" onClick={() => navigator.clipboard.writeText(msg.sql ?? '')}>
-                          <Icon name="copy" size={13} /> Copy
-                        </Button>
-                      </div>
-                      <pre className="px-3.5 py-3 text-xs font-mono leading-[1.75] text-text-2 overflow-x-auto whitespace-pre-wrap">{msg.sql}</pre>
-                      {!queryResults[msg.id] && !dismissed.has(msg.id) && (
-                        <div className="px-3 py-2 border-t border-border-subtle bg-bg-raised flex gap-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="border border-success text-success hover:bg-success-bg"
-                            onClick={() => handleRunQuery(msg)}
-                          >
-                            <Icon name="play" size={12} /> Run on DB
-                          </Button>
-                          <Button variant="ghost" size="sm" onClick={() => setDismissed((p) => new Set([...p, msg.id]))}>Dismiss</Button>
-                        </div>
-                      )}
-                    </div>
-                  )}
+            )
+          }
+
+          const info = pipelineInfo[msg.id]
+          const blockedText = getBlockedText(msg, info)
+
+          return (
+            <div key={msg.id} className="flex flex-col gap-2">
+              <div className="flex gap-3 items-start">
+                {/* AI avatar */}
+                <div className="w-7 h-7 rounded-[8px] flex items-center justify-center text-[10px] font-semibold flex-shrink-0 mt-0.5"
+                  style={{ background: 'var(--accent-bg)', color: 'var(--accent-text)', border: '1px solid var(--accent-border)' }}>
+                  AI
                 </div>
-                {queryResults[msg.id] && (
-                  <div className="ml-9 max-w-[90%] bg-bg-surface border border-border-default rounded-[10px] overflow-hidden">
-                    <div className="bg-bg-raised px-3 py-1.5 border-b border-border-subtle flex items-center gap-2">
-                      {queryResults[msg.id].success ? (
-                        <>
-                          <Icon name="check" size={13} className="text-success" />
-                          <span className="text-[11px] text-success">{queryResults[msg.id].row_count} row{queryResults[msg.id].row_count !== 1 ? 's' : ''}</span>
-                          <span className="text-[11px] text-text-3">· {queryResults[msg.id].elapsed_ms} ms</span>
-                        </>
-                      ) : (
-                        <><Icon name="x" size={13} className="text-red-400" /><span className="text-[11px] text-red-400">Error</span></>
+
+                {blockedText ? (
+                  <div
+                    className="px-4 py-2.5 rounded-[4px_18px_18px_18px] text-[13px] leading-[1.6] max-w-[65%]"
+                    style={{ background: 'var(--bg-raised)', color: 'var(--text-2)', border: '1px solid var(--border-default)', direction: 'rtl', textAlign: 'right' }}
+                  >
+                    {blockedText}
+                  </div>
+                ) : msg.error && !msg.error.startsWith('BLOCKED:') ? (
+                  <div className="text-[13px] pt-1" style={{ color: 'var(--text-3)' }}>{msg.error}</div>
+                ) : (
+                  <div className="flex-1 min-w-0 max-w-[calc(100%-44px)]" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)', borderRadius: '4px 12px 12px 12px', overflow: 'hidden' }}>
+                    {/* SQL header */}
+                    <div className="flex items-center gap-2 px-3 py-1.5" style={{ borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-raised)' }}>
+                      <span className="text-[10px] font-mono px-1.5 py-0.5 rounded" style={{ background: 'var(--accent-bg)', color: 'var(--accent-text)', border: '1px solid var(--accent-border)' }}>SQL</span>
+                      {info?.detected_intent && (
+                        <span className="text-[10px] font-mono truncate max-w-[180px]" style={{ color: 'var(--text-3)' }}>{info.detected_intent}</span>
                       )}
+                      <button
+                        onClick={() => navigator.clipboard.writeText(msg.sql ?? '')}
+                        className="ml-auto flex items-center gap-1 text-[11px] transition-opacity hover:opacity-70"
+                        style={{ color: 'var(--text-3)' }}
+                      >
+                        <Icon name="copy" size={12} /> Copy
+                      </button>
                     </div>
-                    {queryResults[msg.id].success ? (
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-xs border-collapse">
-                          <thead>
-                            <tr>{queryResults[msg.id].columns.map((col) => <th key={col} className="px-3 py-1.5 text-left text-[10px] uppercase tracking-[0.5px] text-text-3 border-b border-border-subtle font-medium whitespace-nowrap">{col}</th>)}</tr>
-                          </thead>
-                          <tbody>
-                            {queryResults[msg.id].rows.map((row, ri) => (
-                              <tr key={ri} className="hover:bg-bg-raised">
-                                {row.map((cell, ci) => <td key={ci} className="px-3 py-1.5 text-text-1 border-b border-border-subtle last:border-b-0">{String(cell ?? '')}</td>)}
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
+                    <SqlBlock code={msg.sql ?? ''} />
+                    {!queryResults[msg.id] && !dismissed.has(msg.id) && (
+                      <div className="flex gap-2 px-3 py-2" style={{ borderTop: '1px solid var(--border-subtle)', background: 'var(--bg-raised)' }}>
+                        <button
+                          onClick={() => handleRunQuery(msg)}
+                          className="flex items-center gap-1.5 px-3 py-1 rounded-[6px] text-[11px] font-medium transition-opacity hover:opacity-80"
+                          style={{ background: 'var(--green-bg)', color: 'var(--green)', border: '1px solid var(--green-border)' }}
+                        >
+                          <Icon name="play" size={12} /> Run on DB
+                        </button>
+                        <button
+                          onClick={() => setDismissed((p) => new Set([...p, msg.id]))}
+                          className="text-[11px] px-2 py-1 rounded-[6px] transition-colors"
+                          style={{ color: 'var(--text-3)' }}
+                        >
+                          Dismiss
+                        </button>
                       </div>
-                    ) : (
-                      <div className="px-3 py-2 text-xs text-red-400">{queryResults[msg.id].error}</div>
                     )}
                   </div>
                 )}
               </div>
-            )}
-          </div>
-        ))}
 
+              {/* Query results */}
+              {queryResults[msg.id] && (
+                <div className="ml-10 flex flex-col gap-2">
+                  {queryResults[msg.id].success && (
+                    <KpiCard columns={queryResults[msg.id].columns} rows={queryResults[msg.id].rows} />
+                  )}
+                  <QueryResultView result={queryResults[msg.id]} />
+                </div>
+              )}
+            </div>
+          )
+        })}
+
+        {/* Sending indicator */}
         {sending && (
-          <div className="flex gap-2.5 items-center">
-            <div className="w-[27px] h-[27px] rounded-[7px] bg-accent-bg border border-accent-border flex items-center justify-center text-[10px] text-accent-text">AI</div>
-            <div className="flex gap-1">
+          <div className="flex gap-3 items-center">
+            <div className="w-7 h-7 rounded-[8px] flex items-center justify-center text-[10px] font-semibold flex-shrink-0"
+              style={{ background: 'var(--accent-bg)', color: 'var(--accent-text)', border: '1px solid var(--accent-border)' }}>
+              AI
+            </div>
+            <div className="flex gap-1 py-2">
               {[0, 1, 2].map((i) => (
-                <div key={i} className="w-1.5 h-1.5 rounded-full bg-accent-text" style={{ animation: `bounce 1.2s ${i * 0.15}s infinite` }} />
+                <div key={i} className="w-2 h-2 rounded-full" style={{ background: 'var(--text-3)', animation: `bounce 1.2s ${i * 0.2}s infinite` }} />
               ))}
             </div>
           </div>
         )}
       </div>
 
-      <div className="px-5 pb-3.5 pt-3 border-t border-border-default bg-bg-surface flex-shrink-0">
-        <div className={clsx('flex gap-2 items-end bg-bg-raised border rounded-[10px] px-4 py-2 transition-colors', 'border-border-default focus-within:border-accent')}>
+      {/* Input */}
+      <div className="px-6 pb-5 pt-3 flex-shrink-0" style={{ borderTop: '1px solid var(--border-default)', background: 'var(--bg-surface)' }}>
+        <div
+          className="flex gap-3 items-end rounded-[14px] px-4 py-3 transition-all"
+          style={{ background: 'var(--bg-raised)', border: '1.5px solid var(--border-default)' }}
+          onFocus={(e) => e.currentTarget.style.borderColor = 'var(--accent)'}
+          onBlur={(e) => e.currentTarget.style.borderColor = 'var(--border-default)'}
+        >
           <textarea
+            ref={textareaRef}
             value={question}
-            onChange={(e) => setQuestion(e.target.value)}
+            onChange={(e) => {
+              setQuestion(e.target.value)
+              e.target.style.height = 'auto'
+              e.target.style.height = Math.min(e.target.scrollHeight, 140) + 'px'
+            }}
             onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() } }}
-            placeholder="Ask a question about HR data…"
+            placeholder="سوال خود را بپرسید…"
             rows={1}
-            style={{ direction: 'rtl', textAlign: 'right' }}
-            className="flex-1 bg-transparent border-none outline-none text-[13px] text-text-1 resize-none font-sans leading-[1.5] placeholder:text-text-3"
+            style={{
+              direction: 'rtl', textAlign: 'right',
+              minHeight: '24px', maxHeight: '140px',
+              background: 'transparent', border: 'none', outline: 'none',
+              resize: 'none', fontSize: '14px', lineHeight: '1.6',
+              color: 'var(--text-1)', fontFamily: 'inherit',
+              flex: 1,
+            }}
+            className="placeholder:text-[var(--text-3)]"
           />
           <button
             onClick={handleSend}
             disabled={sending || !question.trim()}
-            className="w-8 h-8 rounded-[7px] bg-accent flex items-center justify-center flex-shrink-0 disabled:opacity-40 hover:opacity-90 transition-opacity text-white"
+            className="flex-shrink-0 w-9 h-9 rounded-[10px] flex items-center justify-center transition-all"
+            style={{
+              background: sending || !question.trim() ? 'var(--bg-surface)' : 'var(--accent)',
+              color: sending || !question.trim() ? 'var(--text-3)' : '#fff',
+              border: sending || !question.trim() ? '1px solid var(--border-default)' : 'none',
+            }}
           >
             <Icon name="send" size={15} />
           </button>
         </div>
-        <div className="text-[10px] text-text-3 text-center mt-1.5">Enter to send · Shift+Enter for new line</div>
+        <p className="text-center text-[10px] mt-2" style={{ color: 'var(--text-3)' }}>Enter to send · Shift+Enter for new line</p>
       </div>
     </div>
   )

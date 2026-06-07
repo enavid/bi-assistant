@@ -13,6 +13,28 @@ const NAV: { page: AppPage; label: string; icon: Parameters<typeof Icon>[0]['nam
   { page: 'settings', label: 'Settings',       icon: 'settings' },
 ]
 
+type Session = { id: string; title: string; project_id: string | null; model_name: string; created_at: string; updated_at: string }
+
+function groupByDate(sessions: Session[]): Record<string, Session[]> {
+  const now = new Date()
+  const yest = new Date(now); yest.setDate(yest.getDate() - 1)
+  const groups: Record<string, Session[]> = {}
+  for (const s of sessions) {
+    const d = new Date(s.updated_at || s.created_at)
+    let label = 'Older'
+    if (sameDay(d, now)) label = 'Today'
+    else if (sameDay(d, yest)) label = 'Yesterday'
+    else if (now.getTime() - d.getTime() < 7 * 86_400_000) label = 'This week'
+    if (!groups[label]) groups[label] = []
+    groups[label].push(s)
+  }
+  return groups
+}
+
+function sameDay(a: Date, b: Date) {
+  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate()
+}
+
 export function Sidebar() {
   const { theme, toggleTheme, activePage, setActivePage, activeSessionId, setActiveSession, defaultModelName } = useAppStore()
   const { data: health } = useOllamaHealth()
@@ -21,11 +43,12 @@ export function Sidebar() {
   const createSession = useCreateSession()
   const deleteSession = useDeleteSession()
 
+  const [collapsed, setCollapsed] = useState(false)
   const [newChatOpen, setNewChatOpen] = useState(false)
   const [selectedProjectId, setSelectedProjectId] = useState('')
   const [selectedModel, setSelectedModel] = useState(defaultModelName)
 
-  const grouped = groupByDate(sessions ?? [])
+  const grouped = groupByDate((sessions ?? []) as Session[])
 
   async function handleCreateSession() {
     const session = await createSession.mutateAsync({
@@ -38,81 +61,116 @@ export function Sidebar() {
     setNewChatOpen(false)
   }
 
+  if (collapsed) {
+    return (
+      <aside className="w-[56px] min-w-[56px] flex flex-col" style={{ background: 'var(--bg-surface)', borderRight: '1px solid var(--border-default)' }}>
+        <div className="p-3 flex flex-col items-center gap-3" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+          <div className="w-8 h-8 rounded-[9px] flex items-center justify-center" style={{ background: 'var(--accent-bg)', border: '1px solid var(--accent-border)' }}>
+            <Icon name="bar-chart" size={16} className="text-accent-text" />
+          </div>
+          <button onClick={() => setCollapsed(false)} className="w-7 h-7 rounded-[7px] flex items-center justify-center transition-colors hover:opacity-70" style={{ color: 'var(--text-3)' }} title="Expand">
+            <Icon name="arrow-right" size={14} />
+          </button>
+        </div>
+        <nav className="flex flex-col items-center gap-1 p-2 pt-3">
+          {NAV.map((item) => (
+            <button key={item.page} onClick={() => setActivePage(item.page)} title={item.label}
+              className="w-9 h-9 rounded-[8px] flex items-center justify-center transition-colors"
+              style={{
+                background: activePage === item.page ? 'var(--accent-bg)' : 'transparent',
+                color: activePage === item.page ? 'var(--accent-text)' : 'var(--text-3)',
+              }}>
+              <Icon name={item.icon} size={17} />
+            </button>
+          ))}
+        </nav>
+        <div className="flex-1" />
+        <div className="p-2 flex flex-col items-center gap-2" style={{ borderTop: '1px solid var(--border-default)' }}>
+          <div className="w-2 h-2 rounded-full" style={{ background: health?.online ? '#22c55e' : 'var(--text-3)' }} />
+          <button onClick={toggleTheme} className="w-8 h-8 rounded-[8px] flex items-center justify-center border transition-colors hover:opacity-80" style={{ border: '1px solid var(--border-default)', color: 'var(--text-2)' }}>
+            <Icon name={theme === 'dark' ? 'sun' : 'moon'} size={14} />
+          </button>
+        </div>
+      </aside>
+    )
+  }
+
   return (
     <>
-      <aside className="w-[220px] min-w-[220px] flex flex-col bg-bg-surface border-r border-border-default">
-        <div className="p-3.5 pb-2.5 border-b border-border-subtle">
+      <aside className="w-[224px] min-w-[224px] flex flex-col" style={{ background: 'var(--bg-surface)', borderRight: '1px solid var(--border-default)' }}>
+
+        {/* Header */}
+        <div className="px-4 py-3 flex-shrink-0" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
           <div className="flex items-center gap-2.5 mb-3">
-            <div className="w-[30px] h-[30px] rounded-[7px] flex items-center justify-center bg-accent-bg border border-accent-border flex-shrink-0">
+            <div className="w-8 h-8 rounded-[9px] flex items-center justify-center flex-shrink-0" style={{ background: 'var(--accent-bg)', border: '1px solid var(--accent-border)' }}>
               <Icon name="bar-chart" size={16} className="text-accent-text" />
             </div>
-            <div>
-              <div className="text-sm font-medium text-text-1">BI Assistant</div>
-              <div className="text-[10px] text-text-3 mt-0.5">HR Analytics</div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[13px] font-semibold" style={{ color: 'var(--text-1)' }}>BI Assistant</p>
+              <p className="text-[10px]" style={{ color: 'var(--text-3)' }}>HR Analytics</p>
             </div>
+            <button onClick={() => setCollapsed(true)} className="w-6 h-6 rounded-[6px] flex items-center justify-center flex-shrink-0 transition-colors hover:opacity-70" style={{ color: 'var(--text-3)' }} title="Collapse">
+              <Icon name="arrow-left" size={13} />
+            </button>
           </div>
+
           <button
             onClick={() => { setSelectedModel(defaultModelName); setNewChatOpen(true) }}
-            className="w-full px-3 py-1.5 rounded-[8px] bg-accent-bg border border-accent-border text-accent-text text-xs font-medium flex items-center gap-1.5 hover:opacity-90 transition-opacity"
+            className="w-full flex items-center justify-center gap-2 py-2 rounded-[10px] text-xs font-medium transition-opacity hover:opacity-90"
+            style={{ background: 'var(--accent)', color: '#fff' }}
           >
             <Icon name="plus" size={14} /> New chat
           </button>
         </div>
 
+        {/* Nav */}
         <nav className="px-2 pt-2 flex-shrink-0">
           {NAV.map((item) => (
-            <button
-              key={item.page}
-              onClick={() => setActivePage(item.page)}
-              className={clsx(
-                'w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-[7px] text-xs mb-0.5 transition-colors text-left',
-                activePage === item.page
-                  ? 'bg-accent-bg text-accent-text'
-                  : 'text-text-2 hover:bg-bg-raised hover:text-text-1'
-              )}
-            >
+            <button key={item.page} onClick={() => setActivePage(item.page)}
+              className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-[8px] text-[12.5px] mb-0.5 transition-colors text-left"
+              style={{
+                background: activePage === item.page ? 'var(--accent-bg)' : 'transparent',
+                color: activePage === item.page ? 'var(--accent-text)' : 'var(--text-2)',
+              }}>
               <Icon name={item.icon} size={15} />
               {item.label}
             </button>
           ))}
-          <div className="h-px bg-border-subtle mx-2 my-1.5" />
+          <div className="h-px my-2 mx-1" style={{ background: 'var(--border-subtle)' }} />
         </nav>
 
+        {/* Session list */}
         <div className="flex-1 overflow-y-auto px-2 pb-2">
           {Object.entries(grouped).map(([group, items]) => (
             <div key={group}>
-              <div className="text-[10px] font-medium text-text-3 uppercase tracking-[0.6px] px-2 py-2 pb-1">
-                {group}
-              </div>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.8px] px-2 pt-3 pb-1.5" style={{ color: 'var(--text-3)' }}>{group}</p>
               {items.map((s) => {
-                const project = projects?.find((p) => p.id === s.project_id)
+                const isActive = activeSessionId === s.id
                 return (
                   <div
                     key={s.id}
-                    className={clsx(
-                      'group flex items-start gap-1 px-2 py-1.5 rounded-[7px] mb-0.5 cursor-pointer transition-colors',
-                      activeSessionId === s.id ? 'bg-accent-bg' : 'hover:bg-bg-raised'
-                    )}
                     onClick={() => { setActiveSession(s.id); setActivePage('chat') }}
+                    className="group flex items-center gap-2 px-2.5 py-2 rounded-[8px] mb-0.5 cursor-pointer transition-colors"
+                    style={{ background: isActive ? 'var(--accent-bg)' : 'transparent' }}
+                    onMouseEnter={(e) => { if (!isActive) e.currentTarget.style.background = 'var(--bg-raised)' }}
+                    onMouseLeave={(e) => { if (!isActive) e.currentTarget.style.background = 'transparent' }}
                   >
                     <div className="flex-1 min-w-0">
-                      <div className={clsx('text-xs truncate', activeSessionId === s.id ? 'text-accent-text' : 'text-text-2')}>
+                      <p className="text-[12px] truncate" style={{ color: isActive ? 'var(--accent-text)' : 'var(--text-1)' }}>
                         {s.title}
-                      </div>
-                      <div className="flex items-center gap-1 mt-0.5 flex-wrap">
-                        {project && (
-                          <span className="text-[9px] px-1.5 py-0.5 rounded-[3px] bg-bg-raised border border-border-default text-text-3 truncate max-w-[90px]">
-                            {project.name}
-                          </span>
-                        )}
-                        <span className="text-[9px] text-text-3">{s.model_name.split(':')[0]}</span>
-                      </div>
+                      </p>
+                      <p className="text-[10px] mt-0.5" style={{ color: 'var(--text-3)' }}>
+                        {s.model_name?.split(':')[0]}
+                      </p>
                     </div>
                     <button
                       onClick={(e) => { e.stopPropagation(); deleteSession.mutate(s.id) }}
-                      className="opacity-0 group-hover:opacity-100 text-text-3 hover:text-red-400 transition-all mt-0.5 flex-shrink-0"
+                      className="opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+                      style={{ color: 'var(--text-3)' }}
+                      onMouseEnter={(e) => e.currentTarget.style.color = '#f87171'}
+                      onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-3)'}
                     >
-                      <Icon name="trash" size={12} />
+                      <Icon name="trash" size={13} />
                     </button>
                   </div>
                 )
@@ -121,22 +179,15 @@ export function Sidebar() {
           ))}
         </div>
 
-        <div className="px-3.5 py-2.5 border-t border-border-default flex items-center gap-2 flex-shrink-0">
-          <div
-            className="w-2 h-2 rounded-full flex-shrink-0"
-            style={{ background: health?.online ? 'var(--green)' : 'var(--text-3)' }}
-          />
-          <span className="text-[11px] text-text-2 flex-1 truncate">
-            {health?.online ? (health.models[0]?.name ?? 'online') : 'offline'}
+        {/* Footer */}
+        <div className="px-3 py-2.5 flex items-center gap-2 flex-shrink-0" style={{ borderTop: '1px solid var(--border-default)' }}>
+          <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: health?.online ? '#22c55e' : 'var(--text-3)' }} />
+          <span className="text-[11px] flex-1 truncate" style={{ color: 'var(--text-2)' }}>
+            {health?.online ? (health.models[0]?.name?.split(':')[0] ?? 'online') : 'offline'}
           </span>
-          <div className="w-[26px] h-[26px] rounded-full flex items-center justify-center bg-accent-bg border border-accent-border text-[10px] font-medium text-accent-text flex-shrink-0 cursor-pointer">
-            N
-          </div>
-          <button
-            onClick={toggleTheme}
-            className="w-[26px] h-[26px] rounded-[7px] flex items-center justify-center border border-border-default hover:bg-bg-raised flex-shrink-0 text-text-2"
-            aria-label="Toggle theme"
-          >
+          <button onClick={toggleTheme}
+            className="w-7 h-7 rounded-[7px] flex items-center justify-center flex-shrink-0 transition-colors hover:opacity-80"
+            style={{ border: '1px solid var(--border-default)', color: 'var(--text-2)' }}>
             <Icon name={theme === 'dark' ? 'sun' : 'moon'} size={14} />
           </button>
         </div>
@@ -145,27 +196,18 @@ export function Sidebar() {
       <Modal open={newChatOpen} title="New chat" onClose={() => setNewChatOpen(false)}>
         <div className="flex flex-col gap-3">
           <div>
-            <label className="text-[11px] font-medium text-text-2 block mb-1.5">Project</label>
-            <select
-              value={selectedProjectId}
-              onChange={(e) => setSelectedProjectId(e.target.value)}
-              className="w-full bg-bg-raised border border-border-default rounded-[7px] px-3 py-2 text-xs text-text-1 outline-none focus:border-accent"
-            >
+            <label className="text-[11px] font-medium block mb-1.5" style={{ color: 'var(--text-2)' }}>Project</label>
+            <select value={selectedProjectId} onChange={(e) => setSelectedProjectId(e.target.value)} className="w-full rounded-[7px] px-3 py-2 text-xs outline-none" style={{ background: 'var(--bg-raised)', border: '1px solid var(--border-default)', color: 'var(--text-1)' }}>
               <option value="">No project</option>
               {projects?.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
           </div>
           <div>
-            <label className="text-[11px] font-medium text-text-2 block mb-1.5">Model</label>
-            <select
-              value={selectedModel}
-              onChange={(e) => setSelectedModel(e.target.value)}
-              className="w-full bg-bg-raised border border-border-default rounded-[7px] px-3 py-2 text-xs text-text-1 outline-none focus:border-accent"
-            >
+            <label className="text-[11px] font-medium block mb-1.5" style={{ color: 'var(--text-2)' }}>Model</label>
+            <select value={selectedModel} onChange={(e) => setSelectedModel(e.target.value)} className="w-full rounded-[7px] px-3 py-2 text-xs outline-none" style={{ background: 'var(--bg-raised)', border: '1px solid var(--border-default)', color: 'var(--text-1)' }}>
               {health?.models.length
                 ? health.models.map((m) => <option key={m.name} value={m.name}>{m.name}{m.size ? ` · ${m.size}` : ''}</option>)
-                : <option value={defaultModelName}>{defaultModelName}</option>
-              }
+                : <option value={defaultModelName}>{defaultModelName}</option>}
             </select>
           </div>
           <div className="flex justify-end gap-2 pt-1">
@@ -176,26 +218,4 @@ export function Sidebar() {
       </Modal>
     </>
   )
-}
-
-type S = { id: string; title: string; project_id: string | null; model_name: string; created_at: string }
-
-function groupByDate(sessions: S[]): Record<string, S[]> {
-  const today = new Date()
-  const yesterday = new Date(today); yesterday.setDate(yesterday.getDate() - 1)
-  const groups: Record<string, S[]> = {}
-  for (const s of [...sessions]) {
-    const d = new Date(s.created_at)
-    let label = 'Older'
-    if (sameDay(d, today)) label = 'Today'
-    else if (sameDay(d, yesterday)) label = 'Yesterday'
-    else if (today.getTime() - d.getTime() < 7 * 86_400_000) label = 'This week'
-    if (!groups[label]) groups[label] = []
-    groups[label].push(s)
-  }
-  return groups
-}
-
-function sameDay(a: Date, b: Date) {
-  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate()
 }

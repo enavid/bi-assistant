@@ -61,6 +61,11 @@ export interface GenerateResponse {
   sql: string
   success: boolean
   error?: string | null
+  message_fa?: string | null
+  route?: string | null
+  status?: string | null
+  detected_intent?: string | null
+  warnings?: string[]
 }
 
 export interface OllamaModel {
