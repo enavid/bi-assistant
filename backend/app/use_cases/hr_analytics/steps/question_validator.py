@@ -467,7 +467,7 @@ class QuestionValidator:
             question, metadata=metadata)
         asks_for_visible_rows = self._asks_for_employee_level_rows(question)
 
-        # Avoid false positive: "تعداد کارکنان" is valid aggregate. Employee-level terms
+        # Avoid false positive: "employee count" is valid aggregate. Employee-level terms
         # need either sensitive terms or list/detail/output-level signals.
         if sensitive_matches or sensitive_column_matches or (employee_level_matches and asks_for_visible_rows):
             return QuestionValidationResult(
@@ -636,7 +636,7 @@ class QuestionValidator:
             question, metadata)
         has_metadata_signal = bool(metadata_matches)
 
-        # Very short generic requests like "گزارش بده" should not be guessed.
+        # Very short generic requests like "give report" should not be guessed.
         if generic_matches and not hr_matches and not has_metadata_signal and len(tokens) <= 5:
             return QuestionValidationResult(
                 route=ROUTE_NEEDS_CLARIFICATION,

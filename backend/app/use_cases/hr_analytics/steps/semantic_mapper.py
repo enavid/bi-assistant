@@ -465,7 +465,7 @@ class SemanticMapper:
 
     def _find_term(self, normalized_question: str, normalized_term: str) -> int:
         # Substring matching is intentional for Persian expressions, but short terms
-        # like "زن" or "نام" must not match inside words such as "بازنشستگی" or "استخدام".
+        # like short terms must not match inside longer compound words.
         if not normalized_term or len(normalized_term) < self.config.min_term_length:
             return -1
         if " " not in normalized_term and len(normalized_term) <= 3 and not normalized_term.isdigit():
@@ -530,7 +530,7 @@ class SemanticMapper:
             cleaned = [item for item in cleaned if item.get(
                 "concept_id") not in {"hiring", "hiring_trend_annual", "hiring_last_15_years"}]
         if "نوع قرارداد" in normalized_question or "قرارداد" in normalized_question:
-            # رسمی/قراردادی/پیمانی can be employment values, but explicit contract context wins.
+            # Employment status terms can be values, but explicit contract context wins.
             # We keep contract_type concepts and let filter disambiguation map values to contract_type.
             pass
         return cleaned
@@ -613,20 +613,20 @@ class SemanticMapper:
                 confidence = 0.72 + \
                     min(len(max(matched_aliases, key=len)), 20) / 100
 
-                # Disambiguation: پیمانکاری is better represented by is_contractor for shares/counts.
+                # Disambiguation: contractor term maps to is_contractor for shares/counts.
                 if mapped_column == "employment_type" and str(canonical) == "شاغل در پیمانکاری":
                     mapped_column = "is_contractor"
                     value = True
                     filter_sql = "v.is_contractor = TRUE"
                     confidence += 0.12
 
-                # Disambiguation: رسمی/قراردادی/پیمانی with explicit contract context maps to contract_type.
+                # Disambiguation: employment status terms with explicit contract context map to contract_type.
                 if mapped_column == "employment_type" and question_mentions_contract_type and str(canonical) in {"رسمی", "قراردادی", "پیمانی", "رسمی - آزمایشی", "رسمی _ بیمه ای دائم"}:
                     mapped_column = "contract_type"
                     filter_sql = f"v.contract_type = '{str(canonical).replace(chr(39), chr(39)*2)}'"
                     confidence += 0.08
 
-                # Disambiguation: کارشناسی in position context maps to expert role, not education title.
+                # Disambiguation: "karshenas" in position context maps to expert role, not education title.
                 if mapped_column == "education_title" and str(canonical) == "کارشناسی" and question_mentions_position_expert:
                     mapped_column = "is_expert_role"
                     value = True
@@ -649,7 +649,7 @@ class SemanticMapper:
     def _detect_numeric_filters(self, normalized_question: str) -> list[JsonDict]:
         filters: list[JsonDict] = []
 
-        # Age: زیر / کمتر از N سال
+        # Age: below N years (under / less than N)
         for pattern in [r"(?:زیر|کمتر از|پایین تر از)\s+(\d{1,3})\s*(?:سال)?", r"(\d{1,3})\s*سال\s*(?:به پایین|کمتر)"]:
             for match in re.finditer(pattern, normalized_question):
                 value = int(match.group(1))
@@ -657,7 +657,7 @@ class SemanticMapper:
                     filters.append(self._numeric_filter(
                         "age", "<", value, match.group(0), f"v.age < {value}"))
 
-        # Age: بالای / بیشتر از / N به بالا
+        # Age: above N years (over / more than / N and above)
         for pattern in [r"(?:بالای|بالاتر از|بیشتر از|بیش از)\s+(\d{1,3})\s*(?:سال)?", r"(\d{1,3})\s*(?:سال)?\s*به بالا"]:
             for match in re.finditer(pattern, normalized_question):
                 value = int(match.group(1))
@@ -666,7 +666,7 @@ class SemanticMapper:
                     filters.append(self._numeric_filter(
                         "age", ">=", value, match.group(0), f"v.age >= {value}"))
 
-        # Age range: بین A و B / A تا B سال
+        # Age range: between A and B years
         for pattern in [r"بین\s+(\d{1,3})\s*(?:و|تا)\s*(\d{1,3})\s*(?:سال)?", r"(\d{1,3})\s*تا\s*(\d{1,3})\s*سال"]:
             for match in re.finditer(pattern, normalized_question):
                 a, b = int(match.group(1)), int(match.group(2))
@@ -683,7 +683,7 @@ class SemanticMapper:
                         }
                     )
 
-        # Service years: بدون سابقه / سابقه صفر
+        # Service years: zero service years
         if any(term in normalized_question for term in ["بدون سابقه", "سابقه صفر", "صفر سابقه"]):
             filters.append(self._numeric_filter(
                 "service_years", "=", 0, "بدون سابقه", "COALESCE(v.service_years, 0) = 0"))
@@ -760,12 +760,12 @@ class SemanticMapper:
             "site_name", "position_title", "position_level", "job_family", "hire_year", "criticality_level",
         }
 
-        # Special case: زن و مرد means group by gender, not two filters.
+        # Special case: "female and male" means group by gender, not two separate filters.
         if any(term in normalized_question for term in ["زن و مرد", "مرد و زن", "زنان و مردان", "تعداد زن و مرد"]):
             group_by.append(self._group_item(
                 "gender", "gender_pair_expression", ["زن و مرد"], 0.96))
 
-        # Special case: trend / روند جذب => group by hire_year.
+        # Special case: trend / hiring trend => group by hire_year.
         if "روند" in normalized_question and any(term in normalized_question for term in ["جذب", "استخدام"]):
             group_by.append(self._group_item("hire_year", "trend_hiring", [
                             "روند جذب"], 0.95, preferred_visualization="line_chart"))
@@ -781,7 +781,7 @@ class SemanticMapper:
                     concept.get("maps_to"), dict) else {}
                 column = maps_to.get("column")
                 if column in dimension_columns and column not in filter_columns:
-                    # "نوع استخدام" contains the word استخدام but is not a hiring-year grouping request.
+                    # "employment type" contains the hiring root word but is not a hiring-year grouping request.
                     if column == "hire_year" and "نوع استخدام" in normalized_question:
                         continue
                     if column == "hire_year" and not any(term in normalized_question for term in ["جذب", "سال جذب", "روند جذب", "استخدام سالانه"]):
@@ -793,7 +793,7 @@ class SemanticMapper:
                         group_by.append(self._group_item(
                             str(column), "concept_dimension", concept.get("matched_terms", []), 0.84))
 
-        # Phrases without explicit "به تفکیک" can still imply grouping.
+        # Phrases without an explicit breakdown marker can still imply grouping.
         implicit_group_patterns: list[tuple[list[str], str, str]] = [
             (["گروه سنی"], "age_group_title", "implicit_age_group"),
             (["مدرک تحصیلی", "تحصیلات مختلف", "بر اساس مدرک"],
@@ -864,11 +864,11 @@ class SemanticMapper:
             item = deepcopy(item)
             column = item.get("column")
 
-            # "زن و مرد" is a grouping request. Keeping two gender WHERE filters would be wrong.
+            # "female and male" is a grouping request. Keeping two gender WHERE filters would be wrong.
             if has_gender_pair and column == "gender" and "gender" in group_columns:
                 continue
 
-            # Prefer numeric age rules for expressions like "60 سال به بالا" over age_group_title aliases.
+            # Prefer numeric age rules for expressions like "age 60 and above" over age_group_title aliases.
             if has_numeric_age_filter and column == "age_group_title":
                 continue
 
@@ -894,7 +894,7 @@ class SemanticMapper:
             current = best.get(key)
             if current is None or float(item.get("confidence", 0)) > float(current.get("confidence", 0)):
                 best[key] = item
-        # Remove gender value filters when group_by gender was inferred from زن و مرد? Keep here; handled downstream if needed.
+        # Remove gender value filters when group_by gender was inferred from a combined gender term. Handled downstream if needed.
         return sorted(best.values(), key=lambda item: -float(item.get("confidence", 0)))
 
     # ------------------------------------------------------------------
@@ -992,7 +992,7 @@ class SemanticMapper:
             for term in item.get("trigger_terms_fa", []) or []:
                 normalized_term = self._normalize_term(term)
                 if normalized_term and self._find_term(normalized_question, normalized_term) >= 0:
-                    # Avoid rejecting ordinary aggregate terms like "نام" inside unrelated words; keep full phrase preference.
+                    # Avoid rejecting ordinary aggregate terms inside unrelated compound words; keep full phrase preference.
                     if normalized_term == "نام" and not any(t in normalized_question for t in ["نام کارکنان", "نام و", "نام خانوادگی", "اسامی"]):
                         continue
                     matched_terms.append(str(term))

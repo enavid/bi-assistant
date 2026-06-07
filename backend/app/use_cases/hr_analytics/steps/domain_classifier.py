@@ -271,7 +271,7 @@ class DomainClassifier:
             ).to_dict()
 
         # If the question has BI-like terms but no HR anchor, asking clarification is
-        # better than rejecting. Example: "گزارش روند را بده".
+        # better than rejecting. Example: "give me the trend report".
         if self._looks_like_generic_bi_question(normalized_question):
             return DomainClassificationResult(
                 route=ROUTE_NEEDS_CLARIFICATION,
@@ -595,7 +595,7 @@ def _build_hr_terms() -> list[WeightedTerm]:
 
 
 def _build_non_hr_terms() -> list[WeightedTerm]:
-    # Clear non-HR business domains. Some terms (e.g. مالی) are intentionally
+    # Clear non-HR business domains. Some terms (e.g. "financial") are intentionally
     # excluded because they can be department names in HR reporting.
     terms = [
         ("فروش ماه گذشته", 3.8),

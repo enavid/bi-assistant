@@ -1260,7 +1260,7 @@ class IntentParser:
 
     @staticmethod
     def _extract_gender_value(question: str) -> str | None:
-        # Avoid returning a single gender for "زن و مرد" distribution questions.
+        # Avoid returning a single gender for "male and female" distribution questions.
         if "زن و مرد" in question or "مرد و زن" in question:
             return None
         if re.search(r"(?<!\S)(زن|زنان|خانم|خانم ها)(?!\S)", question):
@@ -1304,7 +1304,7 @@ class IntentParser:
         return self._extract_allowed_value(question, service, "contract_type")
 
     def _extract_age_filter(self, question: str) -> JsonDict | None:
-        # 60 سال به بالا / بالای 60
+        # age 60 and above
         m = re.search(
             r"(?:بالای|بالاتر از|بیشتر از)\s*(\d{1,3})\s*سال?", question)
         if m:
@@ -1313,12 +1313,12 @@ class IntentParser:
             r"(\d{1,3})\s*سال\s*(?:به بالا|و بالاتر|بیشتر)", question)
         if m:
             return {"column": "age", "operator": ">=", "value": int(m.group(1))}
-        # زیر 30 / کمتر از 30
+        # under 30 years old
         m = re.search(
             r"(?:زیر|کمتر از|پایین تر از)\s*(\d{1,3})\s*سال?", question)
         if m:
             return {"column": "age", "operator": "<", "value": int(m.group(1))}
-        # بین 30 تا 40
+        # between 30 and 40 years old
         m = re.search(
             r"(?:بین|از)\s*(\d{1,3})\s*(?:تا|الی)\s*(\d{1,3})", question)
         if m:

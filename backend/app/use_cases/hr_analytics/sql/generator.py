@@ -598,7 +598,7 @@ class SQLGenerator:
             "employee_count_by_marital_status",
             "employee_count_by_gender_age_filter",
         }:
-            # If a specific value is filtered (e.g. "چند نفر کارشناسی دارند؟"),
+            # If a specific value is filtered (e.g. "how many employees have a bachelor's degree?"),
             # return a KPI count. Otherwise return grouped count.
             if not group_by or self._has_specific_filter_for_group(group_by, filters):
                 group_by = self._group_by_if_no_specific_filter(
