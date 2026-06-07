@@ -1,0 +1,876 @@
+version: '1.0'
+project: HR BI Assistant
+phase: Controlled SQL-based MVP
+file_type: sql_validator_rules
+language: fa-IR
+description_fa: قوانین سخت‌گیرانه اعتبارسنجی SQL قبل از اجرا برای جلوگیری از SQL خطرناک، استفاده از جدول خام، خروجی فردی،
+  افشای داده حساس و خطاهای معنایی در فاز دوم.
+main_view:
+  name: hr_mvp.vw_hr_employee_analytics
+  schema: hr_mvp
+  relation: vw_hr_employee_analytics
+  alias: v
+  database: PostgreSQL
+metadata_dependencies:
+- Template_00_data_dictionary.yaml
+- Template_01_intent_catalog.yaml
+- Template_02_report_catalog.json
+- Template_03_semantic_layer.yaml
+- Template_04_sql_templates.yaml
+- Template_08_access_policies.yaml
+validator_contract:
+  validator_mode: strict
+  validator_owner_module: sql_validator.py
+  must_run_before: query_executor.py
+  must_validate_generated_sql: true
+  must_validate_sql_templates: true
+  execute_on_validation_failed: false
+  allow_status_only_sql_without_view: true
+  status_only_sql_is_not_executable_query: true
+  normalized_sql_required: true
+  parser_recommended: sqlglot
+  fallback_strategy_fa: برای MVP می‌توان از regex و parsing ساده شروع کرد، اما قبل از پایلوت بهتر است AST parser مثل sqlglot
+    اضافه شود.
+default_status_sql:
+  on_valid: null
+  on_validation_failed: SELECT 'SQL_VALIDATION_FAILED' AS status;
+  on_data_gap: SELECT 'DATA_GAP' AS status;
+  on_access_denied: SELECT 'ACCESS_DENIED' AS status;
+  on_out_of_scope: SELECT 'OUT_OF_SCOPE' AS status;
+  on_needs_clarification: SELECT 'NEEDS_CLARIFICATION' AS status;
+status_only_sql_allowlist:
+- SELECT 'DATA_GAP' AS status;
+- SELECT 'ACCESS_DENIED' AS status;
+- SELECT 'OUT_OF_SCOPE' AS status;
+- SELECT 'NEEDS_CLARIFICATION' AS status;
+- SELECT 'SQL_VALIDATION_FAILED' AS status;
+validation_pipeline:
+- step: 1
+  name: normalize_sql
+  description_fa: حذف فاصله‌های اضافه، یکسان‌سازی quoteها در صورت امکان، trim کردن SQL و آماده‌سازی برای parse.
+  on_fail: SQL_VALIDATION_FAILED
+- step: 2
+  name: detect_status_only_sql
+  description_fa: اگر SQL یکی از خروجی‌های مجاز status-only باشد، بدون اجرای کوئری به Response Layer برود.
+  on_match: VALID_STATUS_ONLY
+- step: 3
+  name: parse_statement
+  description_fa: SQL باید parse شود؛ خطای syntax یعنی کوئری نباید اجرا شود.
+  on_fail: SQL_VALIDATION_FAILED
+- step: 4
+  name: structural_validation
+  description_fa: کنترل تعداد statement، SELECT-only بودن، ممنوعیت DDL/DML، ممنوعیت JOIN و ممنوعیت جدول خام.
+  on_fail: SQL_VALIDATION_FAILED
+- step: 5
+  name: relation_and_alias_validation
+  description_fa: کوئری فقط باید از View اصلی با alias استاندارد v استفاده کند.
+  on_fail: SQL_VALIDATION_FAILED
+- step: 6
+  name: column_validation
+  description_fa: تمام ستون‌های استفاده‌شده باید در Data Dictionary و View مجاز وجود داشته باشند.
+  on_fail: SQL_VALIDATION_FAILED
+- step: 7
+  name: privacy_validation
+  description_fa: ستون‌های حساس، خروجی فردی، employee_id به عنوان خروجی قابل مشاهده و تاریخ‌های خام فردی مسدود شوند.
+  on_fail: ACCESS_DENIED
+- step: 8
+  name: semantic_validation
+  description_fa: خطاهای معنایی مثل اشتباه گرفتن نوع استخدام و نوع قرارداد، SUM کردن چارت مصوب، MIN/MAX گرفتن سال جذب و نبود
+    NULLIF در درصدها کنترل شود.
+  on_fail: SQL_VALIDATION_FAILED
+- step: 9
+  name: data_gap_validation
+  description_fa: اگر SQL یا سؤال به مفهوم خارج از داده فعلی مثل شهر، بازنشستگی یا بهره‌وری پیمانکار اشاره کند، مسیر GAP فعال
+    شود.
+  on_fail: DATA_GAP
+- step: 10
+  name: execution_guardrails
+  description_fa: قبل از اجرا محدودیت timeout، حداکثر row خروجی، و log اجباری اعمال شود.
+  on_fail: SQL_VALIDATION_FAILED
+allowed_sql:
+  statement_types:
+  - SELECT
+  allow_with_clause: true
+  with_clause_rule_fa: WITH فقط وقتی مجاز است که final statement از نوع SELECT باشد و تمام CTEها فقط از View مجاز استفاده
+    کنند.
+  allowed_main_relations:
+  - hr_mvp.vw_hr_employee_analytics
+  required_alias: v
+  allowed_schemas:
+  - hr_mvp
+  allowed_clauses:
+  - SELECT
+  - FROM
+  - WHERE
+  - GROUP BY
+  - HAVING
+  - ORDER BY
+  - LIMIT
+  - WITH
+  allowed_operators:
+  - '='
+  - <>
+  - '!='
+  - <
+  - <=
+  - '>'
+  - '>='
+  - BETWEEN
+  - IN
+  - NOT IN
+  - LIKE
+  - ILIKE
+  - IS NULL
+  - IS NOT NULL
+  - AND
+  - OR
+  - NOT
+  allowed_functions:
+    aggregate:
+    - COUNT
+    - SUM
+    - AVG
+    - MIN
+    - MAX
+    numeric:
+    - ROUND
+    - CAST
+    conditional:
+    - CASE
+    - COALESCE
+    - NULLIF
+    window:
+    - OVER
+    date:
+    - EXTRACT
+    - AGE
+  allowed_order_by_expressions:
+  - selected_columns
+  - aggregate_aliases
+  - COUNT(v.employee_id)
+  - v.hire_year
+  - v.education_rank
+  - v.age_group_title
+  - MIN(v.age)
+  allowed_limit:
+    enabled: true
+    max_limit: 500
+    preferred_for_top_bottom_queries: 1
+blocked_sql:
+  statement_types:
+  - INSERT
+  - UPDATE
+  - DELETE
+  - DROP
+  - ALTER
+  - CREATE
+  - TRUNCATE
+  - MERGE
+  - GRANT
+  - REVOKE
+  - COPY
+  - CALL
+  - EXECUTE
+  - DO
+  - VACUUM
+  - ANALYZE
+  - REFRESH
+  - COMMENT
+  - SET
+  - RESET
+  - BEGIN
+  - COMMIT
+  - ROLLBACK
+  blocked_clauses_or_keywords:
+  - JOIN
+  - INNER JOIN
+  - LEFT JOIN
+  - RIGHT JOIN
+  - FULL JOIN
+  - CROSS JOIN
+  - NATURAL JOIN
+  - UNION
+  - UNION ALL
+  - INTERSECT
+  - EXCEPT
+  - RETURNING
+  - INTO
+  - LATERAL
+  - TABLESAMPLE
+  blocked_system_catalogs:
+  - information_schema
+  - pg_catalog
+  - pg_stat
+  - pg_stat_user_tables
+  - pg_tables
+  - pg_class
+  - pg_user
+  - pg_roles
+  - pg_shadow
+  - pg_database
+  - pg_settings
+  blocked_comment_tokens:
+  - --
+  - /*
+  - '*/'
+  - '#'
+  blocked_injection_patterns:
+  - ;--
+  - ;/*
+  - ' OR 1=1'
+  - ' AND 1=1'
+  - DROP TABLE
+  - DELETE FROM
+  - 'UPDATE '
+  - INSERT INTO
+  - ALTER TABLE
+  - CREATE TABLE
+  raw_tables_blocklist:
+  - hr_mvp.hr_employees
+  - hr_mvp.hr_contracts
+  - hr_mvp.hr_employee_education
+  - hr_mvp.hr_education_levels
+  - hr_mvp.hr_departments
+  - hr_mvp.hr_positions
+  - hr_mvp.hr_locations
+  - hr_mvp.hr_age_groups
+  - hr_mvp.hr_workforce_targets
+  - hr_mvp.hr_calendar
+  blocked_select_patterns:
+  - SELECT *
+  - SELECT v.*
+  - SELECT employee_id
+  - SELECT v.employee_id
+allowed_columns:
+  employee_identity:
+  - employee_id
+  employee_status:
+  - is_active
+  demographic:
+  - gender
+  - marital_status
+  - birth_date
+  - age
+  - age_group_title
+  hiring:
+  - hire_date
+  - hire_year
+  - service_years
+  organization:
+  - department_id
+  - department_code
+  - department_name
+  - service_domain
+  - parent_department_id
+  - department_level
+  - department_approved_headcount
+  - criticality_level
+  location:
+  - location_id
+  - province
+  - city
+  - site_name
+  - location_type
+  position:
+  - position_id
+  - position_code
+  - position_title
+  - position_level
+  - job_family
+  - is_expert_role
+  - min_education_rank
+  education:
+  - education_title
+  - education_rank
+  - education_category
+  - field_of_study
+  - graduation_year
+  employment_contract:
+  - employment_type
+  - contract_type
+  - is_contractor
+  - contract_start_date
+  - contract_end_date
+allowed_columns_flat:
+- employee_id
+- is_active
+- gender
+- marital_status
+- birth_date
+- age
+- age_group_title
+- hire_date
+- hire_year
+- service_years
+- department_id
+- department_code
+- department_name
+- service_domain
+- parent_department_id
+- department_level
+- department_approved_headcount
+- criticality_level
+- location_id
+- province
+- city
+- site_name
+- location_type
+- position_id
+- position_code
+- position_title
+- position_level
+- job_family
+- is_expert_role
+- min_education_rank
+- education_title
+- education_rank
+- education_category
+- field_of_study
+- graduation_year
+- employment_type
+- contract_type
+- is_contractor
+- contract_start_date
+- contract_end_date
+sensitive_columns_blocklist:
+- national_id
+- personnel_number
+- first_name
+- last_name
+- full_name
+- phone_number
+- mobile
+- address
+- bank_account
+- insurance_number
+- birth_certificate_number
+- personal_identifier
+- email
+- salary
+- base_salary
+- iban
+- medical_record
+- disciplinary_record
+restricted_visible_columns:
+  employee_id:
+    visible_output_allowed: false
+    allowed_usage:
+    - COUNT(v.employee_id)
+    - COUNT(employee_id)
+    - COUNT(DISTINCT v.employee_id)
+    on_fail: ACCESS_DENIED
+  birth_date:
+    visible_output_allowed: false
+    allowed_usage:
+    - derived_age_if_needed
+    on_fail: ACCESS_DENIED
+  hire_date:
+    visible_output_allowed: false
+    allowed_usage:
+    - filter_only_if_explicit_and_safe
+    preferred_column: hire_year
+    on_fail: ACCESS_DENIED
+  contract_start_date:
+    visible_output_allowed: false
+    allowed_usage:
+    - filter_only_if_explicit_and_safe
+    on_fail: ACCESS_DENIED
+  contract_end_date:
+    visible_output_allowed: false
+    allowed_usage:
+    - filter_only_if_explicit_and_safe
+    on_fail: ACCESS_DENIED
+  department_id:
+    visible_output_allowed: false
+    allowed_usage:
+    - GROUP BY with department_name
+    - internal_grouping
+    on_fail: SQL_VALIDATION_FAILED
+  location_id:
+    visible_output_allowed: false
+    allowed_usage:
+    - internal_grouping
+    on_fail: SQL_VALIDATION_FAILED
+  position_id:
+    visible_output_allowed: false
+    allowed_usage:
+    - internal_grouping
+    on_fail: SQL_VALIDATION_FAILED
+parameter_validation:
+  enabled: true
+  bind_parameters_required_for_user_values: true
+  allowed_parameter_types:
+  - string
+  - integer
+  - numeric
+  - boolean
+  - year
+  age:
+    min: 15
+    max: 90
+    type: integer
+  hire_year:
+    min: 1300
+    max: 1500
+    type: integer
+    calendar: shamsi
+  current_shamsi_year:
+    must_be_injected_by_application: true
+    must_not_be_generated_by_model: true
+    current_mvp_default: 1404
+    placeholder: '{current_shamsi_year}'
+  allowed_values:
+    gender:
+    - زن
+    - مرد
+    marital_status_examples:
+    - مجرد
+    - متأهل
+    employment_type:
+    - رسمی
+    - رسمی - آزمایشی
+    - رسمی _ بیمه ای دائم
+    - شاغل در پیمانکاری
+    - قراردادی
+    - پیمانی
+    contract_type:
+    - امور پشتیبانی اداری
+    - امور پشتیبانی خدماتی
+    - حراست
+    - خدمات امور پشتیبانی، اداری و خدماتی استانها (غیرحاکمیتی)
+    - خرید خدمات نگهداری و پشتیبانی سیستم های فناوری اطلاعات
+    - رسمی
+    - رسمی - آزمایشی
+    - رسمی _ بیمه ای دائم
+    - قراردادی
+    - نگهداری تاسیسات - تهران
+    - نگهداری تاسیسات استانها
+    - نگهداری شبکه
+    - پیمانی
+    education_title:
+    - کمتر از سیکل
+    - زیر دیپلم
+    - دیپلم
+    - کاردانی
+    - کارشناسی
+    - کارشناسی ارشد
+    - دکترا
+    - دکترای تخصصی / حرفه‌ای
+  unknown_requested_value_policy: DATA_GAP
+mandatory_rules:
+- rule_id: SQL_ONLY_ONE_STATEMENT
+  category: structure
+  severity: error
+  description_fa: فقط یک SQL statement مجاز است.
+  check:
+    max_statement_count: 1
+    ignore_trailing_semicolon: true
+  on_fail: SQL_VALIDATION_FAILED
+- rule_id: SQL_MUST_BE_SELECT_OR_WITH_SELECT
+  category: structure
+  severity: error
+  description_fa: فقط SELECT یا WITH که خروجی نهایی آن SELECT باشد مجاز است.
+  check:
+    allowed_statement_types:
+    - SELECT
+    - WITH_SELECT
+  on_fail: SQL_VALIDATION_FAILED
+- rule_id: SQL_MUST_USE_ONLY_MAIN_VIEW
+  category: relation
+  severity: error
+  description_fa: SQL فقط باید از View تحلیلی اصلی استفاده کند.
+  check:
+    allowed_relations:
+    - hr_mvp.vw_hr_employee_analytics
+    status_only_sql_exempt: true
+  on_fail: SQL_VALIDATION_FAILED
+- rule_id: SQL_MUST_USE_ALIAS_V
+  category: relation
+  severity: error
+  description_fa: در کوئری‌های View-based باید alias استاندارد v استفاده شود.
+  check:
+    required_alias: v
+    allowed_from_patterns:
+    - FROM hr_mvp.vw_hr_employee_analytics v
+    status_only_sql_exempt: true
+  on_fail: SQL_VALIDATION_FAILED
+- rule_id: SQL_MUST_NOT_USE_RAW_TABLES
+  category: relation
+  severity: error
+  description_fa: استفاده از جدول‌های خام منابع انسانی ممنوع است.
+  check:
+    blocked_relations_ref: blocked_sql.raw_tables_blocklist
+  on_fail: SQL_VALIDATION_FAILED
+- rule_id: SQL_MUST_NOT_USE_JOIN
+  category: structure
+  severity: error
+  description_fa: JOIN توسط مدل یا SQL Generator مجاز نیست؛ همه joinها باید داخل View حل شده باشند.
+  check:
+    blocked_keywords:
+    - JOIN
+    - INNER JOIN
+    - LEFT JOIN
+    - RIGHT JOIN
+    - FULL JOIN
+    - CROSS JOIN
+    - NATURAL JOIN
+  on_fail: SQL_VALIDATION_FAILED
+- rule_id: SQL_MUST_NOT_USE_SELECT_STAR
+  category: privacy
+  severity: error
+  description_fa: SELECT * یا v.* مجاز نیست.
+  check:
+    blocked_patterns:
+    - SELECT *
+    - SELECT v.*
+  on_fail: SQL_VALIDATION_FAILED
+- rule_id: SQL_MUST_NOT_EXPOSE_SENSITIVE_COLUMNS
+  category: privacy
+  severity: error
+  description_fa: ستون‌های حساس یا اطلاعات فردی نباید در SQL بیایند.
+  check:
+    blocked_columns_ref: sensitive_columns_blocklist
+  on_fail: ACCESS_DENIED
+- rule_id: SQL_EMPLOYEE_ID_COUNT_ONLY
+  category: privacy
+  severity: error
+  description_fa: employee_id فقط برای شمارش مجاز است و نباید به عنوان خروجی قابل مشاهده انتخاب شود.
+  check:
+    column: employee_id
+    allowed_usage:
+    - COUNT(v.employee_id)
+    - COUNT(employee_id)
+    - COUNT(DISTINCT v.employee_id)
+  on_fail: ACCESS_DENIED
+- rule_id: SQL_MUST_USE_ALLOWED_COLUMNS_ONLY
+  category: columns
+  severity: error
+  description_fa: SQL فقط باید از ستون‌های تعریف‌شده در View و Data Dictionary استفاده کند.
+  check:
+    allowed_columns_ref: allowed_columns_flat
+  on_fail: SQL_VALIDATION_FAILED
+- rule_id: SQL_MUST_FILTER_ACTIVE_EMPLOYEES
+  category: business_logic
+  severity: error
+  description_fa: در فاز دوم همه SQLهای آماری باید فیلتر v.is_active = TRUE داشته باشند؛ حتی اگر View فقط کارکنان فعال را
+    برگرداند.
+  check:
+    required_filter: v.is_active = TRUE
+    status_only_sql_exempt: true
+  on_fail: SQL_VALIDATION_FAILED
+- rule_id: SQL_MUST_NOT_QUERY_SYSTEM_CATALOGS
+  category: security
+  severity: error
+  description_fa: دسترسی به کاتالوگ‌های سیستمی، information_schema و pg_catalog ممنوع است.
+  check:
+    blocked_relations_ref: blocked_sql.blocked_system_catalogs
+  on_fail: SQL_VALIDATION_FAILED
+- rule_id: SQL_MUST_NOT_CONTAIN_COMMENTS_OR_INJECTION_TOKENS
+  category: security
+  severity: error
+  description_fa: وجود comment token یا الگوهای رایج تزریق SQL ممنوع است.
+  check:
+    blocked_comment_tokens_ref: blocked_sql.blocked_comment_tokens
+    blocked_patterns_ref: blocked_sql.blocked_injection_patterns
+  on_fail: SQL_VALIDATION_FAILED
+privacy_rules:
+- rule_id: NO_INDIVIDUAL_LEVEL_OUTPUT
+  severity: error
+  description_fa: خروجی ردیف فردی کارکنان مجاز نیست.
+  check:
+    require_aggregation_for_employee_level_queries: true
+    allowed_output_shapes:
+    - aggregate
+    - grouped_aggregate
+    - status_only
+    disallowed_visible_columns:
+    - employee_id
+    - birth_date
+    - hire_date
+    - contract_start_date
+    - contract_end_date
+  on_fail: ACCESS_DENIED
+- rule_id: NO_PERSONAL_DATA_OUTPUT
+  severity: error
+  description_fa: اطلاعات شخصی، هویتی، تماس، مالی و درمانی نباید در SQL یا خروجی نمایش داده شود.
+  check:
+    blocked_columns_ref: sensitive_columns_blocklist
+  on_fail: ACCESS_DENIED
+- rule_id: AGGREGATED_OUTPUT_ONLY
+  severity: error
+  description_fa: خروجی باید تجمیعی، grouped aggregate یا status-only باشد.
+  check:
+    must_have_one_of:
+    - COUNT(
+    - AVG(
+    - SUM(
+    - MIN(
+    - MAX(
+    - GROUP BY
+    - SELECT 'DATA_GAP'
+    - SELECT 'ACCESS_DENIED'
+    - SELECT 'OUT_OF_SCOPE'
+    - SELECT 'NEEDS_CLARIFICATION'
+    - SELECT 'SQL_VALIDATION_FAILED'
+    status_only_sql_exempt: true
+  on_fail: ACCESS_DENIED
+- rule_id: SMALL_GROUP_SUPPRESSION_REQUIRED_DOWNSTREAM
+  severity: warning
+  description_fa: اگر نتیجه grouped کمتر از حداقل گروه مجاز باشد، Response Layer یا Access Policy باید suppression انجام دهد.
+  check:
+    min_group_size: 5
+    enforced_by: access_policies.yaml_or_response_builder.py
+  on_fail: WARN_ONLY
+semantic_validation_rules:
+- rule_id: DO_NOT_CONFUSE_EMPLOYMENT_TYPE_AND_CONTRACT_TYPE
+  severity: error
+  description_fa: نوع استخدام و نوع قرارداد نباید با هم اشتباه شوند.
+  mapping:
+    نوع استخدام: employment_type
+    نوع قرارداد: contract_type
+    پیمانکاری: is_contractor
+    شاغل در پیمانکاری: employment_type or is_contractor depending on question
+  blocked_misuse_examples:
+  - question_term: نوع استخدام
+    blocked_column: contract_type
+  - question_term: نوع قرارداد
+    blocked_column: employment_type
+  on_fail: SQL_VALIDATION_FAILED
+- rule_id: HEADCOUNT_APPROVED_NOT_SUMMED_OVER_EMPLOYEE_ROWS
+  severity: error
+  description_fa: چارت مصوب نباید مستقیم روی ردیف‌های کارکنان SUM شود چون مقدار روی ردیف‌های کارکنان تکرار می‌شود.
+  blocked_patterns:
+  - SUM(v.department_approved_headcount)
+  - SUM(department_approved_headcount)
+  allowed_patterns:
+  - MAX(v.department_approved_headcount)
+  - MAX(department_approved_headcount)
+  on_fail: SQL_VALIDATION_FAILED
+- rule_id: MOST_LEAST_HIRING_YEAR_MUST_AGGREGATE_FIRST
+  severity: error
+  description_fa: برای سال بیشترین/کمترین جذب نباید از MIN یا MAX سال جذب استفاده شود؛ باید ابتدا بر اساس hire_year گروه‌بندی
+    شود.
+  blocked_patterns:
+  - MAX(v.hire_year)
+  - MIN(v.hire_year)
+  required_pattern_hint: GROUP BY v.hire_year ORDER BY COUNT(v.employee_id) DESC/ASC LIMIT 1
+  on_fail: SQL_VALIDATION_FAILED
+- rule_id: PERCENTAGE_DENOMINATOR_MUST_USE_NULLIF
+  severity: error
+  description_fa: در محاسبه درصد باید از NULLIF در مخرج استفاده شود تا تقسیم بر صفر رخ ندهد.
+  condition: sql_contains_percentage_or_division
+  required_patterns:
+  - NULLIF(
+  on_fail: SQL_VALIDATION_FAILED
+- rule_id: CONTRACTOR_SHARE_MUST_USE_IS_CONTRACTOR
+  severity: error
+  description_fa: برای سهم پیمانکاری باید v.is_contractor = TRUE در صورت کسر استفاده شود.
+  condition: question_or_intent_references_contractor_share
+  required_patterns:
+  - v.is_contractor = TRUE
+  on_fail: SQL_VALIDATION_FAILED
+- rule_id: HIRE_YEAR_IS_SHAMSI_YEAR
+  severity: error
+  description_fa: سال جذب باید از v.hire_year شمسی استفاده کند و مدل نباید CURRENT_DATE میلادی را به جای سال شمسی محاسبه کند.
+  blocked_patterns:
+  - EXTRACT(YEAR FROM CURRENT_DATE)
+  - CURRENT_DATE
+  - NOW()
+  required_column_for_hiring: v.hire_year
+  on_fail: SQL_VALIDATION_FAILED
+- rule_id: CURRENT_SHAMSI_YEAR_PLACEHOLDER_MUST_BE_REPLACED
+  severity: error
+  description_fa: قبل از اجرا نباید placeholder سال شمسی در SQL باقی مانده باشد.
+  blocked_patterns:
+  - '{current_shamsi_year}'
+  application_must_replace_with: 1404
+  on_fail: SQL_VALIDATION_FAILED
+- rule_id: CITY_LEVEL_ANALYSIS_MUST_NOT_BE_EXECUTED
+  severity: error
+  description_fa: اگر سؤال یا SQL به تحلیل سطح شهر اشاره کند، در MVP فعلی نباید SQL تحلیلی اجرا شود و باید DATA_GAP شود.
+  condition: references_city_level_analysis
+  blocked_columns_as_group_by:
+  - v.city
+  - city
+  on_fail: DATA_GAP
+data_gap_rules:
+- rule_id: CITY_LEVEL_IS_DATA_GAP
+  severity: error
+  description_fa: تحلیل سطح شهر در MVP فعلی قابل اتکا نیست.
+  condition:
+    question_terms:
+    - شهر
+    - سطح شهر
+    - هر شهر
+    sql_columns:
+    - v.city
+  on_trigger: DATA_GAP
+- rule_id: NEAR_RETIREMENT_IS_DATA_GAP
+  severity: error
+  description_fa: آستانه بازنشستگی بدون قانون رسمی قابل پاسخ نیست.
+  condition:
+    question_terms:
+    - آستانه بازنشستگی
+    - نزدیک بازنشستگی
+    - در شرف بازنشستگی
+    - بازنشسته می‌شوند
+  on_trigger: DATA_GAP
+- rule_id: CONTRACTOR_PRODUCTIVITY_IS_DATA_GAP
+  severity: error
+  description_fa: تحلیل بهره‌وری پیمانکارها نیازمند داده عملکرد/بهره‌وری است که در View فعلی وجود ندارد.
+  condition:
+    question_terms:
+    - بهره‌وری پیمانکار
+    - عملکرد پیمانکار
+    - کیفیت پیمانکار
+  on_trigger: DATA_GAP
+- rule_id: WORKLOAD_ALIGNMENT_IS_DATA_GAP
+  severity: error
+  description_fa: هماهنگی جذب با افزایش کار سازمان نیازمند شاخص حجم کار/عملکرد است.
+  condition:
+    question_terms:
+    - افزایش کار سازمان
+    - حجم کار
+    - هماهنگ بوده
+    - نیاز واقعی
+  on_trigger: DATA_GAP
+- rule_id: MONTHLY_HIRING_IS_DATA_GAP_UNLESS_CALENDAR_READY
+  severity: warning
+  description_fa: تحلیل جذب ماهانه فقط وقتی مجاز است که ستون ماه شمسی یا تقویم قابل اتکا در Metadata اضافه شود.
+  condition:
+    question_terms:
+    - ماهانه
+    - ماه جذب
+    - به تفکیک ماه
+  on_trigger: DATA_GAP
+- rule_id: UNKNOWN_COLUMN_OR_KPI_IS_DATA_GAP
+  severity: error
+  description_fa: اگر سؤال به مفهومی اشاره کند که ستون، KPI یا قانون آن در Metadata نیست، باید DATA_GAP شود.
+  condition:
+    required_column_not_in_metadata: true
+    required_kpi_not_in_metadata: true
+  on_trigger: DATA_GAP
+execution_guardrails:
+  query_timeout_seconds: 10
+  max_result_rows: 500
+  default_limit_for_large_grouped_results: 100
+  allow_query_execution_only_if_validation_status: VALID
+  status_only_queries_should_not_hit_database: true
+  log_every_validation: true
+  log_sql_text: true
+  log_failed_rules: true
+  log_model_name: true
+  log_prompt_version: true
+  log_user_role: true
+  log_latency_ms: true
+  redact_sensitive_terms_in_logs: true
+template_validation_policy:
+  known_sql_template_ids:
+  - TPL_TOTAL_EMPLOYEE_COUNT
+  - TPL_EMPLOYEE_COUNT_BY_GENDER
+  - TPL_GENDER_PERCENTAGE
+  - TPL_AVERAGE_AGE
+  - TPL_AVERAGE_AGE_BY_GENDER
+  - TPL_AVERAGE_AGE_BY_SERVICE_DOMAIN
+  - TPL_EMPLOYEE_COUNT_BY_AGE_GROUP
+  - TPL_EMPLOYEE_COUNT_BY_AGE_FILTER
+  - TPL_EMPLOYEES_AGE_60_PLUS
+  - TPL_EMPLOYEES_UNDER_30
+  - TPL_EMPLOYEE_COUNT_BY_EDUCATION
+  - TPL_EMPLOYEE_COUNT_BY_EDUCATION_VALUE
+  - TPL_MOST_COMMON_EDUCATION
+  - TPL_LEAST_COMMON_EDUCATION
+  - TPL_LOW_EDUCATION_IN_EXPERT_ROLES
+  - TPL_EMPLOYEE_COUNT_BY_EMPLOYMENT_TYPE
+  - TPL_EMPLOYEE_COUNT_BY_EMPLOYMENT_TYPE_VALUE
+  - TPL_EMPLOYEE_COUNT_BY_CONTRACT_TYPE
+  - TPL_EMPLOYEE_COUNT_BY_CONTRACT_TYPE_VALUE
+  - TPL_CONTRACTOR_SHARE
+  - TPL_CONTRACTOR_SHARE_BY_SERVICE_DOMAIN
+  - TPL_CONTRACTOR_SHARE_BY_DEPARTMENT
+  - TPL_EMPLOYEE_COUNT_BY_SERVICE_DOMAIN
+  - TPL_EMPLOYEE_COUNT_BY_DEPARTMENT
+  - TPL_HEADCOUNT_GAP_BY_DEPARTMENT
+  - TPL_HEADCOUNT_GAP_BY_SERVICE_DOMAIN
+  - TPL_EMPLOYEE_COUNT_BY_PROVINCE
+  - TPL_EMPLOYEE_COUNT_BY_WORK_LOCATION
+  - TPL_HIRING_TREND_ANNUAL
+  - TPL_HIRING_LAST_15_YEARS
+  - TPL_MOST_HIRING_YEAR
+  - TPL_LEAST_HIRING_YEAR
+  - TPL_HIRING_BY_CONTRACT_TYPE_RECENT_YEAR
+  - TPL_AVERAGE_SERVICE_YEARS
+  - TPL_EMPLOYEE_COUNT_WITHOUT_SERVICE_YEARS
+  - TPL_EMPLOYEE_COUNT_BY_MARITAL_STATUS
+  - TPL_GENDER_BY_AGE_GROUP
+  - TPL_EDUCATION_BY_SERVICE_DOMAIN
+  known_status_template_ids:
+  - TPL_DATA_GAP
+  - TPL_ACCESS_DENIED
+  - TPL_OUT_OF_SCOPE
+  - TPL_NEEDS_CLARIFICATION
+  all_templates_must_pass_validator_before_release: true
+  templates_may_use_with_clause: true
+  templates_must_use_view_alias_v: true
+  templates_must_include_active_filter: true
+  templates_must_not_include_raw_tables: true
+  templates_must_not_include_join: true
+validation_result_schema:
+  is_valid: boolean
+  status: VALID | VALID_STATUS_ONLY | SQL_VALIDATION_FAILED | DATA_GAP | ACCESS_DENIED | OUT_OF_SCOPE | NEEDS_CLARIFICATION
+  route: SQL | GAP | REJECT
+  failed_rules: array<string>
+  warnings: array<string>
+  sanitized_sql: string | null
+  safe_sql_to_return: string | null
+  reason_fa: string | null
+  detected_relations: array<string>
+  detected_columns: array<string>
+  detected_statement_type: string | null
+  execution_allowed: boolean
+recommended_validator_output_examples:
+- case: valid_sql
+  output:
+    is_valid: true
+    status: VALID
+    route: SQL
+    failed_rules: []
+    warnings: []
+    execution_allowed: true
+- case: raw_table_used
+  output:
+    is_valid: false
+    status: SQL_VALIDATION_FAILED
+    route: REJECT
+    failed_rules:
+    - SQL_MUST_USE_ONLY_MAIN_VIEW
+    - SQL_MUST_NOT_USE_RAW_TABLES
+    execution_allowed: false
+    safe_sql_to_return: SELECT 'SQL_VALIDATION_FAILED' AS status;
+- case: individual_info_requested
+  output:
+    is_valid: false
+    status: ACCESS_DENIED
+    route: REJECT
+    failed_rules:
+    - NO_INDIVIDUAL_LEVEL_OUTPUT
+    execution_allowed: false
+    safe_sql_to_return: SELECT 'ACCESS_DENIED' AS status;
+- case: city_level_question
+  output:
+    is_valid: false
+    status: DATA_GAP
+    route: GAP
+    failed_rules:
+    - CITY_LEVEL_IS_DATA_GAP
+    execution_allowed: false
+    safe_sql_to_return: SELECT 'DATA_GAP' AS status;
+implementation_notes_fa:
+- Validator باید قبل از Query Executor اجرا شود و در صورت fail شدن، SQL به هیچ وجه اجرا نشود.
+- بهتر است برای تشخیص relation و column از AST parser مثل sqlglot استفاده شود؛ regex تنها برای MVP اولیه کافی است.
+- Status-only SQLها مثل DATA_GAP و ACCESS_DENIED بهتر است توسط سیستم به عنوان پیام وضعیت پردازش شوند و نه کوئری واقعی روی
+  دیتابیس.
+- حتی SQL Templateهای آماده هم باید در زمان build یا startup یک بار validate شوند.
+- در صورت اختلاف بین این فایل و access_policies.yaml، سخت‌گیرانه‌ترین قانون باید اعمال شود.
+- قانون حداقل گروه کوچک بهتر است در Response Layer هم دوباره اعمال شود چون اندازه گروه فقط بعد از اجرای کوئری مشخص می‌شود.
+- خطاهای validator باید در evaluation_service.py و logger.py ثبت شوند تا در Goldset قابل تحلیل باشند.

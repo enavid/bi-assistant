@@ -1,0 +1,1043 @@
+version: '1.0'
+project: HR BI Assistant
+phase: Controlled SQL-based MVP
+file_type: visualization_rules
+language: fa-IR
+description_fa: قوانین انتخاب و ساخت خروجی بصری برای پاسخ‌های HR BI Assistant شامل کارت KPI، جدول، نمودار میله‌ای، خطی، دایره‌ای،
+  میله‌ای افقی، میله‌ای انباشته و پیام‌های وضعیت.
+main_view:
+  name: hr_mvp.vw_hr_employee_analytics
+  alias: v
+metadata_dependencies:
+- data_dictionary.yaml
+- semantic_layer.yaml
+- intent_catalog.yaml
+- report_catalog.json
+- sql_templates.yaml
+- sql_validator_rules.yaml
+- access_policies.yaml
+- evaluation_goldset.json
+visualization_contract:
+  purpose_fa: این فایل به response_builder.py و chart_builder.py می‌گوید بر اساس intent، شکل داده و سیاست محرمانگی، خروجی
+    مناسب را انتخاب کنند.
+  input_sources:
+  - detected_intent
+  - detected_route
+  - validation_status
+  - report_id
+  - sql_template_id
+  - query_result_columns
+  - query_result_rows
+  - user_role
+  - access_policy_result
+  output_target_modules:
+  - response_builder.py
+  - chart_builder.py
+  - explanation_generator.py
+  - frontend_chart_renderer
+  allowed_routes:
+  - SQL
+  - GAP
+  - REJECT
+  sql_route_allowed_visuals:
+  - kpi_card
+  - kpi_card_group
+  - table
+  - bar_chart
+  - horizontal_bar_chart
+  - stacked_bar_chart
+  - line_chart
+  - pie_chart
+  gap_route_visual: status_message
+  reject_route_visual: status_message
+  individual_employee_rows_allowed: false
+  sensitive_columns_allowed: false
+  raw_table_reference_allowed: false
+  default_language: fa-IR
+  right_to_left: true
+  default_empty_result_visual: status_message
+global_rules:
+  safe_output_rules:
+  - Visualization must never expose individual employee-level rows.
+  - employee_id can only be used for aggregation and must not be displayed as a visible dimension.
+  - Sensitive personal fields must never be displayed even if they appear in a query result by mistake.
+  - If SQL Validator returns DATA_GAP, ACCESS_DENIED, OUT_OF_SCOPE, or NEEDS_CLARIFICATION, use status_message only.
+  - If access policy suppresses rows or metrics, visualization must respect the suppression result and show a limitation note.
+  default_filter_note_fa: خروجی‌ها بر اساس کارکنان فعال محاسبه می‌شوند، مگر اینکه در سؤال یا گزارش خلاف آن مجاز و مشخص شده
+    باشد.
+  min_group_size_default: 5
+  min_group_size_behavior: اگر یک گروه کمتر از حداقل مجاز عضو داشته باشد، مقدار آن باید suppress یا با گروه سایر ادغام شود؛
+    تصمیم نهایی با access_policies.yaml است.
+  max_rows_for_chart: 20
+  max_rows_for_default_table: 50
+  top_n_default: 10
+  other_bucket_label_fa: سایر
+  null_label_fa: نامشخص
+  no_data_message_fa: برای این سؤال، داده قابل نمایش در نسخه فعلی وجود ندارد.
+  chart_title_required: true
+  chart_subtitle_required: false
+  show_data_limitations: true
+  show_source_view: true
+  source_view_label: hr_mvp.vw_hr_employee_analytics
+visualization_types:
+- type: kpi_card
+  title_fa: کارت شاخص
+  use_when:
+  - نتیجه یک مقدار عددی اصلی دارد.
+  - سؤال درباره تعداد کل، درصد کل، میانگین کلی یا یک فیلتر مشخص است.
+  - خروجی شامل یک ردیف و یک یا چند metric محدود است.
+  expected_data_shape:
+    min_rows: 1
+    max_rows: 1
+    required_metric_count_min: 1
+    dimension_columns_allowed: false
+  preferred_metrics:
+  - employee_count
+  - percentage
+  - average_age
+  - average_service_years
+  - contractor_percentage
+  fallback_visual: table
+  formatting:
+    employee_count: integer
+    percentage: percentage_2_decimals
+    average_age: decimal_2
+    average_service_years: decimal_2
+    headcount_gap: integer_with_sign
+- type: kpi_card_group
+  title_fa: گروه کارت شاخص
+  use_when:
+  - خروجی چند شاخص کلیدی مستقل دارد.
+  - برای خلاصه مدیریتی لازم است تعداد و درصد کنار هم نشان داده شوند.
+  expected_data_shape:
+    min_rows: 1
+    max_rows: 6
+    required_metric_count_min: 2
+    dimension_columns_allowed: true
+  fallback_visual: table
+- type: table
+  title_fa: جدول
+  use_when:
+  - خروجی چند ستون محاسباتی دارد.
+  - نیاز به نمایش دقیق عددی، چند metric، یا وضعیت partial دارد.
+  - گزارش‌هایی مثل اختلاف چارت مصوب، کمبود نیرو و مقایسه چند شاخص در سطح دپارتمان.
+  expected_data_shape:
+    min_rows: 1
+    max_rows_default: 50
+    dimension_columns_allowed: true
+    metric_columns_allowed: true
+  fallback_visual: status_message
+  formatting:
+    show_row_number: true
+    freeze_first_column: true
+    rtl_headers: true
+    numeric_alignment: left_in_rtl_ui
+    default_sort: as_sql_order
+- type: bar_chart
+  title_fa: نمودار میله‌ای
+  use_when:
+  - مقایسه تعداد یا درصد بین دسته‌های محدود لازم است.
+  - تعداد دسته‌ها معمولاً بین ۲ تا ۶ است.
+  - ترتیب زمانی موضوع اصلی نیست.
+  expected_data_shape:
+    min_rows: 2
+    max_rows_recommended: 6
+    required_dimension_count: 1
+    required_metric_count_min: 1
+  fallback_visual: horizontal_bar_chart
+  sort_rule: employee_count_desc_unless_ordered_dimension
+  avoid_when:
+  - تعداد دسته‌ها زیاد است و برچسب‌ها طولانی هستند.
+  - داده روند زمانی است؛ در آن حالت line_chart بهتر است.
+- type: horizontal_bar_chart
+  title_fa: نمودار میله‌ای افقی
+  use_when:
+  - تعداد دسته‌ها زیاد است یا نام دسته‌ها طولانی است.
+  - گزارش رتبه‌بندی مانند استان، واحد، نوع قرارداد یا محل خدمت است.
+  - مقایسه دقیق بین دسته‌ها مهم‌تر از ترکیب سهم است.
+  expected_data_shape:
+    min_rows: 2
+    max_rows_recommended: 20
+    required_dimension_count: 1
+    required_metric_count_min: 1
+  fallback_visual: table
+  sort_rule: metric_desc
+  top_n_rule: اگر تعداد ردیف‌ها بیشتر از max_rows_for_chart بود، top_n_default نمایش داده شود و باقی در سایر ادغام شود، مگر
+    اینکه کاربر جدول کامل بخواهد.
+- type: stacked_bar_chart
+  title_fa: نمودار میله‌ای انباشته
+  use_when:
+  - دو بعد دسته‌ای هم‌زمان وجود دارد، مثل گروه سنی به تفکیک جنسیت.
+  - هدف مقایسه ترکیب داخل هر گروه است.
+  expected_data_shape:
+    min_rows: 2
+    required_dimension_count: 2
+    required_metric_count_min: 1
+  fallback_visual: table
+  allowed_secondary_dimensions:
+  - gender
+  - is_contractor
+  - employment_type
+  avoid_when:
+  - تعداد گروه‌های بعد دوم زیاد است.
+  - داده شامل مقادیر suppression شده به علت محرمانگی است.
+- type: line_chart
+  title_fa: نمودار خطی
+  use_when:
+  - داده روند زمانی یا توالی مرتب دارد.
+  - محور x سال جذب یا دوره زمانی است.
+  - هدف نمایش روند افزایشی، کاهشی یا نوسانی است.
+  expected_data_shape:
+    min_rows: 2
+    required_dimension_count: 1
+    required_metric_count_min: 1
+    ordered_x_axis_required: true
+  fallback_visual: table
+  sort_rule: time_or_ordered_dimension_asc
+  x_axis_allowed_columns:
+  - hire_year
+  - year
+  - period
+- type: pie_chart
+  title_fa: نمودار دایره‌ای
+  use_when:
+  - هدف نمایش ترکیب سهم از کل در یک مقطع است.
+  - تعداد دسته‌ها کم است و مجموع آن‌ها یک کل معنادار را تشکیل می‌دهد.
+  - برای جنسیت یا وضعیت‌های دو/سه‌دسته‌ای مناسب است.
+  expected_data_shape:
+    min_rows: 2
+    max_rows_recommended: 5
+    required_dimension_count: 1
+    required_metric_count_min: 1
+  fallback_visual: bar_chart
+  avoid_when:
+  - تعداد دسته‌ها بیشتر از ۵ است.
+  - رتبه‌بندی دقیق مهم است.
+  - دسته‌ها کل واحد و معناداری را نمی‌سازند.
+- type: status_message
+  title_fa: پیام وضعیت
+  use_when:
+  - مسیر GAP یا REJECT انتخاب شده است.
+  - SQL Validator اجرای کوئری را رد کرده است.
+  - نتیجه خالی است یا داده کافی برای نمایش نمودار وجود ندارد.
+  expected_status_values:
+  - DATA_GAP
+  - ACCESS_DENIED
+  - OUT_OF_SCOPE
+  - NEEDS_CLARIFICATION
+  - SQL_VALIDATION_FAILED
+  - NO_DATA
+  fallback_visual: null
+selection_rules:
+- rule_id: VIS_RULE_001
+  name: status_first
+  priority: 1
+  condition: route in ['GAP', 'REJECT'] or validation_status not in ['VALID', 'SUCCESS', 'SUPPORTED']
+  select_visualization: status_message
+  reason_fa: برای Gap، Reject و خطا نباید نمودار یا جدول تحلیلی ساخته شود.
+- rule_id: VIS_RULE_002
+  name: single_metric_kpi
+  priority: 2
+  condition: result has one row and one primary metric
+  select_visualization: kpi_card
+  reason_fa: برای عددهای کلیدی، کارت KPI خواناتر است.
+- rule_id: VIS_RULE_003
+  name: single_row_multiple_metrics
+  priority: 3
+  condition: result has one row and multiple metrics
+  select_visualization: kpi_card_group
+  reason_fa: چند شاخص خلاصه بهتر است کنار هم نمایش داده شوند.
+- rule_id: VIS_RULE_004
+  name: time_series_line
+  priority: 4
+  condition: dimension is hire_year or ordered period
+  select_visualization: line_chart
+  reason_fa: روند جذب یا داده زمانی باید خطی نمایش داده شود.
+- rule_id: VIS_RULE_005
+  name: few_categories_pie_allowed
+  priority: 5
+  condition: dimension is gender or another part-to-whole category with <= 5 categories and percentage exists
+  select_visualization: pie_chart
+  fallback_visualization: bar_chart
+  reason_fa: برای ترکیب سهم ساده، نمودار دایره‌ای قابل استفاده است.
+- rule_id: VIS_RULE_006
+  name: category_count_bar
+  priority: 6
+  condition: one categorical dimension and row_count between 2 and 6
+  select_visualization: bar_chart
+  reason_fa: برای مقایسه دسته‌های محدود، نمودار میله‌ای مناسب است.
+- rule_id: VIS_RULE_007
+  name: many_categories_horizontal_bar
+  priority: 7
+  condition: one categorical dimension and row_count > 6
+  select_visualization: horizontal_bar_chart
+  reason_fa: برای دسته‌های زیاد یا نام‌های طولانی، میله‌ای افقی خواناتر است.
+- rule_id: VIS_RULE_008
+  name: two_dimensions_stacked_bar
+  priority: 8
+  condition: two categorical dimensions and second dimension in allowed_secondary_dimensions
+  select_visualization: stacked_bar_chart
+  fallback_visualization: table
+  reason_fa: برای ترکیب جنسیت/پیمانکاری در گروه‌ها، میله‌ای انباشته مناسب است.
+- rule_id: VIS_RULE_009
+  name: multi_metric_table
+  priority: 9
+  condition: result has multiple dimensions or more than two metrics
+  select_visualization: table
+  reason_fa: برای خروجی‌های چندشاخصی، جدول دقیق‌تر و امن‌تر است.
+- rule_id: VIS_RULE_010
+  name: headcount_gap_table
+  priority: 10
+  condition: intent contains headcount_gap or columns include actual_headcount and approved_headcount and headcount_gap
+  select_visualization: table
+  fallback_visualization: horizontal_bar_chart
+  reason_fa: اختلاف چارت مصوب باید با عدد دقیق و محدودیت تحلیل نمایش داده شود.
+column_role_mapping:
+  dimension_columns:
+    gender:
+      label_fa: جنسیت
+      preferred_visuals:
+      - pie_chart
+      - bar_chart
+    marital_status:
+      label_fa: وضعیت تأهل
+      preferred_visuals:
+      - bar_chart
+      - pie_chart
+    age_group_title:
+      label_fa: گروه سنی
+      preferred_visuals:
+      - bar_chart
+    education_title:
+      label_fa: مدرک تحصیلی
+      preferred_visuals:
+      - bar_chart
+      - horizontal_bar_chart
+    education_category:
+      label_fa: گروه تحصیلی
+      preferred_visuals:
+      - bar_chart
+    employment_type:
+      label_fa: نوع استخدام
+      preferred_visuals:
+      - bar_chart
+      - horizontal_bar_chart
+    contract_type:
+      label_fa: نوع قرارداد
+      preferred_visuals:
+      - horizontal_bar_chart
+      - table
+    is_contractor:
+      label_fa: پیمانکاری
+      preferred_visuals:
+      - kpi_card
+      - pie_chart
+    service_domain:
+      label_fa: حوزه خدمت
+      preferred_visuals:
+      - bar_chart
+      - horizontal_bar_chart
+    department_name:
+      label_fa: واحد / دپارتمان
+      preferred_visuals:
+      - horizontal_bar_chart
+      - table
+    province:
+      label_fa: استان
+      preferred_visuals:
+      - horizontal_bar_chart
+      - table
+    site_name:
+      label_fa: محل خدمت
+      preferred_visuals:
+      - horizontal_bar_chart
+      - table
+    position_title:
+      label_fa: عنوان پست
+      preferred_visuals:
+      - horizontal_bar_chart
+      - table
+    position_level:
+      label_fa: سطح پست
+      preferred_visuals:
+      - bar_chart
+    job_family:
+      label_fa: خانواده شغلی
+      preferred_visuals:
+      - bar_chart
+      - horizontal_bar_chart
+    hire_year:
+      label_fa: سال جذب
+      preferred_visuals:
+      - line_chart
+      ordered: true
+    criticality_level:
+      label_fa: سطح حساسیت
+      preferred_visuals:
+      - bar_chart
+      - table
+  metric_columns:
+    employee_count:
+      label_fa: تعداد کارکنان
+      format: integer
+    actual_headcount:
+      label_fa: نیروی موجود
+      format: integer
+    approved_headcount:
+      label_fa: چارت مصوب
+      format: integer
+    headcount_gap:
+      label_fa: اختلاف نیرو
+      format: integer_with_sign
+    average_age:
+      label_fa: میانگین سن
+      format: decimal_2
+      suffix_fa: سال
+    average_service_years:
+      label_fa: میانگین سابقه
+      format: decimal_2
+      suffix_fa: سال
+    percentage:
+      label_fa: درصد
+      format: percentage_2_decimals
+      suffix: '%'
+    female_percentage:
+      label_fa: درصد زنان
+      format: percentage_2_decimals
+      suffix: '%'
+    male_percentage:
+      label_fa: درصد مردان
+      format: percentage_2_decimals
+      suffix: '%'
+    contractor_count:
+      label_fa: تعداد نیروهای پیمانکاری
+      format: integer
+    contractor_percentage:
+      label_fa: درصد پیمانکاری
+      format: percentage_2_decimals
+      suffix: '%'
+    hiring_count:
+      label_fa: تعداد جذب
+      format: integer
+  status_columns:
+    status:
+      label_fa: وضعیت
+      format: status_code
+    reason:
+      label_fa: دلیل
+      format: text
+formatting_rules:
+  locale: fa-IR
+  direction: rtl
+  number_format:
+    integer:
+      decimals: 0
+      thousands_separator: true
+    decimal_2:
+      decimals: 2
+      thousands_separator: true
+    percentage_2_decimals:
+      decimals: 2
+      suffix: '%'
+    integer_with_sign:
+      decimals: 0
+      show_positive_sign: true
+      thousands_separator: true
+  label_rules:
+    use_fa_labels: true
+    replace_null_with: نامشخص
+    max_axis_label_chars: 32
+    long_label_behavior: برای برچسب‌های طولانی از horizontal_bar_chart یا table استفاده شود.
+    title_style: کوتاه، مدیریتی و فارسی
+  color_semantics:
+    default: use_frontend_default_palette
+    positive_gap: frontend_positive_or_warning_palette
+    negative_gap: frontend_risk_palette
+    status_error: frontend_error_palette
+    note: رنگ‌ها در این فایل hard-code نمی‌شوند و باید توسط Frontend theme تعیین شوند.
+  sorting_defaults:
+    counts: DESC
+    percentages: DESC
+    hire_year: ASC
+    age_group: logical_age_order
+    education_rank: ASC_or_DESC_based_on_question
+    headcount_gap: ASC_for_shortage_first
+response_composition_rules:
+  default_answer_parts:
+  - short_text_summary
+  - primary_visualization
+  - data_limitation_note_if_any
+  kpi_answer_parts:
+  - one_sentence_result
+  - kpi_card
+  - source_and_filter_note
+  chart_answer_parts:
+  - one_sentence_insight
+  - chart
+  - optional_table_if_user_asks
+  table_answer_parts:
+  - short_context
+  - table
+  - limitation_or_sort_note
+  gap_answer_parts:
+  - status_message
+  - why_not_answerable
+  - required_data_or_rule
+  - gap_registration_note
+  reject_answer_parts:
+  - status_message
+  - safe_reason
+  - optional_supported_alternative
+  do_not_include:
+  - raw SQL in final answer unless user explicitly asks
+  - raw employee-level records
+  - sensitive personal identifiers
+  - unverified managerial conclusions without data or RAG source
+intent_visualization_map:
+- intent: total_employee_count
+  primary_visualization: kpi_card
+  dimension: null
+  metrics:
+  - employee_count
+  default_title_fa: تعداد کل کارکنان فعال
+  fallback_visualization: table
+- intent: employee_count_by_gender
+  primary_visualization: pie_chart
+  dimension: gender
+  metrics:
+  - employee_count
+  - percentage
+  default_title_fa: تعداد کارکنان به تفکیک جنسیت
+  fallback_visualization: bar_chart
+- intent: gender_percentage
+  primary_visualization: kpi_card
+  dimension: null
+  metrics:
+  - percentage
+  default_title_fa: درصد کارکنان بر اساس جنسیت
+  fallback_visualization: table
+- intent: average_age
+  primary_visualization: kpi_card
+  dimension: null
+  metrics:
+  - average_age
+  default_title_fa: میانگین سن کارکنان
+  fallback_visualization: bar_chart
+- intent: employee_count_by_age_group
+  primary_visualization: bar_chart
+  dimension: age_group_title
+  metrics:
+  - employee_count
+  - percentage
+  default_title_fa: تعداد کارکنان به تفکیک گروه سنی
+  fallback_visualization: table
+- intent: employee_count_by_age_filter
+  primary_visualization: kpi_card
+  dimension: null
+  metrics:
+  - employee_count
+  default_title_fa: تعداد کارکنان در بازه سنی انتخاب‌شده
+  fallback_visualization: table
+- intent: employee_count_by_education
+  primary_visualization: bar_chart
+  dimension: education_title
+  metrics:
+  - employee_count
+  - percentage
+  default_title_fa: تعداد کارکنان بر اساس مدرک تحصیلی
+  fallback_visualization: horizontal_bar_chart
+- intent: most_common_education
+  primary_visualization: kpi_card
+  dimension: education_title
+  metrics:
+  - employee_count
+  default_title_fa: بیشترین مدرک تحصیلی
+  fallback_visualization: table
+- intent: least_common_education
+  primary_visualization: kpi_card
+  dimension: education_title
+  metrics:
+  - employee_count
+  default_title_fa: کمترین مدرک تحصیلی
+  fallback_visualization: table
+- intent: low_education_in_expert_roles
+  primary_visualization: kpi_card
+  dimension: null
+  metrics:
+  - employee_count
+  - percentage
+  default_title_fa: کارکنان با تحصیلات پایین‌تر از نیاز پست
+  fallback_visualization: table
+- intent: employee_count_by_employment_type
+  primary_visualization: bar_chart
+  dimension: employment_type
+  metrics:
+  - employee_count
+  - percentage
+  default_title_fa: تعداد کارکنان بر اساس نوع استخدام
+  fallback_visualization: horizontal_bar_chart
+- intent: employee_count_by_contract_type
+  primary_visualization: horizontal_bar_chart
+  dimension: contract_type
+  metrics:
+  - employee_count
+  - percentage
+  default_title_fa: تعداد کارکنان بر اساس نوع قرارداد
+  fallback_visualization: table
+- intent: contractor_share
+  primary_visualization: kpi_card
+  dimension: null
+  metrics:
+  - contractor_count
+  - contractor_percentage
+  default_title_fa: سهم نیروهای پیمانکاری
+  fallback_visualization: kpi_card_group
+- intent: contractor_share_by_service_domain
+  primary_visualization: bar_chart
+  dimension: service_domain
+  metrics:
+  - contractor_count
+  - contractor_percentage
+  default_title_fa: سهم پیمانکاری در هر حوزه
+  fallback_visualization: table
+- intent: contractor_share_by_department
+  primary_visualization: horizontal_bar_chart
+  dimension: department_name
+  metrics:
+  - contractor_count
+  - contractor_percentage
+  default_title_fa: سهم پیمانکاری در هر واحد
+  fallback_visualization: table
+- intent: employee_count_by_service_domain
+  primary_visualization: bar_chart
+  dimension: service_domain
+  metrics:
+  - employee_count
+  - percentage
+  default_title_fa: تعداد کارکنان به تفکیک حوزه خدمت
+  fallback_visualization: table
+- intent: employee_count_by_department
+  primary_visualization: horizontal_bar_chart
+  dimension: department_name
+  metrics:
+  - employee_count
+  default_title_fa: تعداد کارکنان به تفکیک واحد
+  fallback_visualization: table
+- intent: headcount_gap_by_department
+  primary_visualization: table
+  dimension: department_name
+  metrics:
+  - actual_headcount
+  - approved_headcount
+  - headcount_gap
+  default_title_fa: اختلاف نیروی موجود با چارت مصوب
+  fallback_visualization: horizontal_bar_chart
+- intent: headcount_gap_by_service_domain
+  primary_visualization: table
+  dimension: service_domain
+  metrics:
+  - actual_headcount
+  - approved_headcount
+  - headcount_gap
+  default_title_fa: اختلاف نیرو با چارت مصوب در سطح حوزه
+  fallback_visualization: horizontal_bar_chart
+- intent: employee_count_by_province
+  primary_visualization: horizontal_bar_chart
+  dimension: province
+  metrics:
+  - employee_count
+  default_title_fa: تعداد کارکنان به تفکیک استان
+  fallback_visualization: table
+- intent: employee_count_by_work_location
+  primary_visualization: horizontal_bar_chart
+  dimension: site_name
+  metrics:
+  - employee_count
+  default_title_fa: تعداد کارکنان به تفکیک محل خدمت
+  fallback_visualization: table
+- intent: hiring_trend_annual
+  primary_visualization: line_chart
+  dimension: hire_year
+  metrics:
+  - hiring_count
+  default_title_fa: روند جذب سالانه
+  fallback_visualization: table
+- intent: hiring_last_15_years
+  primary_visualization: line_chart
+  dimension: hire_year
+  metrics:
+  - hiring_count
+  default_title_fa: روند جذب ۱۵ سال اخیر
+  fallback_visualization: table
+- intent: most_or_least_hiring_year
+  primary_visualization: kpi_card
+  dimension: hire_year
+  metrics:
+  - hiring_count
+  default_title_fa: سال بیشترین یا کمترین جذب
+  fallback_visualization: table
+- intent: hiring_by_contract_type_recent_year
+  primary_visualization: horizontal_bar_chart
+  dimension: contract_type
+  metrics:
+  - hiring_count
+  default_title_fa: نوع قراردادهای جذب سال اخیر
+  fallback_visualization: table
+- intent: average_service_years
+  primary_visualization: kpi_card
+  dimension: null
+  metrics:
+  - average_service_years
+  default_title_fa: میانگین سابقه کارکنان
+  fallback_visualization: bar_chart
+- intent: employee_count_without_service_years
+  primary_visualization: kpi_card
+  dimension: null
+  metrics:
+  - employee_count
+  default_title_fa: تعداد کارکنان بدون سابقه
+  fallback_visualization: table
+- intent: employee_count_by_marital_status
+  primary_visualization: bar_chart
+  dimension: marital_status
+  metrics:
+  - employee_count
+  - percentage
+  default_title_fa: تعداد کارکنان به تفکیک وضعیت تأهل
+  fallback_visualization: pie_chart
+- intent: employee_count_by_gender_age_filter
+  primary_visualization: stacked_bar_chart
+  dimension: age_group_title
+  metrics:
+  - employee_count
+  default_title_fa: توزیع جنسیت در گروه‌های سنی
+  fallback_visualization: table
+- intent: education_distribution_by_service_domain
+  primary_visualization: table
+  dimension: service_domain
+  metrics:
+  - employee_count
+  - percentage
+  default_title_fa: توزیع تحصیلات در حوزه‌های خدمت
+  fallback_visualization: stacked_bar_chart
+- intent: city_level_analysis
+  primary_visualization: status_message
+  dimension: null
+  metrics: []
+  default_title_fa: تحلیل سطح شهر
+  fallback_visualization: null
+- intent: near_retirement_analysis
+  primary_visualization: status_message
+  dimension: null
+  metrics: []
+  default_title_fa: تحلیل آستانه بازنشستگی
+  fallback_visualization: null
+- intent: workforce_aging_trend_analysis
+  primary_visualization: status_message
+  dimension: null
+  metrics: []
+  default_title_fa: تحلیل سالخوردگی نیروی انسانی
+  fallback_visualization: null
+- intent: education_training_need_analysis
+  primary_visualization: status_message
+  dimension: null
+  metrics: []
+  default_title_fa: تحلیل نیاز آموزشی
+  fallback_visualization: null
+- intent: department_balance_analysis
+  primary_visualization: status_message
+  dimension: null
+  metrics: []
+  default_title_fa: تحلیل تعادل نیروی انسانی
+  fallback_visualization: null
+- intent: contractor_productivity_analysis
+  primary_visualization: status_message
+  dimension: null
+  metrics: []
+  default_title_fa: تحلیل بهره‌وری پیمانکارها
+  fallback_visualization: null
+- intent: employment_stability_impact_analysis
+  primary_visualization: status_message
+  dimension: null
+  metrics: []
+  default_title_fa: تحلیل اثر نوع استخدام بر ثبات سازمان
+  fallback_visualization: null
+- intent: hiring_business_growth_alignment
+  primary_visualization: status_message
+  dimension: null
+  metrics: []
+  default_title_fa: تحلیل هماهنگی جذب با رشد کار سازمان
+  fallback_visualization: null
+- intent: individual_employee_info
+  primary_visualization: status_message
+  dimension: null
+  metrics: []
+  default_title_fa: درخواست اطلاعات فردی
+  fallback_visualization: null
+- intent: out_of_scope
+  primary_visualization: status_message
+  dimension: null
+  metrics: []
+  default_title_fa: سؤال خارج از دامنه
+  fallback_visualization: null
+- intent: ambiguous_hr_question
+  primary_visualization: status_message
+  dimension: null
+  metrics: []
+  default_title_fa: سؤال مبهم
+  fallback_visualization: null
+- intent: education_by_service_domain
+  primary_visualization: table
+  dimension: service_domain
+  metrics:
+  - employee_count
+  default_title_fa: تحصیلات به تفکیک حوزه
+  fallback_visualization: null
+- intent: monthly_hiring_trend
+  primary_visualization: status_message
+  dimension: null
+  metrics: []
+  default_title_fa: روند جذب ماهانه
+  fallback_visualization: null
+report_visualization_map:
+- report_id: RPT_HR_001
+  intent: total_employee_count
+  primary_visualization: kpi_card
+  fallback_visualization: null
+- report_id: RPT_HR_002
+  intent: employee_count_by_gender
+  primary_visualization: pie_chart
+  fallback_visualization: bar_chart
+- report_id: RPT_HR_003
+  intent: average_age
+  primary_visualization: kpi_card
+  fallback_visualization: bar_chart
+- report_id: RPT_HR_004
+  intent: employee_count_by_education
+  primary_visualization: bar_chart
+  fallback_visualization: horizontal_bar_chart
+- report_id: RPT_HR_005
+  intent: employee_count_by_employment_type
+  primary_visualization: bar_chart
+  fallback_visualization: horizontal_bar_chart
+- report_id: RPT_HR_006
+  intent: employee_count_by_contract_type
+  primary_visualization: horizontal_bar_chart
+  fallback_visualization: table
+- report_id: RPT_HR_007
+  intent: contractor_share
+  primary_visualization: kpi_card
+  fallback_visualization: kpi_card_group
+- report_id: RPT_HR_008
+  intent: employee_count_by_service_domain
+  primary_visualization: bar_chart
+  fallback_visualization: table
+- report_id: RPT_HR_009
+  intent: employee_count_by_province
+  primary_visualization: horizontal_bar_chart
+  fallback_visualization: table
+- report_id: RPT_HR_010
+  intent: hiring_trend_annual
+  primary_visualization: line_chart
+  fallback_visualization: table
+- report_id: RPT_HR_011
+  intent: hiring_last_15_years
+  primary_visualization: line_chart
+  fallback_visualization: table
+- report_id: RPT_HR_012
+  intent: headcount_gap_by_department
+  primary_visualization: table
+  fallback_visualization: horizontal_bar_chart
+- report_id: RPT_HR_013
+  intent: city_level_analysis
+  primary_visualization: status_message
+  fallback_visualization: null
+- report_id: RPT_HR_014
+  intent: near_retirement_analysis
+  primary_visualization: status_message
+  fallback_visualization: null
+- report_id: RPT_HR_015
+  intent: gender_percentage
+  primary_visualization: kpi_card
+  fallback_visualization: table
+- report_id: RPT_HR_016
+  intent: employee_count_by_age_group
+  primary_visualization: bar_chart
+  fallback_visualization: table
+- report_id: RPT_HR_017
+  intent: employee_count_by_age_filter
+  primary_visualization: kpi_card
+  fallback_visualization: table
+- report_id: RPT_HR_018
+  intent: most_common_education
+  primary_visualization: kpi_card
+  fallback_visualization: table
+- report_id: RPT_HR_019
+  intent: least_common_education
+  primary_visualization: kpi_card
+  fallback_visualization: table
+- report_id: RPT_HR_020
+  intent: low_education_in_expert_roles
+  primary_visualization: kpi_card
+  fallback_visualization: table
+- report_id: RPT_HR_021
+  intent: contractor_share_by_service_domain
+  primary_visualization: bar_chart
+  fallback_visualization: table
+- report_id: RPT_HR_022
+  intent: employee_count_by_department
+  primary_visualization: horizontal_bar_chart
+  fallback_visualization: table
+- report_id: RPT_HR_023
+  intent: employee_count_by_work_location
+  primary_visualization: horizontal_bar_chart
+  fallback_visualization: table
+- report_id: RPT_HR_024
+  intent: most_or_least_hiring_year
+  primary_visualization: kpi_card
+  fallback_visualization: table
+- report_id: RPT_HR_025
+  intent: most_or_least_hiring_year
+  primary_visualization: kpi_card
+  fallback_visualization: table
+- report_id: RPT_HR_026
+  intent: hiring_by_contract_type_recent_year
+  primary_visualization: horizontal_bar_chart
+  fallback_visualization: table
+- report_id: RPT_HR_027
+  intent: average_service_years
+  primary_visualization: kpi_card
+  fallback_visualization: bar_chart
+- report_id: RPT_HR_028
+  intent: employee_count_without_service_years
+  primary_visualization: kpi_card
+  fallback_visualization: table
+- report_id: RPT_HR_029
+  intent: employee_count_by_marital_status
+  primary_visualization: bar_chart
+  fallback_visualization: pie_chart
+- report_id: RPT_HR_030
+  intent: employee_count_by_gender_age_filter
+  primary_visualization: stacked_bar_chart
+  fallback_visualization: table
+- report_id: RPT_HR_031
+  intent: workforce_aging_trend_analysis
+  primary_visualization: status_message
+  fallback_visualization: null
+- report_id: RPT_HR_032
+  intent: education_training_need_analysis
+  primary_visualization: status_message
+  fallback_visualization: null
+- report_id: RPT_HR_033
+  intent: department_balance_analysis
+  primary_visualization: status_message
+  fallback_visualization: null
+- report_id: RPT_HR_034
+  intent: contractor_productivity_analysis
+  primary_visualization: status_message
+  fallback_visualization: null
+- report_id: RPT_HR_035
+  intent: employment_stability_impact_analysis
+  primary_visualization: status_message
+  fallback_visualization: null
+- report_id: RPT_HR_036
+  intent: hiring_business_growth_alignment
+  primary_visualization: status_message
+  fallback_visualization: null
+- report_id: RPT_HR_037
+  intent: individual_employee_info
+  primary_visualization: status_message
+  fallback_visualization: null
+- report_id: RPT_HR_038
+  intent: out_of_scope
+  primary_visualization: status_message
+  fallback_visualization: null
+- report_id: RPT_HR_039
+  intent: ambiguous_hr_question
+  primary_visualization: status_message
+  fallback_visualization: null
+- report_id: RPT_HR_040
+  intent: contractor_share_by_department
+  primary_visualization: horizontal_bar_chart
+  fallback_visualization: table
+- report_id: RPT_HR_041
+  intent: headcount_gap_by_service_domain
+  primary_visualization: table
+  fallback_visualization: table
+- report_id: RPT_HR_042
+  intent: education_distribution_by_service_domain
+  primary_visualization: table
+  fallback_visualization: table
+- report_id: RPT_HR_043
+  intent: monthly_hiring_trend
+  primary_visualization: status_message
+  fallback_visualization: null
+status_message_templates:
+  DATA_GAP:
+    title_fa: داده کافی نیست
+    message_fa: این سؤال مرتبط با منابع انسانی است، اما در نسخه فعلی داده، قانون یا سند کافی برای پاسخ دقیق وجود ندارد.
+    severity: warning
+    recommended_action_fa: این مورد باید به‌عنوان Data Gap یا Knowledge Gap ثبت شود.
+  ACCESS_DENIED:
+    title_fa: امکان نمایش اطلاعات وجود ندارد
+    message_fa: درخواست شامل اطلاعات فردی یا حساس کارکنان است و طبق سیاست محرمانگی قابل نمایش نیست.
+    severity: error
+    recommended_action_fa: می‌توان سؤال را به شکل تجمیعی و آماری بازنویسی کرد.
+  OUT_OF_SCOPE:
+    title_fa: خارج از دامنه منابع انسانی
+    message_fa: این سؤال در دامنه HR BI Assistant نیست و نباید برای آن SQL منابع انسانی تولید شود.
+    severity: info
+    recommended_action_fa: سؤال باید به حوزه منابع انسانی، کارکنان، استخدام، قرارداد، تحصیلات، سن، جذب یا ساختار سازمانی مربوط
+      باشد.
+  NEEDS_CLARIFICATION:
+    title_fa: نیاز به شفاف‌سازی سؤال
+    message_fa: سؤال قابل پاسخ است، اما برای انتخاب شاخص، بازه یا سطح تحلیل نیاز به توضیح بیشتر دارد.
+    severity: info
+    recommended_action_fa: از کاربر یک سؤال کوتاه برای شفاف‌سازی پرسیده شود.
+  SQL_VALIDATION_FAILED:
+    title_fa: SQL معتبر نیست
+    message_fa: کوئری تولیدشده با قوانین امنیتی یا ساختاری فاز دوم سازگار نیست و اجرا نمی‌شود.
+    severity: error
+    recommended_action_fa: سیستم باید کوئری را لاگ کند و پاسخ امن برگرداند.
+  NO_DATA:
+    title_fa: داده‌ای یافت نشد
+    message_fa: برای فیلترهای انتخاب‌شده، رکورد قابل نمایش وجود ندارد.
+    severity: info
+    recommended_action_fa: می‌توان بازه یا فیلتر سؤال را تغییر داد.
+chart_builder_output_schema:
+  visualization_type: kpi_card | kpi_card_group | table | bar_chart | horizontal_bar_chart | stacked_bar_chart | line_chart
+    | pie_chart | status_message
+  title_fa: string
+  subtitle_fa: string|null
+  dimension_columns: array[string]
+  metric_columns: array[string]
+  x_axis: string|null
+  y_axis: string|null
+  series: array[string]
+  sort: string|null
+  top_n: integer|null
+  show_percentage: boolean
+  show_total: boolean
+  formatting: object
+  data_limitations: array[string]
+  source: hr_mvp.vw_hr_employee_analytics
+  fallback_visualization_type: string|null
+validation_before_render:
+  required_checks:
+  - route must be SQL/GAP/REJECT
+  - validation_status must allow visualization
+  - query_result must not contain sensitive columns
+  - query_result must not expose employee_id as visible dimension
+  - row_count must be compatible with selected visualization
+  - all metric columns must be numeric except status_message
+  - line_chart x_axis must be ordered
+  - pie_chart row_count must not exceed max_rows_recommended unless grouped into other
+  - access policy suppression must be applied before rendering
+  on_failed_check: status_message
+  on_empty_result: status_message
+notes_fa:
+- این فایل فقط نوع نمایش را تعیین می‌کند و نباید منطق SQL یا سیاست امنیتی اصلی را جایگزین کند.
+- برای فاز دوم، نمودارها باید ساده، قابل دفاع و مدیریتی باشند؛ داشبورد پیچیده لازم نیست.
+- برای سؤال‌های تحلیلی بدون داده یا سند کافی، نمودار ساخته نشود و status_message برگردد.
+- اگر کاربر جدول بخواهد، حتی برای داده قابل نمودار، table می‌تواند به عنوان خروجی اصلی یا مکمل استفاده شود.
+- برای دمو، kpi_card، bar_chart، horizontal_bar_chart، line_chart، pie_chart و status_message کافی هستند.

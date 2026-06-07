@@ -1,0 +1,1855 @@
+version: '1.0'
+project: HR BI Assistant
+phase: Controlled SQL-based MVP
+file_type: intent_catalog
+language: fa-IR
+description_fa: کاتالوگ intentهای قابل پشتیبانی برای تبدیل سؤال فارسی کاربر به خروجی ساختاریافته و انتخاب مسیر SQL، GAP یا
+  REJECT در فاز دوم.
+main_view:
+  name: hr_mvp.vw_hr_employee_analytics
+  alias: v
+  contract: هر ردیف نماینده یک کارمند فعال برای تحلیل تجمیعی منابع انسانی است. قرارداد جاری و آخرین مدرک در View حل شده‌اند.
+metadata_dependencies:
+- data_dictionary.yaml
+- semantic_layer.yaml
+- kpi_catalog.yaml
+- report_catalog.json
+- sql_templates.yaml
+- sql_validator_rules.yaml
+- access_policies.yaml
+- visualization_rules.yaml
+- evaluation_goldset.json
+default_output_schema:
+  intent: string
+  confidence: number_between_0_and_1
+  route: SQL | GAP | REJECT
+  status: supported | partial_supported | data_gap | access_denied | out_of_scope | needs_clarification
+  metric: string | null
+  filters: array
+  group_by: array
+  time_range: object | null
+  required_columns: array
+  sql_template_id: string | null
+  report_id: string | null
+  recommended_visualization: string | null
+  notes: string | null
+route_definitions:
+  SQL: سؤال با View تحلیلی قابل پاسخ است و باید SQL امن SELECT-only تولید شود.
+  GAP: سؤال منابع انسانی است اما داده، تعریف شاخص، قانون کسب‌وکاری یا سند کافی برای پاسخ دقیق وجود ندارد.
+  REJECT: سؤال خارج از دامنه، حساس، فردمحور یا غیرمجاز است.
+global_intent_rules:
+  default_sql_view: hr_mvp.vw_hr_employee_analytics v
+  default_filter: v.is_active = TRUE
+  one_row_per_employee: true
+  count_rule: COUNT(v.employee_id)
+  safe_output_only: aggregated_results_only
+  raw_tables_forbidden: true
+  joins_forbidden_for_sql_generator: true
+  select_star_forbidden: true
+  individual_employee_rows_forbidden: true
+  sensitive_columns_forbidden:
+  - national_id
+  - personnel_number
+  - first_name
+  - last_name
+  - phone_number
+  - address
+  - bank_account
+  - insurance_number
+  gap_status_sql: SELECT 'DATA_GAP' AS status;
+  access_denied_sql: SELECT 'ACCESS_DENIED' AS status;
+  out_of_scope_sql: SELECT 'OUT_OF_SCOPE' AS status;
+intent_parser_guidance:
+  parser_goal: سؤال کاربر را به intent، metric، filters، group_by، route و status تبدیل کند؛ نه اینکه مستقیم SQL بسازد.
+  normalization_examples:
+  - user_term: کارکنان / پرسنل / نیروها
+    normalized_to: employee_count
+    column_or_metric: COUNT(v.employee_id)
+  - user_term: زن / زنان
+    normalized_to: gender_filter
+    column_or_metric: v.gender = 'زن'
+  - user_term: مرد / مردان
+    normalized_to: gender_filter
+    column_or_metric: v.gender = 'مرد'
+  - user_term: مدرک / تحصیلات / آخرین مدرک
+    normalized_to: education
+    column_or_metric: v.education_title
+  - user_term: نوع استخدام
+    normalized_to: employment_type
+    column_or_metric: v.employment_type
+  - user_term: نوع قرارداد
+    normalized_to: contract_type
+    column_or_metric: v.contract_type
+  - user_term: پیمانکاری / شاغل در پیمانکاری
+    normalized_to: contractor
+    column_or_metric: v.is_contractor = TRUE
+  - user_term: حوزه / حوزه خدمت
+    normalized_to: service_domain
+    column_or_metric: v.service_domain
+  - user_term: بخش / واحد / اداره / دپارتمان
+    normalized_to: department
+    column_or_metric: v.department_name
+  - user_term: استان
+    normalized_to: province
+    column_or_metric: v.province
+  - user_term: شهر
+    normalized_to: city
+    column_or_metric: DATA_GAP
+  - user_term: جذب / سال جذب
+    normalized_to: hire_year
+    column_or_metric: v.hire_year
+  - user_term: سابقه / سنوات
+    normalized_to: service_years
+    column_or_metric: v.service_years
+  - user_term: چارت مصوب
+    normalized_to: approved_headcount
+    column_or_metric: v.department_approved_headcount
+intents:
+- intent_id: total_employee_count
+  title_fa: تعداد کل کارکنان فعال
+  description_fa: تعداد کل کارکنان فعال
+  route: SQL
+  status: supported
+  question_type: statistical
+  priority: high
+  supported_in_phase2: true
+  demo_ready: true
+  user_examples:
+  - تعداد کل کارکنان چند نفر است؟
+  - الان چند نفر نیرو داریم؟
+  - تعداد پرسنل فعال چقدر است؟
+  - کل نیروهای سازمان چند نفرند؟
+  trigger_terms_fa:
+  - تعداد کل
+  - کل کارکنان
+  - کل پرسنل
+  - چند نفر نیرو
+  metrics: &id001
+  - name: employee_count
+    title_fa: تعداد کارکنان
+    expression: COUNT(v.employee_id)
+  required_columns:
+  - employee_id
+  - is_active
+  default_filters:
+  - column: is_active
+    operator: '='
+    value: true
+  group_by: []
+  output_type: single_metric
+  recommended_visualization: kpi_card
+  report_id: RPT_HR_001
+  sql_template_id: TPL_TOTAL_EMPLOYEE_COUNT
+  sql_hint: 'SELECT COUNT(v.employee_id) AS employee_count
+
+    FROM hr_mvp.vw_hr_employee_analytics v
+
+    WHERE v.is_active = TRUE;
+
+    '
+- intent_id: employee_count_by_gender
+  title_fa: تعداد کارکنان به تفکیک جنسیت
+  description_fa: تعداد کارکنان به تفکیک جنسیت
+  route: SQL
+  status: supported
+  question_type: statistical
+  priority: high
+  supported_in_phase2: true
+  demo_ready: true
+  user_examples:
+  - تعداد زن و مرد چند نفر است؟
+  - کارکنان به تفکیک جنسیت چقدر هستند؟
+  - چند نفر زن و چند نفر مرد داریم؟
+  - توزیع جنسیتی کارکنان را نشان بده
+  trigger_terms_fa:
+  - زن و مرد
+  - تفکیک جنسیت
+  - جنسیت
+  - توزیع جنسیتی
+  metrics: &id002
+  - name: employee_count
+    title_fa: تعداد کارکنان
+    expression: COUNT(v.employee_id)
+  - name: percentage
+    title_fa: درصد از کل
+    expression: ROUND(COUNT(v.employee_id) * 100.0 / NULLIF(SUM(COUNT(v.employee_id)) OVER (), 0), 2)
+  required_columns:
+  - employee_id
+  - gender
+  - is_active
+  default_filters:
+  - column: is_active
+    operator: '='
+    value: true
+  group_by:
+  - gender
+  output_type: grouped_metric
+  recommended_visualization: pie_chart
+  report_id: RPT_HR_002
+  sql_template_id: TPL_EMPLOYEE_COUNT_BY_GENDER
+  sql_hint: "SELECT\n  v.gender,\n  COUNT(v.employee_id) AS employee_count,\n  ROUND(COUNT(v.employee_id) * 100.0 / NULLIF(SUM(COUNT(v.employee_id))\
+    \ OVER (), 0), 2) AS percentage\nFROM hr_mvp.vw_hr_employee_analytics v\nWHERE v.is_active = TRUE\nGROUP BY v.gender\n\
+    ORDER BY employee_count DESC;\n"
+- intent_id: gender_percentage
+  title_fa: درصد کارکنان زن یا مرد
+  description_fa: درصد کارکنان زن یا مرد
+  route: SQL
+  status: supported
+  question_type: statistical
+  priority: high
+  supported_in_phase2: true
+  demo_ready: true
+  user_examples:
+  - چند درصد کارکنان زن هستند؟
+  - درصد کارکنان مرد چقدر است؟
+  - سهم زنان از کل کارکنان چقدر است؟
+  - چه درصدی از کارکنان زن هستند؟
+  trigger_terms_fa:
+  - درصد زن
+  - سهم زنان
+  - درصد مرد
+  - سهم مردان
+  - تعادل جنسیتی
+  metrics:
+  - name: percentage
+    title_fa: درصد جنسیت از کل
+    expression: ROUND(SUM(CASE WHEN v.gender = <value> THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(v.employee_id), 0), 2)
+  required_columns:
+  - employee_id
+  - gender
+  - is_active
+  default_filters:
+  - column: is_active
+    operator: '='
+    value: true
+  optional_filters:
+  - gender
+  output_type: single_metric
+  recommended_visualization: kpi_card
+  sql_hint: "SELECT\n  ROUND(SUM(CASE WHEN v.gender = 'زن' THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(v.employee_id), 0), 2)\
+    \ AS percentage\nFROM hr_mvp.vw_hr_employee_analytics v\nWHERE v.is_active = TRUE;\n"
+  semantic_rules:
+  - اگر سؤال درباره زنان باشد مقدار gender برابر 'زن' است.
+  - اگر سؤال درباره مردان باشد مقدار gender برابر 'مرد' است.
+- intent_id: average_age
+  title_fa: میانگین سن کارکنان
+  description_fa: میانگین سن کارکنان
+  route: SQL
+  status: supported
+  question_type: statistical
+  priority: high
+  supported_in_phase2: true
+  demo_ready: true
+  user_examples:
+  - میانگین سن کارکنان چقدر است؟
+  - متوسط سن نیروها چقدر است؟
+  - میانگین سن زن و مرد چقدر است؟
+  - متوسط سن کارکنان در هر حوزه چقدر است؟
+  trigger_terms_fa:
+  - میانگین سن
+  - متوسط سن
+  - سن زن و مرد
+  - سن هر حوزه
+  metrics:
+  - name: average_age
+    title_fa: میانگین سن
+    expression: ROUND(AVG(v.age), 2)
+  required_columns:
+  - age
+  - is_active
+  default_filters:
+  - column: is_active
+    operator: '='
+    value: true
+  optional_group_by:
+  - gender
+  - service_domain
+  - department_name
+  - age_group_title
+  - province
+  output_type: single_or_grouped_metric
+  recommended_visualization: kpi_card_or_bar_chart
+  report_id: RPT_HR_003
+  sql_template_id: TPL_AVERAGE_AGE
+  sql_hint: 'SELECT ROUND(AVG(v.age), 2) AS average_age
+
+    FROM hr_mvp.vw_hr_employee_analytics v
+
+    WHERE v.is_active = TRUE;
+
+    '
+- intent_id: employee_count_by_age_filter
+  title_fa: تعداد کارکنان در بازه یا شرط سنی
+  description_fa: تعداد کارکنان در بازه یا شرط سنی
+  route: SQL
+  status: supported
+  question_type: statistical
+  priority: high
+  supported_in_phase2: true
+  demo_ready: true
+  user_examples:
+  - تعداد کارکنان ۶۰ سال به بالا چقدر است؟
+  - تعداد کارکنان زیر ۳۰ سال چند نفر است؟
+  - تعداد کارکنان زیر ۲۰ سال چند نفر است؟
+  - در بازه سنی ۳۰ تا ۴۰ چند نفر داریم؟
+  trigger_terms_fa:
+  - زیر
+  - بالای
+  - به بالا
+  - بازه سنی
+  - سال
+  - سن
+  metrics: *id001
+  required_columns:
+  - employee_id
+  - age
+  - is_active
+  default_filters:
+  - column: is_active
+    operator: '='
+    value: true
+  optional_filters:
+  - age < N
+  - age >= N
+  - age BETWEEN A AND B
+  output_type: single_metric
+  recommended_visualization: kpi_card
+  sql_hint: "SELECT COUNT(v.employee_id) AS employee_count\nFROM hr_mvp.vw_hr_employee_analytics v\nWHERE v.is_active = TRUE\n\
+    \  AND v.age >= 60;\n"
+  semantic_rules:
+  - زیر N سال = v.age < N
+  - بالای N سال یا N سال به بالا = v.age >= N
+  - بین A تا B سال = v.age BETWEEN A AND B
+- intent_id: employee_count_by_age_group
+  title_fa: تعداد کارکنان به تفکیک گروه سنی
+  description_fa: تعداد کارکنان به تفکیک گروه سنی
+  route: SQL
+  status: supported
+  question_type: statistical
+  priority: medium
+  supported_in_phase2: true
+  demo_ready: true
+  user_examples:
+  - کدام گروه سنی بیشترین نیروی انسانی را دارد؟
+  - تعداد کارکنان به تفکیک گروه سنی چقدر است؟
+  - توزیع سنی کارکنان چگونه است؟
+  trigger_terms_fa:
+  - گروه سنی
+  - توزیع سنی
+  - کدام گروه سنی
+  metrics: *id002
+  required_columns:
+  - employee_id
+  - age_group_title
+  - age
+  - is_active
+  default_filters:
+  - column: is_active
+    operator: '='
+    value: true
+  group_by:
+  - age_group_title
+  output_type: grouped_metric
+  recommended_visualization: bar_chart
+  sql_hint: "SELECT\n  v.age_group_title,\n  COUNT(v.employee_id) AS employee_count,\n  ROUND(COUNT(v.employee_id) * 100.0\
+    \ / NULLIF(SUM(COUNT(v.employee_id)) OVER (), 0), 2) AS percentage\nFROM hr_mvp.vw_hr_employee_analytics v\nWHERE v.is_active\
+    \ = TRUE\nGROUP BY v.age_group_title\nORDER BY MIN(v.age) ASC;\n"
+- intent_id: employee_count_by_gender_age_filter
+  title_fa: تعداد زنان یا مردان در بازه سنی
+  description_fa: تعداد زنان یا مردان در بازه سنی
+  route: SQL
+  status: supported
+  question_type: statistical
+  priority: medium
+  supported_in_phase2: true
+  demo_ready: true
+  user_examples:
+  - در بازه سنی مختلف چند مرد حضور دارند؟
+  - در بازه سنی مختلف چند زن حضور دارند؟
+  - تعداد زنان بالای ۶۰ سال چند نفر است؟
+  - تعداد مردان زیر ۳۰ سال چقدر است؟
+  trigger_terms_fa:
+  - زن
+  - مرد
+  - بازه سنی
+  - گروه سنی
+  - زیر
+  - بالای
+  metrics: *id001
+  required_columns:
+  - employee_id
+  - gender
+  - age
+  - age_group_title
+  - is_active
+  default_filters:
+  - column: is_active
+    operator: '='
+    value: true
+  optional_group_by:
+  - gender
+  - age_group_title
+  optional_filters:
+  - gender
+  - age
+  - age_group_title
+  output_type: single_or_grouped_metric
+  recommended_visualization: bar_chart_or_table
+  sql_hint: "SELECT\n  v.age_group_title,\n  v.gender,\n  COUNT(v.employee_id) AS employee_count\nFROM hr_mvp.vw_hr_employee_analytics\
+    \ v\nWHERE v.is_active = TRUE\nGROUP BY v.age_group_title, v.gender\nORDER BY MIN(v.age) ASC, v.gender;\n"
+- intent_id: employee_count_by_education
+  title_fa: تعداد کارکنان به تفکیک یا فیلتر مدرک تحصیلی
+  description_fa: تعداد کارکنان به تفکیک یا فیلتر مدرک تحصیلی
+  route: SQL
+  status: supported
+  question_type: statistical
+  priority: high
+  supported_in_phase2: true
+  demo_ready: true
+  user_examples:
+  - تعداد کارکنان بر اساس مدرک تحصیلی چقدر است؟
+  - چند نفر کارشناسی دارند؟
+  - چند نفر مدرک فوق‌دیپلم دارند؟
+  - سهم کارکنان با مدرک دکتری چند نفر یا چند درصد است؟
+  trigger_terms_fa:
+  - مدرک
+  - تحصیلات
+  - کارشناسی
+  - فوق دیپلم
+  - کاردانی
+  - دکتری
+  - دیپلم
+  metrics: *id002
+  required_columns:
+  - employee_id
+  - education_title
+  - education_rank
+  - is_active
+  default_filters:
+  - column: is_active
+    operator: '='
+    value: true
+  group_by:
+  - education_title
+  optional_filters:
+  - education_title
+  - education_category
+  - education_rank
+  output_type: single_or_grouped_metric
+  recommended_visualization: bar_chart
+  report_id: RPT_HR_004
+  sql_template_id: TPL_EMPLOYEE_COUNT_BY_EDUCATION
+  sql_hint: "SELECT\n  v.education_title,\n  COUNT(v.employee_id) AS employee_count,\n  ROUND(COUNT(v.employee_id) * 100.0\
+    \ / NULLIF(SUM(COUNT(v.employee_id)) OVER (), 0), 2) AS percentage\nFROM hr_mvp.vw_hr_employee_analytics v\nWHERE v.is_active\
+    \ = TRUE\nGROUP BY v.education_title\nORDER BY employee_count DESC;\n"
+- intent_id: most_common_education
+  title_fa: بیشترین مدرک تحصیلی
+  description_fa: بیشترین مدرک تحصیلی
+  route: SQL
+  status: supported
+  question_type: comparative
+  priority: high
+  supported_in_phase2: true
+  demo_ready: true
+  user_examples:
+  - کدام مدرک تحصیلی بیشترین سهم را دارد؟
+  - بیشترین مدرک تحصیلی موجود چیست؟
+  - پرتکرارترین مدرک در سازمان چیست؟
+  trigger_terms_fa:
+  - بیشترین مدرک
+  - بیشترین سهم
+  - پرتکرارترین مدرک
+  metrics: *id001
+  required_columns:
+  - employee_id
+  - education_title
+  - is_active
+  default_filters:
+  - column: is_active
+    operator: '='
+    value: true
+  group_by:
+  - education_title
+  output_type: top_one
+  recommended_visualization: kpi_card_or_table
+  sql_hint: 'SELECT v.education_title, COUNT(v.employee_id) AS employee_count
+
+    FROM hr_mvp.vw_hr_employee_analytics v
+
+    WHERE v.is_active = TRUE
+
+    GROUP BY v.education_title
+
+    ORDER BY employee_count DESC
+
+    LIMIT 1;
+
+    '
+- intent_id: least_common_education
+  title_fa: کمترین مدرک تحصیلی
+  description_fa: کمترین مدرک تحصیلی
+  route: SQL
+  status: supported
+  question_type: comparative
+  priority: medium
+  supported_in_phase2: true
+  demo_ready: true
+  user_examples:
+  - کمترین مدرک تحصیلی کدام است؟
+  - کدام مدرک کمترین تعداد را دارد؟
+  - کمترین سطح تحصیلات موجود چیست؟
+  trigger_terms_fa:
+  - کمترین مدرک
+  - کمترین سطح تحصیلات
+  - کمترین تعداد
+  metrics: *id001
+  required_columns:
+  - employee_id
+  - education_title
+  - is_active
+  default_filters:
+  - column: is_active
+    operator: '='
+    value: true
+  group_by:
+  - education_title
+  output_type: top_one
+  recommended_visualization: kpi_card_or_table
+  sql_hint: 'SELECT v.education_title, COUNT(v.employee_id) AS employee_count
+
+    FROM hr_mvp.vw_hr_employee_analytics v
+
+    WHERE v.is_active = TRUE
+
+    GROUP BY v.education_title
+
+    ORDER BY employee_count ASC
+
+    LIMIT 1;
+
+    '
+- intent_id: low_education_in_expert_roles
+  title_fa: تحصیلات پایین‌تر در پست‌های کارشناسی
+  description_fa: تحصیلات پایین‌تر در پست‌های کارشناسی
+  route: SQL
+  status: partial_supported
+  question_type: analytical
+  priority: medium
+  supported_in_phase2: true
+  demo_ready: false
+  user_examples:
+  - چند درصد افراد با تحصیلات پایین‌تر در پست‌های کارشناسی هستند؟
+  - تعداد افراد با مدرک پایین‌تر از نیاز پست چقدر است؟
+  - در پست‌های کارشناسی چند نفر مدرک پایین‌تر دارند؟
+  trigger_terms_fa:
+  - تحصیلات پایین‌تر
+  - پست کارشناسی
+  - نیاز پست
+  - کمتر از نیاز
+  metrics:
+  - name: low_education_expert_role_percentage
+    title_fa: درصد افراد با تحصیلات پایین‌تر در پست کارشناسی
+    expression: ROUND(SUM(CASE WHEN v.is_expert_role = TRUE AND v.education_rank < v.min_education_rank THEN 1 ELSE 0 END)
+      * 100.0 / NULLIF(COUNT(v.employee_id), 0), 2)
+  required_columns:
+  - employee_id
+  - is_expert_role
+  - education_rank
+  - min_education_rank
+  - is_active
+  default_filters:
+  - column: is_active
+    operator: '='
+    value: true
+  output_type: single_metric
+  recommended_visualization: kpi_card
+  sql_hint: "SELECT\n  SUM(CASE WHEN v.is_expert_role = TRUE AND v.education_rank < v.min_education_rank THEN 1 ELSE 0 END)\
+    \ AS employee_count,\n  ROUND(SUM(CASE WHEN v.is_expert_role = TRUE AND v.education_rank < v.min_education_rank THEN 1\
+    \ ELSE 0 END) * 100.0 / NULLIF(COUNT(v.employee_id), 0), 2) AS percentage\nFROM hr_mvp.vw_hr_employee_analytics v\nWHERE\
+    \ v.is_active = TRUE;\n"
+  notes_fa: این intent از نظر SQL قابل محاسبه است، اما تفسیر مدیریتی نیازمند تعریف سیاست آموزشی یا سند RAG است.
+- intent_id: employee_count_by_employment_type
+  title_fa: تعداد کارکنان به تفکیک یا فیلتر نوع استخدام
+  description_fa: تعداد کارکنان به تفکیک یا فیلتر نوع استخدام
+  route: SQL
+  status: supported
+  question_type: statistical
+  priority: high
+  supported_in_phase2: true
+  demo_ready: true
+  user_examples:
+  - تعداد کارکنان بر اساس نوع استخدام چقدر است؟
+  - چند نفر رسمی داریم؟
+  - چند نفر قراردادی هستند؟
+  - تعداد نیروهای پیمانی چقدر است؟
+  trigger_terms_fa:
+  - نوع استخدام
+  - رسمی
+  - قراردادی
+  - پیمانی
+  - شاغل در پیمانکاری
+  metrics: *id001
+  required_columns:
+  - employee_id
+  - employment_type
+  - is_active
+  default_filters:
+  - column: is_active
+    operator: '='
+    value: true
+  group_by:
+  - employment_type
+  optional_filters:
+  - employment_type
+  output_type: single_or_grouped_metric
+  recommended_visualization: bar_chart
+  report_id: RPT_HR_005
+  sql_template_id: TPL_EMPLOYEE_COUNT_BY_EMPLOYMENT_TYPE
+  sql_hint: 'SELECT v.employment_type, COUNT(v.employee_id) AS employee_count
+
+    FROM hr_mvp.vw_hr_employee_analytics v
+
+    WHERE v.is_active = TRUE
+
+    GROUP BY v.employment_type
+
+    ORDER BY employee_count DESC;
+
+    '
+  semantic_rules:
+  - نوع استخدام همیشه به v.employment_type نگاشت می‌شود.
+  - رسمی/قراردادی/پیمانی بدون اشاره به نوع قرارداد، employment_type است.
+- intent_id: employee_count_by_contract_type
+  title_fa: تعداد کارکنان به تفکیک یا فیلتر نوع قرارداد
+  description_fa: تعداد کارکنان به تفکیک یا فیلتر نوع قرارداد
+  route: SQL
+  status: supported
+  question_type: statistical
+  priority: high
+  supported_in_phase2: true
+  demo_ready: true
+  user_examples:
+  - تعداد کارکنان بر اساس نوع قرارداد چقدر است؟
+  - نوع قراردادهای کارکنان چطور توزیع شده؟
+  - چند نفر قرارداد خدماتی دارند؟
+  trigger_terms_fa:
+  - نوع قرارداد
+  - قرارداد خدماتی
+  - قرارداد جاری
+  - قراردادها
+  metrics: *id001
+  required_columns:
+  - employee_id
+  - contract_type
+  - is_active
+  default_filters:
+  - column: is_active
+    operator: '='
+    value: true
+  group_by:
+  - contract_type
+  optional_filters:
+  - contract_type
+  output_type: single_or_grouped_metric
+  recommended_visualization: horizontal_bar_chart_or_table
+  report_id: RPT_HR_006
+  sql_template_id: TPL_EMPLOYEE_COUNT_BY_CONTRACT_TYPE
+  sql_hint: 'SELECT v.contract_type, COUNT(v.employee_id) AS employee_count
+
+    FROM hr_mvp.vw_hr_employee_analytics v
+
+    WHERE v.is_active = TRUE
+
+    GROUP BY v.contract_type
+
+    ORDER BY employee_count DESC;
+
+    '
+  semantic_rules:
+  - نوع قرارداد همیشه به v.contract_type نگاشت می‌شود.
+  - قرارداد جاری داخل View حل شده و نباید به جدول قراردادها JOIN زده شود.
+- intent_id: contractor_share
+  title_fa: سهم کلی نیروهای پیمانکاری
+  description_fa: سهم کلی نیروهای پیمانکاری
+  route: SQL
+  status: supported
+  question_type: statistical
+  priority: high
+  supported_in_phase2: true
+  demo_ready: true
+  user_examples:
+  - سهم پیمانکاری چقدر است؟
+  - چند درصد کارکنان شاغل در پیمانکاری هستند؟
+  - تعداد و درصد نیروهای پیمانکاری را بگو
+  trigger_terms_fa:
+  - سهم پیمانکاری
+  - درصد پیمانکاری
+  - شاغل در پیمانکاری
+  - نیروهای پیمانکاری
+  metrics:
+  - name: contractor_count
+    title_fa: تعداد نیروهای پیمانکاری
+    expression: SUM(CASE WHEN v.is_contractor = TRUE THEN 1 ELSE 0 END)
+  - name: contractor_percentage
+    title_fa: درصد پیمانکاری
+    expression: ROUND(SUM(CASE WHEN v.is_contractor = TRUE THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(v.employee_id), 0), 2)
+  required_columns:
+  - employee_id
+  - is_contractor
+  - is_active
+  default_filters:
+  - column: is_active
+    operator: '='
+    value: true
+  output_type: single_metric
+  recommended_visualization: kpi_card
+  report_id: RPT_HR_007
+  sql_template_id: TPL_CONTRACTOR_SHARE
+  sql_hint: "SELECT\n  SUM(CASE WHEN v.is_contractor = TRUE THEN 1 ELSE 0 END) AS contractor_count,\n  ROUND(SUM(CASE WHEN\
+    \ v.is_contractor = TRUE THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(v.employee_id), 0), 2) AS contractor_percentage\nFROM\
+    \ hr_mvp.vw_hr_employee_analytics v\nWHERE v.is_active = TRUE;\n"
+- intent_id: contractor_share_by_service_domain
+  title_fa: سهم پیمانکاری به تفکیک حوزه
+  description_fa: سهم پیمانکاری به تفکیک حوزه
+  route: SQL
+  status: supported
+  question_type: statistical
+  priority: high
+  supported_in_phase2: true
+  demo_ready: true
+  user_examples:
+  - سهم پیمانکاری در هر حوزه چند درصد است؟
+  - در هر حوزه چه درصدی پیمانکاری هستند؟
+  - نیروهای پیمانکاری به تفکیک حوزه چقدرند؟
+  trigger_terms_fa:
+  - پیمانکاری در هر حوزه
+  - سهم پیمانکاری حوزه
+  - به تفکیک حوزه
+  metrics:
+  - name: contractor_count
+    title_fa: تعداد پیمانکاری
+    expression: SUM(CASE WHEN v.is_contractor = TRUE THEN 1 ELSE 0 END)
+  - name: employee_count
+    title_fa: کل کارکنان حوزه
+    expression: COUNT(v.employee_id)
+  - name: contractor_percentage
+    title_fa: درصد پیمانکاری
+    expression: ROUND(SUM(CASE WHEN v.is_contractor = TRUE THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(v.employee_id), 0), 2)
+  required_columns:
+  - employee_id
+  - is_contractor
+  - service_domain
+  - is_active
+  default_filters:
+  - column: is_active
+    operator: '='
+    value: true
+  group_by:
+  - service_domain
+  output_type: grouped_metric
+  recommended_visualization: bar_chart_or_table
+  report_id: RPT_HR_007
+  sql_template_id: TPL_CONTRACTOR_SHARE_BY_SERVICE_DOMAIN
+  sql_hint: "SELECT\n  v.service_domain,\n  SUM(CASE WHEN v.is_contractor = TRUE THEN 1 ELSE 0 END) AS contractor_count,\n\
+    \  COUNT(v.employee_id) AS employee_count,\n  ROUND(SUM(CASE WHEN v.is_contractor = TRUE THEN 1 ELSE 0 END) * 100.0 /\
+    \ NULLIF(COUNT(v.employee_id), 0), 2) AS contractor_percentage\nFROM hr_mvp.vw_hr_employee_analytics v\nWHERE v.is_active\
+    \ = TRUE\nGROUP BY v.service_domain\nORDER BY contractor_percentage DESC;\n"
+- intent_id: employee_count_by_service_domain
+  title_fa: تعداد کارکنان به تفکیک حوزه خدمت
+  description_fa: تعداد کارکنان به تفکیک حوزه خدمت
+  route: SQL
+  status: supported
+  question_type: statistical
+  priority: high
+  supported_in_phase2: true
+  demo_ready: true
+  user_examples:
+  - کدام حوزه بیشترین نیرو را دارد؟
+  - تعداد کارکنان به تفکیک حوزه خدمت چقدر است؟
+  - سهم هر حوزه از کارکنان چقدر است؟
+  trigger_terms_fa:
+  - حوزه
+  - حوزه خدمت
+  - بیشترین نیرو
+  - سهم هر حوزه
+  metrics: *id002
+  required_columns:
+  - employee_id
+  - service_domain
+  - is_active
+  default_filters:
+  - column: is_active
+    operator: '='
+    value: true
+  group_by:
+  - service_domain
+  output_type: grouped_metric
+  recommended_visualization: bar_chart
+  report_id: RPT_HR_008
+  sql_template_id: TPL_EMPLOYEE_COUNT_BY_SERVICE_DOMAIN
+  sql_hint: "SELECT\n  v.service_domain,\n  COUNT(v.employee_id) AS employee_count,\n  ROUND(COUNT(v.employee_id) * 100.0\
+    \ / NULLIF(SUM(COUNT(v.employee_id)) OVER (), 0), 2) AS percentage\nFROM hr_mvp.vw_hr_employee_analytics v\nWHERE v.is_active\
+    \ = TRUE\nGROUP BY v.service_domain\nORDER BY employee_count DESC;\n"
+- intent_id: employee_count_by_department
+  title_fa: تعداد کارکنان به تفکیک واحد سازمانی
+  description_fa: تعداد کارکنان به تفکیک واحد سازمانی
+  route: SQL
+  status: supported
+  question_type: statistical
+  priority: medium
+  supported_in_phase2: true
+  demo_ready: true
+  user_examples:
+  - کدام بخش بیشترین کارکنان را دارد؟
+  - تعداد کارکنان هر واحد چقدر است؟
+  - تعداد نیروها به تفکیک دپارتمان چقدر است؟
+  - کدام اداره بیشترین نیرو را دارد؟
+  trigger_terms_fa:
+  - بخش
+  - واحد
+  - اداره
+  - دپارتمان
+  - بیشترین کارکنان
+  metrics: *id001
+  required_columns:
+  - employee_id
+  - department_name
+  - is_active
+  default_filters:
+  - column: is_active
+    operator: '='
+    value: true
+  group_by:
+  - department_name
+  output_type: grouped_metric
+  recommended_visualization: horizontal_bar_chart_or_table
+  sql_hint: 'SELECT v.department_name, COUNT(v.employee_id) AS employee_count
+
+    FROM hr_mvp.vw_hr_employee_analytics v
+
+    WHERE v.is_active = TRUE
+
+    GROUP BY v.department_name
+
+    ORDER BY employee_count DESC;
+
+    '
+- intent_id: headcount_gap_by_department
+  title_fa: اختلاف نیروی موجود با چارت مصوب
+  description_fa: اختلاف نیروی موجود با چارت مصوب
+  route: SQL
+  status: partial_supported
+  question_type: analytical
+  priority: medium
+  supported_in_phase2: true
+  demo_ready: true
+  user_examples:
+  - کدام واحد کمبود نیرو دارد؟
+  - اختلاف نیروی موجود با چارت مصوب چقدر است؟
+  - آیا تعادل بین چارت و واقعیت نیروی انسانی برقرار است؟
+  trigger_terms_fa:
+  - کمبود نیرو
+  - چارت مصوب
+  - نیروی موجود
+  - اختلاف نیرو
+  - تعادل چارت
+  metrics:
+  - name: actual_headcount
+    title_fa: نیروی موجود
+    expression: COUNT(v.employee_id)
+  - name: approved_headcount
+    title_fa: چارت مصوب
+    expression: MAX(v.department_approved_headcount)
+  - name: headcount_gap
+    title_fa: اختلاف نیرو
+    expression: MAX(v.department_approved_headcount) - COUNT(v.employee_id)
+  required_columns:
+  - employee_id
+  - department_id
+  - department_name
+  - department_approved_headcount
+  - is_active
+  default_filters:
+  - column: is_active
+    operator: '='
+    value: true
+  group_by:
+  - department_id
+  - department_name
+  output_type: table
+  recommended_visualization: table
+  report_id: RPT_HR_012
+  sql_template_id: TPL_HEADCOUNT_GAP_BY_DEPARTMENT
+  sql_hint: "SELECT\n  v.department_id,\n  v.department_name,\n  COUNT(v.employee_id) AS actual_headcount,\n  MAX(v.department_approved_headcount)\
+    \ AS approved_headcount,\n  MAX(v.department_approved_headcount) - COUNT(v.employee_id) AS headcount_gap\nFROM hr_mvp.vw_hr_employee_analytics\
+    \ v\nWHERE v.is_active = TRUE\nGROUP BY v.department_id, v.department_name\nORDER BY headcount_gap DESC;\n"
+  notes_fa: برای دمو، اختلاف عددی در سطح دپارتمان قابل محاسبه است؛ تحلیل مدیریتی تعادل کامل نیازمند تعریف شاخص تکمیلی است.
+- intent_id: employee_count_by_province
+  title_fa: تعداد کارکنان به تفکیک استان
+  description_fa: تعداد کارکنان به تفکیک استان
+  route: SQL
+  status: supported
+  question_type: statistical
+  priority: medium
+  supported_in_phase2: true
+  demo_ready: true
+  user_examples:
+  - تعداد کارکنان به تفکیک استان چقدر است؟
+  - کدام استان بیشترین نیرو را دارد؟
+  - توزیع کارکنان در استان‌ها چگونه است؟
+  trigger_terms_fa:
+  - استان
+  - به تفکیک استان
+  - توزیع استان
+  metrics: *id001
+  required_columns:
+  - employee_id
+  - province
+  - is_active
+  default_filters:
+  - column: is_active
+    operator: '='
+    value: true
+  group_by:
+  - province
+  output_type: grouped_metric
+  recommended_visualization: horizontal_bar_chart_or_table
+  report_id: RPT_HR_009
+  sql_template_id: TPL_EMPLOYEE_COUNT_BY_PROVINCE
+  sql_hint: 'SELECT v.province, COUNT(v.employee_id) AS employee_count
+
+    FROM hr_mvp.vw_hr_employee_analytics v
+
+    WHERE v.is_active = TRUE
+
+    GROUP BY v.province
+
+    ORDER BY employee_count DESC;
+
+    '
+- intent_id: employee_count_by_work_location
+  title_fa: تعداد کارکنان به تفکیک محل خدمت
+  description_fa: تعداد کارکنان به تفکیک محل خدمت
+  route: SQL
+  status: partial_supported
+  question_type: statistical
+  priority: medium
+  supported_in_phase2: true
+  demo_ready: false
+  user_examples:
+  - کدام محل خدمت بیشترین نیرو را دارد؟
+  - تعداد کارکنان به تفکیک محل خدمت چقدر است؟
+  - نیروها در محل‌های خدمت چطور توزیع شده‌اند؟
+  trigger_terms_fa:
+  - محل خدمت
+  - سایت
+  - site
+  - محل کار
+  metrics: *id001
+  required_columns:
+  - employee_id
+  - site_name
+  - province
+  - location_type
+  - is_active
+  default_filters:
+  - column: is_active
+    operator: '='
+    value: true
+  group_by:
+  - site_name
+  output_type: grouped_metric
+  recommended_visualization: horizontal_bar_chart_or_table
+  sql_hint: 'SELECT v.site_name, COUNT(v.employee_id) AS employee_count
+
+    FROM hr_mvp.vw_hr_employee_analytics v
+
+    WHERE v.is_active = TRUE
+
+    GROUP BY v.site_name
+
+    ORDER BY employee_count DESC;
+
+    '
+  notes_fa: در داده MVP، تحلیل استان قابل اعتمادتر از site_name است. اگر site_name کامل نبود، مسیر باید به province یا DATA_GAP
+    برود.
+- intent_id: hiring_trend_annual
+  title_fa: روند جذب سالانه
+  description_fa: روند جذب سالانه
+  route: SQL
+  status: supported
+  question_type: trend
+  priority: high
+  supported_in_phase2: true
+  demo_ready: true
+  user_examples:
+  - روند جذب سالانه چطور بوده؟
+  - تعداد جذب سالانه چه روندی داشته؟
+  - در هر سال چند نفر جذب شده‌اند؟
+  trigger_terms_fa:
+  - روند جذب
+  - جذب سالانه
+  - در هر سال
+  - تعداد جذب
+  metrics: *id001
+  required_columns:
+  - employee_id
+  - hire_year
+  - is_active
+  default_filters:
+  - column: is_active
+    operator: '='
+    value: true
+  group_by:
+  - hire_year
+  output_type: time_series
+  recommended_visualization: line_chart
+  report_id: RPT_HR_010
+  sql_template_id: TPL_HIRING_TREND_ANNUAL
+  sql_hint: 'SELECT v.hire_year, COUNT(v.employee_id) AS employee_count
+
+    FROM hr_mvp.vw_hr_employee_analytics v
+
+    WHERE v.is_active = TRUE
+
+    GROUP BY v.hire_year
+
+    ORDER BY v.hire_year ASC;
+
+    '
+- intent_id: hiring_last_15_years
+  title_fa: روند یا تعداد جذب ۱۵ سال اخیر
+  description_fa: روند یا تعداد جذب ۱۵ سال اخیر
+  route: SQL
+  status: supported
+  question_type: trend
+  priority: high
+  supported_in_phase2: true
+  demo_ready: true
+  user_examples:
+  - جذب ۱۵ سال اخیر چقدر بوده؟
+  - در پانزده سال اخیر چند نفر جذب شده‌اند؟
+  - روند جذب ۱۵ سال اخیر را نشان بده
+  trigger_terms_fa:
+  - ۱۵ سال اخیر
+  - پانزده سال اخیر
+  - جذب اخیر
+  metrics: *id001
+  required_columns:
+  - employee_id
+  - hire_year
+  - is_active
+  default_filters:
+  - column: hire_year
+    operator: '>='
+    value: '{current_shamsi_year} - 15'
+  group_by:
+  - hire_year
+  output_type: time_series
+  recommended_visualization: line_chart_or_table
+  report_id: RPT_HR_011
+  sql_template_id: TPL_HIRING_LAST_15_YEARS
+  sql_hint: "SELECT v.hire_year, COUNT(v.employee_id) AS employee_count\nFROM hr_mvp.vw_hr_employee_analytics v\nWHERE v.is_active\
+    \ = TRUE\n  AND v.hire_year >= {current_shamsi_year} - 15\nGROUP BY v.hire_year\nORDER BY v.hire_year ASC;\n"
+  notes_fa: current_shamsi_year باید توسط برنامه تزریق شود. مدل نباید سال شمسی فعلی را حدس بزند.
+- intent_id: most_or_least_hiring_year
+  title_fa: سال بیشترین یا کمترین جذب
+  description_fa: سال بیشترین یا کمترین جذب
+  route: SQL
+  status: supported
+  question_type: comparative
+  priority: medium
+  supported_in_phase2: true
+  demo_ready: true
+  user_examples:
+  - سالی که بیشترین جذب انجام شده کدام است؟
+  - سال بیشترین جذب کدام است؟
+  - سال کمترین جذب کدام است؟
+  - کمترین جذب مربوط به چه سالی است؟
+  trigger_terms_fa:
+  - سال بیشترین جذب
+  - سال کمترین جذب
+  - بیشترین جذب
+  - کمترین جذب
+  metrics: *id001
+  required_columns:
+  - employee_id
+  - hire_year
+  - is_active
+  default_filters:
+  - column: is_active
+    operator: '='
+    value: true
+  group_by:
+  - hire_year
+  output_type: top_one
+  recommended_visualization: kpi_card_or_table
+  sql_hint: 'SELECT v.hire_year, COUNT(v.employee_id) AS employee_count
+
+    FROM hr_mvp.vw_hr_employee_analytics v
+
+    WHERE v.is_active = TRUE
+
+    GROUP BY v.hire_year
+
+    ORDER BY employee_count DESC
+
+    LIMIT 1;
+
+    '
+  semantic_rules:
+  - 'برای بیشترین جذب: ORDER BY employee_count DESC LIMIT 1'
+  - 'برای کمترین جذب: ORDER BY employee_count ASC LIMIT 1'
+  - نباید از MIN(v.hire_year) یا MAX(v.hire_year) استفاده شود.
+- intent_id: hiring_by_contract_type_recent_year
+  title_fa: نوع قرارداد جذب سال اخیر
+  description_fa: نوع قرارداد جذب سال اخیر
+  route: SQL
+  status: partial_supported
+  question_type: trend
+  priority: medium
+  supported_in_phase2: true
+  demo_ready: false
+  user_examples:
+  - نوع قراردادهای جذب سال اخیر چقدر بوده است؟
+  - در جذب سال اخیر در هر نوع قرارداد چند نفر جذب شده‌اند؟
+  - جذب امسال به تفکیک نوع قرارداد چقدر است؟
+  trigger_terms_fa:
+  - نوع قراردادهای جذب
+  - جذب سال اخیر
+  - جذب امسال
+  - به تفکیک نوع قرارداد
+  metrics: *id001
+  required_columns:
+  - employee_id
+  - hire_year
+  - contract_type
+  - is_active
+  default_filters:
+  - column: hire_year
+    operator: '='
+    value: '{current_shamsi_year}'
+  group_by:
+  - contract_type
+  output_type: grouped_metric
+  recommended_visualization: horizontal_bar_chart_or_table
+  sql_hint: "SELECT v.contract_type, COUNT(v.employee_id) AS employee_count\nFROM hr_mvp.vw_hr_employee_analytics v\nWHERE\
+    \ v.is_active = TRUE\n  AND v.hire_year = {current_shamsi_year}\nGROUP BY v.contract_type\nORDER BY employee_count DESC;\n"
+  notes_fa: اگر current_shamsi_year تزریق نشده باشد، برای تست MVP از بیشترین hire_year موجود استفاده شود، ولی مدل نباید خودش
+    حدس بزند.
+- intent_id: average_service_years
+  title_fa: میانگین سابقه کارکنان
+  description_fa: میانگین سابقه کارکنان
+  route: SQL
+  status: supported
+  question_type: statistical
+  priority: medium
+  supported_in_phase2: true
+  demo_ready: true
+  user_examples:
+  - میانگین سابقه کارکنان چقدر است؟
+  - متوسط سابقه نیروها چقدر است؟
+  - میانگین سنوات کارکنان را بگو
+  trigger_terms_fa:
+  - میانگین سابقه
+  - متوسط سابقه
+  - سنوات
+  metrics:
+  - name: average_service_years
+    title_fa: میانگین سابقه
+    expression: ROUND(AVG(v.service_years), 2)
+  required_columns:
+  - service_years
+  - is_active
+  default_filters:
+  - column: is_active
+    operator: '='
+    value: true
+  optional_group_by:
+  - gender
+  - service_domain
+  - department_name
+  - province
+  output_type: single_or_grouped_metric
+  recommended_visualization: kpi_card
+  sql_hint: 'SELECT ROUND(AVG(v.service_years), 2) AS average_service_years
+
+    FROM hr_mvp.vw_hr_employee_analytics v
+
+    WHERE v.is_active = TRUE;
+
+    '
+- intent_id: employee_count_without_service_years
+  title_fa: تعداد کارکنان بدون سابقه
+  description_fa: تعداد کارکنان بدون سابقه
+  route: SQL
+  status: supported
+  question_type: statistical
+  priority: medium
+  supported_in_phase2: true
+  demo_ready: true
+  user_examples:
+  - تعداد کارکنان بدون سابقه چقدر است؟
+  - چند نفر سابقه صفر دارند؟
+  - نیروهای بدون سابقه چند نفرند؟
+  trigger_terms_fa:
+  - بدون سابقه
+  - سابقه صفر
+  - سنوات صفر
+  metrics: *id001
+  required_columns:
+  - employee_id
+  - service_years
+  - is_active
+  default_filters:
+  - column: is_active
+    operator: '='
+    value: true
+  optional_filters:
+  - service_years = 0
+  output_type: single_metric
+  recommended_visualization: kpi_card
+  sql_hint: "SELECT COUNT(v.employee_id) AS employee_count\nFROM hr_mvp.vw_hr_employee_analytics v\nWHERE v.is_active = TRUE\n\
+    \  AND v.service_years = 0;\n"
+- intent_id: employee_count_by_marital_status
+  title_fa: تعداد کارکنان به تفکیک وضعیت تأهل
+  description_fa: تعداد کارکنان به تفکیک وضعیت تأهل
+  route: SQL
+  status: supported
+  question_type: statistical
+  priority: low
+  supported_in_phase2: true
+  demo_ready: false
+  user_examples:
+  - تعداد کارکنان به تفکیک وضعیت تأهل چقدر است؟
+  - چند نفر مجرد و متأهل داریم؟
+  - وضعیت تأهل کارکنان به تفکیک جنسیت چیست؟
+  trigger_terms_fa:
+  - وضعیت تأهل
+  - مجرد
+  - متأهل
+  - تاهل
+  metrics: *id001
+  required_columns:
+  - employee_id
+  - marital_status
+  - gender
+  - is_active
+  default_filters:
+  - column: is_active
+    operator: '='
+    value: true
+  group_by:
+  - marital_status
+  optional_group_by:
+  - gender
+  output_type: grouped_metric
+  recommended_visualization: bar_chart_or_table
+  sql_hint: 'SELECT v.marital_status, COUNT(v.employee_id) AS employee_count
+
+    FROM hr_mvp.vw_hr_employee_analytics v
+
+    WHERE v.is_active = TRUE
+
+    GROUP BY v.marital_status
+
+    ORDER BY employee_count DESC;
+
+    '
+- intent_id: city_level_analysis
+  title_fa: تحلیل سطح شهر
+  description_fa: تحلیل سطح شهر
+  route: GAP
+  status: data_gap
+  question_type: unsupported
+  priority: medium
+  supported_in_phase2: false
+  demo_ready: true
+  user_examples:
+  - تعداد کارکنان هر شهر چقدر است؟
+  - کدام شهر بیشترین نیرو را دارد؟
+  - توزیع شهری کارکنان چگونه است؟
+  trigger_terms_fa:
+  - شهر
+  - هر شهر
+  - توزیع شهری
+  required_columns:
+  - city
+  output_type: status_message
+  recommended_visualization: status_message
+  report_id: RPT_HR_013
+  gap_reason: در داده MVP فعلی، city به‌عنوان داده قابل اتکا برای تحلیل شهری تأیید نشده است.
+  expected_status_sql: SELECT 'DATA_GAP' AS status;
+- intent_id: near_retirement_analysis
+  title_fa: تحلیل آستانه بازنشستگی
+  description_fa: تحلیل آستانه بازنشستگی
+  route: GAP
+  status: data_gap
+  question_type: analytical
+  priority: high
+  supported_in_phase2: false
+  demo_ready: true
+  user_examples:
+  - چند نفر در آستانه بازنشستگی هستند؟
+  - آیا نیروی انسانی نزدیک بازنشستگی زیاد است؟
+  - ریسک بازنشستگی کارکنان چقدر است؟
+  trigger_terms_fa:
+  - آستانه بازنشستگی
+  - نزدیک بازنشستگی
+  - ریسک بازنشستگی
+  required_columns:
+  - age
+  - service_years
+  - gender
+  output_type: status_message
+  recommended_visualization: status_message
+  report_id: RPT_HR_014
+  gap_reason: قانون رسمی بازنشستگی بر اساس سن، سابقه، جنسیت و قواعد سازمانی در Metadata تعریف نشده است.
+  expected_status_sql: SELECT 'DATA_GAP' AS status;
+- intent_id: workforce_aging_trend_analysis
+  title_fa: تحلیل حرکت ساختار کارکنان به سمت سالخوردگی
+  description_fa: تحلیل حرکت ساختار کارکنان به سمت سالخوردگی
+  route: GAP
+  status: data_gap
+  question_type: analytical
+  priority: medium
+  supported_in_phase2: false
+  demo_ready: false
+  user_examples:
+  - آیا ساختار کلی کارکنان به سمت سالخوردگی در حال حرکت است؟
+  - آیا نیروی انسانی سازمان پیرتر شده؟
+  - روند سالخوردگی نیروی انسانی را تحلیل کن
+  trigger_terms_fa:
+  - سالخوردگی
+  - پیرتر
+  - ساختار سنی
+  - در حال حرکت
+  required_columns:
+  - age
+  - age_group_title
+  - hire_year
+  output_type: status_message
+  recommended_visualization: status_message
+  gap_reason: برای تحلیل روند سالخوردگی به snapshotهای تاریخی یا تعریف شاخص روند سنی نیاز است. داده فعلی فقط وضعیت فعلی کارکنان
+    را نشان می‌دهد.
+  expected_status_sql: SELECT 'DATA_GAP' AS status;
+- intent_id: education_training_need_analysis
+  title_fa: تحلیل نیاز آموزشی بر اساس توزیع تحصیلات
+  description_fa: تحلیل نیاز آموزشی بر اساس توزیع تحصیلات
+  route: GAP
+  status: data_gap
+  question_type: analytical
+  priority: medium
+  supported_in_phase2: false
+  demo_ready: false
+  user_examples:
+  - آیا توزیع تحصیلات نشان‌دهنده احتمال افزایش نیاز به آموزش یا دوره‌های تخصصی است؟
+  - آیا ترکیب تحصیلات نیاز آموزشی ایجاد می‌کند؟
+  - نیاز آموزشی از روی تحصیلات را تحلیل کن
+  trigger_terms_fa:
+  - نیاز به آموزش
+  - دوره تخصصی
+  - تحلیل آموزش
+  - توزیع تحصیلات
+  required_columns:
+  - education_title
+  - education_rank
+  - position_title
+  - min_education_rank
+  output_type: status_message
+  recommended_visualization: status_message
+  gap_reason: برای تحلیل نیاز آموزشی، علاوه بر توزیع تحصیلات باید سیاست آموزشی، شایستگی‌های شغلی یا تعریف رسمی نیاز آموزشی
+    وجود داشته باشد.
+  expected_status_sql: SELECT 'DATA_GAP' AS status;
+- intent_id: department_balance_analysis
+  title_fa: تحلیل تعادل نیروی انسانی بین بخش‌ها
+  description_fa: تحلیل تعادل نیروی انسانی بین بخش‌ها
+  route: GAP
+  status: data_gap
+  question_type: analytical
+  priority: medium
+  supported_in_phase2: false
+  demo_ready: false
+  user_examples:
+  - آیا نیروی انسانی بین بخش‌ها متوازن است؟
+  - آیا تعادل بین واحدها برقرار است؟
+  - کدام بخش‌ها نامتوازن هستند؟
+  trigger_terms_fa:
+  - متوازن
+  - تعادل بین بخش‌ها
+  - نامتوازن
+  required_columns:
+  - department_name
+  - department_approved_headcount
+  - employee_id
+  output_type: status_message
+  recommended_visualization: status_message
+  gap_reason: محاسبه اختلاف با چارت مصوب ممکن است، اما تحلیل تعادل نیازمند تعریف رسمی شاخص تعادل، وزن واحدها یا هدف‌های سازمانی
+    است.
+  expected_status_sql: SELECT 'DATA_GAP' AS status;
+- intent_id: contractor_productivity_analysis
+  title_fa: تحلیل بهره‌وری پیمانکارها
+  description_fa: تحلیل بهره‌وری پیمانکارها
+  route: GAP
+  status: data_gap
+  question_type: unsupported_analytics
+  priority: medium
+  supported_in_phase2: false
+  demo_ready: true
+  user_examples:
+  - آیا بهره‌وری پیمانکارها مناسب است؟
+  - سهم پیمانکاری چه ریسکی در بهره‌وری ایجاد می‌کند؟
+  - عملکرد پیمانکارها چطور است؟
+  trigger_terms_fa:
+  - بهره‌وری پیمانکار
+  - عملکرد پیمانکار
+  - ریسک بهره‌وری
+  required_columns:
+  - is_contractor
+  output_type: status_message
+  recommended_visualization: status_message
+  gap_reason: داده بهره‌وری، عملکرد یا شاخص کیفیت پیمانکارها در MVP فعلی وجود ندارد.
+  expected_status_sql: SELECT 'DATA_GAP' AS status;
+- intent_id: employment_stability_impact_analysis
+  title_fa: تحلیل اثر نوع استخدام بر ثبات سازمان
+  description_fa: تحلیل اثر نوع استخدام بر ثبات سازمان
+  route: GAP
+  status: data_gap
+  question_type: analytical
+  priority: medium
+  supported_in_phase2: false
+  demo_ready: false
+  user_examples:
+  - سهم کارکنان رسمی و پیمانی چگونه بر ثبات سازمان تأثیر می‌گذارد؟
+  - ترکیب نوع استخدام چه اثری بر ثبات سازمان دارد؟
+  - ثبات سازمان از نظر نوع استخدام را تحلیل کن
+  trigger_terms_fa:
+  - ثبات سازمان
+  - اثر نوع استخدام
+  - تأثیر رسمی و پیمانی
+  required_columns:
+  - employment_type
+  - employee_id
+  output_type: status_message
+  recommended_visualization: status_message
+  gap_reason: سهم انواع استخدام با SQL قابل محاسبه است، اما تحلیل اثر بر ثبات سازمان نیازمند تعریف شاخص ثبات یا سند تفسیری/RAG
+    است.
+  expected_status_sql: SELECT 'DATA_GAP' AS status;
+- intent_id: hiring_business_growth_alignment
+  title_fa: تحلیل هماهنگی جذب با افزایش کار سازمان
+  description_fa: تحلیل هماهنگی جذب با افزایش کار سازمان
+  route: GAP
+  status: data_gap
+  question_type: unsupported_analytics
+  priority: medium
+  supported_in_phase2: false
+  demo_ready: true
+  user_examples:
+  - آیا جذب نیرو با افزایش کار سازمان هماهنگ بوده؟
+  - آیا جذب با حجم کار همخوان است؟
+  - آیا رشد جذب متناسب با رشد فعالیت‌ها بوده؟
+  trigger_terms_fa:
+  - افزایش کار
+  - حجم کار
+  - هماهنگی جذب
+  - رشد فعالیت
+  required_columns:
+  - hire_year
+  output_type: status_message
+  recommended_visualization: status_message
+  gap_reason: داده حجم کار، شاخص فعالیت سازمانی یا هدف جذب در MVP فعلی موجود نیست.
+  expected_status_sql: SELECT 'DATA_GAP' AS status;
+- intent_id: individual_employee_info
+  title_fa: درخواست اطلاعات فردی کارکنان
+  description_fa: درخواست اطلاعات فردی کارکنان
+  route: REJECT
+  status: access_denied
+  question_type: sensitive_or_individual
+  priority: high
+  supported_in_phase2: false
+  demo_ready: true
+  user_examples:
+  - نام و مشخصات کارکنان را نمایش بده
+  - کد ملی کارکنان را بده
+  - لیست افراد را با شماره پرسنلی بده
+  - اطلاعات فلان کارمند را بده
+  trigger_terms_fa:
+  - نام
+  - کد ملی
+  - شماره پرسنلی
+  - مشخصات فردی
+  - اطلاعات فلان کارمند
+  - لیست افراد
+  required_columns: []
+  output_type: status_message
+  recommended_visualization: status_message
+  safety_rules:
+  - اگر سؤال خروجی فردی یا لیست اشخاص بخواهد، حتی اگر HR-related باشد، route باید REJECT شود.
+  reject_reason: نمایش اطلاعات فردی، شناسه‌های شخصی و خروجی ردیفی کارکنان مجاز نیست.
+  expected_status_sql: SELECT 'ACCESS_DENIED' AS status;
+- intent_id: out_of_scope
+  title_fa: سؤال خارج از دامنه منابع انسانی
+  description_fa: سؤال خارج از دامنه منابع انسانی
+  route: REJECT
+  status: out_of_scope
+  question_type: out_of_scope
+  priority: medium
+  supported_in_phase2: false
+  demo_ready: true
+  user_examples:
+  - فروش ماه گذشته شرکت چقدر بوده؟
+  - درآمد شرکت چقدر است؟
+  - وضعیت موجودی انبار چیست؟
+  - گزارش مالی بده
+  trigger_terms_fa:
+  - فروش
+  - درآمد
+  - انبار
+  - مالی
+  - تولید
+  - مشتری
+  required_columns: []
+  output_type: status_message
+  recommended_visualization: status_message
+  reject_reason: سؤال به دامنه منابع انسانی مربوط نیست.
+  expected_status_sql: SELECT 'OUT_OF_SCOPE' AS status;
+- intent_id: ambiguous_hr_question
+  title_fa: سؤال منابع انسانی مبهم
+  description_fa: سؤال منابع انسانی مبهم
+  route: REJECT
+  status: needs_clarification
+  question_type: clarification
+  priority: low
+  supported_in_phase2: false
+  demo_ready: false
+  user_examples:
+  - وضعیت نیروها چطوره؟
+  - منابع انسانی را تحلیل کن
+  - گزارش کارکنان را بده
+  trigger_terms_fa:
+  - وضعیت نیروها
+  - تحلیل کن
+  - گزارش بده
+  required_columns: []
+  output_type: clarification_message
+  recommended_visualization: status_message
+  reject_reason: سؤال HR-related است اما metric، فیلتر یا سطح تحلیل مشخص نیست و باید شفاف‌سازی شود.
+  expected_status_sql: SELECT 'NEEDS_CLARIFICATION' AS status;
+- intent_id: contractor_share_by_department
+  title_fa: سهم پیمانکاری به تفکیک بخش یا واحد
+  description_fa: محاسبه تعداد و درصد نیروهای پیمانکاری در هر بخش/واحد/اداره/دپارتمان.
+  route: SQL
+  status: supported
+  question_type: statistical
+  priority: medium
+  supported_in_phase2: true
+  demo_ready: true
+  user_examples:
+  - سهم پیمانکاری در هر بخش چند درصد است؟
+  - در هر واحد چند درصد نیرو پیمانکاری داریم؟
+  - پیمانکاری به تفکیک دپارتمان چقدر است؟
+  trigger_terms_fa:
+  - سهم پیمانکاری در هر بخش
+  - پیمانکاری هر واحد
+  - پیمانکاری به تفکیک دپارتمان
+  - پیمانکاری به تفکیک اداره
+  metrics:
+  - name: contractor_count
+    title_fa: تعداد نیروهای پیمانکاری
+    expression: SUM(CASE WHEN v.is_contractor = TRUE THEN 1 ELSE 0 END)
+  - name: contractor_percentage
+    title_fa: درصد پیمانکاری
+    expression: ROUND(SUM(CASE WHEN v.is_contractor = TRUE THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(v.employee_id), 0), 2)
+  required_columns:
+  - employee_id
+  - is_contractor
+  - department_name
+  - is_active
+  default_filters:
+  - column: is_active
+    operator: '='
+    value: true
+  group_by:
+  - department_name
+  output_type: grouped_metric
+  recommended_visualization: horizontal_bar_chart
+  report_id: RPT_HR_040
+  sql_template_id: TPL_CONTRACTOR_SHARE_BY_DEPARTMENT
+  sql_hint: Use TPL_CONTRACTOR_SHARE_BY_DEPARTMENT.
+- intent_id: headcount_gap_by_service_domain
+  title_fa: اختلاف نیروی موجود با چارت مصوب به تفکیک حوزه
+  description_fa: محاسبه نیروی موجود، چارت مصوب و اختلاف نیرو در سطح حوزه خدمت بر اساس تجمیع دپارتمان‌ها.
+  route: SQL
+  status: partial_supported
+  question_type: statistical
+  priority: medium
+  supported_in_phase2: true
+  demo_ready: false
+  user_examples:
+  - کمبود نیرو به تفکیک حوزه چقدر است؟
+  - اختلاف چارت مصوب و نیروی موجود در هر حوزه را نشان بده
+  - کدام حوزه کمبود نیرو دارد؟
+  trigger_terms_fa:
+  - کمبود نیرو در هر حوزه
+  - چارت مصوب حوزه
+  - اختلاف نیرو حوزه
+  - کمبود نیرو به تفکیک حوزه
+  metrics:
+  - name: actual_headcount
+    title_fa: نیروی موجود
+    expression: COUNT(v.employee_id)
+  - name: approved_headcount
+    title_fa: چارت مصوب
+    expression: MAX(v.department_approved_headcount)
+  - name: headcount_gap
+    title_fa: اختلاف نیرو
+    expression: SUM(approved_headcount) - SUM(actual_headcount) after department-level aggregation
+  required_columns:
+  - employee_id
+  - department_id
+  - department_name
+  - service_domain
+  - department_approved_headcount
+  - is_active
+  default_filters:
+  - column: is_active
+    operator: '='
+    value: true
+  group_by:
+  - service_domain
+  output_type: table
+  recommended_visualization: table
+  report_id: RPT_HR_041
+  sql_template_id: TPL_HEADCOUNT_GAP_BY_SERVICE_DOMAIN
+  sql_hint: Use department-level CTE first; do not SUM approved headcount over employee rows.
+- intent_id: education_distribution_by_service_domain
+  title_fa: توزیع مدرک تحصیلی در هر حوزه خدمت
+  description_fa: نمایش تعداد کارکنان بر اساس مدرک تحصیلی در هر حوزه خدمت.
+  route: SQL
+  status: supported
+  question_type: statistical
+  priority: medium
+  supported_in_phase2: true
+  demo_ready: false
+  user_examples:
+  - توزیع تحصیلات در هر حوزه چگونه است؟
+  - در هر حوزه چند نفر کارشناسی دارند؟
+  - مدرک تحصیلی به تفکیک حوزه را نشان بده
+  trigger_terms_fa:
+  - تحصیلات در هر حوزه
+  - مدرک به تفکیک حوزه
+  - توزیع تحصیلات حوزه
+  - مدرک تحصیلی در حوزه
+  metrics:
+  - name: employee_count
+    title_fa: تعداد کارکنان
+    expression: COUNT(v.employee_id)
+  required_columns:
+  - employee_id
+  - service_domain
+  - education_title
+  - education_rank
+  - is_active
+  default_filters:
+  - column: is_active
+    operator: '='
+    value: true
+  group_by:
+  - service_domain
+  - education_title
+  output_type: table
+  recommended_visualization: table
+  report_id: RPT_HR_042
+  sql_template_id: TPL_EDUCATION_BY_SERVICE_DOMAIN
+  sql_hint: Use TPL_EDUCATION_BY_SERVICE_DOMAIN.
+- intent_id: education_by_service_domain
+  title_fa: تحصیلات به تفکیک حوزه خدمت
+  description_fa: Alias سازگار برای education_distribution_by_service_domain.
+  route: SQL
+  status: supported
+  question_type: statistical
+  priority: medium
+  supported_in_phase2: true
+  demo_ready: false
+  alias_of: education_distribution_by_service_domain
+  user_examples:
+  - تحصیلات هر حوزه را بده
+  - مدرک تحصیلی به تفکیک حوزه
+  trigger_terms_fa:
+  - تحصیلات هر حوزه
+  - مدرک هر حوزه
+  metrics:
+  - name: employee_count
+    title_fa: تعداد کارکنان
+    expression: COUNT(v.employee_id)
+  required_columns:
+  - employee_id
+  - service_domain
+  - education_title
+  - education_rank
+  - is_active
+  default_filters:
+  - column: is_active
+    operator: '='
+    value: true
+  group_by:
+  - service_domain
+  - education_title
+  output_type: table
+  recommended_visualization: table
+  report_id: RPT_HR_042
+  sql_template_id: TPL_EDUCATION_BY_SERVICE_DOMAIN
+  sql_hint: Use TPL_EDUCATION_BY_SERVICE_DOMAIN.
+- intent_id: monthly_hiring_trend
+  title_fa: روند جذب ماهانه
+  description_fa: تحلیل جذب در سطح ماه؛ در MVP فعلی به دلیل نبود ستون ماه/تقویم کامل به عنوان Data Gap ثبت می‌شود.
+  route: GAP
+  status: data_gap
+  question_type: time_series
+  priority: medium
+  supported_in_phase2: true
+  demo_ready: false
+  user_examples:
+  - روند جذب ماهانه چطور بوده؟
+  - در هر ماه چند نفر جذب شده‌اند؟
+  trigger_terms_fa:
+  - جذب ماهانه
+  - روند ماهانه جذب
+  - هر ماه جذب
+  metrics: []
+  required_columns:
+  - hire_date
+  - hire_year
+  default_filters: []
+  group_by: []
+  output_type: status_message
+  recommended_visualization: status_message
+  report_id: RPT_HR_043
+  sql_template_id: TPL_DATA_GAP
+  gap_reason: در MVP فعلی ماه شمسی/تقویم قابل اتکا برای تحلیل ماهانه تعریف نشده است.
+router_rules:
+- rule_id: R001_OUT_OF_SCOPE
+  condition: question_is_not_hr_related
+  route: REJECT
+  status: out_of_scope
+  intent: out_of_scope
+  response_fa: سؤال خارج از دامنه منابع انسانی است.
+- rule_id: R002_ACCESS_DENIED
+  condition: question_requests_individual_or_sensitive_employee_data
+  route: REJECT
+  status: access_denied
+  intent: individual_employee_info
+  response_fa: امکان نمایش اطلاعات فردی یا حساس کارکنان وجود ندارد.
+- rule_id: R003_DATA_GAP
+  condition: question_is_hr_related_but_required_data_or_business_rule_is_missing
+  route: GAP
+  status: data_gap
+  response_fa: سؤال مرتبط است، اما داده یا تعریف لازم برای پاسخ دقیق در MVP فعلی موجود نیست.
+- rule_id: R004_SQL
+  condition: intent_supported_and_required_columns_available_and_safe
+  route: SQL
+  status: supported
+  response_fa: مسیر SQL انتخاب شود و فقط روی View تحلیلی اجرا شود.
+- rule_id: R005_CLARIFICATION
+  condition: question_is_hr_related_but_metric_or_scope_is_ambiguous
+  route: REJECT
+  status: needs_clarification
+  response_fa: سؤال نیاز به شفاف‌سازی دارد؛ مثل اینکه کاربر مشخص کند تعداد، درصد، روند یا تفکیک مدنظر است.
+report_catalog_alignment:
+  ready_for_demo_reports:
+  - report_id: RPT_HR_001
+    intent_id: total_employee_count
+    sql_template_id: TPL_TOTAL_EMPLOYEE_COUNT
+  - report_id: RPT_HR_002
+    intent_id: employee_count_by_gender
+    sql_template_id: TPL_EMPLOYEE_COUNT_BY_GENDER
+  - report_id: RPT_HR_003
+    intent_id: average_age
+    sql_template_id: TPL_AVERAGE_AGE
+  - report_id: RPT_HR_004
+    intent_id: employee_count_by_education
+    sql_template_id: TPL_EMPLOYEE_COUNT_BY_EDUCATION
+  - report_id: RPT_HR_005
+    intent_id: employee_count_by_employment_type
+    sql_template_id: TPL_EMPLOYEE_COUNT_BY_EMPLOYMENT_TYPE
+  - report_id: RPT_HR_006
+    intent_id: employee_count_by_contract_type
+    sql_template_id: TPL_EMPLOYEE_COUNT_BY_CONTRACT_TYPE
+  - report_id: RPT_HR_007
+    intent_id: contractor_share
+    sql_template_id: TPL_CONTRACTOR_SHARE
+  - report_id: RPT_HR_008
+    intent_id: employee_count_by_service_domain
+    sql_template_id: TPL_EMPLOYEE_COUNT_BY_SERVICE_DOMAIN
+  - report_id: RPT_HR_009
+    intent_id: employee_count_by_province
+    sql_template_id: TPL_EMPLOYEE_COUNT_BY_PROVINCE
+  - report_id: RPT_HR_010
+    intent_id: hiring_trend_annual
+    sql_template_id: TPL_HIRING_TREND_ANNUAL
+  - report_id: RPT_HR_011
+    intent_id: hiring_last_15_years
+    sql_template_id: TPL_HIRING_LAST_15_YEARS
+  - report_id: RPT_HR_012
+    intent_id: headcount_gap_by_department
+    sql_template_id: TPL_HEADCOUNT_GAP_BY_DEPARTMENT
+  - report_id: RPT_HR_013
+    intent_id: city_level_analysis
+    route: GAP
+  - report_id: RPT_HR_014
+    intent_id: near_retirement_analysis
+    route: GAP
+  important_sync_note_fa: در sql_templates.yaml باید شناسه TPL_CONTRACTOR_SHARE برای سهم کلی پیمانکاری وجود داشته باشد و در
+    صورت نیاز TPL_CONTRACTOR_SHARE_BY_SERVICE_DOMAIN برای تفکیک حوزه اضافه شود.
+evaluation_goldset_alignment:
+  covered_expected_intents:
+  - total_employee_count
+  - employee_count_by_gender
+  - gender_percentage
+  - average_age
+  - employee_count_by_age_filter
+  - employee_count_by_age_group
+  - employee_count_by_education
+  - most_common_education
+  - employee_count_by_employment_type
+  - employee_count_by_contract_type
+  - contractor_share
+  - contractor_share_by_service_domain
+  - employee_count_by_service_domain
+  - employee_count_by_department
+  - headcount_gap_by_department
+  - employee_count_by_province
+  - city_level_analysis
+  - hiring_trend_annual
+  - hiring_last_15_years
+  - most_or_least_hiring_year
+  - average_service_years
+  - near_retirement_analysis
+  - individual_employee_info
+  - out_of_scope
+  - contractor_productivity_analysis
+  - ambiguous_hr_question
+  - contractor_share_by_department
+  - department_balance_analysis
+  - education_by_service_domain
+  - education_distribution_by_service_domain
+  - education_training_need_analysis
+  - employee_count_by_gender_age_filter
+  - employee_count_by_marital_status
+  - employee_count_by_work_location
+  - employee_count_without_service_years
+  - employment_stability_impact_analysis
+  - headcount_gap_by_service_domain
+  - hiring_business_growth_alignment
+  - hiring_by_contract_type_recent_year
+  - least_common_education
+  - low_education_in_expert_roles
+  - monthly_hiring_trend
+  - workforce_aging_trend_analysis
+  notes_fa: این نسخه intentهای اصلی Goldset را پوشش می‌دهد و چند intent تکمیلی برای سؤال‌های پرتکرار HR اضافه کرده است.
+notes_fa:
+- این فایل باید توسط intent_parser.py و router.py استفاده شود؛ SQL نهایی را sql_template_engine.py یا sql_generator.py می‌سازد.
+- همه intentهای SQL باید به صورت View-based اجرا شوند و فقط از hr_mvp.vw_hr_employee_analytics v استفاده کنند.
+- سؤال‌های فردمحور یا شامل اطلاعات حساس باید ACCESS_DENIED شوند، حتی اگر به منابع انسانی مربوط باشند.
+- سؤال‌های تحلیلی که داده یا تعریف شاخص ندارند باید به GAP بروند و پاسخ ساختگی تولید نشود.
+- 'در فاز دوم مسیرها عمداً کنترل‌شده‌اند: SQL، GAP، REJECT. مسیر RAG در فاز بعدی اضافه می‌شود.'

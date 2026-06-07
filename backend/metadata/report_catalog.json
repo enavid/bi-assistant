@@ -1,0 +1,2855 @@
+{
+  "version": "1.0",
+  "project": "HR BI Assistant",
+  "phase": "Controlled SQL-based MVP",
+  "file_type": "report_catalog",
+  "language": "fa-IR",
+  "description_fa": "کاتالوگ گزارش‌های پرتکرار، قابل دمو، Data Gap و Reject برای دستیار BI منابع انسانی در فاز دوم.",
+  "main_view": {
+    "name": "hr_mvp.vw_hr_employee_analytics",
+    "alias": "v"
+  },
+  "metadata_dependencies": [
+    "data_dictionary.yaml",
+    "semantic_layer.yaml",
+    "intent_catalog.yaml",
+    "kpi_catalog.yaml",
+    "sql_templates.yaml",
+    "sql_validator_rules.yaml",
+    "access_policies.yaml",
+    "visualization_rules.yaml",
+    "evaluation_goldset.json"
+  ],
+  "catalog_contract": {
+    "purpose_fa": "این فایل به Router، SQL Template Engine، Response Builder و Visualization Rules کمک می‌کند تا سؤال کاربر را به گزارش، intent، template، KPI و نوع خروجی مناسب وصل کنند.",
+    "report_id_rule": "RPT_HR_###",
+    "sql_template_id_rule": "TPL_*",
+    "view_only": true,
+    "raw_tables_allowed": false,
+    "join_allowed_for_model": false,
+    "individual_rows_allowed": false,
+    "default_filter": "v.is_active = TRUE",
+    "safe_output_rule_fa": "تمام خروجی‌های SQL باید تجمیعی باشند و نباید مشخصات فردی کارکنان را نمایش دهند."
+  },
+  "route_definitions": {
+    "SQL": "گزارش با View تحلیلی و SQL امن قابل پاسخ است.",
+    "GAP": "سؤال مرتبط با HR است، اما داده، قانون یا سند لازم در MVP فعلی وجود ندارد.",
+    "REJECT": "سؤال نامرتبط، غیرمجاز، حساس یا مبهم است و نباید SQL تولید شود."
+  },
+  "status_definitions": {
+    "ready_for_demo": "برای دمو فاز دوم آماده است.",
+    "partial_for_demo": "قابل دمو است، اما محدودیت داده یا تعریف شاخص دارد.",
+    "data_gap": "باید به Gap Manager ارسال شود.",
+    "access_denied": "به دلیل محرمانگی و سیاست دسترسی رد می‌شود.",
+    "out_of_scope": "خارج از دامنه منابع انسانی است.",
+    "needs_clarification": "برای پاسخ نیاز به شفاف‌سازی سؤال دارد."
+  },
+  "business_priority_definitions": {
+    "high": "برای دمو و نیازهای پرتکرار HR بسیار مهم است.",
+    "medium": "برای MVP مفید است اما بعد از گزارش‌های اصلی قرار می‌گیرد.",
+    "low": "در MVP فقط برای نمایش Gap یا توسعه آتی نگهداری می‌شود."
+  },
+  "global_report_rules": {
+    "sql_reports_must_use_only": "hr_mvp.vw_hr_employee_analytics v",
+    "sql_reports_must_be_select_only": true,
+    "sql_reports_must_not_use_join": true,
+    "sql_reports_must_not_use_select_star": true,
+    "sql_reports_must_not_expose_sensitive_columns": true,
+    "employee_count_expression": "COUNT(v.employee_id)",
+    "percentage_rule": "Always use NULLIF in denominators.",
+    "headcount_gap_rule": "Use MAX(v.department_approved_headcount) - COUNT(v.employee_id), never SUM(v.department_approved_headcount) over employee rows.",
+    "current_shamsi_year_rule": "{current_shamsi_year} must be injected by the application; the model must not guess it.",
+    "city_rule": "City-level analysis is DATA_GAP in the current MVP.",
+    "near_retirement_rule": "Near-retirement analysis is DATA_GAP until a formal retirement rule is added."
+  },
+  "reports": [
+    {
+      "report_id": "RPT_HR_001",
+      "title_fa": "تعداد کل کارکنان فعال",
+      "description_fa": "نمایش تعداد کل کارکنان فعال سازمان در قالب کارت KPI.",
+      "category": "headcount",
+      "business_priority": "high",
+      "demo_priority": 1,
+      "intent": "total_employee_count",
+      "route": "SQL",
+      "status": "ready_for_demo",
+      "question_examples": [
+        "تعداد کل کارکنان چند نفر است؟",
+        "الان چند نفر نیرو داریم؟",
+        "تعداد پرسنل فعال چقدر است؟"
+      ],
+      "main_view": "hr_mvp.vw_hr_employee_analytics",
+      "view_alias": "v",
+      "required_columns": [
+        "employee_id",
+        "is_active"
+      ],
+      "metrics": [
+        {
+          "name": "employee_count",
+          "title_fa": "تعداد کارکنان",
+          "expression": "COUNT(v.employee_id)",
+          "data_type": "number"
+        }
+      ],
+      "filters": [
+        {
+          "column": "is_active",
+          "operator": "=",
+          "value": true
+        }
+      ],
+      "group_by": [],
+      "optional_group_by": [],
+      "order_by": [],
+      "recommended_visualization": "kpi_card",
+      "sql_template_id": "TPL_TOTAL_EMPLOYEE_COUNT",
+      "sql_template_variants": {},
+      "output_grain": "aggregated",
+      "privacy_level": "aggregated_non_sensitive",
+      "related_kpis": [
+        "KPI_EMPLOYEE_COUNT"
+      ],
+      "supported_roles": [
+        "hr_manager",
+        "hr_analyst",
+        "executive_viewer"
+      ],
+      "limitations_fa": [],
+      "notes_fa": [],
+      "tags": [
+        "demo",
+        "headcount",
+        "kpi"
+      ],
+      "validation_focus": [
+        "COUNT(v.employee_id)",
+        "v.is_active = TRUE",
+        "view_only"
+      ]
+    },
+    {
+      "report_id": "RPT_HR_002",
+      "title_fa": "تعداد کارکنان به تفکیک جنسیت",
+      "description_fa": "نمایش توزیع کارکنان زن و مرد همراه با تعداد و درصد سهم هر گروه.",
+      "category": "gender",
+      "business_priority": "high",
+      "demo_priority": 2,
+      "intent": "employee_count_by_gender",
+      "route": "SQL",
+      "status": "ready_for_demo",
+      "question_examples": [
+        "تعداد زن و مرد چند نفر است؟",
+        "کارکنان به تفکیک جنسیت چقدر هستند؟",
+        "چند نفر زن و چند نفر مرد داریم؟"
+      ],
+      "main_view": "hr_mvp.vw_hr_employee_analytics",
+      "view_alias": "v",
+      "required_columns": [
+        "employee_id",
+        "gender",
+        "is_active"
+      ],
+      "metrics": [
+        {
+          "name": "employee_count",
+          "title_fa": "تعداد کارکنان",
+          "expression": "COUNT(v.employee_id)",
+          "data_type": "number"
+        },
+        {
+          "name": "percentage",
+          "title_fa": "درصد از کل",
+          "expression": "ROUND(COUNT(v.employee_id) * 100.0 / NULLIF(SUM(COUNT(v.employee_id)) OVER (), 0), 2)",
+          "data_type": "number"
+        }
+      ],
+      "filters": [
+        {
+          "column": "is_active",
+          "operator": "=",
+          "value": true
+        }
+      ],
+      "group_by": [
+        "gender"
+      ],
+      "optional_group_by": [],
+      "order_by": [],
+      "recommended_visualization": "pie_chart_or_bar_chart",
+      "sql_template_id": "TPL_EMPLOYEE_COUNT_BY_GENDER",
+      "sql_template_variants": {},
+      "output_grain": "aggregated",
+      "privacy_level": "aggregated_non_sensitive",
+      "related_kpis": [
+        "KPI_EMPLOYEE_COUNT",
+        "KPI_GENDER_DISTRIBUTION"
+      ],
+      "supported_roles": [
+        "hr_manager",
+        "hr_analyst",
+        "executive_viewer"
+      ],
+      "limitations_fa": [],
+      "notes_fa": [],
+      "tags": [
+        "demo",
+        "gender",
+        "distribution"
+      ],
+      "validation_focus": [
+        "GROUP BY v.gender",
+        "percentage_with_NULLIF"
+      ]
+    },
+    {
+      "report_id": "RPT_HR_003",
+      "title_fa": "میانگین سن کارکنان",
+      "description_fa": "نمایش میانگین سن کل کارکنان یا میانگین سن به تفکیک جنسیت، حوزه، استان یا گروه سنی.",
+      "category": "age",
+      "business_priority": "high",
+      "demo_priority": 3,
+      "intent": "average_age",
+      "route": "SQL",
+      "status": "ready_for_demo",
+      "question_examples": [
+        "میانگین سن کارکنان چقدر است؟",
+        "میانگین سن زن و مرد چقدر است؟",
+        "متوسط سن کارکنان در هر حوزه چقدر است؟"
+      ],
+      "main_view": "hr_mvp.vw_hr_employee_analytics",
+      "view_alias": "v",
+      "required_columns": [
+        "age",
+        "gender",
+        "service_domain",
+        "age_group_title",
+        "province",
+        "is_active"
+      ],
+      "metrics": [
+        {
+          "name": "average_age",
+          "title_fa": "میانگین سن",
+          "expression": "ROUND(AVG(v.age), 2)",
+          "data_type": "number"
+        }
+      ],
+      "filters": [
+        {
+          "column": "is_active",
+          "operator": "=",
+          "value": true
+        }
+      ],
+      "group_by": [],
+      "optional_group_by": [
+        "gender",
+        "service_domain",
+        "age_group_title",
+        "province"
+      ],
+      "order_by": [],
+      "recommended_visualization": "kpi_card_or_bar_chart",
+      "sql_template_id": "TPL_AVERAGE_AGE",
+      "sql_template_variants": {
+        "by_gender": "TPL_AVERAGE_AGE_BY_GENDER"
+      },
+      "output_grain": "aggregated",
+      "privacy_level": "aggregated_non_sensitive",
+      "related_kpis": [
+        "KPI_AVERAGE_AGE"
+      ],
+      "supported_roles": [
+        "hr_manager",
+        "hr_analyst",
+        "executive_viewer"
+      ],
+      "limitations_fa": [],
+      "notes_fa": [],
+      "tags": [
+        "demo",
+        "age",
+        "average"
+      ],
+      "validation_focus": [
+        "ROUND(AVG(v.age), 2)",
+        "avoid_birth_date_output"
+      ]
+    },
+    {
+      "report_id": "RPT_HR_004",
+      "title_fa": "تعداد کارکنان به تفکیک مدرک تحصیلی",
+      "description_fa": "نمایش توزیع تحصیلات کارکنان بر اساس آخرین مدرک ثبت‌شده در View.",
+      "category": "education",
+      "business_priority": "high",
+      "demo_priority": 4,
+      "intent": "employee_count_by_education",
+      "route": "SQL",
+      "status": "ready_for_demo",
+      "question_examples": [
+        "تعداد کارکنان بر اساس مدرک تحصیلی چقدر است؟",
+        "چند نفر کارشناسی دارند؟",
+        "سهم کارکنان با مدرک دکتری چند درصد است؟"
+      ],
+      "main_view": "hr_mvp.vw_hr_employee_analytics",
+      "view_alias": "v",
+      "required_columns": [
+        "employee_id",
+        "education_title",
+        "education_rank",
+        "is_active"
+      ],
+      "metrics": [
+        {
+          "name": "employee_count",
+          "title_fa": "تعداد کارکنان",
+          "expression": "COUNT(v.employee_id)",
+          "data_type": "number"
+        },
+        {
+          "name": "percentage",
+          "title_fa": "درصد از کل",
+          "expression": "ROUND(COUNT(v.employee_id) * 100.0 / NULLIF(SUM(COUNT(v.employee_id)) OVER (), 0), 2)",
+          "data_type": "number"
+        }
+      ],
+      "filters": [
+        {
+          "column": "is_active",
+          "operator": "=",
+          "value": true
+        }
+      ],
+      "group_by": [
+        "education_title"
+      ],
+      "optional_group_by": [],
+      "order_by": [
+        "education_rank ASC"
+      ],
+      "recommended_visualization": "bar_chart",
+      "sql_template_id": "TPL_EMPLOYEE_COUNT_BY_EDUCATION",
+      "sql_template_variants": {},
+      "output_grain": "aggregated",
+      "privacy_level": "aggregated_non_sensitive",
+      "related_kpis": [
+        "KPI_EDUCATION_DISTRIBUTION"
+      ],
+      "supported_roles": [
+        "hr_manager",
+        "hr_analyst",
+        "executive_viewer"
+      ],
+      "limitations_fa": [],
+      "notes_fa": [],
+      "tags": [
+        "demo",
+        "education",
+        "distribution"
+      ],
+      "validation_focus": [
+        "GROUP BY v.education_title",
+        "order_by_education_rank_when_available"
+      ]
+    },
+    {
+      "report_id": "RPT_HR_005",
+      "title_fa": "تعداد کارکنان به تفکیک نوع استخدام",
+      "description_fa": "نمایش توزیع کارکنان بر اساس نوع استخدام؛ مثل رسمی، قراردادی، پیمانی و شاغل در پیمانکاری.",
+      "category": "employment",
+      "business_priority": "high",
+      "demo_priority": 5,
+      "intent": "employee_count_by_employment_type",
+      "route": "SQL",
+      "status": "ready_for_demo",
+      "question_examples": [
+        "تعداد کارکنان بر اساس نوع استخدام چقدر است؟",
+        "چند نفر رسمی داریم؟",
+        "چند نفر قراردادی هستند؟",
+        "تعداد نیروهای پیمانی چقدر است؟"
+      ],
+      "main_view": "hr_mvp.vw_hr_employee_analytics",
+      "view_alias": "v",
+      "required_columns": [
+        "employee_id",
+        "employment_type",
+        "is_active"
+      ],
+      "metrics": [
+        {
+          "name": "employee_count",
+          "title_fa": "تعداد کارکنان",
+          "expression": "COUNT(v.employee_id)",
+          "data_type": "number"
+        },
+        {
+          "name": "percentage",
+          "title_fa": "درصد از کل",
+          "expression": "ROUND(COUNT(v.employee_id) * 100.0 / NULLIF(SUM(COUNT(v.employee_id)) OVER (), 0), 2)",
+          "data_type": "number"
+        }
+      ],
+      "filters": [
+        {
+          "column": "is_active",
+          "operator": "=",
+          "value": true
+        }
+      ],
+      "group_by": [
+        "employment_type"
+      ],
+      "optional_group_by": [],
+      "order_by": [],
+      "recommended_visualization": "bar_chart",
+      "sql_template_id": "TPL_EMPLOYEE_COUNT_BY_EMPLOYMENT_TYPE",
+      "sql_template_variants": {},
+      "output_grain": "aggregated",
+      "privacy_level": "aggregated_non_sensitive",
+      "related_kpis": [
+        "KPI_EMPLOYMENT_TYPE_DISTRIBUTION"
+      ],
+      "supported_roles": [
+        "hr_manager",
+        "hr_analyst",
+        "executive_viewer"
+      ],
+      "limitations_fa": [],
+      "notes_fa": [],
+      "tags": [
+        "demo",
+        "employment_type"
+      ],
+      "validation_focus": [
+        "GROUP BY v.employment_type",
+        "do_not_use_contract_type_for_employment_type"
+      ]
+    },
+    {
+      "report_id": "RPT_HR_006",
+      "title_fa": "تعداد کارکنان به تفکیک نوع قرارداد",
+      "description_fa": "نمایش توزیع کارکنان بر اساس نوع قرارداد جاری که داخل View حل شده است.",
+      "category": "contract",
+      "business_priority": "high",
+      "demo_priority": 6,
+      "intent": "employee_count_by_contract_type",
+      "route": "SQL",
+      "status": "ready_for_demo",
+      "question_examples": [
+        "تعداد کارکنان بر اساس نوع قرارداد چقدر است؟",
+        "نوع قراردادهای کارکنان چطور توزیع شده؟",
+        "چند نفر قرارداد خدماتی دارند؟"
+      ],
+      "main_view": "hr_mvp.vw_hr_employee_analytics",
+      "view_alias": "v",
+      "required_columns": [
+        "employee_id",
+        "contract_type",
+        "is_active"
+      ],
+      "metrics": [
+        {
+          "name": "employee_count",
+          "title_fa": "تعداد کارکنان",
+          "expression": "COUNT(v.employee_id)",
+          "data_type": "number"
+        },
+        {
+          "name": "percentage",
+          "title_fa": "درصد از کل",
+          "expression": "ROUND(COUNT(v.employee_id) * 100.0 / NULLIF(SUM(COUNT(v.employee_id)) OVER (), 0), 2)",
+          "data_type": "number"
+        }
+      ],
+      "filters": [
+        {
+          "column": "is_active",
+          "operator": "=",
+          "value": true
+        }
+      ],
+      "group_by": [
+        "contract_type"
+      ],
+      "optional_group_by": [],
+      "order_by": [],
+      "recommended_visualization": "horizontal_bar_chart_or_table",
+      "sql_template_id": "TPL_EMPLOYEE_COUNT_BY_CONTRACT_TYPE",
+      "sql_template_variants": {},
+      "output_grain": "aggregated",
+      "privacy_level": "aggregated_non_sensitive",
+      "related_kpis": [
+        "KPI_CONTRACT_TYPE_DISTRIBUTION"
+      ],
+      "supported_roles": [
+        "hr_manager",
+        "hr_analyst",
+        "executive_viewer"
+      ],
+      "limitations_fa": [],
+      "notes_fa": [],
+      "tags": [
+        "demo",
+        "contract_type"
+      ],
+      "validation_focus": [
+        "GROUP BY v.contract_type",
+        "do_not_use_employment_type_for_contract_type"
+      ]
+    },
+    {
+      "report_id": "RPT_HR_007",
+      "title_fa": "سهم نیروهای پیمانکاری",
+      "description_fa": "نمایش تعداد و درصد نیروهای شاغل در پیمانکاری در کل سازمان یا به تفکیک حوزه.",
+      "category": "contractor",
+      "business_priority": "high",
+      "demo_priority": 7,
+      "intent": "contractor_share",
+      "route": "SQL",
+      "status": "ready_for_demo",
+      "question_examples": [
+        "سهم پیمانکاری چقدر است؟",
+        "چند درصد کارکنان شاغل در پیمانکاری هستند؟",
+        "سهم نیروهای پیمانکاری از کل کارکنان چند درصد است؟"
+      ],
+      "main_view": "hr_mvp.vw_hr_employee_analytics",
+      "view_alias": "v",
+      "required_columns": [
+        "employee_id",
+        "is_contractor",
+        "is_active"
+      ],
+      "metrics": [
+        {
+          "name": "contractor_count",
+          "title_fa": "تعداد نیروهای پیمانکاری",
+          "expression": "SUM(CASE WHEN v.is_contractor = TRUE THEN 1 ELSE 0 END)",
+          "data_type": "number"
+        },
+        {
+          "name": "contractor_percentage",
+          "title_fa": "درصد پیمانکاری",
+          "expression": "ROUND(SUM(CASE WHEN v.is_contractor = TRUE THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(v.employee_id), 0), 2)",
+          "data_type": "number"
+        }
+      ],
+      "filters": [
+        {
+          "column": "is_active",
+          "operator": "=",
+          "value": true
+        }
+      ],
+      "group_by": [],
+      "optional_group_by": [],
+      "order_by": [],
+      "recommended_visualization": "kpi_card",
+      "sql_template_id": "TPL_CONTRACTOR_SHARE",
+      "sql_template_variants": {
+        "by_service_domain": "TPL_CONTRACTOR_SHARE_BY_SERVICE_DOMAIN"
+      },
+      "output_grain": "aggregated",
+      "privacy_level": "aggregated_non_sensitive",
+      "related_kpis": [
+        "KPI_CONTRACTOR_SHARE"
+      ],
+      "supported_roles": [
+        "hr_manager",
+        "hr_analyst",
+        "executive_viewer"
+      ],
+      "limitations_fa": [],
+      "notes_fa": [],
+      "tags": [
+        "demo",
+        "contractor",
+        "percentage"
+      ],
+      "validation_focus": [
+        "v.is_contractor = TRUE",
+        "percentage_with_NULLIF"
+      ]
+    },
+    {
+      "report_id": "RPT_HR_008",
+      "title_fa": "تعداد کارکنان به تفکیک حوزه خدمت",
+      "description_fa": "نمایش تعداد و درصد کارکنان در حوزه‌های اصلی سازمان.",
+      "category": "organization",
+      "business_priority": "high",
+      "demo_priority": 8,
+      "intent": "employee_count_by_service_domain",
+      "route": "SQL",
+      "status": "ready_for_demo",
+      "question_examples": [
+        "کدام حوزه بیشترین نیرو را دارد؟",
+        "تعداد کارکنان به تفکیک حوزه خدمت چقدر است؟",
+        "سهم هر حوزه از کارکنان چقدر است؟"
+      ],
+      "main_view": "hr_mvp.vw_hr_employee_analytics",
+      "view_alias": "v",
+      "required_columns": [
+        "employee_id",
+        "service_domain",
+        "is_active"
+      ],
+      "metrics": [
+        {
+          "name": "employee_count",
+          "title_fa": "تعداد کارکنان",
+          "expression": "COUNT(v.employee_id)",
+          "data_type": "number"
+        },
+        {
+          "name": "percentage",
+          "title_fa": "درصد از کل",
+          "expression": "ROUND(COUNT(v.employee_id) * 100.0 / NULLIF(SUM(COUNT(v.employee_id)) OVER (), 0), 2)",
+          "data_type": "number"
+        }
+      ],
+      "filters": [
+        {
+          "column": "is_active",
+          "operator": "=",
+          "value": true
+        }
+      ],
+      "group_by": [
+        "service_domain"
+      ],
+      "optional_group_by": [],
+      "order_by": [
+        "employee_count DESC"
+      ],
+      "recommended_visualization": "bar_chart",
+      "sql_template_id": "TPL_EMPLOYEE_COUNT_BY_SERVICE_DOMAIN",
+      "sql_template_variants": {},
+      "output_grain": "aggregated",
+      "privacy_level": "aggregated_non_sensitive",
+      "related_kpis": [
+        "KPI_SERVICE_DOMAIN_HEADCOUNT"
+      ],
+      "supported_roles": [
+        "hr_manager",
+        "hr_analyst",
+        "executive_viewer"
+      ],
+      "limitations_fa": [],
+      "notes_fa": [],
+      "tags": [
+        "demo",
+        "organization",
+        "service_domain"
+      ],
+      "validation_focus": [
+        "GROUP BY v.service_domain",
+        "ORDER BY employee_count DESC"
+      ]
+    },
+    {
+      "report_id": "RPT_HR_009",
+      "title_fa": "تعداد کارکنان به تفکیک استان",
+      "description_fa": "نمایش پراکندگی کارکنان در استان‌ها؛ تحلیل شهری در MVP فعلی قابل اتکا نیست.",
+      "category": "location",
+      "business_priority": "medium",
+      "demo_priority": 9,
+      "intent": "employee_count_by_province",
+      "route": "SQL",
+      "status": "ready_for_demo",
+      "question_examples": [
+        "تعداد کارکنان به تفکیک استان چقدر است؟",
+        "کدام استان بیشترین نیرو را دارد؟",
+        "توزیع کارکنان در استان‌ها چگونه است؟"
+      ],
+      "main_view": "hr_mvp.vw_hr_employee_analytics",
+      "view_alias": "v",
+      "required_columns": [
+        "employee_id",
+        "province",
+        "is_active"
+      ],
+      "metrics": [
+        {
+          "name": "employee_count",
+          "title_fa": "تعداد کارکنان",
+          "expression": "COUNT(v.employee_id)",
+          "data_type": "number"
+        },
+        {
+          "name": "percentage",
+          "title_fa": "درصد از کل",
+          "expression": "ROUND(COUNT(v.employee_id) * 100.0 / NULLIF(SUM(COUNT(v.employee_id)) OVER (), 0), 2)",
+          "data_type": "number"
+        }
+      ],
+      "filters": [
+        {
+          "column": "is_active",
+          "operator": "=",
+          "value": true
+        }
+      ],
+      "group_by": [
+        "province"
+      ],
+      "optional_group_by": [],
+      "order_by": [
+        "employee_count DESC"
+      ],
+      "recommended_visualization": "horizontal_bar_chart_or_table",
+      "sql_template_id": "TPL_EMPLOYEE_COUNT_BY_PROVINCE",
+      "sql_template_variants": {},
+      "output_grain": "aggregated",
+      "privacy_level": "aggregated_non_sensitive",
+      "related_kpis": [
+        "KPI_PROVINCE_HEADCOUNT"
+      ],
+      "supported_roles": [
+        "hr_manager",
+        "hr_analyst",
+        "executive_viewer"
+      ],
+      "limitations_fa": [],
+      "notes_fa": [],
+      "tags": [
+        "demo",
+        "location",
+        "province"
+      ],
+      "validation_focus": [
+        "GROUP BY v.province",
+        "city_questions_should_be_gap"
+      ]
+    },
+    {
+      "report_id": "RPT_HR_010",
+      "title_fa": "روند جذب سالانه",
+      "description_fa": "نمایش تعداد جذب کارکنان در سال‌های مختلف بر اساس سال شمسی ذخیره‌شده در View.",
+      "category": "hiring",
+      "business_priority": "high",
+      "demo_priority": 10,
+      "intent": "hiring_trend_annual",
+      "route": "SQL",
+      "status": "ready_for_demo",
+      "question_examples": [
+        "روند جذب سالانه چطور بوده؟",
+        "تعداد جذب سالانه چه روندی داشته؟",
+        "در هر سال چند نفر جذب شده‌اند؟"
+      ],
+      "main_view": "hr_mvp.vw_hr_employee_analytics",
+      "view_alias": "v",
+      "required_columns": [
+        "employee_id",
+        "hire_year",
+        "is_active"
+      ],
+      "metrics": [
+        {
+          "name": "employee_count",
+          "title_fa": "تعداد جذب",
+          "expression": "COUNT(v.employee_id)",
+          "data_type": "number"
+        }
+      ],
+      "filters": [
+        {
+          "column": "is_active",
+          "operator": "=",
+          "value": true
+        }
+      ],
+      "group_by": [
+        "hire_year"
+      ],
+      "optional_group_by": [],
+      "order_by": [
+        "hire_year ASC"
+      ],
+      "recommended_visualization": "line_chart",
+      "sql_template_id": "TPL_HIRING_TREND_ANNUAL",
+      "sql_template_variants": {},
+      "output_grain": "aggregated",
+      "privacy_level": "aggregated_non_sensitive",
+      "related_kpis": [
+        "KPI_HIRING_TREND_ANNUAL"
+      ],
+      "supported_roles": [
+        "hr_manager",
+        "hr_analyst",
+        "executive_viewer"
+      ],
+      "limitations_fa": [],
+      "notes_fa": [],
+      "tags": [
+        "demo",
+        "hiring",
+        "trend",
+        "shamsi_year"
+      ],
+      "validation_focus": [
+        "GROUP BY v.hire_year",
+        "ORDER BY v.hire_year ASC",
+        "do_not_use_gregorian_current_date"
+      ]
+    },
+    {
+      "report_id": "RPT_HR_011",
+      "title_fa": "جذب ۱۵ سال اخیر",
+      "description_fa": "نمایش روند جذب کارکنان در ۱۵ سال اخیر بر اساس سال شمسی تزریق‌شده از سمت برنامه.",
+      "category": "hiring",
+      "business_priority": "high",
+      "demo_priority": 11,
+      "intent": "hiring_last_15_years",
+      "route": "SQL",
+      "status": "ready_for_demo",
+      "question_examples": [
+        "جذب ۱۵ سال اخیر چقدر بوده؟",
+        "در پانزده سال اخیر چند نفر جذب شده‌اند؟",
+        "روند جذب ۱۵ سال اخیر را نشان بده"
+      ],
+      "main_view": "hr_mvp.vw_hr_employee_analytics",
+      "view_alias": "v",
+      "required_columns": [
+        "employee_id",
+        "hire_year",
+        "is_active"
+      ],
+      "metrics": [
+        {
+          "name": "employee_count",
+          "title_fa": "تعداد جذب",
+          "expression": "COUNT(v.employee_id)",
+          "data_type": "number"
+        }
+      ],
+      "filters": [
+        {
+          "column": "is_active",
+          "operator": "=",
+          "value": true
+        },
+        {
+          "column": "hire_year",
+          "operator": ">=",
+          "value": "{current_shamsi_year} - 15"
+        }
+      ],
+      "group_by": [
+        "hire_year"
+      ],
+      "optional_group_by": [],
+      "order_by": [
+        "hire_year ASC"
+      ],
+      "recommended_visualization": "line_chart_or_table",
+      "sql_template_id": "TPL_HIRING_LAST_15_YEARS",
+      "sql_template_variants": {},
+      "output_grain": "aggregated",
+      "privacy_level": "aggregated_non_sensitive",
+      "related_kpis": [
+        "KPI_HIRING_LAST_15_YEARS"
+      ],
+      "supported_roles": [
+        "hr_manager",
+        "hr_analyst",
+        "executive_viewer"
+      ],
+      "limitations_fa": [],
+      "notes_fa": [
+        "{current_shamsi_year} باید از سمت برنامه تزریق شود. برای دیتابیس تست فعلی مقدار ۱۴۰۴ قابل استفاده است."
+      ],
+      "tags": [
+        "demo",
+        "hiring",
+        "last_15_years"
+      ],
+      "validation_focus": [
+        "v.hire_year >= {current_shamsi_year} - 15",
+        "do_not_guess_current_shamsi_year"
+      ]
+    },
+    {
+      "report_id": "RPT_HR_012",
+      "title_fa": "اختلاف نیروی موجود با چارت مصوب",
+      "description_fa": "نمایش اختلاف تعداد نیروی موجود با چارت مصوب در سطح واحد/دپارتمان.",
+      "category": "organization",
+      "business_priority": "medium",
+      "demo_priority": 12,
+      "intent": "headcount_gap_by_department",
+      "route": "SQL",
+      "status": "partial_for_demo",
+      "question_examples": [
+        "کدام واحد کمبود نیرو دارد؟",
+        "اختلاف نیروی موجود با چارت مصوب چقدر است؟",
+        "آیا تعادل بین چارت و واقعیت نیروی انسانی برقرار است؟"
+      ],
+      "main_view": "hr_mvp.vw_hr_employee_analytics",
+      "view_alias": "v",
+      "required_columns": [
+        "employee_id",
+        "department_id",
+        "department_name",
+        "department_approved_headcount",
+        "is_active"
+      ],
+      "metrics": [
+        {
+          "name": "actual_headcount",
+          "title_fa": "نیروی موجود",
+          "expression": "COUNT(v.employee_id)",
+          "data_type": "number"
+        },
+        {
+          "name": "approved_headcount",
+          "title_fa": "چارت مصوب",
+          "expression": "MAX(v.department_approved_headcount)",
+          "data_type": "number"
+        },
+        {
+          "name": "headcount_gap",
+          "title_fa": "اختلاف نیرو",
+          "expression": "MAX(v.department_approved_headcount) - COUNT(v.employee_id)",
+          "data_type": "number"
+        }
+      ],
+      "filters": [
+        {
+          "column": "is_active",
+          "operator": "=",
+          "value": true
+        }
+      ],
+      "group_by": [
+        "department_id",
+        "department_name"
+      ],
+      "optional_group_by": [],
+      "order_by": [
+        "headcount_gap DESC"
+      ],
+      "recommended_visualization": "table",
+      "sql_template_id": "TPL_HEADCOUNT_GAP_BY_DEPARTMENT",
+      "sql_template_variants": {},
+      "output_grain": "aggregated",
+      "privacy_level": "aggregated_non_sensitive",
+      "related_kpis": [
+        "KPI_HEADCOUNT_GAP"
+      ],
+      "supported_roles": [
+        "hr_manager",
+        "hr_analyst",
+        "executive_viewer"
+      ],
+      "limitations_fa": [
+        "تعریف مدیریتی کامل «تعادل نیروی انسانی» نیازمند قواعد کسب‌وکاری و احتمالاً شاخص‌های تکمیلی است."
+      ],
+      "notes_fa": [],
+      "tags": [
+        "demo",
+        "organization",
+        "approved_headcount",
+        "partial"
+      ],
+      "validation_focus": [
+        "MAX(v.department_approved_headcount) - COUNT(v.employee_id)",
+        "do_not_SUM_department_approved_headcount"
+      ]
+    },
+    {
+      "report_id": "RPT_HR_015",
+      "title_fa": "درصد کارکنان زن یا مرد",
+      "description_fa": "محاسبه درصد یک جنسیت از کل کارکنان فعال.",
+      "category": "gender",
+      "business_priority": "high",
+      "demo_priority": 13,
+      "intent": "gender_percentage",
+      "route": "SQL",
+      "status": "ready_for_demo",
+      "question_examples": [
+        "چند درصد کارکنان زن هستند؟",
+        "درصد کارکنان مرد چقدر است؟",
+        "سهم زنان از کارکنان چند درصد است؟"
+      ],
+      "main_view": "hr_mvp.vw_hr_employee_analytics",
+      "view_alias": "v",
+      "required_columns": [
+        "employee_id",
+        "gender",
+        "is_active"
+      ],
+      "metrics": [
+        {
+          "name": "gender_count",
+          "title_fa": "تعداد جنسیت انتخاب‌شده",
+          "expression": "SUM(CASE WHEN v.gender = '{gender_value}' THEN 1 ELSE 0 END)",
+          "data_type": "number"
+        },
+        {
+          "name": "percentage",
+          "title_fa": "درصد از کل",
+          "expression": "ROUND(SUM(CASE WHEN v.gender = '{gender_value}' THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(v.employee_id), 0), 2)",
+          "data_type": "number"
+        }
+      ],
+      "filters": [
+        {
+          "column": "is_active",
+          "operator": "=",
+          "value": true
+        }
+      ],
+      "group_by": [],
+      "optional_group_by": [],
+      "order_by": [],
+      "recommended_visualization": "kpi_card",
+      "sql_template_id": "TPL_GENDER_PERCENTAGE",
+      "sql_template_variants": {},
+      "output_grain": "aggregated",
+      "privacy_level": "aggregated_non_sensitive",
+      "related_kpis": [
+        "KPI_GENDER_PERCENTAGE"
+      ],
+      "supported_roles": [
+        "hr_manager",
+        "hr_analyst",
+        "executive_viewer"
+      ],
+      "limitations_fa": [],
+      "notes_fa": [],
+      "tags": [
+        "gender",
+        "percentage"
+      ],
+      "validation_focus": [
+        "v.gender = 'زن' or 'مرد'",
+        "percentage_with_NULLIF"
+      ]
+    },
+    {
+      "report_id": "RPT_HR_016",
+      "title_fa": "تعداد کارکنان به تفکیک گروه سنی",
+      "description_fa": "نمایش توزیع کارکنان در گروه‌های سنی تعریف‌شده در View.",
+      "category": "age",
+      "business_priority": "medium",
+      "demo_priority": 14,
+      "intent": "employee_count_by_age_group",
+      "route": "SQL",
+      "status": "ready_for_demo",
+      "question_examples": [
+        "کدام گروه سنی بیشترین نیروی انسانی را دارد؟",
+        "تعداد کارکنان به تفکیک گروه سنی چقدر است؟",
+        "توزیع گروه‌های سنی را نشان بده"
+      ],
+      "main_view": "hr_mvp.vw_hr_employee_analytics",
+      "view_alias": "v",
+      "required_columns": [
+        "employee_id",
+        "age_group_title",
+        "age",
+        "is_active"
+      ],
+      "metrics": [
+        {
+          "name": "employee_count",
+          "title_fa": "تعداد کارکنان",
+          "expression": "COUNT(v.employee_id)",
+          "data_type": "number"
+        }
+      ],
+      "filters": [
+        {
+          "column": "is_active",
+          "operator": "=",
+          "value": true
+        }
+      ],
+      "group_by": [
+        "age_group_title"
+      ],
+      "optional_group_by": [],
+      "order_by": [
+        "MIN(v.age) ASC"
+      ],
+      "recommended_visualization": "bar_chart",
+      "sql_template_id": "TPL_EMPLOYEE_COUNT_BY_AGE_GROUP",
+      "sql_template_variants": {},
+      "output_grain": "aggregated",
+      "privacy_level": "aggregated_non_sensitive",
+      "related_kpis": [
+        "KPI_AGE_GROUP_DISTRIBUTION"
+      ],
+      "supported_roles": [
+        "hr_manager",
+        "hr_analyst",
+        "executive_viewer"
+      ],
+      "limitations_fa": [],
+      "notes_fa": [],
+      "tags": [
+        "age",
+        "age_group"
+      ],
+      "validation_focus": [
+        "GROUP BY v.age_group_title",
+        "ORDER BY MIN(v.age) ASC"
+      ]
+    },
+    {
+      "report_id": "RPT_HR_017",
+      "title_fa": "تعداد کارکنان بر اساس بازه سنی",
+      "description_fa": "پاسخ به سؤال‌های دارای شرط سنی مثل زیر ۳۰، زیر ۲۰، یا ۶۰ سال به بالا.",
+      "category": "age",
+      "business_priority": "medium",
+      "demo_priority": 15,
+      "intent": "employee_count_by_age_filter",
+      "route": "SQL",
+      "status": "ready_for_demo",
+      "question_examples": [
+        "تعداد کارکنان زیر ۳۰ سال چند نفر است؟",
+        "تعداد کارکنان زیر ۲۰ سال چند نفر است؟",
+        "تعداد کارکنان ۶۰ سال به بالا چقدر است؟"
+      ],
+      "main_view": "hr_mvp.vw_hr_employee_analytics",
+      "view_alias": "v",
+      "required_columns": [
+        "employee_id",
+        "age",
+        "is_active"
+      ],
+      "metrics": [
+        {
+          "name": "employee_count",
+          "title_fa": "تعداد کارکنان",
+          "expression": "COUNT(v.employee_id)",
+          "data_type": "number"
+        }
+      ],
+      "filters": [
+        {
+          "column": "is_active",
+          "operator": "=",
+          "value": true
+        },
+        {
+          "column": "age",
+          "operator": "dynamic",
+          "value": "age condition extracted from question"
+        }
+      ],
+      "group_by": [],
+      "optional_group_by": [],
+      "order_by": [],
+      "recommended_visualization": "kpi_card",
+      "sql_template_id": "TPL_EMPLOYEE_COUNT_BY_AGE_FILTER",
+      "sql_template_variants": {
+        "under_30": "TPL_EMPLOYEES_UNDER_30",
+        "age_60_plus": "TPL_EMPLOYEES_AGE_60_PLUS"
+      },
+      "output_grain": "aggregated",
+      "privacy_level": "aggregated_non_sensitive",
+      "related_kpis": [
+        "KPI_EMPLOYEE_COUNT_BY_AGE_FILTER"
+      ],
+      "supported_roles": [
+        "hr_manager",
+        "hr_analyst",
+        "executive_viewer"
+      ],
+      "limitations_fa": [],
+      "notes_fa": [],
+      "tags": [
+        "age",
+        "filter"
+      ],
+      "validation_focus": [
+        "v.age < N",
+        "v.age >= N",
+        "COUNT(v.employee_id)"
+      ]
+    },
+    {
+      "report_id": "RPT_HR_018",
+      "title_fa": "بیشترین مدرک تحصیلی",
+      "description_fa": "نمایش مدرک تحصیلی که بیشترین تعداد کارکنان را دارد.",
+      "category": "education",
+      "business_priority": "high",
+      "demo_priority": 16,
+      "intent": "most_common_education",
+      "route": "SQL",
+      "status": "ready_for_demo",
+      "question_examples": [
+        "کدام مدرک تحصیلی بیشترین سهم را دارد؟",
+        "بیشترین مدرک تحصیلی موجود چیست؟",
+        "بیشتر کارکنان چه مدرکی دارند؟"
+      ],
+      "main_view": "hr_mvp.vw_hr_employee_analytics",
+      "view_alias": "v",
+      "required_columns": [
+        "employee_id",
+        "education_title",
+        "is_active"
+      ],
+      "metrics": [
+        {
+          "name": "employee_count",
+          "title_fa": "تعداد کارکنان",
+          "expression": "COUNT(v.employee_id)",
+          "data_type": "number"
+        }
+      ],
+      "filters": [
+        {
+          "column": "is_active",
+          "operator": "=",
+          "value": true
+        }
+      ],
+      "group_by": [
+        "education_title"
+      ],
+      "optional_group_by": [],
+      "order_by": [
+        "employee_count DESC",
+        "LIMIT 1"
+      ],
+      "recommended_visualization": "kpi_card_or_table",
+      "sql_template_id": "TPL_MOST_COMMON_EDUCATION",
+      "sql_template_variants": {},
+      "output_grain": "aggregated",
+      "privacy_level": "aggregated_non_sensitive",
+      "related_kpis": [
+        "KPI_MOST_COMMON_EDUCATION"
+      ],
+      "supported_roles": [
+        "hr_manager",
+        "hr_analyst",
+        "executive_viewer"
+      ],
+      "limitations_fa": [],
+      "notes_fa": [],
+      "tags": [
+        "education",
+        "top_1"
+      ],
+      "validation_focus": [
+        "GROUP BY v.education_title",
+        "ORDER BY COUNT(v.employee_id) DESC",
+        "LIMIT 1"
+      ]
+    },
+    {
+      "report_id": "RPT_HR_019",
+      "title_fa": "کمترین مدرک تحصیلی",
+      "description_fa": "نمایش مدرک تحصیلی که کمترین تعداد کارکنان را دارد؛ تفسیر کمبود تخصص نیازمند سند یا قانون تکمیلی است.",
+      "category": "education",
+      "business_priority": "medium",
+      "demo_priority": 17,
+      "intent": "least_common_education",
+      "route": "SQL",
+      "status": "ready_for_demo",
+      "question_examples": [
+        "کمترین مدرک تحصیلی کدام است؟",
+        "کدام مدرک تحصیلی کمترین سهم را دارد؟"
+      ],
+      "main_view": "hr_mvp.vw_hr_employee_analytics",
+      "view_alias": "v",
+      "required_columns": [
+        "employee_id",
+        "education_title",
+        "is_active"
+      ],
+      "metrics": [
+        {
+          "name": "employee_count",
+          "title_fa": "تعداد کارکنان",
+          "expression": "COUNT(v.employee_id)",
+          "data_type": "number"
+        }
+      ],
+      "filters": [
+        {
+          "column": "is_active",
+          "operator": "=",
+          "value": true
+        }
+      ],
+      "group_by": [
+        "education_title"
+      ],
+      "optional_group_by": [],
+      "order_by": [
+        "employee_count ASC",
+        "LIMIT 1"
+      ],
+      "recommended_visualization": "kpi_card_or_table",
+      "sql_template_id": "TPL_LEAST_COMMON_EDUCATION",
+      "sql_template_variants": {},
+      "output_grain": "aggregated",
+      "privacy_level": "aggregated_non_sensitive",
+      "related_kpis": [
+        "KPI_LEAST_COMMON_EDUCATION"
+      ],
+      "supported_roles": [
+        "hr_manager",
+        "hr_analyst",
+        "executive_viewer"
+      ],
+      "limitations_fa": [
+        "اگر سؤال وارد تفسیر کمبود تخصص شود، باید RAG یا Gap Manager وارد شود."
+      ],
+      "notes_fa": [],
+      "tags": [
+        "education",
+        "bottom_1"
+      ],
+      "validation_focus": [
+        "GROUP BY v.education_title",
+        "ORDER BY COUNT(v.employee_id) ASC",
+        "LIMIT 1"
+      ]
+    },
+    {
+      "report_id": "RPT_HR_020",
+      "title_fa": "تحصیلات پایین‌تر از حداقل نیاز پست کارشناسی",
+      "description_fa": "شناسایی تجمیعی کارکنانی که رتبه تحصیلی آن‌ها از حداقل رتبه موردنیاز پست کمتر است.",
+      "category": "education",
+      "business_priority": "medium",
+      "demo_priority": 18,
+      "intent": "low_education_in_expert_roles",
+      "route": "SQL",
+      "status": "partial_for_demo",
+      "question_examples": [
+        "چند درصد افراد با تحصیلات پایین‌تر در پست‌های کارشناسی هستند؟",
+        "چند نفر در پست کارشناسی مدرک پایین‌تر از نیاز دارند؟"
+      ],
+      "main_view": "hr_mvp.vw_hr_employee_analytics",
+      "view_alias": "v",
+      "required_columns": [
+        "employee_id",
+        "education_rank",
+        "min_education_rank",
+        "is_expert_role",
+        "position_title",
+        "is_active"
+      ],
+      "metrics": [
+        {
+          "name": "employee_count",
+          "title_fa": "تعداد کارکنان",
+          "expression": "COUNT(v.employee_id)",
+          "data_type": "number"
+        },
+        {
+          "name": "percentage",
+          "title_fa": "درصد از کل",
+          "expression": "ROUND(COUNT(v.employee_id) * 100.0 / NULLIF(SUM(COUNT(v.employee_id)) OVER (), 0), 2)",
+          "data_type": "number"
+        }
+      ],
+      "filters": [
+        {
+          "column": "is_active",
+          "operator": "=",
+          "value": true
+        },
+        {
+          "column": "is_expert_role",
+          "operator": "=",
+          "value": true
+        },
+        {
+          "column": "education_rank",
+          "operator": "<",
+          "value": "v.min_education_rank"
+        }
+      ],
+      "group_by": [],
+      "optional_group_by": [],
+      "order_by": [],
+      "recommended_visualization": "kpi_card_or_table",
+      "sql_template_id": "TPL_LOW_EDUCATION_IN_EXPERT_ROLES",
+      "sql_template_variants": {},
+      "output_grain": "aggregated",
+      "privacy_level": "aggregated_non_sensitive",
+      "related_kpis": [
+        "KPI_EDUCATION_REQUIREMENT_GAP"
+      ],
+      "supported_roles": [
+        "hr_manager",
+        "hr_analyst",
+        "executive_viewer"
+      ],
+      "limitations_fa": [
+        "دقت این گزارش وابسته به صحت min_education_rank در داده پست‌هاست."
+      ],
+      "notes_fa": [],
+      "tags": [
+        "education",
+        "position",
+        "partial"
+      ],
+      "validation_focus": [
+        "v.education_rank < v.min_education_rank",
+        "v.is_expert_role = TRUE"
+      ]
+    },
+    {
+      "report_id": "RPT_HR_021",
+      "title_fa": "سهم پیمانکاری در هر حوزه",
+      "description_fa": "محاسبه تعداد و درصد نیروهای پیمانکاری به تفکیک حوزه خدمت.",
+      "category": "contractor",
+      "business_priority": "high",
+      "demo_priority": 19,
+      "intent": "contractor_share_by_service_domain",
+      "route": "SQL",
+      "status": "ready_for_demo",
+      "question_examples": [
+        "سهم پیمانکاری در هر حوزه چند درصد است؟",
+        "در هر حوزه چند درصد نیرو پیمانکاری است؟",
+        "کدام حوزه بیشترین سهم پیمانکاری را دارد؟"
+      ],
+      "main_view": "hr_mvp.vw_hr_employee_analytics",
+      "view_alias": "v",
+      "required_columns": [
+        "employee_id",
+        "is_contractor",
+        "service_domain",
+        "is_active"
+      ],
+      "metrics": [
+        {
+          "name": "contractor_count",
+          "title_fa": "تعداد پیمانکاری",
+          "expression": "SUM(CASE WHEN v.is_contractor = TRUE THEN 1 ELSE 0 END)",
+          "data_type": "number"
+        },
+        {
+          "name": "total_employee_count",
+          "title_fa": "تعداد کل کارکنان حوزه",
+          "expression": "COUNT(v.employee_id)",
+          "data_type": "number"
+        },
+        {
+          "name": "contractor_percentage",
+          "title_fa": "درصد پیمانکاری",
+          "expression": "ROUND(SUM(CASE WHEN v.is_contractor = TRUE THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(v.employee_id), 0), 2)",
+          "data_type": "number"
+        }
+      ],
+      "filters": [
+        {
+          "column": "is_active",
+          "operator": "=",
+          "value": true
+        }
+      ],
+      "group_by": [
+        "service_domain"
+      ],
+      "optional_group_by": [],
+      "order_by": [
+        "contractor_percentage DESC"
+      ],
+      "recommended_visualization": "bar_chart_or_table",
+      "sql_template_id": "TPL_CONTRACTOR_SHARE_BY_SERVICE_DOMAIN",
+      "sql_template_variants": {},
+      "output_grain": "aggregated",
+      "privacy_level": "aggregated_non_sensitive",
+      "related_kpis": [
+        "KPI_CONTRACTOR_SHARE_BY_DOMAIN"
+      ],
+      "supported_roles": [
+        "hr_manager",
+        "hr_analyst",
+        "executive_viewer"
+      ],
+      "limitations_fa": [],
+      "notes_fa": [],
+      "tags": [
+        "contractor",
+        "service_domain",
+        "percentage"
+      ],
+      "validation_focus": [
+        "GROUP BY v.service_domain",
+        "v.is_contractor = TRUE",
+        "percentage_with_NULLIF"
+      ]
+    },
+    {
+      "report_id": "RPT_HR_022",
+      "title_fa": "تعداد کارکنان به تفکیک بخش یا واحد",
+      "description_fa": "نمایش تعداد کارکنان در سطح بخش، واحد، اداره یا دپارتمان.",
+      "category": "organization",
+      "business_priority": "medium",
+      "demo_priority": 20,
+      "intent": "employee_count_by_department",
+      "route": "SQL",
+      "status": "ready_for_demo",
+      "question_examples": [
+        "کدام بخش بیشترین کارکنان را دارد؟",
+        "تعداد کارکنان هر واحد چقدر است؟",
+        "کارکنان به تفکیک دپارتمان را نشان بده"
+      ],
+      "main_view": "hr_mvp.vw_hr_employee_analytics",
+      "view_alias": "v",
+      "required_columns": [
+        "employee_id",
+        "department_name",
+        "is_active"
+      ],
+      "metrics": [
+        {
+          "name": "employee_count",
+          "title_fa": "تعداد کارکنان",
+          "expression": "COUNT(v.employee_id)",
+          "data_type": "number"
+        }
+      ],
+      "filters": [
+        {
+          "column": "is_active",
+          "operator": "=",
+          "value": true
+        }
+      ],
+      "group_by": [
+        "department_name"
+      ],
+      "optional_group_by": [],
+      "order_by": [
+        "employee_count DESC"
+      ],
+      "recommended_visualization": "horizontal_bar_chart_or_table",
+      "sql_template_id": "TPL_EMPLOYEE_COUNT_BY_DEPARTMENT",
+      "sql_template_variants": {},
+      "output_grain": "aggregated",
+      "privacy_level": "aggregated_non_sensitive",
+      "related_kpis": [
+        "KPI_DEPARTMENT_HEADCOUNT"
+      ],
+      "supported_roles": [
+        "hr_manager",
+        "hr_analyst",
+        "executive_viewer"
+      ],
+      "limitations_fa": [],
+      "notes_fa": [],
+      "tags": [
+        "organization",
+        "department"
+      ],
+      "validation_focus": [
+        "GROUP BY v.department_name",
+        "ORDER BY employee_count DESC"
+      ]
+    },
+    {
+      "report_id": "RPT_HR_023",
+      "title_fa": "تعداد کارکنان به تفکیک محل خدمت",
+      "description_fa": "نمایش تعداد کارکنان بر اساس محل خدمت در صورتی که site_name قابل اتکا باشد؛ در غیر این صورت استان ترجیح دارد.",
+      "category": "location",
+      "business_priority": "medium",
+      "demo_priority": 21,
+      "intent": "employee_count_by_work_location",
+      "route": "SQL",
+      "status": "partial_for_demo",
+      "question_examples": [
+        "کدام محل خدمت بیشترین نیرو را دارد؟",
+        "تعداد کارکنان به تفکیک محل خدمت چقدر است؟"
+      ],
+      "main_view": "hr_mvp.vw_hr_employee_analytics",
+      "view_alias": "v",
+      "required_columns": [
+        "employee_id",
+        "site_name",
+        "province",
+        "location_type",
+        "is_active"
+      ],
+      "metrics": [
+        {
+          "name": "employee_count",
+          "title_fa": "تعداد کارکنان",
+          "expression": "COUNT(v.employee_id)",
+          "data_type": "number"
+        }
+      ],
+      "filters": [
+        {
+          "column": "is_active",
+          "operator": "=",
+          "value": true
+        }
+      ],
+      "group_by": [
+        "site_name"
+      ],
+      "optional_group_by": [],
+      "order_by": [
+        "employee_count DESC"
+      ],
+      "recommended_visualization": "horizontal_bar_chart_or_table",
+      "sql_template_id": "TPL_EMPLOYEE_COUNT_BY_WORK_LOCATION",
+      "sql_template_variants": {},
+      "output_grain": "aggregated",
+      "privacy_level": "aggregated_non_sensitive",
+      "related_kpis": [
+        "KPI_WORK_LOCATION_HEADCOUNT"
+      ],
+      "supported_roles": [
+        "hr_manager",
+        "hr_analyst",
+        "executive_viewer"
+      ],
+      "limitations_fa": [
+        "در داده MVP فعلی، تحلیل استان قابل اعتمادتر از تحلیل شهر/سایت است."
+      ],
+      "notes_fa": [],
+      "tags": [
+        "location",
+        "work_location",
+        "partial"
+      ],
+      "validation_focus": [
+        "GROUP BY v.site_name",
+        "fallback_to_province_when_site_not_reliable"
+      ]
+    },
+    {
+      "report_id": "RPT_HR_024",
+      "title_fa": "سال بیشترین جذب",
+      "description_fa": "نمایش سال شمسی که بیشترین تعداد جذب در آن رخ داده است.",
+      "category": "hiring",
+      "business_priority": "medium",
+      "demo_priority": 22,
+      "intent": "most_or_least_hiring_year",
+      "route": "SQL",
+      "status": "ready_for_demo",
+      "question_examples": [
+        "سال بیشترین جذب کدام است؟",
+        "در چه سالی بیشترین نیرو جذب شده؟"
+      ],
+      "main_view": "hr_mvp.vw_hr_employee_analytics",
+      "view_alias": "v",
+      "required_columns": [
+        "employee_id",
+        "hire_year",
+        "is_active"
+      ],
+      "metrics": [
+        {
+          "name": "employee_count",
+          "title_fa": "تعداد جذب",
+          "expression": "COUNT(v.employee_id)",
+          "data_type": "number"
+        }
+      ],
+      "filters": [
+        {
+          "column": "is_active",
+          "operator": "=",
+          "value": true
+        }
+      ],
+      "group_by": [
+        "hire_year"
+      ],
+      "optional_group_by": [],
+      "order_by": [
+        "employee_count DESC",
+        "LIMIT 1"
+      ],
+      "recommended_visualization": "kpi_card_or_table",
+      "sql_template_id": "TPL_MOST_HIRING_YEAR",
+      "sql_template_variants": {},
+      "output_grain": "aggregated",
+      "privacy_level": "aggregated_non_sensitive",
+      "related_kpis": [
+        "KPI_MOST_HIRING_YEAR"
+      ],
+      "supported_roles": [
+        "hr_manager",
+        "hr_analyst",
+        "executive_viewer"
+      ],
+      "limitations_fa": [],
+      "notes_fa": [],
+      "tags": [
+        "hiring",
+        "top_1"
+      ],
+      "validation_focus": [
+        "GROUP BY v.hire_year",
+        "ORDER BY COUNT(v.employee_id) DESC",
+        "LIMIT 1",
+        "do_not_use_MAX(v.hire_year)"
+      ]
+    },
+    {
+      "report_id": "RPT_HR_025",
+      "title_fa": "سال کمترین جذب",
+      "description_fa": "نمایش سال شمسی که کمترین تعداد جذب در آن رخ داده است.",
+      "category": "hiring",
+      "business_priority": "medium",
+      "demo_priority": 23,
+      "intent": "most_or_least_hiring_year",
+      "route": "SQL",
+      "status": "ready_for_demo",
+      "question_examples": [
+        "سال کمترین جذب کدام است؟",
+        "در چه سالی کمترین نیرو جذب شده؟"
+      ],
+      "main_view": "hr_mvp.vw_hr_employee_analytics",
+      "view_alias": "v",
+      "required_columns": [
+        "employee_id",
+        "hire_year",
+        "is_active"
+      ],
+      "metrics": [
+        {
+          "name": "employee_count",
+          "title_fa": "تعداد جذب",
+          "expression": "COUNT(v.employee_id)",
+          "data_type": "number"
+        }
+      ],
+      "filters": [
+        {
+          "column": "is_active",
+          "operator": "=",
+          "value": true
+        }
+      ],
+      "group_by": [
+        "hire_year"
+      ],
+      "optional_group_by": [],
+      "order_by": [
+        "employee_count ASC",
+        "LIMIT 1"
+      ],
+      "recommended_visualization": "kpi_card_or_table",
+      "sql_template_id": "TPL_LEAST_HIRING_YEAR",
+      "sql_template_variants": {},
+      "output_grain": "aggregated",
+      "privacy_level": "aggregated_non_sensitive",
+      "related_kpis": [
+        "KPI_LEAST_HIRING_YEAR"
+      ],
+      "supported_roles": [
+        "hr_manager",
+        "hr_analyst",
+        "executive_viewer"
+      ],
+      "limitations_fa": [],
+      "notes_fa": [],
+      "tags": [
+        "hiring",
+        "bottom_1"
+      ],
+      "validation_focus": [
+        "GROUP BY v.hire_year",
+        "ORDER BY COUNT(v.employee_id) ASC",
+        "LIMIT 1",
+        "do_not_use_MIN(v.hire_year)"
+      ]
+    },
+    {
+      "report_id": "RPT_HR_026",
+      "title_fa": "نوع قرارداد جذب سال اخیر",
+      "description_fa": "نمایش توزیع نوع قرارداد برای جذب‌های سال جاری/اخیر بر اساس hire_year تزریق‌شده.",
+      "category": "hiring",
+      "business_priority": "medium",
+      "demo_priority": 24,
+      "intent": "hiring_by_contract_type_recent_year",
+      "route": "SQL",
+      "status": "partial_for_demo",
+      "question_examples": [
+        "نوع قراردادهای جذب سال اخیر چقدر بوده است؟",
+        "در سال اخیر در هر نوع قرارداد چند نفر جذب شده‌اند؟"
+      ],
+      "main_view": "hr_mvp.vw_hr_employee_analytics",
+      "view_alias": "v",
+      "required_columns": [
+        "employee_id",
+        "hire_year",
+        "contract_type",
+        "is_active"
+      ],
+      "metrics": [
+        {
+          "name": "employee_count",
+          "title_fa": "تعداد جذب",
+          "expression": "COUNT(v.employee_id)",
+          "data_type": "number"
+        }
+      ],
+      "filters": [
+        {
+          "column": "is_active",
+          "operator": "=",
+          "value": true
+        },
+        {
+          "column": "hire_year",
+          "operator": "=",
+          "value": "{current_shamsi_year}"
+        }
+      ],
+      "group_by": [
+        "contract_type"
+      ],
+      "optional_group_by": [],
+      "order_by": [
+        "employee_count DESC"
+      ],
+      "recommended_visualization": "horizontal_bar_chart_or_table",
+      "sql_template_id": "TPL_HIRING_BY_CONTRACT_TYPE_RECENT_YEAR",
+      "sql_template_variants": {},
+      "output_grain": "aggregated",
+      "privacy_level": "aggregated_non_sensitive",
+      "related_kpis": [
+        "KPI_RECENT_HIRING_BY_CONTRACT_TYPE"
+      ],
+      "supported_roles": [
+        "hr_manager",
+        "hr_analyst",
+        "executive_viewer"
+      ],
+      "limitations_fa": [],
+      "notes_fa": [
+        "تعریف «سال اخیر» باید از سمت برنامه به {current_shamsi_year} یا بازه مشخص تبدیل شود."
+      ],
+      "tags": [
+        "hiring",
+        "contract_type",
+        "partial"
+      ],
+      "validation_focus": [
+        "v.hire_year = {current_shamsi_year}",
+        "GROUP BY v.contract_type"
+      ]
+    },
+    {
+      "report_id": "RPT_HR_027",
+      "title_fa": "میانگین سابقه کارکنان",
+      "description_fa": "نمایش میانگین سنوات خدمت کارکنان فعال.",
+      "category": "service_years",
+      "business_priority": "medium",
+      "demo_priority": 25,
+      "intent": "average_service_years",
+      "route": "SQL",
+      "status": "ready_for_demo",
+      "question_examples": [
+        "میانگین سابقه کارکنان چقدر است؟",
+        "متوسط سنوات خدمت کارکنان چند سال است؟"
+      ],
+      "main_view": "hr_mvp.vw_hr_employee_analytics",
+      "view_alias": "v",
+      "required_columns": [
+        "employee_id",
+        "service_years",
+        "is_active"
+      ],
+      "metrics": [
+        {
+          "name": "average_service_years",
+          "title_fa": "میانگین سابقه",
+          "expression": "ROUND(AVG(v.service_years), 2)",
+          "data_type": "number"
+        }
+      ],
+      "filters": [
+        {
+          "column": "is_active",
+          "operator": "=",
+          "value": true
+        }
+      ],
+      "group_by": [],
+      "optional_group_by": [
+        "gender",
+        "service_domain",
+        "department_name",
+        "province"
+      ],
+      "order_by": [],
+      "recommended_visualization": "kpi_card_or_bar_chart",
+      "sql_template_id": "TPL_AVERAGE_SERVICE_YEARS",
+      "sql_template_variants": {},
+      "output_grain": "aggregated",
+      "privacy_level": "aggregated_non_sensitive",
+      "related_kpis": [
+        "KPI_AVERAGE_SERVICE_YEARS"
+      ],
+      "supported_roles": [
+        "hr_manager",
+        "hr_analyst",
+        "executive_viewer"
+      ],
+      "limitations_fa": [],
+      "notes_fa": [],
+      "tags": [
+        "service_years",
+        "average"
+      ],
+      "validation_focus": [
+        "ROUND(AVG(v.service_years), 2)"
+      ]
+    },
+    {
+      "report_id": "RPT_HR_028",
+      "title_fa": "تعداد کارکنان بدون سابقه",
+      "description_fa": "نمایش تعداد کارکنانی که سابقه آن‌ها صفر یا بدون سابقه محاسبه شده است.",
+      "category": "service_years",
+      "business_priority": "medium",
+      "demo_priority": 26,
+      "intent": "employee_count_without_service_years",
+      "route": "SQL",
+      "status": "ready_for_demo",
+      "question_examples": [
+        "تعداد کارکنان بدون سابقه چقدر است؟",
+        "چند نفر سابقه صفر دارند؟"
+      ],
+      "main_view": "hr_mvp.vw_hr_employee_analytics",
+      "view_alias": "v",
+      "required_columns": [
+        "employee_id",
+        "service_years",
+        "is_active"
+      ],
+      "metrics": [
+        {
+          "name": "employee_count",
+          "title_fa": "تعداد کارکنان",
+          "expression": "COUNT(v.employee_id)",
+          "data_type": "number"
+        }
+      ],
+      "filters": [
+        {
+          "column": "is_active",
+          "operator": "=",
+          "value": true
+        },
+        {
+          "column": "service_years",
+          "operator": "=",
+          "value": 0
+        }
+      ],
+      "group_by": [],
+      "optional_group_by": [],
+      "order_by": [],
+      "recommended_visualization": "kpi_card",
+      "sql_template_id": "TPL_EMPLOYEE_COUNT_WITHOUT_SERVICE_YEARS",
+      "sql_template_variants": {},
+      "output_grain": "aggregated",
+      "privacy_level": "aggregated_non_sensitive",
+      "related_kpis": [
+        "KPI_ZERO_SERVICE_YEARS_COUNT"
+      ],
+      "supported_roles": [
+        "hr_manager",
+        "hr_analyst",
+        "executive_viewer"
+      ],
+      "limitations_fa": [],
+      "notes_fa": [],
+      "tags": [
+        "service_years",
+        "zero"
+      ],
+      "validation_focus": [
+        "v.service_years = 0"
+      ]
+    },
+    {
+      "report_id": "RPT_HR_029",
+      "title_fa": "تعداد کارکنان به تفکیک وضعیت تأهل",
+      "description_fa": "نمایش توزیع کارکنان بر اساس وضعیت تأهل به‌صورت تجمیعی.",
+      "category": "demographics",
+      "business_priority": "medium",
+      "demo_priority": 27,
+      "intent": "employee_count_by_marital_status",
+      "route": "SQL",
+      "status": "ready_for_demo",
+      "question_examples": [
+        "تعداد کارکنان به تفکیک وضعیت تأهل چقدر است؟",
+        "چند نفر مجرد و چند نفر متأهل هستند؟"
+      ],
+      "main_view": "hr_mvp.vw_hr_employee_analytics",
+      "view_alias": "v",
+      "required_columns": [
+        "employee_id",
+        "marital_status",
+        "is_active"
+      ],
+      "metrics": [
+        {
+          "name": "employee_count",
+          "title_fa": "تعداد کارکنان",
+          "expression": "COUNT(v.employee_id)",
+          "data_type": "number"
+        }
+      ],
+      "filters": [
+        {
+          "column": "is_active",
+          "operator": "=",
+          "value": true
+        }
+      ],
+      "group_by": [
+        "marital_status"
+      ],
+      "optional_group_by": [],
+      "order_by": [],
+      "recommended_visualization": "bar_chart_or_table",
+      "sql_template_id": "TPL_EMPLOYEE_COUNT_BY_MARITAL_STATUS",
+      "sql_template_variants": {},
+      "output_grain": "aggregated",
+      "privacy_level": "aggregated_non_sensitive",
+      "related_kpis": [
+        "KPI_MARITAL_STATUS_DISTRIBUTION"
+      ],
+      "supported_roles": [
+        "hr_manager",
+        "hr_analyst",
+        "executive_viewer"
+      ],
+      "limitations_fa": [],
+      "notes_fa": [],
+      "tags": [
+        "demographics",
+        "marital_status"
+      ],
+      "validation_focus": [
+        "GROUP BY v.marital_status",
+        "aggregated_only"
+      ]
+    },
+    {
+      "report_id": "RPT_HR_030",
+      "title_fa": "توزیع جنسیت در گروه‌های سنی",
+      "description_fa": "نمایش تعداد زن و مرد در هر گروه سنی یا بازه سنی.",
+      "category": "gender_age",
+      "business_priority": "medium",
+      "demo_priority": 28,
+      "intent": "employee_count_by_gender_age_filter",
+      "route": "SQL",
+      "status": "ready_for_demo",
+      "question_examples": [
+        "در بازه‌های سنی چند مرد حضور دارند؟",
+        "در بازه‌های سنی چند زن حضور دارند؟",
+        "آیا توزیع جنسیتی در گروه‌های سنی نامتوازن است؟"
+      ],
+      "main_view": "hr_mvp.vw_hr_employee_analytics",
+      "view_alias": "v",
+      "required_columns": [
+        "employee_id",
+        "gender",
+        "age",
+        "age_group_title",
+        "is_active"
+      ],
+      "metrics": [
+        {
+          "name": "employee_count",
+          "title_fa": "تعداد کارکنان",
+          "expression": "COUNT(v.employee_id)",
+          "data_type": "number"
+        }
+      ],
+      "filters": [
+        {
+          "column": "is_active",
+          "operator": "=",
+          "value": true
+        }
+      ],
+      "group_by": [
+        "age_group_title",
+        "gender"
+      ],
+      "optional_group_by": [],
+      "order_by": [
+        "MIN(v.age) ASC",
+        "gender ASC"
+      ],
+      "recommended_visualization": "stacked_bar_chart_or_table",
+      "sql_template_id": "TPL_GENDER_BY_AGE_GROUP",
+      "sql_template_variants": {},
+      "output_grain": "aggregated",
+      "privacy_level": "aggregated_non_sensitive",
+      "related_kpis": [
+        "KPI_GENDER_AGE_DISTRIBUTION"
+      ],
+      "supported_roles": [
+        "hr_manager",
+        "hr_analyst",
+        "executive_viewer"
+      ],
+      "limitations_fa": [],
+      "notes_fa": [],
+      "tags": [
+        "gender",
+        "age",
+        "cross_tab"
+      ],
+      "validation_focus": [
+        "GROUP BY v.age_group_title, v.gender",
+        "ORDER BY MIN(v.age) ASC"
+      ]
+    },
+    {
+      "report_id": "RPT_HR_014",
+      "title_fa": "تحلیل آستانه بازنشستگی",
+      "description_fa": "تحلیل کارکنان نزدیک به بازنشستگی بر اساس قانون رسمی بازنشستگی.",
+      "category": "retirement",
+      "business_priority": "medium",
+      "demo_priority": 97,
+      "intent": "near_retirement_analysis",
+      "route": "GAP",
+      "status": "data_gap",
+      "question_examples": [
+        "چند نفر در آستانه بازنشستگی هستند؟",
+        "آیا نیروی انسانی نزدیک بازنشستگی زیاد است؟",
+        "چه تعداد نیرو به زودی بازنشسته می‌شوند؟"
+      ],
+      "main_view": "hr_mvp.vw_hr_employee_analytics",
+      "view_alias": "v",
+      "required_columns": [
+        "age",
+        "service_years",
+        "gender"
+      ],
+      "metrics": [],
+      "filters": [],
+      "group_by": [],
+      "optional_group_by": [],
+      "order_by": [],
+      "recommended_visualization": "status_message",
+      "sql_template_id": null,
+      "sql_template_variants": {},
+      "output_grain": "aggregated",
+      "privacy_level": "aggregated_non_sensitive",
+      "related_kpis": [],
+      "supported_roles": [
+        "hr_manager",
+        "hr_analyst",
+        "executive_viewer"
+      ],
+      "limitations_fa": [],
+      "notes_fa": [],
+      "tags": [
+        "gap",
+        "retirement"
+      ],
+      "validation_focus": [
+        "return_SELECT_DATA_GAP_status",
+        "do_not_guess_retirement_rule"
+      ],
+      "gap_reason_fa": "قانون رسمی بازنشستگی در Metadata فعلی تعریف نشده است؛ این قانون ممکن است به سن، سابقه، جنسیت و قواعد سازمانی وابسته باشد.",
+      "recommended_response_fa": "برای پاسخ دقیق، باید قانون بازنشستگی بر اساس سن، سابقه، جنسیت و قواعد سازمانی مشخص و در Metadata ثبت شود.",
+      "expected_status": "DATA_GAP"
+    },
+    {
+      "report_id": "RPT_HR_013",
+      "title_fa": "تحلیل سطح شهر",
+      "description_fa": "تحلیل کارکنان در سطح شهر.",
+      "category": "location",
+      "business_priority": "low",
+      "demo_priority": 98,
+      "intent": "city_level_analysis",
+      "route": "GAP",
+      "status": "data_gap",
+      "question_examples": [
+        "تعداد کارکنان هر شهر چقدر است؟",
+        "کدام شهر بیشترین نیرو را دارد؟",
+        "توزیع نیرو در شهرها چگونه است؟"
+      ],
+      "main_view": "hr_mvp.vw_hr_employee_analytics",
+      "view_alias": "v",
+      "required_columns": [
+        "city"
+      ],
+      "metrics": [],
+      "filters": [],
+      "group_by": [],
+      "optional_group_by": [],
+      "order_by": [],
+      "recommended_visualization": "status_message",
+      "sql_template_id": null,
+      "sql_template_variants": {},
+      "output_grain": "aggregated",
+      "privacy_level": "aggregated_non_sensitive",
+      "related_kpis": [],
+      "supported_roles": [
+        "hr_manager",
+        "hr_analyst",
+        "executive_viewer"
+      ],
+      "limitations_fa": [],
+      "notes_fa": [],
+      "tags": [
+        "gap",
+        "location",
+        "city"
+      ],
+      "validation_focus": [
+        "return_SELECT_DATA_GAP_status",
+        "do_not_group_by_city_in_current_mvp"
+      ],
+      "gap_reason_fa": "در داده MVP فعلی، اطلاعات شهر قابل اتکا نیست؛ تحلیل استان مجاز است اما تحلیل شهر باید Data Gap شود.",
+      "recommended_response_fa": "این سؤال مرتبط است، اما داده شهر در نسخه فعلی قابل اتکا نیست. برای پاسخ دقیق باید داده شهر/سایت کامل و استاندارد شود.",
+      "expected_status": "DATA_GAP"
+    },
+    {
+      "report_id": "RPT_HR_031",
+      "title_fa": "تحلیل سالخوردگی نیروی انسانی",
+      "description_fa": "تحلیل اینکه آیا ساختار کلی کارکنان به سمت سالخوردگی در حال حرکت است یا خیر.",
+      "category": "analytical",
+      "business_priority": "medium",
+      "demo_priority": 99,
+      "intent": "workforce_aging_trend_analysis",
+      "route": "GAP",
+      "status": "data_gap",
+      "question_examples": [
+        "آیا ساختار کلی کارکنان به سمت سالخوردگی در حال حرکت است؟",
+        "آیا نیروی انسانی سازمان پیر شده است؟"
+      ],
+      "main_view": "hr_mvp.vw_hr_employee_analytics",
+      "view_alias": "v",
+      "required_columns": [
+        "age",
+        "age_group_title",
+        "hire_year"
+      ],
+      "metrics": [],
+      "filters": [],
+      "group_by": [],
+      "optional_group_by": [],
+      "order_by": [],
+      "recommended_visualization": "status_message",
+      "sql_template_id": null,
+      "sql_template_variants": {},
+      "output_grain": "aggregated",
+      "privacy_level": "aggregated_non_sensitive",
+      "related_kpis": [],
+      "supported_roles": [
+        "hr_manager",
+        "hr_analyst",
+        "executive_viewer"
+      ],
+      "limitations_fa": [],
+      "notes_fa": [],
+      "tags": [
+        "gap",
+        "analytics",
+        "aging"
+      ],
+      "validation_focus": [
+        "do_not_fake_management_analysis"
+      ],
+      "gap_reason_fa": "برای تحلیل روند سالخوردگی، صرف Snapshot فعلی کافی نیست و به داده تاریخی/تعریف شاخص روند نیاز داریم.",
+      "recommended_response_fa": "این سؤال مرتبط است، اما برای تحلیل قابل دفاع باید داده تاریخی یا تعریف شاخص سالخوردگی نیروی انسانی اضافه شود.",
+      "expected_status": "DATA_GAP"
+    },
+    {
+      "report_id": "RPT_HR_032",
+      "title_fa": "تحلیل نیاز آموزشی از روی ترکیب تحصیلات",
+      "description_fa": "بررسی اینکه آیا توزیع تحصیلات نشان‌دهنده نیاز به آموزش یا دوره تخصصی است.",
+      "category": "analytical",
+      "business_priority": "medium",
+      "demo_priority": 99,
+      "intent": "education_training_need_analysis",
+      "route": "GAP",
+      "status": "data_gap",
+      "question_examples": [
+        "آیا توزیع تحصیلات نشان‌دهنده احتمال افزایش نیاز به آموزش است؟",
+        "آیا ترکیب تحصیلات نشان‌دهنده نیاز آموزشی است؟"
+      ],
+      "main_view": "hr_mvp.vw_hr_employee_analytics",
+      "view_alias": "v",
+      "required_columns": [
+        "education_title",
+        "education_rank",
+        "position_title",
+        "min_education_rank"
+      ],
+      "metrics": [],
+      "filters": [],
+      "group_by": [],
+      "optional_group_by": [],
+      "order_by": [],
+      "recommended_visualization": "status_message",
+      "sql_template_id": null,
+      "sql_template_variants": {},
+      "output_grain": "aggregated",
+      "privacy_level": "aggregated_non_sensitive",
+      "related_kpis": [],
+      "supported_roles": [
+        "hr_manager",
+        "hr_analyst",
+        "executive_viewer"
+      ],
+      "limitations_fa": [],
+      "notes_fa": [],
+      "tags": [
+        "gap",
+        "education",
+        "training"
+      ],
+      "validation_focus": [
+        "do_not_overinterpret_education_distribution"
+      ],
+      "gap_reason_fa": "برای نتیجه‌گیری آموزشی، علاوه بر ترکیب تحصیلات به سیاست آموزشی، نیازمندی شغلی و شاخص مهارت نیاز است.",
+      "recommended_response_fa": "این سؤال مرتبط است، اما برای پاسخ مدیریتی دقیق باید سیاست آموزشی، مهارت‌های موردنیاز و شاخص نیاز آموزشی به Metadata/RAG اضافه شود.",
+      "expected_status": "DATA_GAP"
+    },
+    {
+      "report_id": "RPT_HR_033",
+      "title_fa": "تحلیل تعادل نیروی انسانی بین بخش‌ها",
+      "description_fa": "بررسی متوازن بودن نیروی انسانی بین بخش‌ها و واحدها.",
+      "category": "analytical",
+      "business_priority": "medium",
+      "demo_priority": 99,
+      "intent": "department_balance_analysis",
+      "route": "GAP",
+      "status": "data_gap",
+      "question_examples": [
+        "آیا نیروی انسانی بین بخش‌ها متوازن است؟",
+        "آیا تعادل بین چارت سازمانی و واقعیت نیروی انسانی برقرار است؟"
+      ],
+      "main_view": "hr_mvp.vw_hr_employee_analytics",
+      "view_alias": "v",
+      "required_columns": [
+        "department_name",
+        "department_approved_headcount",
+        "employee_id"
+      ],
+      "metrics": [],
+      "filters": [],
+      "group_by": [],
+      "optional_group_by": [],
+      "order_by": [],
+      "recommended_visualization": "status_message",
+      "sql_template_id": null,
+      "sql_template_variants": {},
+      "output_grain": "aggregated",
+      "privacy_level": "aggregated_non_sensitive",
+      "related_kpis": [],
+      "supported_roles": [
+        "hr_manager",
+        "hr_analyst",
+        "executive_viewer"
+      ],
+      "limitations_fa": [],
+      "notes_fa": [],
+      "tags": [
+        "gap",
+        "organization",
+        "balance"
+      ],
+      "validation_focus": [
+        "avoid_unjustified_balance_claim"
+      ],
+      "gap_reason_fa": "گزارش اختلاف چارت قابل محاسبه است، اما قضاوت درباره تعادل سازمانی نیازمند تعریف شاخص مدیریتی و آستانه‌های قابل قبول است.",
+      "recommended_response_fa": "برای پاسخ تحلیلی باید معیار تعادل، آستانه کمبود/مازاد و سطح تحلیل سازمانی تعریف شود. در MVP فقط اختلاف چارت در سطح دپارتمان قابل گزارش است.",
+      "expected_status": "DATA_GAP"
+    },
+    {
+      "report_id": "RPT_HR_034",
+      "title_fa": "تحلیل بهره‌وری پیمانکارها",
+      "description_fa": "بررسی بهره‌وری یا ریسک عملکردی نیروهای پیمانکاری.",
+      "category": "contractor",
+      "business_priority": "medium",
+      "demo_priority": 99,
+      "intent": "contractor_productivity_analysis",
+      "route": "GAP",
+      "status": "data_gap",
+      "question_examples": [
+        "آیا بهره‌وری پیمانکارها مناسب است؟",
+        "سهم پیمانکاری چه ریسکی در بهره‌وری ایجاد می‌کند؟"
+      ],
+      "main_view": "hr_mvp.vw_hr_employee_analytics",
+      "view_alias": "v",
+      "required_columns": [
+        "is_contractor"
+      ],
+      "metrics": [],
+      "filters": [],
+      "group_by": [],
+      "optional_group_by": [],
+      "order_by": [],
+      "recommended_visualization": "status_message",
+      "sql_template_id": null,
+      "sql_template_variants": {},
+      "output_grain": "aggregated",
+      "privacy_level": "aggregated_non_sensitive",
+      "related_kpis": [],
+      "supported_roles": [
+        "hr_manager",
+        "hr_analyst",
+        "executive_viewer"
+      ],
+      "limitations_fa": [],
+      "notes_fa": [],
+      "tags": [
+        "gap",
+        "contractor",
+        "productivity"
+      ],
+      "validation_focus": [
+        "do_not_claim_productivity_without_data"
+      ],
+      "gap_reason_fa": "داده بهره‌وری، عملکرد، خروجی کار، هزینه یا SLA پیمانکارها در MVP فعلی وجود ندارد.",
+      "recommended_response_fa": "این سؤال مرتبط است، اما داده بهره‌وری یا شاخص عملکرد پیمانکارها در MVP فعلی وجود ندارد و باید به عنوان Data Gap ثبت شود.",
+      "expected_status": "DATA_GAP"
+    },
+    {
+      "report_id": "RPT_HR_035",
+      "title_fa": "تحلیل اثر نوع استخدام بر ثبات سازمان",
+      "description_fa": "تحلیل اینکه ترکیب رسمی، پیمانی، قراردادی و پیمانکاری چه اثری بر ثبات سازمان دارد.",
+      "category": "analytical",
+      "business_priority": "medium",
+      "demo_priority": 99,
+      "intent": "employment_stability_impact_analysis",
+      "route": "GAP",
+      "status": "data_gap",
+      "question_examples": [
+        "سهم کارکنان رسمی و پیمانی چگونه بر ثبات سازمان تأثیر می‌گذارد؟",
+        "آیا ترکیب نوع استخدام برای ثبات سازمان ریسک دارد؟"
+      ],
+      "main_view": "hr_mvp.vw_hr_employee_analytics",
+      "view_alias": "v",
+      "required_columns": [
+        "employment_type",
+        "contract_type",
+        "is_contractor"
+      ],
+      "metrics": [],
+      "filters": [],
+      "group_by": [],
+      "optional_group_by": [],
+      "order_by": [],
+      "recommended_visualization": "status_message",
+      "sql_template_id": null,
+      "sql_template_variants": {},
+      "output_grain": "aggregated",
+      "privacy_level": "aggregated_non_sensitive",
+      "related_kpis": [],
+      "supported_roles": [
+        "hr_manager",
+        "hr_analyst",
+        "executive_viewer"
+      ],
+      "limitations_fa": [],
+      "notes_fa": [],
+      "tags": [
+        "gap",
+        "employment",
+        "stability"
+      ],
+      "validation_focus": [
+        "do_not_infer_stability_without_defined_kpi"
+      ],
+      "gap_reason_fa": "آمار نوع استخدام قابل محاسبه است، اما تحلیل اثر بر ثبات نیازمند تعریف شاخص ثبات، نرخ ترک خدمت، جابه‌جایی یا اسناد سیاستی است.",
+      "recommended_response_fa": "در MVP می‌توان توزیع نوع استخدام را گزارش کرد، اما برای تحلیل اثر بر ثبات باید شاخص ثبات سازمانی و داده‌های ترک خدمت/جابه‌جایی اضافه شود.",
+      "expected_status": "DATA_GAP"
+    },
+    {
+      "report_id": "RPT_HR_036",
+      "title_fa": "تحلیل هماهنگی جذب با رشد کار سازمان",
+      "description_fa": "بررسی اینکه آیا جذب نیرو با افزایش حجم کار سازمان هماهنگ بوده است یا خیر.",
+      "category": "hiring",
+      "business_priority": "medium",
+      "demo_priority": 99,
+      "intent": "hiring_business_growth_alignment",
+      "route": "GAP",
+      "status": "data_gap",
+      "question_examples": [
+        "آیا جذب نیرو با افزایش کار سازمان هماهنگ بوده؟",
+        "آیا روند جذب متناسب با رشد سازمان است؟"
+      ],
+      "main_view": "hr_mvp.vw_hr_employee_analytics",
+      "view_alias": "v",
+      "required_columns": [
+        "hire_year"
+      ],
+      "metrics": [],
+      "filters": [],
+      "group_by": [],
+      "optional_group_by": [],
+      "order_by": [],
+      "recommended_visualization": "status_message",
+      "sql_template_id": null,
+      "sql_template_variants": {},
+      "output_grain": "aggregated",
+      "privacy_level": "aggregated_non_sensitive",
+      "related_kpis": [],
+      "supported_roles": [
+        "hr_manager",
+        "hr_analyst",
+        "executive_viewer"
+      ],
+      "limitations_fa": [],
+      "notes_fa": [],
+      "tags": [
+        "gap",
+        "hiring",
+        "business_growth"
+      ],
+      "validation_focus": [
+        "do_not_compare_hiring_to_growth_without_growth_data"
+      ],
+      "gap_reason_fa": "برای تحلیل هماهنگی جذب با رشد کار، داده حجم کار، پروژه‌ها، درآمد، تعداد خدمت یا شاخص عملیات لازم است که در MVP فعلی وجود ندارد.",
+      "recommended_response_fa": "روند جذب قابل گزارش است، اما برای مقایسه با رشد کار سازمان باید شاخص حجم کار یا رشد عملیات به داده‌ها اضافه شود.",
+      "expected_status": "DATA_GAP"
+    },
+    {
+      "report_id": "RPT_HR_037",
+      "title_fa": "درخواست اطلاعات فردی کارکنان",
+      "description_fa": "هر نوع درخواست نمایش نام، کد ملی، شماره پرسنلی یا مشخصات فردی باید رد شود.",
+      "category": "security",
+      "business_priority": "high",
+      "demo_priority": 100,
+      "intent": "individual_employee_info",
+      "route": "REJECT",
+      "status": "access_denied",
+      "question_examples": [
+        "نام و مشخصات کارکنان را نمایش بده",
+        "لیست کد ملی کارکنان را بده",
+        "مشخصات افراد زیر ۳۰ سال را بده"
+      ],
+      "main_view": "hr_mvp.vw_hr_employee_analytics",
+      "view_alias": "v",
+      "required_columns": [],
+      "metrics": [],
+      "filters": [],
+      "group_by": [],
+      "optional_group_by": [],
+      "order_by": [],
+      "recommended_visualization": "status_message",
+      "sql_template_id": "TPL_ACCESS_DENIED",
+      "sql_template_variants": {},
+      "output_grain": "aggregated",
+      "privacy_level": "aggregated_non_sensitive",
+      "related_kpis": [],
+      "supported_roles": [
+        "hr_manager",
+        "hr_analyst",
+        "executive_viewer"
+      ],
+      "limitations_fa": [],
+      "notes_fa": [],
+      "tags": [
+        "reject",
+        "privacy",
+        "security"
+      ],
+      "validation_focus": [
+        "return_SELECT_ACCESS_DENIED_status",
+        "do_not_expose_employee_level_rows"
+      ],
+      "recommended_response_fa": "امکان نمایش اطلاعات فردی یا شناسه‌های شخصی کارکنان وجود ندارد. فقط گزارش‌های تجمیعی قابل ارائه است.",
+      "expected_status": "ACCESS_DENIED"
+    },
+    {
+      "report_id": "RPT_HR_038",
+      "title_fa": "سؤال خارج از دامنه منابع انسانی",
+      "description_fa": "درخواست‌هایی که به منابع انسانی مرتبط نیستند باید رد شوند.",
+      "category": "security",
+      "business_priority": "medium",
+      "demo_priority": 101,
+      "intent": "out_of_scope",
+      "route": "REJECT",
+      "status": "out_of_scope",
+      "question_examples": [
+        "فروش ماه گذشته شرکت چقدر بوده؟",
+        "درآمد شعبه‌ها چقدر است؟",
+        "وضعیت موجودی انبار را بگو"
+      ],
+      "main_view": "hr_mvp.vw_hr_employee_analytics",
+      "view_alias": "v",
+      "required_columns": [],
+      "metrics": [],
+      "filters": [],
+      "group_by": [],
+      "optional_group_by": [],
+      "order_by": [],
+      "recommended_visualization": "status_message",
+      "sql_template_id": "TPL_OUT_OF_SCOPE",
+      "sql_template_variants": {},
+      "output_grain": "aggregated",
+      "privacy_level": "aggregated_non_sensitive",
+      "related_kpis": [],
+      "supported_roles": [
+        "hr_manager",
+        "hr_analyst",
+        "executive_viewer"
+      ],
+      "limitations_fa": [],
+      "notes_fa": [],
+      "tags": [
+        "reject",
+        "out_of_scope"
+      ],
+      "validation_focus": [
+        "route_REJECT",
+        "do_not_generate_sql"
+      ],
+      "recommended_response_fa": "این سؤال خارج از دامنه منابع انسانی است و در محدوده HR BI Assistant پاسخ داده نمی‌شود.",
+      "expected_status": "OUT_OF_SCOPE"
+    },
+    {
+      "report_id": "RPT_HR_039",
+      "title_fa": "سؤال مبهم منابع انسانی",
+      "description_fa": "سؤال‌های HR که شاخص، بازه، سطح تحلیل یا فیلتر آن‌ها مبهم است باید شفاف‌سازی شوند.",
+      "category": "clarification",
+      "business_priority": "medium",
+      "demo_priority": 102,
+      "intent": "ambiguous_hr_question",
+      "route": "REJECT",
+      "status": "needs_clarification",
+      "question_examples": [
+        "وضعیت نیروها چطور است؟",
+        "منابع انسانی را تحلیل کن",
+        "کدام بخش مشکل دارد؟"
+      ],
+      "main_view": "hr_mvp.vw_hr_employee_analytics",
+      "view_alias": "v",
+      "required_columns": [],
+      "metrics": [],
+      "filters": [],
+      "group_by": [],
+      "optional_group_by": [],
+      "order_by": [],
+      "recommended_visualization": "status_message",
+      "sql_template_id": "TPL_NEEDS_CLARIFICATION",
+      "sql_template_variants": {},
+      "output_grain": "aggregated",
+      "privacy_level": "aggregated_non_sensitive",
+      "related_kpis": [],
+      "supported_roles": [
+        "hr_manager",
+        "hr_analyst",
+        "executive_viewer"
+      ],
+      "limitations_fa": [],
+      "notes_fa": [],
+      "tags": [
+        "clarification",
+        "reject"
+      ],
+      "validation_focus": [
+        "ask_clarifying_question",
+        "do_not_generate_guess_sql"
+      ],
+      "recommended_response_fa": "سؤال شما مرتبط است، اما برای پاسخ دقیق باید شاخص یا سطح تحلیل مشخص شود؛ مثلاً تعداد کارکنان، سن، تحصیلات، نوع استخدام، حوزه یا استان.",
+      "expected_status": "NEEDS_CLARIFICATION"
+    },
+    {
+      "report_id": "RPT_HR_040",
+      "title_fa": "سهم پیمانکاری به تفکیک بخش یا واحد",
+      "description": "نمایش تعداد و درصد نیروهای پیمانکاری در هر بخش/واحد/دپارتمان.",
+      "business_priority": "medium",
+      "demo_priority": 40,
+      "intent": "contractor_share_by_department",
+      "route": "SQL",
+      "question_examples": [
+        "سهم پیمانکاری در هر بخش چند درصد است؟",
+        "در هر واحد چند نفر پیمانکاری داریم؟"
+      ],
+      "required_columns": [
+        "employee_id",
+        "department_name",
+        "is_contractor",
+        "is_active"
+      ],
+      "metrics": [
+        {
+          "name": "contractor_count",
+          "title_fa": "تعداد نیروهای پیمانکاری",
+          "expression": "SUM(CASE WHEN v.is_contractor = TRUE THEN 1 ELSE 0 END)"
+        },
+        {
+          "name": "contractor_percentage",
+          "title_fa": "درصد پیمانکاری",
+          "expression": "ROUND(SUM(CASE WHEN v.is_contractor = TRUE THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(v.employee_id), 0), 2)"
+        }
+      ],
+      "group_by": [
+        "department_name"
+      ],
+      "recommended_visualization": "horizontal_bar_chart",
+      "sql_template_id": "TPL_CONTRACTOR_SHARE_BY_DEPARTMENT",
+      "status": "ready_for_demo"
+    },
+    {
+      "report_id": "RPT_HR_041",
+      "title_fa": "اختلاف نیروی موجود با چارت مصوب به تفکیک حوزه",
+      "description": "محاسبه اختلاف نیروی موجود با چارت مصوب در سطح حوزه خدمت با تجمیع صحیح دپارتمان‌ها.",
+      "business_priority": "medium",
+      "demo_priority": 41,
+      "intent": "headcount_gap_by_service_domain",
+      "route": "SQL",
+      "question_examples": [
+        "کمبود نیرو به تفکیک حوزه چقدر است؟",
+        "اختلاف چارت مصوب در هر حوزه را نشان بده"
+      ],
+      "required_columns": [
+        "employee_id",
+        "department_id",
+        "department_name",
+        "service_domain",
+        "department_approved_headcount",
+        "is_active"
+      ],
+      "metrics": [
+        {
+          "name": "actual_headcount",
+          "title_fa": "نیروی موجود",
+          "expression": "SUM(actual_headcount)"
+        },
+        {
+          "name": "approved_headcount",
+          "title_fa": "چارت مصوب",
+          "expression": "SUM(approved_headcount)"
+        },
+        {
+          "name": "headcount_gap",
+          "title_fa": "اختلاف نیرو",
+          "expression": "SUM(approved_headcount) - SUM(actual_headcount)"
+        }
+      ],
+      "group_by": [
+        "service_domain"
+      ],
+      "recommended_visualization": "table",
+      "sql_template_id": "TPL_HEADCOUNT_GAP_BY_SERVICE_DOMAIN",
+      "status": "partial_for_demo",
+      "notes": "ابتدا باید در سطح دپارتمان تجمیع شود تا چارت مصوب روی ردیف‌های کارکنان تکرار نشود."
+    },
+    {
+      "report_id": "RPT_HR_042",
+      "title_fa": "توزیع تحصیلات به تفکیک حوزه خدمت",
+      "description": "نمایش مدرک تحصیلی کارکنان در هر حوزه خدمت.",
+      "business_priority": "medium",
+      "demo_priority": 42,
+      "intent": "education_distribution_by_service_domain",
+      "route": "SQL",
+      "question_examples": [
+        "توزیع تحصیلات در هر حوزه چگونه است؟",
+        "مدرک تحصیلی به تفکیک حوزه را نشان بده"
+      ],
+      "required_columns": [
+        "employee_id",
+        "service_domain",
+        "education_title",
+        "education_rank",
+        "is_active"
+      ],
+      "metrics": [
+        {
+          "name": "employee_count",
+          "title_fa": "تعداد کارکنان",
+          "expression": "COUNT(v.employee_id)"
+        }
+      ],
+      "group_by": [
+        "service_domain",
+        "education_title"
+      ],
+      "recommended_visualization": "table",
+      "sql_template_id": "TPL_EDUCATION_BY_SERVICE_DOMAIN",
+      "status": "partial_for_demo"
+    },
+    {
+      "report_id": "RPT_HR_043",
+      "title_fa": "روند جذب ماهانه",
+      "description": "تحلیل جذب در سطح ماه؛ در MVP فعلی به دلیل نبود داده/تقویم ماهانه قابل اتکا Data Gap است.",
+      "business_priority": "medium",
+      "demo_priority": 99,
+      "intent": "monthly_hiring_trend",
+      "route": "GAP",
+      "question_examples": [
+        "روند جذب ماهانه چگونه است؟",
+        "در هر ماه چند نفر جذب شده‌اند؟"
+      ],
+      "status": "data_gap",
+      "gap_reason": "در داده MVP فعلی ستون ماه شمسی/تقویم کامل برای تحلیل ماهانه آماده نیست.",
+      "recommended_response": "این سؤال مرتبط است، اما برای پاسخ دقیق باید تقویم/ماه جذب قابل اتکا در داده اضافه شود."
+    }
+  ],
+  "demo_scope": {
+    "ready_for_demo_reports": [
+      "RPT_HR_001",
+      "RPT_HR_002",
+      "RPT_HR_003",
+      "RPT_HR_004",
+      "RPT_HR_005",
+      "RPT_HR_006",
+      "RPT_HR_007",
+      "RPT_HR_008",
+      "RPT_HR_009",
+      "RPT_HR_010",
+      "RPT_HR_011",
+      "RPT_HR_015",
+      "RPT_HR_016",
+      "RPT_HR_017",
+      "RPT_HR_018",
+      "RPT_HR_019",
+      "RPT_HR_021",
+      "RPT_HR_022",
+      "RPT_HR_024",
+      "RPT_HR_025",
+      "RPT_HR_027",
+      "RPT_HR_028",
+      "RPT_HR_029",
+      "RPT_HR_030",
+      "RPT_HR_040"
+    ],
+    "partial_reports": [
+      "RPT_HR_012",
+      "RPT_HR_020",
+      "RPT_HR_023",
+      "RPT_HR_026",
+      "RPT_HR_041",
+      "RPT_HR_042"
+    ],
+    "gap_examples": [
+      "RPT_HR_014",
+      "RPT_HR_013",
+      "RPT_HR_031",
+      "RPT_HR_032",
+      "RPT_HR_033",
+      "RPT_HR_034",
+      "RPT_HR_035",
+      "RPT_HR_036",
+      "RPT_HR_043"
+    ],
+    "reject_examples": [
+      "RPT_HR_037",
+      "RPT_HR_038",
+      "RPT_HR_039"
+    ]
+  },
+  "alignment_rules": {
+    "with_intent_catalog": "هر report دارای intent باید در intent_catalog.yaml تعریف شده باشد.",
+    "with_sql_templates": "هر report با route=SQL و sql_template_id غیرخالی باید در sql_templates.yaml template متناظر داشته باشد یا توسط sql_generator کنترل‌شده ساخته شود.",
+    "with_data_dictionary": "تمام ستون‌های required_columns باید در data_dictionary.yaml وجود داشته باشند.",
+    "with_visualization_rules": "recommended_visualization باید در visualization_rules.yaml تعریف یا قابل map باشد.",
+    "with_evaluation_goldset": "گزارش‌های demo_priority بالا باید حداقل یک تست در evaluation_goldset.json داشته باشند."
+  },
+  "notes_fa": [
+    "این نسخه با معماری View-based هماهنگ شده است و مدل نباید جدول خام را ببیند.",
+    "گزارش‌های Data Gap حذف نشده‌اند، چون برای نمایش رفتار صحیح سیستم در برابر داده ناکافی لازم هستند.",
+    "گزارش‌های تحلیلی مدیریتی تا زمانی که شاخص، سند یا داده کافی ندارند نباید پاسخ قطعی بسازند.",
+    "در مرحله بعد، sql_templates.yaml باید با sql_template_idهای این فایل هم‌نام شود.",
+    "در صورت تغییر نام intentها، این فایل و intent_catalog.yaml باید همزمان sync شوند."
+  ]
+}

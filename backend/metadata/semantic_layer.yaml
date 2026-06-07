@@ -1,0 +1,3442 @@
+version: '0.1'
+project: HR BI Assistant
+phase: Controlled SQL-based MVP
+file_type: semantic_layer
+language: fa-IR
+description_fa: لایه نگاشت معنایی برای تبدیل واژه‌ها و اصطلاحات فارسی کاربر به ستون‌ها، فیلترها، شاخص‌ها، intentها و مسیرهای
+  SQL/GAP/REJECT.
+main_view:
+  name: hr_mvp.vw_hr_employee_analytics
+  alias: v
+metadata_dependencies:
+  data_dictionary: Template_00_data_dictionary.yaml
+  intent_catalog: Template_01_intent_catalog.yaml
+  report_catalog: Template_02_report_catalog.json
+  sql_templates: Template_04_sql_templates.yaml
+  sql_validator_rules: Template_05_sql_validator_rules.yaml
+  access_policies: Template_08_access_policies.yaml
+semantic_contract:
+  purpose: semantic_mapper.py باید از این فایل برای نگاشت زبان کاربر به مفاهیم کنترل‌شده، ستون‌های View، intent و route استفاده
+    کند.
+  must_use_only_view: hr_mvp.vw_hr_employee_analytics v
+  must_not_create_new_columns: true
+  must_not_guess_allowed_values: true
+  must_respect_data_gap_rules: true
+  must_respect_privacy_rules: true
+  default_filter: v.is_active = TRUE
+  fallback_when_unknown: DATA_GAP یا CLARIFICATION_NEEDED بر اساس نوع ابهام
+normalization_rules:
+  normalize_arabic_persian_letters:
+  - from: ي
+    to: ی
+  - from: ك
+    to: ک
+  - from: ة
+    to: ه
+  normalize_digits: Persian, Arabic and English digits must be converted to comparable numeric values before extracting filters.
+  normalize_spacing: نیم‌فاصله، فاصله اضافه و علائم نگارشی نباید مانع تشخیص واژه شود.
+  case_handling: English terms such as HR, IT, PHD should be matched case-insensitively.
+  number_words_examples:
+  - term_fa: سی
+    number: 30
+  - term_fa: چهل
+    number: 40
+  - term_fa: پنجاه
+    number: 50
+  - term_fa: شصت
+    number: 60
+  - term_fa: پانزده
+    number: 15
+question_type_mapping:
+  statistical:
+    title_fa: سؤال آماری
+    route: SQL
+    examples_fa:
+    - تعداد کارکنان زن چند نفر است؟
+    - تعداد کارکنان بر اساس مدرک تحصیلی چقدر است؟
+    - چند نفر بالای ۶۰ سال هستند؟
+  trend:
+    title_fa: سؤال روندی
+    route: SQL
+    examples_fa:
+    - روند جذب سالانه چگونه بوده؟
+    - جذب ۱۵ سال اخیر چقدر بوده؟
+  comparative:
+    title_fa: سؤال مقایسه‌ای
+    route: SQL
+    examples_fa:
+    - کدام حوزه بیشترین نیرو را دارد؟
+    - کدام مدرک بیشترین سهم را دارد؟
+  analytical_supported:
+    title_fa: تحلیلی با داده کافی محدود
+    route: SQL
+    examples_fa:
+    - کدام واحد کمبود نیرو دارد؟
+    notes_fa: فقط اگر شاخص و ستون‌های لازم در View موجود باشد.
+  analytical_gap:
+    title_fa: تحلیلی با داده ناکافی
+    route: GAP
+    examples_fa:
+    - آیا بهره‌وری پیمانکارها مناسب است؟
+    - آیا جذب با افزایش حجم کار هماهنگ بوده؟
+    notes_fa: اگر داده، تعریف شاخص یا سند تفسیری کافی وجود ندارد، Data Gap ثبت شود.
+  sensitive_or_individual:
+    title_fa: سؤال حساس یا فردی
+    route: REJECT
+    response_status: ACCESS_DENIED
+    examples_fa:
+    - نام و مشخصات کارکنان را نمایش بده
+    - کد ملی کارکنان را بده
+  out_of_scope:
+    title_fa: خارج از دامنه HR
+    route: REJECT
+    response_status: OUT_OF_SCOPE
+    examples_fa:
+    - فروش ماه گذشته شرکت چقدر بوده؟
+  ambiguous:
+    title_fa: سؤال مبهم
+    route: REJECT
+    response_status: CLARIFICATION_NEEDED
+    examples_fa:
+    - گزارش بده
+    - وضعیت را تحلیل کن
+metric_mappings:
+- metric_id: employee_count
+  title_fa: تعداد کارکنان
+  user_terms_fa:
+  - تعداد
+  - چند نفر
+  - چندتا
+  - سرجمع
+  - هدکانت
+  expression: COUNT(v.employee_id)
+  default_alias: employee_count
+  output_type: integer
+- metric_id: percentage
+  title_fa: درصد/سهم
+  user_terms_fa:
+  - درصد
+  - سهم
+  - نسبت
+  - چند درصد
+  expression_patterns:
+  - ROUND(SUM(CASE WHEN condition THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(v.employee_id), 0), 2)
+  - ROUND(COUNT(v.employee_id) * 100.0 / NULLIF(SUM(COUNT(v.employee_id)) OVER (), 0), 2)
+  default_alias: percentage
+  output_type: numeric
+- metric_id: average_age
+  title_fa: میانگین سن
+  user_terms_fa:
+  - میانگین سن
+  - متوسط سن
+  expression: ROUND(AVG(v.age), 2)
+  default_alias: average_age
+  output_type: numeric
+- metric_id: average_service_years
+  title_fa: میانگین سابقه
+  user_terms_fa:
+  - میانگین سابقه
+  - متوسط سابقه
+  - میانگین سنوات
+  expression: ROUND(AVG(v.service_years), 2)
+  default_alias: average_service_years
+  output_type: numeric
+- metric_id: actual_headcount
+  title_fa: نیروی موجود
+  user_terms_fa:
+  - نیروی موجود
+  - تعداد واقعی
+  - کارکنان فعلی
+  expression: COUNT(v.employee_id)
+  default_alias: actual_headcount
+  output_type: integer
+- metric_id: approved_headcount
+  title_fa: چارت مصوب
+  user_terms_fa:
+  - چارت مصوب
+  - نیروی مصوب
+  - ظرفیت مصوب
+  expression: MAX(v.department_approved_headcount)
+  default_alias: approved_headcount
+  output_type: integer
+- metric_id: headcount_gap
+  title_fa: اختلاف نیرو
+  user_terms_fa:
+  - اختلاف نیرو
+  - کمبود نیرو
+  - مازاد نیرو
+  expression: MAX(v.department_approved_headcount) - COUNT(v.employee_id)
+  default_alias: headcount_gap
+  output_type: integer
+group_by_mappings:
+- user_phrase: به تفکیک جنسیت
+  column: gender
+  sql: GROUP BY v.gender
+  preferred_visualization: pie_chart_or_bar_chart
+- user_phrase: به تفکیک وضعیت تأهل
+  column: marital_status
+  sql: GROUP BY v.marital_status
+  preferred_visualization: bar_chart
+- user_phrase: به تفکیک گروه سنی
+  column: age_group_title
+  sql: GROUP BY v.age_group_title
+  preferred_visualization: bar_chart
+- user_phrase: به تفکیک مدرک تحصیلی
+  column: education_title
+  sql: GROUP BY v.education_title
+  preferred_visualization: bar_chart
+- user_phrase: به تفکیک نوع استخدام
+  column: employment_type
+  sql: GROUP BY v.employment_type
+  preferred_visualization: bar_chart
+- user_phrase: به تفکیک نوع قرارداد
+  column: contract_type
+  sql: GROUP BY v.contract_type
+  preferred_visualization: horizontal_bar_chart_or_table
+- user_phrase: به تفکیک حوزه
+  column: service_domain
+  sql: GROUP BY v.service_domain
+  preferred_visualization: bar_chart
+- user_phrase: به تفکیک واحد/بخش/اداره/دپارتمان
+  column: department_name
+  sql: GROUP BY v.department_name
+  preferred_visualization: horizontal_bar_chart_or_table
+- user_phrase: به تفکیک استان
+  column: province
+  sql: GROUP BY v.province
+  preferred_visualization: horizontal_bar_chart_or_table
+- user_phrase: به تفکیک شهر
+  column: city
+  sql: DATA_GAP
+  preferred_visualization: status_message
+- user_phrase: به تفکیک محل خدمت
+  column: site_name
+  sql: GROUP BY v.site_name
+  preferred_visualization: bar_chart_or_table
+- user_phrase: به تفکیک پست
+  column: position_title
+  sql: GROUP BY v.position_title
+  preferred_visualization: bar_chart_or_table
+- user_phrase: به تفکیک سال جذب
+  column: hire_year
+  sql: GROUP BY v.hire_year ORDER BY v.hire_year ASC
+  preferred_visualization: line_chart
+semantic_concepts:
+- concept_id: employee_count
+  title_fa: تعداد کارکنان
+  category: headcount
+  priority: high
+  data_status: available
+  user_terms_fa:
+  - تعداد کارکنان
+  - تعداد کل کارکنان
+  - کل کارکنان
+  - تعداد نیروها
+  - کل نیروها
+  - تعداد پرسنل
+  - کل پرسنل
+  - چند نفر
+  - چندتا نیرو
+  - سرجمع نیروها
+  - هدکانت
+  - headcount
+  - نیروی انسانی موجود
+  maps_to:
+    column: employee_id
+    metric: COUNT(v.employee_id)
+    aggregation: count
+    filter_sql: v.is_active = TRUE
+    route: SQL
+    related_intents:
+    - total_employee_count
+    notes_fa: چون View یک ردیف به ازای هر کارمند فعال دارد، شمارش کارکنان با COUNT(v.employee_id) انجام می‌شود.
+  default_output_type: kpi_card
+- concept_id: active_employee
+  title_fa: کارمند فعال
+  category: headcount
+  priority: high
+  data_status: available
+  user_terms_fa:
+  - فعال
+  - کارمند فعال
+  - نیروی فعال
+  - پرسنل فعال
+  - کارکنان فعال
+  maps_to:
+    column: is_active
+    filter_sql: v.is_active = TRUE
+    route: SQL
+    related_intents:
+    - total_employee_count
+  default_output_type: kpi_card
+  ambiguity_notes_fa: در MVP فیلتر پیش‌فرض تمام گزارش‌های آماری v.is_active = TRUE است.
+- concept_id: gender
+  title_fa: جنسیت
+  category: demographic
+  priority: high
+  data_status: available
+  user_terms_fa:
+  - جنسیت
+  - زن و مرد
+  - تفکیک جنسیت
+  - به تفکیک جنسیت
+  - توزیع جنسیتی
+  - تعداد زن و مرد
+  - سهم جنسیتی
+  - نسبت جنسیت
+  - ترکیب جنسیتی
+  maps_to:
+    column: gender
+    default_group_by: v.gender
+    route: SQL
+    related_intents:
+    - employee_count_by_gender
+    - gender_percentage
+    - employee_count_by_gender_age_filter
+  default_output_type: pie_chart_or_bar_chart
+- concept_id: female
+  title_fa: زن
+  category: demographic
+  priority: high
+  data_status: available
+  user_terms_fa:
+  - زن
+  - زنان
+  - خانم
+  - خانم‌ها
+  - کارکنان زن
+  - نیروی زن
+  - پرسنل زن
+  - درصد زنان
+  - سهم زنان
+  maps_to:
+    column: gender
+    filter_sql: v.gender = 'زن'
+    route: SQL
+    related_intents:
+    - gender_percentage
+    - employee_count_by_gender
+  default_output_type: kpi_card
+- concept_id: male
+  title_fa: مرد
+  category: demographic
+  priority: high
+  data_status: available
+  user_terms_fa:
+  - مرد
+  - مردان
+  - آقا
+  - آقایان
+  - کارکنان مرد
+  - نیروی مرد
+  - پرسنل مرد
+  - درصد مردان
+  - سهم مردان
+  maps_to:
+    column: gender
+    filter_sql: v.gender = 'مرد'
+    route: SQL
+    related_intents:
+    - gender_percentage
+    - employee_count_by_gender
+  default_output_type: kpi_card
+- concept_id: marital_status
+  title_fa: وضعیت تأهل
+  category: demographic
+  priority: medium
+  data_status: available
+  user_terms_fa:
+  - وضعیت تأهل
+  - تأهل
+  - تاهل
+  - مجرد
+  - متأهل
+  - متاهل
+  - تعداد مجردها
+  - تعداد متأهل‌ها
+  - به تفکیک وضعیت تأهل
+  maps_to:
+    column: marital_status
+    default_group_by: v.marital_status
+    route: SQL
+    related_intents:
+    - employee_count_by_marital_status
+  default_output_type: bar_chart_or_table
+- concept_id: age
+  title_fa: سن
+  category: age
+  priority: high
+  data_status: available
+  user_terms_fa:
+  - سن
+  - سن کارکنان
+  - سن پرسنل
+  - بازه سنی
+  - رده سنی
+  - گروه سنی
+  - جوان
+  - مسن
+  - سالمند
+  - میان‌سال
+  maps_to:
+    column: age
+    route: SQL
+    related_intents:
+    - average_age
+    - employee_count_by_age_filter
+    - employee_count_by_age_group
+    - employee_count_by_gender_age_filter
+  default_output_type: kpi_card_or_bar_chart
+- concept_id: average_age
+  title_fa: میانگین سن
+  category: age
+  priority: high
+  data_status: available
+  user_terms_fa:
+  - میانگین سن
+  - متوسط سن
+  - avg age
+  - average age
+  - میانگین سنی
+  - سن متوسط
+  maps_to:
+    column: age
+    metric: ROUND(AVG(v.age), 2)
+    aggregation: average
+    route: SQL
+    related_intents:
+    - average_age
+  default_output_type: kpi_card
+- concept_id: age_group
+  title_fa: گروه سنی
+  category: age
+  priority: medium
+  data_status: available
+  user_terms_fa:
+  - گروه سنی
+  - بازه سنی
+  - رده سنی
+  - سنین
+  - تفکیک سنی
+  - به تفکیک سن
+  maps_to:
+    column: age_group_title
+    default_group_by: v.age_group_title
+    route: SQL
+    related_intents:
+    - employee_count_by_age_group
+    - employee_count_by_gender_age_filter
+  default_output_type: bar_chart
+- concept_id: under_age_filter
+  title_fa: زیر سن مشخص
+  category: age
+  priority: medium
+  data_status: available
+  user_terms_fa:
+  - زیر ۳۰
+  - زیر ۳۰ سال
+  - کمتر از ۳۰
+  - کمتر از سی سال
+  - زیر ۲۰
+  - زیر ۲۰ سال
+  - کمتر از ۲۰
+  - جوان‌تر از
+  - کمتر از سن
+  maps_to:
+    column: age
+    filter_sql: v.age < N
+    route: SQL
+    related_intents:
+    - employee_count_by_age_filter
+  default_output_type: kpi_card
+  ambiguity_notes_fa: عدد N باید از سؤال کاربر استخراج شود؛ برای زیر ۳۰ از v.age < 30 استفاده شود.
+- concept_id: above_age_filter
+  title_fa: بالای سن مشخص
+  category: age
+  priority: medium
+  data_status: available
+  user_terms_fa:
+  - بالای ۶۰
+  - ۶۰ سال به بالا
+  - شصت سال به بالا
+  - بالاتر از ۶۰
+  - بیشتر از ۶۰
+  - مسن‌تر از
+  - بالای سن
+  maps_to:
+    column: age
+    filter_sql: v.age >= N
+    route: SQL
+    related_intents:
+    - employee_count_by_age_filter
+  default_output_type: kpi_card
+  ambiguity_notes_fa: برای ۶۰ سال به بالا از v.age >= 60 استفاده شود.
+- concept_id: near_retirement
+  title_fa: آستانه بازنشستگی
+  category: gap
+  priority: high
+  data_status: data_gap
+  user_terms_fa:
+  - آستانه بازنشستگی
+  - نزدیک بازنشستگی
+  - در شرف بازنشستگی
+  - آماده بازنشستگی
+  - بازنشستگی نزدیک
+  - قابل بازنشستگی
+  maps_to:
+    route: GAP
+    response_status: DATA_GAP
+    required_missing_definition: retirement_rule
+    related_intents:
+    - near_retirement_analysis
+    reason_fa: در MVP فعلی قانون رسمی بازنشستگی بر اساس سن، سابقه، جنسیت و قواعد سازمانی تعریف نشده است.
+  default_output_type: status_message
+- concept_id: education
+  title_fa: تحصیلات
+  category: education
+  priority: high
+  data_status: available
+  user_terms_fa:
+  - تحصیلات
+  - مدرک
+  - مدرک تحصیلی
+  - آخرین مدرک
+  - سطح تحصیلات
+  - سطح مدرک
+  - پایه تحصیلی
+  - تحصیلات کارکنان
+  - مدرک کارکنان
+  maps_to:
+    column: education_title
+    default_group_by: v.education_title
+    route: SQL
+    related_intents:
+    - employee_count_by_education
+    - most_common_education
+    - least_common_education
+  default_output_type: bar_chart
+- concept_id: education_rank
+  title_fa: رتبه تحصیلات
+  category: education
+  priority: medium
+  data_status: available
+  user_terms_fa:
+  - رتبه مدرک
+  - ترتیب مدرک
+  - سطح عددی مدرک
+  - سطح تحصیلات از نظر رتبه
+  maps_to:
+    column: education_rank
+    default_order_by: v.education_rank
+    route: SQL
+    related_intents:
+    - employee_count_by_education
+    - low_education_in_expert_roles
+  default_output_type: table
+- concept_id: education_category
+  title_fa: گروه تحصیلی
+  category: education
+  priority: low
+  data_status: available
+  user_terms_fa:
+  - گروه تحصیلی
+  - دسته تحصیلی
+  - طبقه تحصیلی
+  - رده مدرک
+  maps_to:
+    column: education_category
+    default_group_by: v.education_category
+    route: SQL
+    related_intents:
+    - employee_count_by_education
+  default_output_type: bar_chart
+- concept_id: field_of_study
+  title_fa: رشته تحصیلی
+  category: education
+  priority: low
+  data_status: available
+  user_terms_fa:
+  - رشته تحصیلی
+  - رشته دانشگاهی
+  - رشته
+  - گرایش تحصیلی
+  maps_to:
+    column: field_of_study
+    default_group_by: v.field_of_study
+    route: SQL
+  default_output_type: bar_chart
+  ambiguity_notes_fa: اگر داده رشته تحصیلی ناقص یا خیلی پراکنده باشد، خروجی باید با محدودیت داده نمایش داده شود.
+- concept_id: graduation_year
+  title_fa: سال فارغ‌التحصیلی
+  category: education
+  priority: low
+  data_status: available
+  user_terms_fa:
+  - سال فارغ‌التحصیلی
+  - سال پایان تحصیل
+  - سال اخذ مدرک
+  maps_to:
+    column: graduation_year
+    default_group_by: v.graduation_year
+    route: SQL
+  default_output_type: line_chart_or_table
+- concept_id: most_common_education
+  title_fa: بیشترین مدرک
+  category: education
+  priority: high
+  data_status: available
+  user_terms_fa:
+  - بیشترین مدرک
+  - مدرکی که بیشترین سهم را دارد
+  - پرتکرارترین مدرک
+  - رایج‌ترین مدرک
+  - بیشترین تحصیلات موجود
+  maps_to:
+    column: education_title
+    route: SQL
+    related_intents:
+    - most_common_education
+    sql_pattern: GROUP BY v.education_title ORDER BY COUNT(v.employee_id) DESC LIMIT 1
+  default_output_type: kpi_card_or_table
+- concept_id: least_common_education
+  title_fa: کمترین مدرک
+  category: education
+  priority: medium
+  data_status: available
+  user_terms_fa:
+  - کمترین مدرک
+  - کم‌تکرارترین مدرک
+  - نایاب‌ترین مدرک
+  - کمترین تحصیلات موجود
+  maps_to:
+    column: education_title
+    route: SQL
+    related_intents:
+    - least_common_education
+    sql_pattern: GROUP BY v.education_title ORDER BY COUNT(v.employee_id) ASC LIMIT 1
+  default_output_type: kpi_card_or_table
+- concept_id: low_education_in_expert_roles
+  title_fa: تحصیلات کمتر از نیاز پست کارشناسی
+  category: education
+  priority: medium
+  data_status: available
+  user_terms_fa:
+  - تحصیلات پایین‌تر از پست
+  - مدرک کمتر از نیاز پست
+  - دیپلم در پست کارشناسی
+  - تحصیلات پایین در پست کارشناسی
+  - کمتر از حداقل مدرک پست
+  maps_to:
+    columns:
+    - education_rank
+    - min_education_rank
+    - is_expert_role
+    route: SQL
+    filter_sql: v.education_rank < v.min_education_rank
+    related_intents:
+    - low_education_in_expert_roles
+  default_output_type: kpi_card_or_table
+- concept_id: employment_type
+  title_fa: نوع استخدام
+  category: employment
+  priority: high
+  data_status: available
+  user_terms_fa:
+  - نوع استخدام
+  - وضعیت استخدام
+  - استخدامی
+  - رسمی
+  - قراردادی
+  - پیمانی
+  - رسمی آزمایشی
+  - رسمی بیمه‌ای دائم
+  - شاغل در پیمانکاری
+  - استخدام رسمی
+  - استخدام قراردادی
+  - استخدام پیمانی
+  maps_to:
+    column: employment_type
+    default_group_by: v.employment_type
+    route: SQL
+    related_intents:
+    - employee_count_by_employment_type
+  default_output_type: bar_chart
+  ambiguity_notes_fa: نوع استخدام با نوع قرارداد متفاوت است. وقتی کاربر صراحتاً «نوع استخدام» گفت، ستون employment_type استفاده
+    شود.
+- concept_id: contract_type
+  title_fa: نوع قرارداد
+  category: employment
+  priority: high
+  data_status: available
+  user_terms_fa:
+  - نوع قرارداد
+  - قرارداد
+  - وضعیت قرارداد
+  - قرارداد جاری
+  - قرارداد خدماتی
+  - قرارداد پشتیبانی
+  - قرارداد حراست
+  - قرارداد نگهداری شبکه
+  - به تفکیک قرارداد
+  maps_to:
+    column: contract_type
+    default_group_by: v.contract_type
+    route: SQL
+    related_intents:
+    - employee_count_by_contract_type
+    - hiring_by_contract_type_recent_year
+  default_output_type: horizontal_bar_chart_or_table
+  ambiguity_notes_fa: قرارداد جاری در View حل شده است؛ از c.is_current استفاده نشود.
+- concept_id: contractor
+  title_fa: پیمانکاری
+  category: employment
+  priority: high
+  data_status: available
+  user_terms_fa:
+  - پیمانکاری
+  - نیروی پیمانکاری
+  - نیروهای پیمانکاری
+  - شاغل در پیمانکاری
+  - سهم پیمانکاری
+  - درصد پیمانکاری
+  - پیمانکار
+  - نیروهای پیمانکار
+  - contractor
+  maps_to:
+    column: is_contractor
+    filter_sql: v.is_contractor = TRUE
+    route: SQL
+    related_intents:
+    - contractor_share
+    - contractor_share_by_service_domain
+  default_output_type: kpi_card_or_bar_chart
+- concept_id: formal_employee
+  title_fa: رسمی
+  category: employment
+  priority: medium
+  data_status: available
+  user_terms_fa:
+  - رسمی
+  - نیروی رسمی
+  - کارمند رسمی
+  - استخدام رسمی
+  maps_to:
+    column: employment_type
+    filter_sql: v.employment_type = 'رسمی'
+    route: SQL
+    related_intents:
+    - employee_count_by_employment_type
+  default_output_type: kpi_card
+  ambiguity_notes_fa: اگر کاربر صراحتاً نوع قرارداد گفت، رسمی باید روی contract_type اعمال شود؛ در غیر این صورت روی employment_type.
+- concept_id: contractual_employee
+  title_fa: قراردادی
+  category: employment
+  priority: medium
+  data_status: available
+  user_terms_fa:
+  - قراردادی
+  - نیروی قراردادی
+  - کارمند قراردادی
+  - استخدام قراردادی
+  maps_to:
+    column: employment_type
+    filter_sql: v.employment_type = 'قراردادی'
+    route: SQL
+    related_intents:
+    - employee_count_by_employment_type
+  default_output_type: kpi_card
+  ambiguity_notes_fa: اگر کاربر صراحتاً نوع قرارداد گفت، قراردادی باید روی contract_type اعمال شود؛ در غیر این صورت روی employment_type.
+- concept_id: fixed_term_employee
+  title_fa: پیمانی
+  category: employment
+  priority: medium
+  data_status: available
+  user_terms_fa:
+  - پیمانی
+  - نیروی پیمانی
+  - کارمند پیمانی
+  - استخدام پیمانی
+  maps_to:
+    column: employment_type
+    filter_sql: v.employment_type = 'پیمانی'
+    route: SQL
+    related_intents:
+    - employee_count_by_employment_type
+  default_output_type: kpi_card
+  ambiguity_notes_fa: اگر کاربر صراحتاً نوع قرارداد گفت، پیمانی باید روی contract_type اعمال شود؛ در غیر این صورت روی employment_type.
+- concept_id: employment_stability
+  title_fa: ثبات استخدامی
+  category: gap
+  priority: medium
+  data_status: data_gap
+  user_terms_fa:
+  - ثبات سازمان
+  - ثبات استخدامی
+  - تأثیر رسمی و پیمانی بر ثبات
+  - ریسک نوع استخدام
+  - پایداری نیروی انسانی
+  maps_to:
+    route: GAP
+    response_status: DATA_GAP
+    related_intents:
+    - employment_stability_impact_analysis
+    reason_fa: برای تحلیل اثر ثبات استخدامی نیاز به تعریف شاخص یا سند تفسیری/سیاستی وجود دارد.
+  default_output_type: status_message
+- concept_id: service_domain
+  title_fa: حوزه خدمت
+  category: organization
+  priority: high
+  data_status: available
+  user_terms_fa:
+  - حوزه
+  - حوزه خدمت
+  - معاونت
+  - حوزه سازمانی
+  - بخش کلان
+  - دامنه خدمت
+  - service domain
+  maps_to:
+    column: service_domain
+    default_group_by: v.service_domain
+    route: SQL
+    related_intents:
+    - employee_count_by_service_domain
+    - contractor_share_by_service_domain
+  default_output_type: bar_chart
+- concept_id: department
+  title_fa: واحد سازمانی
+  category: organization
+  priority: high
+  data_status: available
+  user_terms_fa:
+  - واحد
+  - بخش
+  - اداره
+  - دپارتمان
+  - واحد سازمانی
+  - بخش سازمانی
+  - کدام بخش
+  - کدام واحد
+  - department
+  maps_to:
+    column: department_name
+    default_group_by: v.department_name
+    route: SQL
+    related_intents:
+    - employee_count_by_department
+    - headcount_gap_by_department
+  default_output_type: horizontal_bar_chart_or_table
+  ambiguity_notes_fa: در این MVP واژه‌های بخش، واحد، اداره و دپارتمان همگی به department_name نگاشت می‌شوند.
+- concept_id: department_level
+  title_fa: سطح دپارتمان
+  category: organization
+  priority: low
+  data_status: available
+  user_terms_fa:
+  - سطح دپارتمان
+  - سطح واحد
+  - سطح سازمانی
+  - لایه سازمانی
+  - سطح بخش
+  maps_to:
+    column: department_level
+    default_group_by: v.department_level
+    route: SQL
+  default_output_type: bar_chart
+- concept_id: department_code
+  title_fa: کد دپارتمان
+  category: organization
+  priority: low
+  data_status: available
+  user_terms_fa:
+  - کد دپارتمان
+  - کد واحد
+  - کد بخش
+  - کد اداره
+  maps_to:
+    column: department_code
+    default_group_by: v.department_code
+    route: SQL
+  default_output_type: table
+  ambiguity_notes_fa: کد دپارتمان فقط در خروجی تجمیعی مجاز است؛ نباید به شناسایی فردی منجر شود.
+- concept_id: criticality_level
+  title_fa: سطح حساسیت واحد
+  category: organization
+  priority: low
+  data_status: available
+  user_terms_fa:
+  - سطح حساسیت
+  - حساسیت واحد
+  - واحد بحرانی
+  - criticality
+  - criticality level
+  maps_to:
+    column: criticality_level
+    default_group_by: v.criticality_level
+    route: SQL
+  default_output_type: bar_chart
+- concept_id: headcount_gap
+  title_fa: اختلاف نیروی موجود با چارت مصوب
+  category: organization
+  priority: high
+  data_status: available
+  user_terms_fa:
+  - کمبود نیرو
+  - مازاد نیرو
+  - چارت مصوب
+  - نیروی مصوب
+  - ظرفیت مصوب
+  - نیروی موجود
+  - اختلاف نیروی موجود و مصوب
+  - تعادل چارت و نیروی انسانی
+  - کدام واحد کمبود نیرو دارد
+  maps_to:
+    columns:
+    - employee_id
+    - department_id
+    - department_name
+    - department_approved_headcount
+    route: SQL
+    related_intents:
+    - headcount_gap_by_department
+    - department_balance_analysis
+    actual_headcount_expression: COUNT(v.employee_id)
+    approved_headcount_expression: MAX(v.department_approved_headcount)
+    gap_expression: MAX(v.department_approved_headcount) - COUNT(v.employee_id)
+    warning_fa: department_approved_headcount روی ردیف کارکنان تکرار می‌شود؛ نباید مستقیم روی ردیف کارکنان SUM شود.
+  default_output_type: table
+- concept_id: department_balance
+  title_fa: تعادل نیروی انسانی بین بخش‌ها
+  category: gap
+  priority: medium
+  data_status: partial_or_gap
+  user_terms_fa:
+  - تعادل بین بخش‌ها
+  - توازن نیرو
+  - متعادل بودن نیروی انسانی
+  - آیا نیرو بین بخش‌ها متوازن است
+  - تعادل بین چارت و واقعیت
+  maps_to:
+    route: GAP
+    response_status: DATA_GAP
+    related_intents:
+    - department_balance_analysis
+    reason_fa: برای تحلیل تعادل پیشرفته باید تعریف شاخص تعادل، وزن واحدها و معیار مقایسه مشخص شود. گزارش headcount_gap در
+      سطح دپارتمان به صورت partial قابل محاسبه است.
+  default_output_type: status_message
+- concept_id: province
+  title_fa: استان
+  category: location
+  priority: high
+  data_status: available
+  user_terms_fa:
+  - استان
+  - هر استان
+  - به تفکیک استان
+  - نیروهای استان
+  - پراکندگی استان
+  - محل خدمت در استان
+  maps_to:
+    column: province
+    default_group_by: v.province
+    route: SQL
+    related_intents:
+    - employee_count_by_province
+  default_output_type: horizontal_bar_chart_or_table
+- concept_id: city
+  title_fa: شهر
+  category: location
+  priority: high
+  data_status: data_gap
+  user_terms_fa:
+  - شهر
+  - هر شهر
+  - نیروهای هر شهر
+  - به تفکیک شهر
+  - تحلیل شهری
+  - محل خدمت شهری
+  maps_to:
+    column: city
+    route: GAP
+    response_status: DATA_GAP
+    related_intents:
+    - city_level_analysis
+    reason_fa: در داده فعلی MVP، اطلاعات شهر قابل اتکا نیست و سؤال‌های سطح شهر باید Data Gap شوند.
+  default_output_type: status_message
+- concept_id: work_location
+  title_fa: محل خدمت
+  category: location
+  priority: medium
+  data_status: available
+  user_terms_fa:
+  - محل خدمت
+  - سایت
+  - site
+  - site_name
+  - محل کار
+  - پایگاه
+  - شعبه
+  - موقعیت کاری
+  - لوکیشن
+  maps_to:
+    columns:
+    - site_name
+    - province
+    - location_type
+    default_group_by: v.site_name
+    route: SQL
+    related_intents:
+    - employee_count_by_work_location
+  default_output_type: bar_chart_or_table
+  ambiguity_notes_fa: اگر کاربر محل خدمت را در سطح کلی خواست و site_name قابل اتکا نبود، از province استفاده شود یا محدودیت
+    داده اعلام شود.
+- concept_id: location_type
+  title_fa: نوع محل خدمت
+  category: location
+  priority: low
+  data_status: available
+  user_terms_fa:
+  - نوع محل خدمت
+  - نوع لوکیشن
+  - سطح محل خدمت
+  - استانی یا ستادی
+  maps_to:
+    column: location_type
+    default_group_by: v.location_type
+    route: SQL
+  default_output_type: bar_chart
+- concept_id: position
+  title_fa: پست سازمانی
+  category: job
+  priority: medium
+  data_status: available
+  user_terms_fa:
+  - پست
+  - عنوان پست
+  - سمت
+  - شغل
+  - جایگاه شغلی
+  - position
+  maps_to:
+    column: position_title
+    default_group_by: v.position_title
+    route: SQL
+  default_output_type: bar_chart_or_table
+- concept_id: position_level
+  title_fa: سطح پست
+  category: job
+  priority: low
+  data_status: available
+  user_terms_fa:
+  - سطح پست
+  - رده پست
+  - سطح شغلی
+  - سطح سمت
+  - position level
+  maps_to:
+    column: position_level
+    default_group_by: v.position_level
+    route: SQL
+  default_output_type: bar_chart
+- concept_id: job_family
+  title_fa: خانواده شغلی
+  category: job
+  priority: low
+  data_status: available
+  user_terms_fa:
+  - خانواده شغلی
+  - گروه شغلی
+  - رسته شغلی
+  - job family
+  maps_to:
+    column: job_family
+    default_group_by: v.job_family
+    route: SQL
+  default_output_type: bar_chart
+- concept_id: expert_role
+  title_fa: پست کارشناسی
+  category: job
+  priority: medium
+  data_status: available
+  user_terms_fa:
+  - پست کارشناسی
+  - نقش کارشناسی
+  - کارشناس
+  - پست تخصصی
+  - expert role
+  maps_to:
+    column: is_expert_role
+    filter_sql: v.is_expert_role = TRUE
+    route: SQL
+    related_intents:
+    - low_education_in_expert_roles
+  default_output_type: kpi_card_or_table
+  ambiguity_notes_fa: واژه «کارشناسی» ممکن است مدرک تحصیلی باشد؛ اگر کنار «مدرک» آمد education_title است، اگر کنار «پست» آمد
+    is_expert_role است.
+- concept_id: minimum_required_education
+  title_fa: حداقل مدرک مورد نیاز پست
+  category: job
+  priority: medium
+  data_status: available
+  user_terms_fa:
+  - حداقل مدرک
+  - حداقل تحصیلات پست
+  - مدرک موردنیاز پست
+  - نیاز پست به تحصیلات
+  maps_to:
+    column: min_education_rank
+    route: SQL
+    related_intents:
+    - low_education_in_expert_roles
+  default_output_type: table
+- concept_id: hiring
+  title_fa: جذب
+  category: hiring
+  priority: high
+  data_status: available
+  user_terms_fa:
+  - جذب
+  - استخدام
+  - ورود نیرو
+  - نیروی جذب‌شده
+  - سال جذب
+  - جذب سالانه
+  - روند جذب
+  - استخدام سالانه
+  maps_to:
+    column: hire_year
+    default_group_by: v.hire_year
+    default_order_by: v.hire_year ASC
+    route: SQL
+    related_intents:
+    - hiring_trend_annual
+    - hiring_last_15_years
+    - most_or_least_hiring_year
+    - hiring_by_contract_type_recent_year
+  default_output_type: line_chart
+- concept_id: hiring_trend_annual
+  title_fa: روند جذب سالانه
+  category: hiring
+  priority: high
+  data_status: available
+  user_terms_fa:
+  - روند جذب سالانه
+  - جذب سالانه
+  - در هر سال چند نفر جذب شده‌اند
+  - روند استخدام
+  - جذب در سال‌های مختلف
+  maps_to:
+    column: hire_year
+    route: SQL
+    related_intents:
+    - hiring_trend_annual
+    sql_pattern: GROUP BY v.hire_year ORDER BY v.hire_year ASC
+  default_output_type: line_chart
+- concept_id: hiring_last_15_years
+  title_fa: جذب ۱۵ سال اخیر
+  category: hiring
+  priority: high
+  data_status: available
+  user_terms_fa:
+  - جذب ۱۵ سال اخیر
+  - جذب پانزده سال اخیر
+  - ۱۵ سال اخیر جذب
+  - پانزده سال گذشته استخدام
+  maps_to:
+    column: hire_year
+    route: SQL
+    related_intents:
+    - hiring_last_15_years
+    filter_sql: v.hire_year >= {current_shamsi_year} - 15
+    calendar_note_fa: '{current_shamsi_year} باید توسط برنامه تزریق شود و مدل نباید آن را حدس بزند.'
+  default_output_type: line_chart_or_table
+- concept_id: most_hiring_year
+  title_fa: سال بیشترین جذب
+  category: hiring
+  priority: medium
+  data_status: available
+  user_terms_fa:
+  - سال بیشترین جذب
+  - بیشترین جذب در چه سالی
+  - کدام سال بیشترین جذب
+  - اوج جذب
+  maps_to:
+    column: hire_year
+    route: SQL
+    related_intents:
+    - most_or_least_hiring_year
+    sql_pattern: GROUP BY v.hire_year ORDER BY COUNT(v.employee_id) DESC LIMIT 1
+  default_output_type: kpi_card_or_table
+- concept_id: least_hiring_year
+  title_fa: سال کمترین جذب
+  category: hiring
+  priority: medium
+  data_status: available
+  user_terms_fa:
+  - سال کمترین جذب
+  - کمترین جذب در چه سالی
+  - کدام سال کمترین جذب
+  maps_to:
+    column: hire_year
+    route: SQL
+    related_intents:
+    - most_or_least_hiring_year
+    sql_pattern: GROUP BY v.hire_year ORDER BY COUNT(v.employee_id) ASC LIMIT 1
+  default_output_type: kpi_card_or_table
+- concept_id: monthly_hiring
+  title_fa: جذب ماهانه
+  category: gap
+  priority: medium
+  data_status: data_gap
+  user_terms_fa:
+  - جذب ماهانه
+  - روند ماهانه جذب
+  - استخدام ماهانه
+  - در هر ماه چند نفر جذب شده‌اند
+  maps_to:
+    route: GAP
+    response_status: DATA_GAP
+    required_missing_data:
+    - shamsi_month
+    - populated_calendar_table
+    reason_fa: در MVP فعلی تحلیل ماهانه بدون تقویم شمسی/ستون ماه معتبر قابل اتکا نیست.
+  default_output_type: status_message
+- concept_id: hiring_business_growth_alignment
+  title_fa: هماهنگی جذب با رشد کار سازمان
+  category: gap
+  priority: medium
+  data_status: data_gap
+  user_terms_fa:
+  - آیا جذب با افزایش کار هماهنگ بوده
+  - جذب با رشد کار سازمان
+  - تناسب جذب با حجم کار
+  - هماهنگی جذب با توسعه کسب‌وکار
+  maps_to:
+    route: GAP
+    response_status: DATA_GAP
+    related_intents:
+    - hiring_business_growth_alignment
+    required_missing_data:
+    - business_volume_metric
+    - workload_metric
+    - growth_metric
+    reason_fa: برای پاسخ، علاوه بر داده جذب، شاخص حجم کار یا رشد کسب‌وکار لازم است.
+  default_output_type: status_message
+- concept_id: service_years
+  title_fa: سابقه خدمت
+  category: service
+  priority: medium
+  data_status: available
+  user_terms_fa:
+  - سابقه
+  - سابقه خدمت
+  - سنوات
+  - سنوات خدمت
+  - سال خدمت
+  - مدت خدمت
+  - میانگین سابقه
+  - متوسط سابقه
+  - بدون سابقه
+  maps_to:
+    column: service_years
+    route: SQL
+    related_intents:
+    - average_service_years
+    - employee_count_without_service_years
+  default_output_type: kpi_card_or_bar_chart
+- concept_id: average_service_years
+  title_fa: میانگین سابقه
+  category: service
+  priority: medium
+  data_status: available
+  user_terms_fa:
+  - میانگین سابقه
+  - متوسط سابقه
+  - میانگین سنوات
+  - متوسط سنوات
+  maps_to:
+    column: service_years
+    metric: ROUND(AVG(v.service_years), 2)
+    aggregation: average
+    route: SQL
+    related_intents:
+    - average_service_years
+  default_output_type: kpi_card
+- concept_id: without_service_years
+  title_fa: بدون سابقه
+  category: service
+  priority: medium
+  data_status: available
+  user_terms_fa:
+  - بدون سابقه
+  - سابقه صفر
+  - سنوات صفر
+  - تازه جذب شده
+  - تازه‌استخدام
+  maps_to:
+    column: service_years
+    filter_sql: v.service_years = 0
+    route: SQL
+    related_intents:
+    - employee_count_without_service_years
+  default_output_type: kpi_card
+- concept_id: workforce_aging
+  title_fa: سالخوردگی نیروی انسانی
+  category: analytics_gap
+  priority: medium
+  data_status: data_gap
+  user_terms_fa:
+  - سالخوردگی نیروی انسانی
+  - ساختار سنی به سمت سالخوردگی
+  - پیر شدن سازمان
+  - ریسک سالخوردگی
+  - سن بالا در سازمان
+  maps_to:
+    route: GAP
+    response_status: DATA_GAP
+    related_intents:
+    - workforce_aging_trend_analysis
+    reason_fa: تحلیل سالخوردگی نیازمند تعریف شاخص، آستانه و ترجیحاً روند چندساله یا داده تاریخی است؛ در MVP فقط شاخص‌های سن
+      فعلی قابل گزارش‌اند.
+  default_output_type: status_message
+- concept_id: training_need
+  title_fa: نیاز آموزشی
+  category: analytics_gap
+  priority: medium
+  data_status: data_gap
+  user_terms_fa:
+  - نیاز آموزش
+  - نیاز آموزشی
+  - دوره تخصصی
+  - آموزش تخصصی
+  - آیا توزیع تحصیلات نیاز به آموزش ایجاد می‌کند
+  - کمبود تخصص
+  maps_to:
+    route: GAP
+    response_status: DATA_GAP
+    related_intents:
+    - education_training_need_analysis
+    required_missing_data:
+    - training_history
+    - skill_gap_definition
+    - job_skill_requirements
+    reason_fa: برای تحلیل نیاز آموزشی فقط مدرک کافی نیست؛ باید مهارت، نیاز شغل یا سوابق آموزشی هم وجود داشته باشد.
+  default_output_type: status_message
+- concept_id: contractor_productivity
+  title_fa: بهره‌وری پیمانکارها
+  category: analytics_gap
+  priority: medium
+  data_status: data_gap
+  user_terms_fa:
+  - بهره‌وری پیمانکارها
+  - عملکرد پیمانکارها
+  - کیفیت پیمانکارها
+  - ریسک بهره‌وری پیمانکاری
+  - آیا پیمانکارها مناسب کار می‌کنند
+  maps_to:
+    route: GAP
+    response_status: DATA_GAP
+    related_intents:
+    - contractor_productivity_analysis
+    required_missing_data:
+    - productivity_metric
+    - performance_metric
+    - contractor_output_data
+    reason_fa: داده بهره‌وری یا شاخص عملکرد پیمانکارها در MVP فعلی وجود ندارد.
+  default_output_type: status_message
+- concept_id: individual_employee_info
+  title_fa: اطلاعات فردی کارکنان
+  category: privacy
+  priority: high
+  data_status: access_denied
+  user_terms_fa:
+  - نام کارکنان
+  - مشخصات کارکنان
+  - کد ملی
+  - شماره پرسنلی
+  - شماره تماس
+  - آدرس
+  - حقوق فردی
+  - اطلاعات فردی
+  - اطلاعات شخصی
+  - لیست اسامی
+  - نام و نام خانوادگی
+  maps_to:
+    route: REJECT
+    response_status: ACCESS_DENIED
+    related_intents:
+    - individual_employee_info
+    reason_fa: خروجی فردی یا اطلاعات حساس کارکنان مجاز نیست.
+  default_output_type: status_message
+- concept_id: out_of_scope
+  title_fa: خارج از دامنه منابع انسانی
+  category: reject
+  priority: high
+  data_status: out_of_scope
+  user_terms_fa:
+  - فروش
+  - درآمد
+  - مالی فروش
+  - مشتری
+  - محصول
+  - انبار
+  - تولید
+  - بازاریابی
+  - ماه گذشته شرکت چقدر فروش داشته
+  maps_to:
+    route: REJECT
+    response_status: OUT_OF_SCOPE
+    related_intents:
+    - out_of_scope
+    reason_fa: سؤال خارج از دامنه منابع انسانی است.
+  default_output_type: status_message
+- concept_id: ambiguous_question
+  title_fa: سؤال مبهم
+  category: reject
+  priority: medium
+  data_status: clarification_needed
+  user_terms_fa:
+  - گزارش بده
+  - وضعیت را بگو
+  - تحلیل کن
+  - چطوریم
+  - خوبه یا بد
+  - کامل توضیح بده
+  maps_to:
+    route: REJECT
+    response_status: CLARIFICATION_NEEDED
+    related_intents:
+    - ambiguous_hr_question
+    reason_fa: سؤال برای انتخاب metric، فیلتر یا گروه‌بندی کافی نیست و باید شفاف‌سازی شود.
+  default_output_type: status_message
+value_aliases:
+  gender:
+  - canonical_value: زن
+    aliases_fa:
+    - زن
+    - زنان
+    - خانم
+    - خانم‌ها
+    - نیروی زن
+    - کارکنان زن
+    - پرسنل زن
+    filter_sql: v.gender = 'زن'
+  - canonical_value: مرد
+    aliases_fa:
+    - مرد
+    - مردان
+    - آقا
+    - آقایان
+    - نیروی مرد
+    - کارکنان مرد
+    - پرسنل مرد
+    filter_sql: v.gender = 'مرد'
+  marital_status:
+  - canonical_value: مجرد
+    aliases_fa:
+    - مجرد
+    - غیرمتأهل
+    - غیرمتاهل
+    filter_sql: v.marital_status = 'مجرد'
+  - canonical_value: متأهل
+    aliases_fa:
+    - متأهل
+    - متاهل
+    - دارای همسر
+    filter_sql: v.marital_status = 'متأهل'
+  age_group_title:
+  - canonical_value: زیر ۳۰
+    aliases_fa:
+    - زیر ۳۰
+    - کمتر از ۳۰
+    - زیر سی
+    - کمتر از سی
+    filter_sql: v.age_group_title = 'زیر ۳۰'
+  - canonical_value: ۳۰ تا ۴۰
+    aliases_fa:
+    - ۳۰ تا ۴۰
+    - سی تا چهل
+    - بین ۳۰ و ۴۰
+    filter_sql: v.age_group_title = '۳۰ تا ۴۰'
+  - canonical_value: ۴۰ تا ۵۰
+    aliases_fa:
+    - ۴۰ تا ۵۰
+    - چهل تا پنجاه
+    - بین ۴۰ و ۵۰
+    filter_sql: v.age_group_title = '۴۰ تا ۵۰'
+  - canonical_value: ۵۰ تا ۶۰
+    aliases_fa:
+    - ۵۰ تا ۶۰
+    - پنجاه تا شصت
+    - بین ۵۰ و ۶۰
+    filter_sql: v.age_group_title = '۵۰ تا ۶۰'
+  - canonical_value: ۶۰ به بالا
+    aliases_fa:
+    - ۶۰ به بالا
+    - بالای ۶۰
+    - شصت به بالا
+    - ۶۰ سال به بالا
+    filter_sql: v.age_group_title = '۶۰ به بالا'
+  education_title:
+  - canonical_value: کمتر از سیکل
+    aliases_fa:
+    - کمتر از سیکل
+    - زیر سیکل
+    - بی‌سواد یا کمتر از سیکل
+    filter_sql: v.education_title = 'کمتر از سیکل'
+  - canonical_value: زیر دیپلم
+    aliases_fa:
+    - زیر دیپلم
+    - کمتر از دیپلم
+    - تحصیلات پایین‌تر از دیپلم
+    filter_sql: v.education_title = 'زیر دیپلم'
+  - canonical_value: دیپلم
+    aliases_fa:
+    - دیپلم
+    - مدرک دیپلم
+    filter_sql: v.education_title = 'دیپلم'
+  - canonical_value: کاردانی
+    aliases_fa:
+    - کاردانی
+    - فوق دیپلم
+    - فوق‌دیپلم
+    - مدرک کاردانی
+    filter_sql: v.education_title = 'کاردانی'
+  - canonical_value: کارشناسی
+    aliases_fa:
+    - کارشناسی
+    - لیسانس
+    - مدرک کارشناسی
+    - مدرک لیسانس
+    filter_sql: v.education_title = 'کارشناسی'
+  - canonical_value: کارشناسی ارشد
+    aliases_fa:
+    - کارشناسی ارشد
+    - ارشد
+    - فوق لیسانس
+    - فوق‌لیسانس
+    - مدرک ارشد
+    filter_sql: v.education_title = 'کارشناسی ارشد'
+  - canonical_value: دکترای تخصصی / حرفه‌ای
+    aliases_fa:
+    - دکترا
+    - دکتری
+    - دکترای تخصصی
+    - دکترای حرفه‌ای
+    - phd
+    - PHD
+    filter_sql: v.education_title = 'دکترای تخصصی / حرفه‌ای'
+  employment_type:
+  - canonical_value: رسمی
+    aliases_fa:
+    - رسمی
+    - نیروی رسمی
+    - استخدام رسمی
+    filter_sql: v.employment_type = 'رسمی'
+  - canonical_value: رسمی - آزمایشی
+    aliases_fa:
+    - رسمی آزمایشی
+    - رسمی - آزمایشی
+    - آزمایشی رسمی
+    filter_sql: v.employment_type = 'رسمی - آزمایشی'
+  - canonical_value: رسمی _ بیمه ای دائم
+    aliases_fa:
+    - رسمی بیمه ای دائم
+    - رسمی بیمه‌ای دائم
+    - رسمی دائم بیمه‌ای
+    filter_sql: v.employment_type = 'رسمی _ بیمه ای دائم'
+  - canonical_value: شاغل در پیمانکاری
+    aliases_fa:
+    - شاغل در پیمانکاری
+    - پیمانکاری
+    - نیروی پیمانکاری
+    filter_sql: v.employment_type = 'شاغل در پیمانکاری'
+  - canonical_value: قراردادی
+    aliases_fa:
+    - قراردادی
+    - نیروی قراردادی
+    - استخدام قراردادی
+    filter_sql: v.employment_type = 'قراردادی'
+  - canonical_value: پیمانی
+    aliases_fa:
+    - پیمانی
+    - نیروی پیمانی
+    - استخدام پیمانی
+    filter_sql: v.employment_type = 'پیمانی'
+  contract_type:
+  - canonical_value: امور پشتیبانی اداری
+    aliases_fa:
+    - امور پشتیبانی اداری
+    - پشتیبانی اداری
+    filter_sql: v.contract_type = 'امور پشتیبانی اداری'
+  - canonical_value: امور پشتیبانی خدماتی
+    aliases_fa:
+    - امور پشتیبانی خدماتی
+    - پشتیبانی خدماتی
+    filter_sql: v.contract_type = 'امور پشتیبانی خدماتی'
+  - canonical_value: حراست
+    aliases_fa:
+    - حراست
+    - قرارداد حراست
+    filter_sql: v.contract_type = 'حراست'
+  - canonical_value: خدمات امور پشتیبانی، اداری و خدماتی استانها (غیرحاکمیتی)
+    aliases_fa:
+    - خدمات پشتیبانی استانها
+    - پشتیبانی استان‌ها
+    - غیرحاکمیتی استانها
+    filter_sql: v.contract_type = 'خدمات امور پشتیبانی، اداری و خدماتی استانها (غیرحاکمیتی)'
+  - canonical_value: خرید خدمات نگهداری و پشتیبانی سیستم های فناوری اطلاعات
+    aliases_fa:
+    - خرید خدمات فناوری اطلاعات
+    - پشتیبانی سیستم های فناوری اطلاعات
+    - پشتیبانی IT
+    filter_sql: v.contract_type = 'خرید خدمات نگهداری و پشتیبانی سیستم های فناوری اطلاعات'
+  - canonical_value: رسمی
+    aliases_fa:
+    - قرارداد رسمی
+    - نوع قرارداد رسمی
+    filter_sql: v.contract_type = 'رسمی'
+  - canonical_value: رسمی - آزمایشی
+    aliases_fa:
+    - قرارداد رسمی آزمایشی
+    - نوع قرارداد رسمی آزمایشی
+    filter_sql: v.contract_type = 'رسمی - آزمایشی'
+  - canonical_value: رسمی _ بیمه ای دائم
+    aliases_fa:
+    - قرارداد رسمی بیمه ای دائم
+    - قرارداد رسمی بیمه‌ای دائم
+    filter_sql: v.contract_type = 'رسمی _ بیمه ای دائم'
+  - canonical_value: قراردادی
+    aliases_fa:
+    - قرارداد قراردادی
+    - نوع قرارداد قراردادی
+    filter_sql: v.contract_type = 'قراردادی'
+  - canonical_value: نگهداری تاسیسات - تهران
+    aliases_fa:
+    - نگهداری تاسیسات تهران
+    - تاسیسات تهران
+    filter_sql: v.contract_type = 'نگهداری تاسیسات - تهران'
+  - canonical_value: نگهداری تاسیسات استانها
+    aliases_fa:
+    - نگهداری تاسیسات استانها
+    - تاسیسات استانها
+    filter_sql: v.contract_type = 'نگهداری تاسیسات استانها'
+  - canonical_value: نگهداری شبکه
+    aliases_fa:
+    - نگهداری شبکه
+    - قرارداد نگهداری شبکه
+    filter_sql: v.contract_type = 'نگهداری شبکه'
+  - canonical_value: پیمانی
+    aliases_fa:
+    - قرارداد پیمانی
+    - نوع قرارداد پیمانی
+    filter_sql: v.contract_type = 'پیمانی'
+  is_contractor:
+  - canonical_value: true
+    aliases_fa:
+    - پیمانکاری
+    - شاغل در پیمانکاری
+    - نیروی پیمانکاری
+    - پیمانکار
+    filter_sql: v.is_contractor = TRUE
+  - canonical_value: false
+    aliases_fa:
+    - غیر پیمانکاری
+    - غیرپیمانکاری
+    - نیروی غیرپیمانکاری
+    filter_sql: v.is_contractor = FALSE
+  service_domain:
+  - canonical_value: عمومی و ستادی
+    aliases_fa:
+    - عمومی و ستادی
+    - ستادی
+    - عمومی
+    filter_sql: v.service_domain = 'عمومی و ستادی'
+  - canonical_value: فنی و شبکه
+    aliases_fa:
+    - فنی و شبکه
+    - شبکه
+    - فنی
+    filter_sql: v.service_domain = 'فنی و شبکه'
+  - canonical_value: منابع انسانی
+    aliases_fa:
+    - منابع انسانی
+    - HR
+    - اچ آر
+    - سرمایه انسانی
+    filter_sql: v.service_domain = 'منابع انسانی'
+  - canonical_value: فناوری اطلاعات
+    aliases_fa:
+    - فناوری اطلاعات
+    - IT
+    - آی تی
+    - فاوا
+    filter_sql: v.service_domain = 'فناوری اطلاعات'
+  - canonical_value: راهبردی و توسعه کسب‌وکار
+    aliases_fa:
+    - راهبردی و توسعه کسب‌وکار
+    - راهبردی
+    - توسعه کسب و کار
+    - توسعه کسب‌وکار
+    filter_sql: v.service_domain = 'راهبردی و توسعه کسب‌وکار'
+  is_expert_role:
+  - canonical_value: true
+    aliases_fa:
+    - پست کارشناسی
+    - نقش کارشناسی
+    - کارشناس
+    - پست تخصصی
+    filter_sql: v.is_expert_role = TRUE
+  - canonical_value: false
+    aliases_fa:
+    - غیرکارشناسی
+    - پست غیرکارشناسی
+    filter_sql: v.is_expert_role = FALSE
+disambiguation_rules:
+- rule_id: DISAMBIG_001
+  topic: نوع استخدام در برابر نوع قرارداد
+  if_user_mentions:
+  - نوع استخدام
+  - وضعیت استخدام
+  - رسمی
+  - قراردادی
+  - پیمانی
+  default_mapping: employment_type
+  override_when_user_mentions:
+  - نوع قرارداد
+  - قرارداد
+  override_mapping: contract_type
+  notes_fa: رسمی/قراردادی/پیمانی بدون عبارت نوع قرارداد باید به employment_type نگاشت شود.
+- rule_id: DISAMBIG_002
+  topic: پیمانکاری
+  if_user_mentions:
+  - پیمانکاری
+  - نیروی پیمانکاری
+  - سهم پیمانکاری
+  default_mapping: is_contractor = TRUE
+  alternate_mapping: employment_type = شاغل در پیمانکاری
+  notes_fa: برای محاسبه سهم یا درصد پیمانکاری بهتر است از is_contractor استفاده شود.
+- rule_id: DISAMBIG_003
+  topic: کارشناسی
+  if_user_mentions:
+  - مدرک کارشناسی
+  - لیسانس
+  - تحصیلات کارشناسی
+  default_mapping: education_title = کارشناسی
+  override_when_user_mentions:
+  - پست کارشناسی
+  - نقش کارشناسی
+  - کارشناس در پست
+  override_mapping: is_expert_role = TRUE
+  notes_fa: واژه کارشناسی هم می‌تواند مدرک باشد هم سطح پست؛ قرینه سؤال تعیین‌کننده است.
+- rule_id: DISAMBIG_004
+  topic: حوزه در برابر واحد/بخش
+  if_user_mentions:
+  - حوزه
+  - حوزه خدمت
+  - معاونت
+  default_mapping: service_domain
+  override_when_user_mentions:
+  - واحد
+  - بخش
+  - اداره
+  - دپارتمان
+  override_mapping: department_name
+  notes_fa: حوزه سطح کلان‌تر است؛ واحد/بخش/اداره به department_name نگاشت می‌شود.
+- rule_id: DISAMBIG_005
+  topic: محل خدمت
+  if_user_mentions:
+  - محل خدمت
+  - لوکیشن
+  - سایت
+  default_mapping: site_name
+  fallback_mapping: province
+  notes_fa: اگر سؤال در سطح استان بود از province استفاده شود؛ اگر شهر خواسته شد DATA_GAP شود.
+- rule_id: DISAMBIG_006
+  topic: بیشترین/کمترین جذب
+  if_user_mentions:
+  - سال بیشترین جذب
+  - سال کمترین جذب
+  default_mapping: hire_year with grouped employee_count
+  forbidden_mapping:
+  - MAX(v.hire_year)
+  - MIN(v.hire_year)
+  notes_fa: بیشترین/کمترین جذب یعنی سالی که COUNT کارکنان جذب‌شده در آن بیشترین/کمترین است، نه بزرگ‌ترین/کوچک‌ترین سال.
+- rule_id: DISAMBIG_007
+  topic: بازنشستگی
+  if_user_mentions:
+  - آستانه بازنشستگی
+  - نزدیک بازنشستگی
+  default_mapping: DATA_GAP
+  notes_fa: بدون قانون رسمی بازنشستگی نباید صرفاً با سن حدسی پاسخ تولید شود.
+- rule_id: DISAMBIG_008
+  topic: شهر
+  if_user_mentions:
+  - شهر
+  - هر شهر
+  - تحلیل شهری
+  default_mapping: DATA_GAP
+  notes_fa: ستون city وجود دارد اما در MVP فعلی قابل اتکا نیست.
+data_gap_semantics:
+- gap_id: GAP_CITY_LEVEL
+  concept: city_level_analysis
+  trigger_terms_fa:
+  - شهر
+  - هر شهر
+  - تحلیل شهری
+  response_status: DATA_GAP
+  reason_fa: city در MVP فعلی قابل اتکا نیست.
+- gap_id: GAP_RETIREMENT_RULE
+  concept: near_retirement_analysis
+  trigger_terms_fa:
+  - آستانه بازنشستگی
+  - نزدیک بازنشستگی
+  response_status: DATA_GAP
+  reason_fa: قانون رسمی بازنشستگی تعریف نشده است.
+- gap_id: GAP_CONTRACTOR_PRODUCTIVITY
+  concept: contractor_productivity_analysis
+  trigger_terms_fa:
+  - بهره‌وری پیمانکار
+  - عملکرد پیمانکار
+  response_status: DATA_GAP
+  reason_fa: شاخص بهره‌وری/عملکرد پیمانکارها وجود ندارد.
+- gap_id: GAP_BUSINESS_GROWTH_ALIGNMENT
+  concept: hiring_business_growth_alignment
+  trigger_terms_fa:
+  - جذب با افزایش کار
+  - تناسب جذب با حجم کار
+  response_status: DATA_GAP
+  reason_fa: داده حجم کار/رشد کسب‌وکار وجود ندارد.
+- gap_id: GAP_TRAINING_NEED
+  concept: education_training_need_analysis
+  trigger_terms_fa:
+  - نیاز آموزشی
+  - دوره تخصصی
+  - کمبود تخصص
+  response_status: DATA_GAP
+  reason_fa: نیازمند داده مهارت، آموزش، نیاز شغل یا تعریف شاخص است.
+- gap_id: GAP_AGING_TREND
+  concept: workforce_aging_trend_analysis
+  trigger_terms_fa:
+  - سالخوردگی
+  - پیر شدن سازمان
+  response_status: DATA_GAP
+  reason_fa: نیازمند تعریف شاخص و داده روندی است؛ فقط وضعیت سن فعلی قابل گزارش است.
+- gap_id: GAP_MONTHLY_HIRING
+  concept: monthly_hiring
+  trigger_terms_fa:
+  - جذب ماهانه
+  - روند ماهانه جذب
+  response_status: DATA_GAP
+  reason_fa: تقویم شمسی/ماه جذب معتبر در MVP فعلی آماده نیست.
+reject_semantics:
+- reject_id: REJECT_PERSONAL_INFO
+  response_status: ACCESS_DENIED
+  trigger_terms_fa:
+  - نام
+  - نام خانوادگی
+  - کد ملی
+  - شماره پرسنلی
+  - شماره تماس
+  - آدرس
+  - اطلاعات فردی
+  - مشخصات کارکنان
+  - لیست اسامی
+  reason_fa: نمایش اطلاعات فردی و حساس کارکنان مجاز نیست.
+- reject_id: REJECT_OUT_OF_SCOPE
+  response_status: OUT_OF_SCOPE
+  trigger_terms_fa:
+  - فروش
+  - درآمد
+  - مشتری
+  - محصول
+  - انبار
+  - بازاریابی
+  reason_fa: سؤال خارج از دامنه منابع انسانی است.
+- reject_id: REJECT_AMBIGUOUS
+  response_status: CLARIFICATION_NEEDED
+  trigger_terms_fa:
+  - گزارش بده
+  - تحلیل کن
+  - وضعیت را بگو
+  reason_fa: سؤال برای انتخاب شاخص یا بُعد تحلیل کافی نیست.
+term_index_for_semantic_mapper:
+- term: تعداد کارکنان
+  concept_id: employee_count
+  category: headcount
+  route: SQL
+- term: تعداد کل کارکنان
+  concept_id: employee_count
+  category: headcount
+  route: SQL
+- term: کل کارکنان
+  concept_id: employee_count
+  category: headcount
+  route: SQL
+- term: تعداد نیروها
+  concept_id: employee_count
+  category: headcount
+  route: SQL
+- term: کل نیروها
+  concept_id: employee_count
+  category: headcount
+  route: SQL
+- term: تعداد پرسنل
+  concept_id: employee_count
+  category: headcount
+  route: SQL
+- term: کل پرسنل
+  concept_id: employee_count
+  category: headcount
+  route: SQL
+- term: چند نفر
+  concept_id: employee_count
+  category: headcount
+  route: SQL
+- term: چندتا نیرو
+  concept_id: employee_count
+  category: headcount
+  route: SQL
+- term: سرجمع نیروها
+  concept_id: employee_count
+  category: headcount
+  route: SQL
+- term: هدکانت
+  concept_id: employee_count
+  category: headcount
+  route: SQL
+- term: headcount
+  concept_id: employee_count
+  category: headcount
+  route: SQL
+- term: نیروی انسانی موجود
+  concept_id: employee_count
+  category: headcount
+  route: SQL
+- term: فعال
+  concept_id: active_employee
+  category: headcount
+  route: SQL
+- term: کارمند فعال
+  concept_id: active_employee
+  category: headcount
+  route: SQL
+- term: نیروی فعال
+  concept_id: active_employee
+  category: headcount
+  route: SQL
+- term: پرسنل فعال
+  concept_id: active_employee
+  category: headcount
+  route: SQL
+- term: کارکنان فعال
+  concept_id: active_employee
+  category: headcount
+  route: SQL
+- term: جنسیت
+  concept_id: gender
+  category: demographic
+  route: SQL
+- term: زن و مرد
+  concept_id: gender
+  category: demographic
+  route: SQL
+- term: تفکیک جنسیت
+  concept_id: gender
+  category: demographic
+  route: SQL
+- term: به تفکیک جنسیت
+  concept_id: gender
+  category: demographic
+  route: SQL
+- term: توزیع جنسیتی
+  concept_id: gender
+  category: demographic
+  route: SQL
+- term: تعداد زن و مرد
+  concept_id: gender
+  category: demographic
+  route: SQL
+- term: سهم جنسیتی
+  concept_id: gender
+  category: demographic
+  route: SQL
+- term: نسبت جنسیت
+  concept_id: gender
+  category: demographic
+  route: SQL
+- term: ترکیب جنسیتی
+  concept_id: gender
+  category: demographic
+  route: SQL
+- term: زن
+  concept_id: female
+  category: demographic
+  route: SQL
+- term: زنان
+  concept_id: female
+  category: demographic
+  route: SQL
+- term: خانم
+  concept_id: female
+  category: demographic
+  route: SQL
+- term: خانم‌ها
+  concept_id: female
+  category: demographic
+  route: SQL
+- term: کارکنان زن
+  concept_id: female
+  category: demographic
+  route: SQL
+- term: نیروی زن
+  concept_id: female
+  category: demographic
+  route: SQL
+- term: پرسنل زن
+  concept_id: female
+  category: demographic
+  route: SQL
+- term: درصد زنان
+  concept_id: female
+  category: demographic
+  route: SQL
+- term: سهم زنان
+  concept_id: female
+  category: demographic
+  route: SQL
+- term: مرد
+  concept_id: male
+  category: demographic
+  route: SQL
+- term: مردان
+  concept_id: male
+  category: demographic
+  route: SQL
+- term: آقا
+  concept_id: male
+  category: demographic
+  route: SQL
+- term: آقایان
+  concept_id: male
+  category: demographic
+  route: SQL
+- term: کارکنان مرد
+  concept_id: male
+  category: demographic
+  route: SQL
+- term: نیروی مرد
+  concept_id: male
+  category: demographic
+  route: SQL
+- term: پرسنل مرد
+  concept_id: male
+  category: demographic
+  route: SQL
+- term: درصد مردان
+  concept_id: male
+  category: demographic
+  route: SQL
+- term: سهم مردان
+  concept_id: male
+  category: demographic
+  route: SQL
+- term: وضعیت تأهل
+  concept_id: marital_status
+  category: demographic
+  route: SQL
+- term: تأهل
+  concept_id: marital_status
+  category: demographic
+  route: SQL
+- term: تاهل
+  concept_id: marital_status
+  category: demographic
+  route: SQL
+- term: مجرد
+  concept_id: marital_status
+  category: demographic
+  route: SQL
+- term: متأهل
+  concept_id: marital_status
+  category: demographic
+  route: SQL
+- term: متاهل
+  concept_id: marital_status
+  category: demographic
+  route: SQL
+- term: تعداد مجردها
+  concept_id: marital_status
+  category: demographic
+  route: SQL
+- term: تعداد متأهل‌ها
+  concept_id: marital_status
+  category: demographic
+  route: SQL
+- term: به تفکیک وضعیت تأهل
+  concept_id: marital_status
+  category: demographic
+  route: SQL
+- term: سن
+  concept_id: age
+  category: age
+  route: SQL
+- term: سن کارکنان
+  concept_id: age
+  category: age
+  route: SQL
+- term: سن پرسنل
+  concept_id: age
+  category: age
+  route: SQL
+- term: بازه سنی
+  concept_id: age
+  category: age
+  route: SQL
+- term: رده سنی
+  concept_id: age
+  category: age
+  route: SQL
+- term: گروه سنی
+  concept_id: age
+  category: age
+  route: SQL
+- term: جوان
+  concept_id: age
+  category: age
+  route: SQL
+- term: مسن
+  concept_id: age
+  category: age
+  route: SQL
+- term: سالمند
+  concept_id: age
+  category: age
+  route: SQL
+- term: میان‌سال
+  concept_id: age
+  category: age
+  route: SQL
+- term: میانگین سن
+  concept_id: average_age
+  category: age
+  route: SQL
+- term: متوسط سن
+  concept_id: average_age
+  category: age
+  route: SQL
+- term: avg age
+  concept_id: average_age
+  category: age
+  route: SQL
+- term: average age
+  concept_id: average_age
+  category: age
+  route: SQL
+- term: میانگین سنی
+  concept_id: average_age
+  category: age
+  route: SQL
+- term: سن متوسط
+  concept_id: average_age
+  category: age
+  route: SQL
+- term: گروه سنی
+  concept_id: age_group
+  category: age
+  route: SQL
+- term: بازه سنی
+  concept_id: age_group
+  category: age
+  route: SQL
+- term: رده سنی
+  concept_id: age_group
+  category: age
+  route: SQL
+- term: سنین
+  concept_id: age_group
+  category: age
+  route: SQL
+- term: تفکیک سنی
+  concept_id: age_group
+  category: age
+  route: SQL
+- term: به تفکیک سن
+  concept_id: age_group
+  category: age
+  route: SQL
+- term: زیر ۳۰
+  concept_id: under_age_filter
+  category: age
+  route: SQL
+- term: زیر ۳۰ سال
+  concept_id: under_age_filter
+  category: age
+  route: SQL
+- term: کمتر از ۳۰
+  concept_id: under_age_filter
+  category: age
+  route: SQL
+- term: کمتر از سی سال
+  concept_id: under_age_filter
+  category: age
+  route: SQL
+- term: زیر ۲۰
+  concept_id: under_age_filter
+  category: age
+  route: SQL
+- term: زیر ۲۰ سال
+  concept_id: under_age_filter
+  category: age
+  route: SQL
+- term: کمتر از ۲۰
+  concept_id: under_age_filter
+  category: age
+  route: SQL
+- term: جوان‌تر از
+  concept_id: under_age_filter
+  category: age
+  route: SQL
+- term: کمتر از سن
+  concept_id: under_age_filter
+  category: age
+  route: SQL
+- term: بالای ۶۰
+  concept_id: above_age_filter
+  category: age
+  route: SQL
+- term: ۶۰ سال به بالا
+  concept_id: above_age_filter
+  category: age
+  route: SQL
+- term: شصت سال به بالا
+  concept_id: above_age_filter
+  category: age
+  route: SQL
+- term: بالاتر از ۶۰
+  concept_id: above_age_filter
+  category: age
+  route: SQL
+- term: بیشتر از ۶۰
+  concept_id: above_age_filter
+  category: age
+  route: SQL
+- term: مسن‌تر از
+  concept_id: above_age_filter
+  category: age
+  route: SQL
+- term: بالای سن
+  concept_id: above_age_filter
+  category: age
+  route: SQL
+- term: آستانه بازنشستگی
+  concept_id: near_retirement
+  category: gap
+  route: GAP
+- term: نزدیک بازنشستگی
+  concept_id: near_retirement
+  category: gap
+  route: GAP
+- term: در شرف بازنشستگی
+  concept_id: near_retirement
+  category: gap
+  route: GAP
+- term: آماده بازنشستگی
+  concept_id: near_retirement
+  category: gap
+  route: GAP
+- term: بازنشستگی نزدیک
+  concept_id: near_retirement
+  category: gap
+  route: GAP
+- term: قابل بازنشستگی
+  concept_id: near_retirement
+  category: gap
+  route: GAP
+- term: تحصیلات
+  concept_id: education
+  category: education
+  route: SQL
+- term: مدرک
+  concept_id: education
+  category: education
+  route: SQL
+- term: مدرک تحصیلی
+  concept_id: education
+  category: education
+  route: SQL
+- term: آخرین مدرک
+  concept_id: education
+  category: education
+  route: SQL
+- term: سطح تحصیلات
+  concept_id: education
+  category: education
+  route: SQL
+- term: سطح مدرک
+  concept_id: education
+  category: education
+  route: SQL
+- term: پایه تحصیلی
+  concept_id: education
+  category: education
+  route: SQL
+- term: تحصیلات کارکنان
+  concept_id: education
+  category: education
+  route: SQL
+- term: مدرک کارکنان
+  concept_id: education
+  category: education
+  route: SQL
+- term: رتبه مدرک
+  concept_id: education_rank
+  category: education
+  route: SQL
+- term: ترتیب مدرک
+  concept_id: education_rank
+  category: education
+  route: SQL
+- term: سطح عددی مدرک
+  concept_id: education_rank
+  category: education
+  route: SQL
+- term: سطح تحصیلات از نظر رتبه
+  concept_id: education_rank
+  category: education
+  route: SQL
+- term: گروه تحصیلی
+  concept_id: education_category
+  category: education
+  route: SQL
+- term: دسته تحصیلی
+  concept_id: education_category
+  category: education
+  route: SQL
+- term: طبقه تحصیلی
+  concept_id: education_category
+  category: education
+  route: SQL
+- term: رده مدرک
+  concept_id: education_category
+  category: education
+  route: SQL
+- term: رشته تحصیلی
+  concept_id: field_of_study
+  category: education
+  route: SQL
+- term: رشته دانشگاهی
+  concept_id: field_of_study
+  category: education
+  route: SQL
+- term: رشته
+  concept_id: field_of_study
+  category: education
+  route: SQL
+- term: گرایش تحصیلی
+  concept_id: field_of_study
+  category: education
+  route: SQL
+- term: سال فارغ‌التحصیلی
+  concept_id: graduation_year
+  category: education
+  route: SQL
+- term: سال پایان تحصیل
+  concept_id: graduation_year
+  category: education
+  route: SQL
+- term: سال اخذ مدرک
+  concept_id: graduation_year
+  category: education
+  route: SQL
+- term: بیشترین مدرک
+  concept_id: most_common_education
+  category: education
+  route: SQL
+- term: مدرکی که بیشترین سهم را دارد
+  concept_id: most_common_education
+  category: education
+  route: SQL
+- term: پرتکرارترین مدرک
+  concept_id: most_common_education
+  category: education
+  route: SQL
+- term: رایج‌ترین مدرک
+  concept_id: most_common_education
+  category: education
+  route: SQL
+- term: بیشترین تحصیلات موجود
+  concept_id: most_common_education
+  category: education
+  route: SQL
+- term: کمترین مدرک
+  concept_id: least_common_education
+  category: education
+  route: SQL
+- term: کم‌تکرارترین مدرک
+  concept_id: least_common_education
+  category: education
+  route: SQL
+- term: نایاب‌ترین مدرک
+  concept_id: least_common_education
+  category: education
+  route: SQL
+- term: کمترین تحصیلات موجود
+  concept_id: least_common_education
+  category: education
+  route: SQL
+- term: تحصیلات پایین‌تر از پست
+  concept_id: low_education_in_expert_roles
+  category: education
+  route: SQL
+- term: مدرک کمتر از نیاز پست
+  concept_id: low_education_in_expert_roles
+  category: education
+  route: SQL
+- term: دیپلم در پست کارشناسی
+  concept_id: low_education_in_expert_roles
+  category: education
+  route: SQL
+- term: تحصیلات پایین در پست کارشناسی
+  concept_id: low_education_in_expert_roles
+  category: education
+  route: SQL
+- term: کمتر از حداقل مدرک پست
+  concept_id: low_education_in_expert_roles
+  category: education
+  route: SQL
+- term: نوع استخدام
+  concept_id: employment_type
+  category: employment
+  route: SQL
+- term: وضعیت استخدام
+  concept_id: employment_type
+  category: employment
+  route: SQL
+- term: استخدامی
+  concept_id: employment_type
+  category: employment
+  route: SQL
+- term: رسمی
+  concept_id: employment_type
+  category: employment
+  route: SQL
+- term: قراردادی
+  concept_id: employment_type
+  category: employment
+  route: SQL
+- term: پیمانی
+  concept_id: employment_type
+  category: employment
+  route: SQL
+- term: رسمی آزمایشی
+  concept_id: employment_type
+  category: employment
+  route: SQL
+- term: رسمی بیمه‌ای دائم
+  concept_id: employment_type
+  category: employment
+  route: SQL
+- term: شاغل در پیمانکاری
+  concept_id: employment_type
+  category: employment
+  route: SQL
+- term: استخدام رسمی
+  concept_id: employment_type
+  category: employment
+  route: SQL
+- term: استخدام قراردادی
+  concept_id: employment_type
+  category: employment
+  route: SQL
+- term: استخدام پیمانی
+  concept_id: employment_type
+  category: employment
+  route: SQL
+- term: نوع قرارداد
+  concept_id: contract_type
+  category: employment
+  route: SQL
+- term: قرارداد
+  concept_id: contract_type
+  category: employment
+  route: SQL
+- term: وضعیت قرارداد
+  concept_id: contract_type
+  category: employment
+  route: SQL
+- term: قرارداد جاری
+  concept_id: contract_type
+  category: employment
+  route: SQL
+- term: قرارداد خدماتی
+  concept_id: contract_type
+  category: employment
+  route: SQL
+- term: قرارداد پشتیبانی
+  concept_id: contract_type
+  category: employment
+  route: SQL
+- term: قرارداد حراست
+  concept_id: contract_type
+  category: employment
+  route: SQL
+- term: قرارداد نگهداری شبکه
+  concept_id: contract_type
+  category: employment
+  route: SQL
+- term: به تفکیک قرارداد
+  concept_id: contract_type
+  category: employment
+  route: SQL
+- term: پیمانکاری
+  concept_id: contractor
+  category: employment
+  route: SQL
+- term: نیروی پیمانکاری
+  concept_id: contractor
+  category: employment
+  route: SQL
+- term: نیروهای پیمانکاری
+  concept_id: contractor
+  category: employment
+  route: SQL
+- term: شاغل در پیمانکاری
+  concept_id: contractor
+  category: employment
+  route: SQL
+- term: سهم پیمانکاری
+  concept_id: contractor
+  category: employment
+  route: SQL
+- term: درصد پیمانکاری
+  concept_id: contractor
+  category: employment
+  route: SQL
+- term: پیمانکار
+  concept_id: contractor
+  category: employment
+  route: SQL
+- term: نیروهای پیمانکار
+  concept_id: contractor
+  category: employment
+  route: SQL
+- term: contractor
+  concept_id: contractor
+  category: employment
+  route: SQL
+- term: رسمی
+  concept_id: formal_employee
+  category: employment
+  route: SQL
+- term: نیروی رسمی
+  concept_id: formal_employee
+  category: employment
+  route: SQL
+- term: کارمند رسمی
+  concept_id: formal_employee
+  category: employment
+  route: SQL
+- term: استخدام رسمی
+  concept_id: formal_employee
+  category: employment
+  route: SQL
+- term: قراردادی
+  concept_id: contractual_employee
+  category: employment
+  route: SQL
+- term: نیروی قراردادی
+  concept_id: contractual_employee
+  category: employment
+  route: SQL
+- term: کارمند قراردادی
+  concept_id: contractual_employee
+  category: employment
+  route: SQL
+- term: استخدام قراردادی
+  concept_id: contractual_employee
+  category: employment
+  route: SQL
+- term: پیمانی
+  concept_id: fixed_term_employee
+  category: employment
+  route: SQL
+- term: نیروی پیمانی
+  concept_id: fixed_term_employee
+  category: employment
+  route: SQL
+- term: کارمند پیمانی
+  concept_id: fixed_term_employee
+  category: employment
+  route: SQL
+- term: استخدام پیمانی
+  concept_id: fixed_term_employee
+  category: employment
+  route: SQL
+- term: ثبات سازمان
+  concept_id: employment_stability
+  category: gap
+  route: GAP
+- term: ثبات استخدامی
+  concept_id: employment_stability
+  category: gap
+  route: GAP
+- term: تأثیر رسمی و پیمانی بر ثبات
+  concept_id: employment_stability
+  category: gap
+  route: GAP
+- term: ریسک نوع استخدام
+  concept_id: employment_stability
+  category: gap
+  route: GAP
+- term: پایداری نیروی انسانی
+  concept_id: employment_stability
+  category: gap
+  route: GAP
+- term: حوزه
+  concept_id: service_domain
+  category: organization
+  route: SQL
+- term: حوزه خدمت
+  concept_id: service_domain
+  category: organization
+  route: SQL
+- term: معاونت
+  concept_id: service_domain
+  category: organization
+  route: SQL
+- term: حوزه سازمانی
+  concept_id: service_domain
+  category: organization
+  route: SQL
+- term: بخش کلان
+  concept_id: service_domain
+  category: organization
+  route: SQL
+- term: دامنه خدمت
+  concept_id: service_domain
+  category: organization
+  route: SQL
+- term: service domain
+  concept_id: service_domain
+  category: organization
+  route: SQL
+- term: واحد
+  concept_id: department
+  category: organization
+  route: SQL
+- term: بخش
+  concept_id: department
+  category: organization
+  route: SQL
+- term: اداره
+  concept_id: department
+  category: organization
+  route: SQL
+- term: دپارتمان
+  concept_id: department
+  category: organization
+  route: SQL
+- term: واحد سازمانی
+  concept_id: department
+  category: organization
+  route: SQL
+- term: بخش سازمانی
+  concept_id: department
+  category: organization
+  route: SQL
+- term: کدام بخش
+  concept_id: department
+  category: organization
+  route: SQL
+- term: کدام واحد
+  concept_id: department
+  category: organization
+  route: SQL
+- term: department
+  concept_id: department
+  category: organization
+  route: SQL
+- term: سطح دپارتمان
+  concept_id: department_level
+  category: organization
+  route: SQL
+- term: سطح واحد
+  concept_id: department_level
+  category: organization
+  route: SQL
+- term: سطح سازمانی
+  concept_id: department_level
+  category: organization
+  route: SQL
+- term: لایه سازمانی
+  concept_id: department_level
+  category: organization
+  route: SQL
+- term: سطح بخش
+  concept_id: department_level
+  category: organization
+  route: SQL
+- term: کد دپارتمان
+  concept_id: department_code
+  category: organization
+  route: SQL
+- term: کد واحد
+  concept_id: department_code
+  category: organization
+  route: SQL
+- term: کد بخش
+  concept_id: department_code
+  category: organization
+  route: SQL
+- term: کد اداره
+  concept_id: department_code
+  category: organization
+  route: SQL
+- term: سطح حساسیت
+  concept_id: criticality_level
+  category: organization
+  route: SQL
+- term: حساسیت واحد
+  concept_id: criticality_level
+  category: organization
+  route: SQL
+- term: واحد بحرانی
+  concept_id: criticality_level
+  category: organization
+  route: SQL
+- term: criticality
+  concept_id: criticality_level
+  category: organization
+  route: SQL
+- term: criticality level
+  concept_id: criticality_level
+  category: organization
+  route: SQL
+- term: کمبود نیرو
+  concept_id: headcount_gap
+  category: organization
+  route: SQL
+- term: مازاد نیرو
+  concept_id: headcount_gap
+  category: organization
+  route: SQL
+- term: چارت مصوب
+  concept_id: headcount_gap
+  category: organization
+  route: SQL
+- term: نیروی مصوب
+  concept_id: headcount_gap
+  category: organization
+  route: SQL
+- term: ظرفیت مصوب
+  concept_id: headcount_gap
+  category: organization
+  route: SQL
+- term: نیروی موجود
+  concept_id: headcount_gap
+  category: organization
+  route: SQL
+- term: اختلاف نیروی موجود و مصوب
+  concept_id: headcount_gap
+  category: organization
+  route: SQL
+- term: تعادل چارت و نیروی انسانی
+  concept_id: headcount_gap
+  category: organization
+  route: SQL
+- term: کدام واحد کمبود نیرو دارد
+  concept_id: headcount_gap
+  category: organization
+  route: SQL
+- term: تعادل بین بخش‌ها
+  concept_id: department_balance
+  category: gap
+  route: GAP
+- term: توازن نیرو
+  concept_id: department_balance
+  category: gap
+  route: GAP
+- term: متعادل بودن نیروی انسانی
+  concept_id: department_balance
+  category: gap
+  route: GAP
+- term: آیا نیرو بین بخش‌ها متوازن است
+  concept_id: department_balance
+  category: gap
+  route: GAP
+- term: تعادل بین چارت و واقعیت
+  concept_id: department_balance
+  category: gap
+  route: GAP
+- term: استان
+  concept_id: province
+  category: location
+  route: SQL
+- term: هر استان
+  concept_id: province
+  category: location
+  route: SQL
+- term: به تفکیک استان
+  concept_id: province
+  category: location
+  route: SQL
+- term: نیروهای استان
+  concept_id: province
+  category: location
+  route: SQL
+- term: پراکندگی استان
+  concept_id: province
+  category: location
+  route: SQL
+- term: محل خدمت در استان
+  concept_id: province
+  category: location
+  route: SQL
+- term: شهر
+  concept_id: city
+  category: location
+  route: GAP
+- term: هر شهر
+  concept_id: city
+  category: location
+  route: GAP
+- term: نیروهای هر شهر
+  concept_id: city
+  category: location
+  route: GAP
+- term: به تفکیک شهر
+  concept_id: city
+  category: location
+  route: GAP
+- term: تحلیل شهری
+  concept_id: city
+  category: location
+  route: GAP
+- term: محل خدمت شهری
+  concept_id: city
+  category: location
+  route: GAP
+- term: محل خدمت
+  concept_id: work_location
+  category: location
+  route: SQL
+- term: سایت
+  concept_id: work_location
+  category: location
+  route: SQL
+- term: site
+  concept_id: work_location
+  category: location
+  route: SQL
+- term: site_name
+  concept_id: work_location
+  category: location
+  route: SQL
+- term: محل کار
+  concept_id: work_location
+  category: location
+  route: SQL
+- term: پایگاه
+  concept_id: work_location
+  category: location
+  route: SQL
+- term: شعبه
+  concept_id: work_location
+  category: location
+  route: SQL
+- term: موقعیت کاری
+  concept_id: work_location
+  category: location
+  route: SQL
+- term: لوکیشن
+  concept_id: work_location
+  category: location
+  route: SQL
+- term: نوع محل خدمت
+  concept_id: location_type
+  category: location
+  route: SQL
+- term: نوع لوکیشن
+  concept_id: location_type
+  category: location
+  route: SQL
+- term: سطح محل خدمت
+  concept_id: location_type
+  category: location
+  route: SQL
+- term: استانی یا ستادی
+  concept_id: location_type
+  category: location
+  route: SQL
+- term: پست
+  concept_id: position
+  category: job
+  route: SQL
+- term: عنوان پست
+  concept_id: position
+  category: job
+  route: SQL
+- term: سمت
+  concept_id: position
+  category: job
+  route: SQL
+- term: شغل
+  concept_id: position
+  category: job
+  route: SQL
+- term: جایگاه شغلی
+  concept_id: position
+  category: job
+  route: SQL
+- term: position
+  concept_id: position
+  category: job
+  route: SQL
+- term: سطح پست
+  concept_id: position_level
+  category: job
+  route: SQL
+- term: رده پست
+  concept_id: position_level
+  category: job
+  route: SQL
+- term: سطح شغلی
+  concept_id: position_level
+  category: job
+  route: SQL
+- term: سطح سمت
+  concept_id: position_level
+  category: job
+  route: SQL
+- term: position level
+  concept_id: position_level
+  category: job
+  route: SQL
+- term: خانواده شغلی
+  concept_id: job_family
+  category: job
+  route: SQL
+- term: گروه شغلی
+  concept_id: job_family
+  category: job
+  route: SQL
+- term: رسته شغلی
+  concept_id: job_family
+  category: job
+  route: SQL
+- term: job family
+  concept_id: job_family
+  category: job
+  route: SQL
+- term: پست کارشناسی
+  concept_id: expert_role
+  category: job
+  route: SQL
+- term: نقش کارشناسی
+  concept_id: expert_role
+  category: job
+  route: SQL
+- term: کارشناس
+  concept_id: expert_role
+  category: job
+  route: SQL
+- term: پست تخصصی
+  concept_id: expert_role
+  category: job
+  route: SQL
+- term: expert role
+  concept_id: expert_role
+  category: job
+  route: SQL
+- term: حداقل مدرک
+  concept_id: minimum_required_education
+  category: job
+  route: SQL
+- term: حداقل تحصیلات پست
+  concept_id: minimum_required_education
+  category: job
+  route: SQL
+- term: مدرک موردنیاز پست
+  concept_id: minimum_required_education
+  category: job
+  route: SQL
+- term: نیاز پست به تحصیلات
+  concept_id: minimum_required_education
+  category: job
+  route: SQL
+- term: جذب
+  concept_id: hiring
+  category: hiring
+  route: SQL
+- term: استخدام
+  concept_id: hiring
+  category: hiring
+  route: SQL
+- term: ورود نیرو
+  concept_id: hiring
+  category: hiring
+  route: SQL
+- term: نیروی جذب‌شده
+  concept_id: hiring
+  category: hiring
+  route: SQL
+- term: سال جذب
+  concept_id: hiring
+  category: hiring
+  route: SQL
+- term: جذب سالانه
+  concept_id: hiring
+  category: hiring
+  route: SQL
+- term: روند جذب
+  concept_id: hiring
+  category: hiring
+  route: SQL
+- term: استخدام سالانه
+  concept_id: hiring
+  category: hiring
+  route: SQL
+- term: روند جذب سالانه
+  concept_id: hiring_trend_annual
+  category: hiring
+  route: SQL
+- term: جذب سالانه
+  concept_id: hiring_trend_annual
+  category: hiring
+  route: SQL
+- term: در هر سال چند نفر جذب شده‌اند
+  concept_id: hiring_trend_annual
+  category: hiring
+  route: SQL
+- term: روند استخدام
+  concept_id: hiring_trend_annual
+  category: hiring
+  route: SQL
+- term: جذب در سال‌های مختلف
+  concept_id: hiring_trend_annual
+  category: hiring
+  route: SQL
+- term: جذب ۱۵ سال اخیر
+  concept_id: hiring_last_15_years
+  category: hiring
+  route: SQL
+- term: جذب پانزده سال اخیر
+  concept_id: hiring_last_15_years
+  category: hiring
+  route: SQL
+- term: ۱۵ سال اخیر جذب
+  concept_id: hiring_last_15_years
+  category: hiring
+  route: SQL
+- term: پانزده سال گذشته استخدام
+  concept_id: hiring_last_15_years
+  category: hiring
+  route: SQL
+- term: سال بیشترین جذب
+  concept_id: most_hiring_year
+  category: hiring
+  route: SQL
+- term: بیشترین جذب در چه سالی
+  concept_id: most_hiring_year
+  category: hiring
+  route: SQL
+- term: کدام سال بیشترین جذب
+  concept_id: most_hiring_year
+  category: hiring
+  route: SQL
+- term: اوج جذب
+  concept_id: most_hiring_year
+  category: hiring
+  route: SQL
+- term: سال کمترین جذب
+  concept_id: least_hiring_year
+  category: hiring
+  route: SQL
+- term: کمترین جذب در چه سالی
+  concept_id: least_hiring_year
+  category: hiring
+  route: SQL
+- term: کدام سال کمترین جذب
+  concept_id: least_hiring_year
+  category: hiring
+  route: SQL
+- term: جذب ماهانه
+  concept_id: monthly_hiring
+  category: gap
+  route: GAP
+- term: روند ماهانه جذب
+  concept_id: monthly_hiring
+  category: gap
+  route: GAP
+- term: استخدام ماهانه
+  concept_id: monthly_hiring
+  category: gap
+  route: GAP
+- term: در هر ماه چند نفر جذب شده‌اند
+  concept_id: monthly_hiring
+  category: gap
+  route: GAP
+- term: آیا جذب با افزایش کار هماهنگ بوده
+  concept_id: hiring_business_growth_alignment
+  category: gap
+  route: GAP
+- term: جذب با رشد کار سازمان
+  concept_id: hiring_business_growth_alignment
+  category: gap
+  route: GAP
+- term: تناسب جذب با حجم کار
+  concept_id: hiring_business_growth_alignment
+  category: gap
+  route: GAP
+- term: هماهنگی جذب با توسعه کسب‌وکار
+  concept_id: hiring_business_growth_alignment
+  category: gap
+  route: GAP
+- term: سابقه
+  concept_id: service_years
+  category: service
+  route: SQL
+- term: سابقه خدمت
+  concept_id: service_years
+  category: service
+  route: SQL
+- term: سنوات
+  concept_id: service_years
+  category: service
+  route: SQL
+- term: سنوات خدمت
+  concept_id: service_years
+  category: service
+  route: SQL
+- term: سال خدمت
+  concept_id: service_years
+  category: service
+  route: SQL
+- term: مدت خدمت
+  concept_id: service_years
+  category: service
+  route: SQL
+- term: میانگین سابقه
+  concept_id: service_years
+  category: service
+  route: SQL
+- term: متوسط سابقه
+  concept_id: service_years
+  category: service
+  route: SQL
+- term: بدون سابقه
+  concept_id: service_years
+  category: service
+  route: SQL
+- term: میانگین سابقه
+  concept_id: average_service_years
+  category: service
+  route: SQL
+- term: متوسط سابقه
+  concept_id: average_service_years
+  category: service
+  route: SQL
+- term: میانگین سنوات
+  concept_id: average_service_years
+  category: service
+  route: SQL
+- term: متوسط سنوات
+  concept_id: average_service_years
+  category: service
+  route: SQL
+- term: بدون سابقه
+  concept_id: without_service_years
+  category: service
+  route: SQL
+- term: سابقه صفر
+  concept_id: without_service_years
+  category: service
+  route: SQL
+- term: سنوات صفر
+  concept_id: without_service_years
+  category: service
+  route: SQL
+- term: تازه جذب شده
+  concept_id: without_service_years
+  category: service
+  route: SQL
+- term: تازه‌استخدام
+  concept_id: without_service_years
+  category: service
+  route: SQL
+- term: سالخوردگی نیروی انسانی
+  concept_id: workforce_aging
+  category: analytics_gap
+  route: GAP
+- term: ساختار سنی به سمت سالخوردگی
+  concept_id: workforce_aging
+  category: analytics_gap
+  route: GAP
+- term: پیر شدن سازمان
+  concept_id: workforce_aging
+  category: analytics_gap
+  route: GAP
+- term: ریسک سالخوردگی
+  concept_id: workforce_aging
+  category: analytics_gap
+  route: GAP
+- term: سن بالا در سازمان
+  concept_id: workforce_aging
+  category: analytics_gap
+  route: GAP
+- term: نیاز آموزش
+  concept_id: training_need
+  category: analytics_gap
+  route: GAP
+- term: نیاز آموزشی
+  concept_id: training_need
+  category: analytics_gap
+  route: GAP
+- term: دوره تخصصی
+  concept_id: training_need
+  category: analytics_gap
+  route: GAP
+- term: آموزش تخصصی
+  concept_id: training_need
+  category: analytics_gap
+  route: GAP
+- term: آیا توزیع تحصیلات نیاز به آموزش ایجاد می‌کند
+  concept_id: training_need
+  category: analytics_gap
+  route: GAP
+- term: کمبود تخصص
+  concept_id: training_need
+  category: analytics_gap
+  route: GAP
+- term: بهره‌وری پیمانکارها
+  concept_id: contractor_productivity
+  category: analytics_gap
+  route: GAP
+- term: عملکرد پیمانکارها
+  concept_id: contractor_productivity
+  category: analytics_gap
+  route: GAP
+- term: کیفیت پیمانکارها
+  concept_id: contractor_productivity
+  category: analytics_gap
+  route: GAP
+- term: ریسک بهره‌وری پیمانکاری
+  concept_id: contractor_productivity
+  category: analytics_gap
+  route: GAP
+- term: آیا پیمانکارها مناسب کار می‌کنند
+  concept_id: contractor_productivity
+  category: analytics_gap
+  route: GAP
+- term: نام کارکنان
+  concept_id: individual_employee_info
+  category: privacy
+  route: REJECT
+- term: مشخصات کارکنان
+  concept_id: individual_employee_info
+  category: privacy
+  route: REJECT
+- term: کد ملی
+  concept_id: individual_employee_info
+  category: privacy
+  route: REJECT
+- term: شماره پرسنلی
+  concept_id: individual_employee_info
+  category: privacy
+  route: REJECT
+- term: شماره تماس
+  concept_id: individual_employee_info
+  category: privacy
+  route: REJECT
+- term: آدرس
+  concept_id: individual_employee_info
+  category: privacy
+  route: REJECT
+- term: حقوق فردی
+  concept_id: individual_employee_info
+  category: privacy
+  route: REJECT
+- term: اطلاعات فردی
+  concept_id: individual_employee_info
+  category: privacy
+  route: REJECT
+- term: اطلاعات شخصی
+  concept_id: individual_employee_info
+  category: privacy
+  route: REJECT
+- term: لیست اسامی
+  concept_id: individual_employee_info
+  category: privacy
+  route: REJECT
+- term: نام و نام خانوادگی
+  concept_id: individual_employee_info
+  category: privacy
+  route: REJECT
+- term: فروش
+  concept_id: out_of_scope
+  category: reject
+  route: REJECT
+- term: درآمد
+  concept_id: out_of_scope
+  category: reject
+  route: REJECT
+- term: مالی فروش
+  concept_id: out_of_scope
+  category: reject
+  route: REJECT
+- term: مشتری
+  concept_id: out_of_scope
+  category: reject
+  route: REJECT
+- term: محصول
+  concept_id: out_of_scope
+  category: reject
+  route: REJECT
+- term: انبار
+  concept_id: out_of_scope
+  category: reject
+  route: REJECT
+- term: تولید
+  concept_id: out_of_scope
+  category: reject
+  route: REJECT
+- term: بازاریابی
+  concept_id: out_of_scope
+  category: reject
+  route: REJECT
+- term: ماه گذشته شرکت چقدر فروش داشته
+  concept_id: out_of_scope
+  category: reject
+  route: REJECT
+- term: گزارش بده
+  concept_id: ambiguous_question
+  category: reject
+  route: REJECT
+- term: وضعیت را بگو
+  concept_id: ambiguous_question
+  category: reject
+  route: REJECT
+- term: تحلیل کن
+  concept_id: ambiguous_question
+  category: reject
+  route: REJECT
+- term: چطوریم
+  concept_id: ambiguous_question
+  category: reject
+  route: REJECT
+- term: خوبه یا بد
+  concept_id: ambiguous_question
+  category: reject
+  route: REJECT
+- term: کامل توضیح بده
+  concept_id: ambiguous_question
+  category: reject
+  route: REJECT
+supported_intent_alignment:
+  source: Template_01_intent_catalog.yaml
+  count: 38
+  intent_ids:
+  - total_employee_count
+  - employee_count_by_gender
+  - gender_percentage
+  - average_age
+  - employee_count_by_age_filter
+  - employee_count_by_age_group
+  - employee_count_by_gender_age_filter
+  - employee_count_by_education
+  - most_common_education
+  - least_common_education
+  - low_education_in_expert_roles
+  - employee_count_by_employment_type
+  - employee_count_by_contract_type
+  - contractor_share
+  - contractor_share_by_service_domain
+  - employee_count_by_service_domain
+  - employee_count_by_department
+  - headcount_gap_by_department
+  - employee_count_by_province
+  - employee_count_by_work_location
+  - hiring_trend_annual
+  - hiring_last_15_years
+  - most_or_least_hiring_year
+  - hiring_by_contract_type_recent_year
+  - average_service_years
+  - employee_count_without_service_years
+  - employee_count_by_marital_status
+  - city_level_analysis
+  - near_retirement_analysis
+  - workforce_aging_trend_analysis
+  - education_training_need_analysis
+  - department_balance_analysis
+  - contractor_productivity_analysis
+  - employment_stability_impact_analysis
+  - hiring_business_growth_alignment
+  - individual_employee_info
+  - out_of_scope
+  - ambiguous_hr_question
+supported_report_alignment:
+  source: Template_02_report_catalog.json
+  count: 39
+  report_ids:
+  - RPT_HR_001
+  - RPT_HR_002
+  - RPT_HR_003
+  - RPT_HR_004
+  - RPT_HR_005
+  - RPT_HR_006
+  - RPT_HR_007
+  - RPT_HR_008
+  - RPT_HR_009
+  - RPT_HR_010
+  - RPT_HR_011
+  - RPT_HR_012
+  - RPT_HR_015
+  - RPT_HR_016
+  - RPT_HR_017
+  - RPT_HR_018
+  - RPT_HR_019
+  - RPT_HR_020
+  - RPT_HR_021
+  - RPT_HR_022
+  - RPT_HR_023
+  - RPT_HR_024
+  - RPT_HR_025
+  - RPT_HR_026
+  - RPT_HR_027
+  - RPT_HR_028
+  - RPT_HR_029
+  - RPT_HR_030
+  - RPT_HR_014
+  - RPT_HR_013
+  - RPT_HR_031
+  - RPT_HR_032
+  - RPT_HR_033
+  - RPT_HR_034
+  - RPT_HR_035
+  - RPT_HR_036
+  - RPT_HR_037
+  - RPT_HR_038
+  - RPT_HR_039
+semantic_mapper_output_schema:
+  question: string
+  normalized_question: string
+  detected_terms: array
+  mapped_concepts: array
+  mapped_columns: array
+  mapped_metrics: array
+  filters: array
+  group_by: array
+  detected_intent: string | null
+  route: SQL | GAP | REJECT
+  status: SUPPORTED | DATA_GAP | ACCESS_DENIED | OUT_OF_SCOPE | CLARIFICATION_NEEDED
+  confidence: number
+  notes: string
+global_notes_fa:
+- این فایل جایگزین Data Dictionary نیست؛ روی آن یک لایه معنایی برای زبان کاربر می‌سازد.
+- Semantic Mapper نباید ستون، مقدار یا شاخصی خارج از این فایل و Data Dictionary حدس بزند.
+- نوع استخدام و نوع قرارداد باید جدا تفسیر شوند؛ این یکی از نقاط حساس فاز دوم است.
+- کارشناسی در عبارت مدرک کارشناسی یعنی education_title، اما در عبارت پست کارشناسی یعنی is_expert_role.
+- برای شهر، آستانه بازنشستگی، بهره‌وری پیمانکارها، نیاز آموزشی و هماهنگی جذب با رشد کار سازمان فعلاً DATA_GAP ثبت شود.
+- برای اطلاعات فردی یا حساس کارکنان خروجی باید ACCESS_DENIED باشد.
+- خروجی‌های مجاز در MVP باید تجمیعی باشند و نه فردی.

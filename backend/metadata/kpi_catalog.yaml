@@ -1,0 +1,1649 @@
+version: '0.1'
+project: HR BI Assistant
+phase: Controlled SQL-based MVP
+file_type: kpi_catalog
+description: کاتالوگ شاخص‌های کلیدی منابع انسانی برای فاز دوم؛ قابل استفاده توسط metadata_service.py، router.py، sql_template_engine.py،
+  response_builder.py و evaluation_service.py
+main_view:
+  name: hr_mvp.vw_hr_employee_analytics
+  alias: v
+  grain: one_row_per_active_employee
+  default_filter: v.is_active = TRUE
+catalog_contract:
+  purpose:
+  - تعریف رسمی KPIها و فرمول‌های قابل محاسبه در MVP
+  - یکسان‌سازی اصطلاحات بین Intent، Report، SQL Template و Visualization
+  - جلوگیری از تولید شاخص‌های ساختگی توسط مدل
+  - مشخص‌کردن KPIهای قابل پشتیبانی، نیمه‌پشتیبانی و Data Gap
+  rules:
+  - هر KPI باید از View اصلی محاسبه شود.
+  - هیچ KPI نباید نیازمند جدول خام یا JOIN مستقیم توسط مدل باشد.
+  - خروجی KPIها باید تجمیعی باشد و نباید رکورد فردی نمایش دهد.
+  - employee_id فقط برای COUNT مجاز است.
+  - برای درصدها استفاده از NULLIF در مخرج الزامی است.
+  - برای headcount gap نباید department_approved_headcount روی ردیف‌های کارکنان SUM شود.
+  - KPIهایی که داده یا قانون کسب‌وکاری ندارند باید route برابر GAP داشته باشند.
+status_definitions:
+  ready_for_demo: شاخص برای دمو فاز دوم قابل محاسبه و قابل نمایش است.
+  partial_for_demo: شاخص قابل محاسبه است اما برای تفسیر مدیریتی کامل‌تر نیاز به تعریف یا داده تکمیلی دارد.
+  data_gap: شاخص مرتبط است اما در MVP فعلی داده یا قانون رسمی کافی ندارد.
+  rejected: شاخص یا درخواست به دلیل محرمانگی، خروجی فردی یا خارج‌ازدامنه بودن رد می‌شود.
+kpi_groups:
+- group_id: KPI_GRP_HEADCOUNT
+  title_fa: تعداد و ترکیب کارکنان
+  description: شاخص‌های پایه شمارش، ترکیب جمعیتی و توزیع کارکنان
+- group_id: KPI_GRP_DEMOGRAPHICS
+  title_fa: سن، جنسیت و وضعیت تأهل
+  description: شاخص‌های جمعیت‌شناختی نیروی انسانی
+- group_id: KPI_GRP_EDUCATION
+  title_fa: تحصیلات و تخصص
+  description: شاخص‌های سطح تحصیلات، رشته تحصیلی و انطباق تحصیلات با پست
+- group_id: KPI_GRP_EMPLOYMENT
+  title_fa: نوع استخدام و قرارداد
+  description: شاخص‌های استخدام، قرارداد و پیمانکاری
+- group_id: KPI_GRP_ORGANIZATION
+  title_fa: ساختار سازمانی و چارت مصوب
+  description: شاخص‌های حوزه، واحد، دپارتمان، چارت مصوب و اختلاف نیرو
+- group_id: KPI_GRP_LOCATION
+  title_fa: محل خدمت و جغرافیا
+  description: شاخص‌های استان، محل خدمت و پوشش جغرافیایی
+- group_id: KPI_GRP_HIRING
+  title_fa: جذب و سابقه
+  description: شاخص‌های روند جذب، جذب سال‌های اخیر و سابقه خدمت
+- group_id: KPI_GRP_GAP
+  title_fa: شاخص‌های نیازمند داده تکمیلی
+  description: شاخص‌هایی که برای آینده مهم هستند اما در MVP فعلی قابل محاسبه دقیق نیستند
+global_calculation_rules:
+  employee_count: COUNT(v.employee_id)
+  percentage_of_total: ROUND(COUNT(v.employee_id) * 100.0 / NULLIF(SUM(COUNT(v.employee_id)) OVER (), 0), 2)
+  condition_percentage: ROUND(SUM(CASE WHEN condition THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(v.employee_id), 0), 2)
+  average_age: ROUND(AVG(v.age), 2)
+  average_service_years: ROUND(AVG(v.service_years), 2)
+  actual_headcount: COUNT(v.employee_id)
+  approved_headcount: MAX(v.department_approved_headcount)
+  headcount_gap: MAX(v.department_approved_headcount) - COUNT(v.employee_id)
+  default_where: WHERE v.is_active = TRUE
+  current_shamsi_year_placeholder: '{current_shamsi_year}'
+  current_shamsi_year_note: این مقدار باید توسط برنامه تزریق شود؛ مدل نباید آن را حدس بزند.
+kpis:
+- kpi_id: KPI_HR_001
+  title_fa: تعداد کل کارکنان فعال
+  group_id: KPI_GRP_HEADCOUNT
+  intent: total_employee_count
+  route: SQL
+  status: ready_for_demo
+  description: تعداد کل کارکنان فعال در View تحلیلی منابع انسانی.
+  expression: COUNT(v.employee_id) AS employee_count
+  unit: person
+  output_type: single_value
+  required_columns:
+  - employee_id
+  - is_active
+  default_filters:
+  - v.is_active = TRUE
+  recommended_visualization: kpi_card
+  sql_template_id: TPL_TOTAL_EMPLOYEE_COUNT
+  report_ids:
+  - RPT_HR_001
+  interpretation: شاخص پایه برای تمام تحلیل‌های ترکیب نیروی انسانی.
+  access_level: aggregate_only
+  tags:
+  - headcount
+  - demo
+  - base_metric
+- kpi_id: KPI_HR_002
+  title_fa: تعداد کارکنان به تفکیک جنسیت
+  group_id: KPI_GRP_DEMOGRAPHICS
+  intent: employee_count_by_gender
+  route: SQL
+  status: ready_for_demo
+  description: توزیع تعداد کارکنان فعال بر اساس جنسیت.
+  expression: COUNT(v.employee_id) AS employee_count
+  unit: person
+  output_type: grouped_count
+  required_columns:
+  - employee_id
+  - gender
+  - is_active
+  optional_dimensions:
+  - gender
+  default_filters:
+  - v.is_active = TRUE
+  recommended_visualization: pie_chart_or_bar_chart
+  sql_template_id: TPL_EMPLOYEE_COUNT_BY_GENDER
+  report_ids:
+  - RPT_HR_002
+  interpretation: برای بررسی ترکیب جنسیتی کل سازمان یا مقایسه با حوزه‌ها استفاده می‌شود.
+  access_level: aggregate_only
+  tags:
+  - gender
+  - composition
+- kpi_id: KPI_HR_003
+  title_fa: درصد کارکنان زن
+  group_id: KPI_GRP_DEMOGRAPHICS
+  intent: gender_percentage
+  route: SQL
+  status: ready_for_demo
+  description: سهم کارکنان زن از کل کارکنان فعال.
+  expression: ROUND(SUM(CASE WHEN v.gender = 'زن' THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(v.employee_id), 0), 2) AS female_percentage
+  numerator: SUM(CASE WHEN v.gender = 'زن' THEN 1 ELSE 0 END)
+  denominator: COUNT(v.employee_id)
+  unit: percent
+  output_type: single_percentage
+  required_columns:
+  - employee_id
+  - gender
+  - is_active
+  default_filters:
+  - v.is_active = TRUE
+  recommended_visualization: kpi_card
+  sql_template_id: TPL_GENDER_PERCENTAGE
+  report_ids:
+  - RPT_HR_015
+  access_level: aggregate_only
+  tags:
+  - gender
+  - percentage
+  legacy_intent_alias: female_percentage
+- kpi_id: KPI_HR_004
+  title_fa: درصد کارکنان مرد
+  group_id: KPI_GRP_DEMOGRAPHICS
+  intent: gender_percentage
+  route: SQL
+  status: ready_for_demo
+  description: سهم کارکنان مرد از کل کارکنان فعال.
+  expression: ROUND(SUM(CASE WHEN v.gender = 'مرد' THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(v.employee_id), 0), 2) AS male_percentage
+  numerator: SUM(CASE WHEN v.gender = 'مرد' THEN 1 ELSE 0 END)
+  denominator: COUNT(v.employee_id)
+  unit: percent
+  output_type: single_percentage
+  required_columns:
+  - employee_id
+  - gender
+  - is_active
+  default_filters:
+  - v.is_active = TRUE
+  recommended_visualization: kpi_card
+  sql_template_id: TPL_GENDER_PERCENTAGE
+  report_ids:
+  - RPT_HR_015
+  access_level: aggregate_only
+  tags:
+  - gender
+  - percentage
+  legacy_intent_alias: male_percentage
+- kpi_id: KPI_HR_005
+  title_fa: میانگین سن کارکنان
+  group_id: KPI_GRP_DEMOGRAPHICS
+  intent: average_age
+  route: SQL
+  status: ready_for_demo
+  description: میانگین سن کارکنان فعال؛ قابل محاسبه برای کل سازمان یا به تفکیک جنسیت/حوزه/گروه سنی.
+  expression: ROUND(AVG(v.age), 2) AS average_age
+  unit: year
+  output_type: average
+  required_columns:
+  - age
+  - is_active
+  optional_dimensions:
+  - gender
+  - service_domain
+  - age_group_title
+  default_filters:
+  - v.is_active = TRUE
+  recommended_visualization: kpi_card_or_bar_chart
+  sql_template_id: TPL_AVERAGE_AGE
+  report_ids:
+  - RPT_HR_003
+  interpretation: می‌تواند نشانه‌ای اولیه از ترکیب سنی سازمان باشد، اما تحلیل ریسک سالخوردگی نیازمند قواعد تکمیلی است.
+  access_level: aggregate_only
+  tags:
+  - age
+  - average
+- kpi_id: KPI_HR_006
+  title_fa: تعداد کارکنان به تفکیک گروه سنی
+  group_id: KPI_GRP_DEMOGRAPHICS
+  intent: employee_count_by_age_group
+  route: SQL
+  status: ready_for_demo
+  description: توزیع کارکنان در گروه‌های سنی تعریف‌شده در View.
+  expression: COUNT(v.employee_id) AS employee_count
+  unit: person
+  output_type: grouped_count
+  required_columns:
+  - employee_id
+  - age_group_title
+  - age
+  - is_active
+  optional_dimensions:
+  - age_group_title
+  default_filters:
+  - v.is_active = TRUE
+  recommended_visualization: bar_chart
+  sql_template_id: TPL_EMPLOYEE_COUNT_BY_AGE_GROUP
+  report_ids:
+  - RPT_HR_017
+  sort_rule: Order age groups by minimum age when possible.
+  access_level: aggregate_only
+  tags:
+  - age
+  - distribution
+- kpi_id: KPI_HR_007
+  title_fa: تعداد کارکنان زیر ۳۰ سال
+  group_id: KPI_GRP_DEMOGRAPHICS
+  intent: employee_count_by_age_filter
+  route: SQL
+  status: ready_for_demo
+  description: تعداد کارکنان فعال با سن کمتر از ۳۰ سال.
+  expression: COUNT(v.employee_id) AS employee_count
+  unit: person
+  output_type: single_value
+  required_columns:
+  - employee_id
+  - age
+  - is_active
+  default_filters:
+  - v.is_active = TRUE
+  - v.age < 30
+  recommended_visualization: kpi_card
+  sql_template_id: TPL_EMPLOYEES_UNDER_30
+  report_ids:
+  - RPT_HR_017
+  access_level: aggregate_only
+  tags:
+  - age
+  - young_workforce
+  legacy_intent_alias: employee_count_under_30
+- kpi_id: KPI_HR_008
+  title_fa: تعداد کارکنان ۶۰ سال به بالا
+  group_id: KPI_GRP_DEMOGRAPHICS
+  intent: employee_count_by_age_filter
+  route: SQL
+  status: ready_for_demo
+  description: تعداد کارکنان فعال با سن ۶۰ سال یا بیشتر.
+  expression: COUNT(v.employee_id) AS employee_count
+  unit: person
+  output_type: single_value
+  required_columns:
+  - employee_id
+  - age
+  - is_active
+  default_filters:
+  - v.is_active = TRUE
+  - v.age >= 60
+  recommended_visualization: kpi_card
+  sql_template_id: TPL_EMPLOYEES_AGE_60_PLUS
+  report_ids:
+  - RPT_HR_017
+  caveats:
+  - این KPI با «آستانه بازنشستگی» یکی نیست؛ بازنشستگی نیازمند قانون رسمی است.
+  access_level: aggregate_only
+  tags:
+  - age
+  - senior_workforce
+  legacy_intent_alias: employee_count_age_60_plus
+- kpi_id: KPI_HR_009
+  title_fa: تعداد کارکنان به تفکیک وضعیت تأهل
+  group_id: KPI_GRP_DEMOGRAPHICS
+  intent: employee_count_by_marital_status
+  route: SQL
+  status: ready_for_demo
+  description: توزیع کارکنان فعال بر اساس وضعیت تأهل.
+  expression: COUNT(v.employee_id) AS employee_count
+  unit: person
+  output_type: grouped_count
+  required_columns:
+  - employee_id
+  - marital_status
+  - is_active
+  optional_dimensions:
+  - marital_status
+  default_filters:
+  - v.is_active = TRUE
+  recommended_visualization: bar_chart
+  sql_template_id: TPL_EMPLOYEE_COUNT_BY_MARITAL_STATUS
+  report_ids:
+  - RPT_HR_031
+  access_level: aggregate_only
+  tags:
+  - marital_status
+  - demographics
+- kpi_id: KPI_HR_010
+  title_fa: توزیع جنسیت در گروه‌های سنی
+  group_id: KPI_GRP_DEMOGRAPHICS
+  intent: employee_count_by_gender_age_filter
+  route: SQL
+  status: ready_for_demo
+  description: تعداد کارکنان به تفکیک گروه سنی و جنسیت.
+  expression: COUNT(v.employee_id) AS employee_count
+  unit: person
+  output_type: grouped_count
+  required_columns:
+  - employee_id
+  - age_group_title
+  - gender
+  - is_active
+  optional_dimensions:
+  - age_group_title
+  - gender
+  default_filters:
+  - v.is_active = TRUE
+  recommended_visualization: stacked_bar_chart_or_table
+  sql_template_id: TPL_GENDER_BY_AGE_GROUP
+  report_ids:
+  - RPT_HR_030
+  access_level: aggregate_only
+  tags:
+  - gender
+  - age_group
+  - distribution
+  legacy_intent_alias: gender_distribution_by_age_group
+- kpi_id: KPI_HR_011
+  title_fa: تعداد کارکنان به تفکیک مدرک تحصیلی
+  group_id: KPI_GRP_EDUCATION
+  intent: employee_count_by_education
+  route: SQL
+  status: ready_for_demo
+  description: توزیع آخرین مدرک تحصیلی کارکنان فعال.
+  expression: COUNT(v.employee_id) AS employee_count
+  unit: person
+  output_type: grouped_count
+  required_columns:
+  - employee_id
+  - education_title
+  - education_rank
+  - is_active
+  optional_dimensions:
+  - education_title
+  default_filters:
+  - v.is_active = TRUE
+  recommended_visualization: horizontal_bar_chart
+  sql_template_id: TPL_EMPLOYEE_COUNT_BY_EDUCATION
+  report_ids:
+  - RPT_HR_004
+  sort_rule: Order by employee_count DESC or education_rank ASC depending on question.
+  access_level: aggregate_only
+  tags:
+  - education
+  - distribution
+- kpi_id: KPI_HR_012
+  title_fa: درصد کارکنان به تفکیک مدرک تحصیلی
+  group_id: KPI_GRP_EDUCATION
+  intent: employee_count_by_education
+  route: SQL
+  status: ready_for_demo
+  description: سهم هر مدرک تحصیلی از کل کارکنان فعال.
+  expression: ROUND(COUNT(v.employee_id) * 100.0 / NULLIF(SUM(COUNT(v.employee_id)) OVER (), 0), 2) AS percentage
+  unit: percent
+  output_type: grouped_percentage
+  required_columns:
+  - employee_id
+  - education_title
+  - is_active
+  optional_dimensions:
+  - education_title
+  default_filters:
+  - v.is_active = TRUE
+  recommended_visualization: bar_chart_or_table
+  sql_template_id: TPL_EMPLOYEE_COUNT_BY_EDUCATION
+  report_ids:
+  - RPT_HR_004
+  access_level: aggregate_only
+  tags:
+  - education
+  - percentage
+  legacy_intent_alias: employee_percentage_by_education
+- kpi_id: KPI_HR_013
+  title_fa: بیشترین مدرک تحصیلی
+  group_id: KPI_GRP_EDUCATION
+  intent: most_common_education
+  route: SQL
+  status: ready_for_demo
+  description: مدرک تحصیلی با بیشترین تعداد کارکنان.
+  expression: COUNT(v.employee_id) AS employee_count
+  unit: person
+  output_type: ranked_top_1
+  required_columns:
+  - employee_id
+  - education_title
+  - is_active
+  optional_dimensions:
+  - education_title
+  default_filters:
+  - v.is_active = TRUE
+  recommended_visualization: kpi_card_or_table
+  sql_template_id: TPL_MOST_COMMON_EDUCATION
+  report_ids:
+  - RPT_HR_020
+  sort_rule: GROUP BY v.education_title ORDER BY employee_count DESC LIMIT 1
+  access_level: aggregate_only
+  tags:
+  - education
+  - most
+- kpi_id: KPI_HR_014
+  title_fa: کمترین مدرک تحصیلی از نظر تعداد
+  group_id: KPI_GRP_EDUCATION
+  intent: least_common_education
+  route: SQL
+  status: ready_for_demo
+  description: مدرک تحصیلی با کمترین تعداد کارکنان.
+  expression: COUNT(v.employee_id) AS employee_count
+  unit: person
+  output_type: ranked_bottom_1
+  required_columns:
+  - employee_id
+  - education_title
+  - is_active
+  optional_dimensions:
+  - education_title
+  default_filters:
+  - v.is_active = TRUE
+  recommended_visualization: kpi_card_or_table
+  sql_template_id: TPL_LEAST_COMMON_EDUCATION
+  report_ids:
+  - RPT_HR_021
+  caveats:
+  - کم‌بودن یک مدرک لزوماً به معنی کمبود تخصص نیست و برای تحلیل تخصص باید داده شغل، نیاز مهارتی و آموزش بررسی شود.
+  sort_rule: GROUP BY v.education_title ORDER BY employee_count ASC LIMIT 1
+  access_level: aggregate_only
+  tags:
+  - education
+  - least
+- kpi_id: KPI_HR_015
+  title_fa: تعداد کارکنان با مدرک مشخص
+  group_id: KPI_GRP_EDUCATION
+  intent: employee_count_by_education
+  route: SQL
+  status: ready_for_demo
+  description: تعداد کارکنان فعال با یک مدرک تحصیلی مشخص مثل کارشناسی یا کاردانی.
+  expression: COUNT(v.employee_id) AS employee_count
+  unit: person
+  output_type: single_value
+  required_columns:
+  - employee_id
+  - education_title
+  - is_active
+  default_filters:
+  - v.is_active = TRUE
+  - v.education_title = {education_title}
+  recommended_visualization: kpi_card
+  sql_template_id: TPL_EMPLOYEE_COUNT_BY_EDUCATION_VALUE
+  report_ids:
+  - RPT_HR_004
+  caveats:
+  - مقدار education_title باید از allowed values در schema_context انتخاب شود و مدل نباید مقدار جدید حدس بزند.
+  access_level: aggregate_only
+  tags:
+  - education
+  - filter
+  legacy_intent_alias: employee_count_by_specific_education
+- kpi_id: KPI_HR_016
+  title_fa: کارکنان با تحصیلات پایین‌تر از حداقل پست
+  group_id: KPI_GRP_EDUCATION
+  intent: low_education_in_expert_roles
+  route: SQL
+  status: partial_for_demo
+  description: تعداد کارکنانی که رتبه آخرین مدرک آن‌ها کمتر از حداقل رتبه تحصیلی موردنیاز پست است.
+  expression: COUNT(v.employee_id) AS employee_count
+  unit: person
+  output_type: single_value_or_grouped_count
+  required_columns:
+  - employee_id
+  - education_rank
+  - min_education_rank
+  - is_active
+  optional_dimensions:
+  - department_name
+  - service_domain
+  - position_title
+  default_filters:
+  - v.is_active = TRUE
+  - v.education_rank < v.min_education_rank
+  recommended_visualization: kpi_card_or_table
+  sql_template_id: TPL_LOW_EDUCATION_IN_EXPERT_ROLES
+  report_ids:
+  - RPT_HR_020
+  caveats:
+  - این KPI فقط در صورتی قابل دفاع است که min_education_rank برای پست‌ها درست و رسمی ثبت شده باشد.
+  - برای تحلیل نیاز آموزشی، صرفاً این شاخص کافی نیست و داده دوره‌ها/مهارت‌ها لازم است.
+  access_level: aggregate_only
+  tags:
+  - education
+  - position_fit
+  - partial
+  legacy_intent_alias: employees_below_required_education
+- kpi_id: KPI_HR_017
+  title_fa: تعداد کارکنان به تفکیک نوع استخدام
+  group_id: KPI_GRP_EMPLOYMENT
+  intent: employee_count_by_employment_type
+  route: SQL
+  status: ready_for_demo
+  description: توزیع کارکنان بر اساس نوع استخدام مانند رسمی، قراردادی، پیمانی و شاغل در پیمانکاری.
+  expression: COUNT(v.employee_id) AS employee_count
+  unit: person
+  output_type: grouped_count
+  required_columns:
+  - employee_id
+  - employment_type
+  - is_active
+  optional_dimensions:
+  - employment_type
+  default_filters:
+  - v.is_active = TRUE
+  recommended_visualization: horizontal_bar_chart
+  sql_template_id: TPL_EMPLOYEE_COUNT_BY_EMPLOYMENT_TYPE
+  report_ids:
+  - RPT_HR_005
+  caveats:
+  - نوع استخدام با نوع قرارداد اشتباه نشود.
+  access_level: aggregate_only
+  tags:
+  - employment_type
+  - distribution
+- kpi_id: KPI_HR_018
+  title_fa: تعداد کارکنان به تفکیک نوع قرارداد
+  group_id: KPI_GRP_EMPLOYMENT
+  intent: employee_count_by_contract_type
+  route: SQL
+  status: ready_for_demo
+  description: توزیع کارکنان بر اساس نوع قرارداد جاری.
+  expression: COUNT(v.employee_id) AS employee_count
+  unit: person
+  output_type: grouped_count
+  required_columns:
+  - employee_id
+  - contract_type
+  - is_active
+  optional_dimensions:
+  - contract_type
+  default_filters:
+  - v.is_active = TRUE
+  recommended_visualization: horizontal_bar_chart
+  sql_template_id: TPL_EMPLOYEE_COUNT_BY_CONTRACT_TYPE
+  report_ids:
+  - RPT_HR_006
+  caveats:
+  - نوع قرارداد با نوع استخدام اشتباه نشود.
+  access_level: aggregate_only
+  tags:
+  - contract_type
+  - distribution
+- kpi_id: KPI_HR_019
+  title_fa: تعداد کارکنان پیمانکاری
+  group_id: KPI_GRP_EMPLOYMENT
+  intent: contractor_share
+  route: SQL
+  status: ready_for_demo
+  description: تعداد کارکنانی که به‌عنوان شاغل در پیمانکاری یا پیمانکار شناخته می‌شوند.
+  expression: SUM(CASE WHEN v.is_contractor = TRUE THEN 1 ELSE 0 END) AS contractor_count
+  unit: person
+  output_type: single_value
+  required_columns:
+  - employee_id
+  - is_contractor
+  - is_active
+  default_filters:
+  - v.is_active = TRUE
+  recommended_visualization: kpi_card
+  sql_template_id: TPL_CONTRACTOR_SHARE
+  report_ids:
+  - RPT_HR_007
+  access_level: aggregate_only
+  tags:
+  - contractor
+  - count
+  legacy_intent_alias: contractor_count
+- kpi_id: KPI_HR_020
+  title_fa: سهم نیروهای پیمانکاری
+  group_id: KPI_GRP_EMPLOYMENT
+  intent: contractor_share
+  route: SQL
+  status: ready_for_demo
+  description: درصد کارکنان پیمانکاری از کل کارکنان فعال.
+  expression: ROUND(SUM(CASE WHEN v.is_contractor = TRUE THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(v.employee_id), 0), 2)
+    AS contractor_percentage
+  numerator: SUM(CASE WHEN v.is_contractor = TRUE THEN 1 ELSE 0 END)
+  denominator: COUNT(v.employee_id)
+  unit: percent
+  output_type: single_percentage
+  required_columns:
+  - employee_id
+  - is_contractor
+  - is_active
+  optional_dimensions:
+  - service_domain
+  - department_name
+  - province
+  default_filters:
+  - v.is_active = TRUE
+  recommended_visualization: kpi_card_or_bar_chart
+  sql_template_id: TPL_CONTRACTOR_SHARE
+  report_ids:
+  - RPT_HR_007
+  interpretation: برای بررسی میزان وابستگی سازمان به نیروی پیمانکاری استفاده می‌شود.
+  access_level: aggregate_only
+  tags:
+  - contractor
+  - percentage
+- kpi_id: KPI_HR_021
+  title_fa: سهم پیمانکاری به تفکیک حوزه خدمت
+  group_id: KPI_GRP_EMPLOYMENT
+  intent: contractor_share_by_service_domain
+  route: SQL
+  status: ready_for_demo
+  description: درصد نیروهای پیمانکاری در هر حوزه خدمت.
+  expression: ROUND(SUM(CASE WHEN v.is_contractor = TRUE THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(v.employee_id), 0), 2)
+    AS contractor_percentage
+  unit: percent
+  output_type: grouped_percentage
+  required_columns:
+  - employee_id
+  - is_contractor
+  - service_domain
+  - is_active
+  optional_dimensions:
+  - service_domain
+  default_filters:
+  - v.is_active = TRUE
+  recommended_visualization: bar_chart_or_table
+  sql_template_id: TPL_CONTRACTOR_SHARE_BY_SERVICE_DOMAIN
+  report_ids:
+  - RPT_HR_023
+  access_level: aggregate_only
+  tags:
+  - contractor
+  - service_domain
+  - percentage
+- kpi_id: KPI_HR_022
+  title_fa: تعداد کارکنان رسمی
+  group_id: KPI_GRP_EMPLOYMENT
+  intent: employee_count_by_employment_type
+  route: SQL
+  status: ready_for_demo
+  description: تعداد کارکنانی که نوع استخدام آن‌ها رسمی است.
+  expression: COUNT(v.employee_id) AS employee_count
+  unit: person
+  output_type: single_value
+  required_columns:
+  - employee_id
+  - employment_type
+  - is_active
+  default_filters:
+  - v.is_active = TRUE
+  - v.employment_type = 'رسمی'
+  recommended_visualization: kpi_card
+  sql_template_id: TPL_EMPLOYEE_COUNT_BY_EMPLOYMENT_TYPE_VALUE
+  report_ids:
+  - RPT_HR_005
+  caveats:
+  - اگر کاربر صراحتاً نوع قرارداد رسمی را بخواهد، باید contract_type استفاده شود.
+  access_level: aggregate_only
+  tags:
+  - employment_type
+  - formal
+  legacy_intent_alias: formal_employee_count
+- kpi_id: KPI_HR_023
+  title_fa: تعداد کارکنان قراردادی
+  group_id: KPI_GRP_EMPLOYMENT
+  intent: employee_count_by_employment_type
+  route: SQL
+  status: ready_for_demo
+  description: تعداد کارکنانی که نوع استخدام آن‌ها قراردادی است.
+  expression: COUNT(v.employee_id) AS employee_count
+  unit: person
+  output_type: single_value
+  required_columns:
+  - employee_id
+  - employment_type
+  - is_active
+  default_filters:
+  - v.is_active = TRUE
+  - v.employment_type = 'قراردادی'
+  recommended_visualization: kpi_card
+  sql_template_id: TPL_EMPLOYEE_COUNT_BY_EMPLOYMENT_TYPE_VALUE
+  report_ids:
+  - RPT_HR_005
+  caveats:
+  - اگر کاربر صراحتاً نوع قرارداد قراردادی را بخواهد، باید contract_type استفاده شود.
+  access_level: aggregate_only
+  tags:
+  - employment_type
+  - contractual
+  legacy_intent_alias: contractual_employee_count
+- kpi_id: KPI_HR_024
+  title_fa: تعداد کارکنان به تفکیک حوزه خدمت
+  group_id: KPI_GRP_ORGANIZATION
+  intent: employee_count_by_service_domain
+  route: SQL
+  status: ready_for_demo
+  description: توزیع کارکنان فعال در حوزه‌های اصلی سازمان.
+  expression: COUNT(v.employee_id) AS employee_count
+  unit: person
+  output_type: grouped_count
+  required_columns:
+  - employee_id
+  - service_domain
+  - is_active
+  optional_dimensions:
+  - service_domain
+  default_filters:
+  - v.is_active = TRUE
+  recommended_visualization: horizontal_bar_chart
+  sql_template_id: TPL_EMPLOYEE_COUNT_BY_SERVICE_DOMAIN
+  report_ids:
+  - RPT_HR_008
+  interpretation: برای تشخیص تمرکز نیروی انسانی در حوزه‌های اصلی استفاده می‌شود.
+  access_level: aggregate_only
+  tags:
+  - organization
+  - service_domain
+- kpi_id: KPI_HR_025
+  title_fa: سهم هر حوزه از کارکنان
+  group_id: KPI_GRP_ORGANIZATION
+  intent: employee_count_by_service_domain
+  route: SQL
+  status: ready_for_demo
+  description: درصد سهم هر حوزه خدمت از کل کارکنان فعال.
+  expression: ROUND(COUNT(v.employee_id) * 100.0 / NULLIF(SUM(COUNT(v.employee_id)) OVER (), 0), 2) AS percentage
+  unit: percent
+  output_type: grouped_percentage
+  required_columns:
+  - employee_id
+  - service_domain
+  - is_active
+  optional_dimensions:
+  - service_domain
+  default_filters:
+  - v.is_active = TRUE
+  recommended_visualization: bar_chart_or_table
+  sql_template_id: TPL_EMPLOYEE_COUNT_BY_SERVICE_DOMAIN
+  report_ids:
+  - RPT_HR_008
+  access_level: aggregate_only
+  tags:
+  - organization
+  - service_domain
+  - percentage
+  legacy_intent_alias: employee_share_by_service_domain
+- kpi_id: KPI_HR_026
+  title_fa: تعداد کارکنان به تفکیک بخش/واحد/دپارتمان
+  group_id: KPI_GRP_ORGANIZATION
+  intent: employee_count_by_department
+  route: SQL
+  status: ready_for_demo
+  description: توزیع کارکنان فعال در واحدها، بخش‌ها یا دپارتمان‌ها.
+  expression: COUNT(v.employee_id) AS employee_count
+  unit: person
+  output_type: grouped_count
+  required_columns:
+  - employee_id
+  - department_name
+  - department_id
+  - is_active
+  optional_dimensions:
+  - department_id
+  - department_name
+  default_filters:
+  - v.is_active = TRUE
+  recommended_visualization: horizontal_bar_chart_or_table
+  sql_template_id: TPL_EMPLOYEE_COUNT_BY_DEPARTMENT
+  report_ids:
+  - RPT_HR_026
+  access_level: aggregate_only
+  tags:
+  - organization
+  - department
+- kpi_id: KPI_HR_027
+  title_fa: نیروی موجود در واحد
+  group_id: KPI_GRP_ORGANIZATION
+  intent: headcount_gap_by_department
+  route: SQL
+  status: ready_for_demo
+  description: تعداد واقعی کارکنان فعال در هر دپارتمان یا واحد.
+  expression: COUNT(v.employee_id) AS actual_headcount
+  unit: person
+  output_type: grouped_count
+  required_columns:
+  - employee_id
+  - department_id
+  - department_name
+  - is_active
+  optional_dimensions:
+  - department_id
+  - department_name
+  default_filters:
+  - v.is_active = TRUE
+  recommended_visualization: table
+  sql_template_id: TPL_HEADCOUNT_GAP_BY_DEPARTMENT
+  report_ids:
+  - RPT_HR_012
+  access_level: aggregate_only
+  tags:
+  - organization
+  - actual_headcount
+  legacy_intent_alias: actual_headcount_by_department
+- kpi_id: KPI_HR_028
+  title_fa: چارت مصوب واحد
+  group_id: KPI_GRP_ORGANIZATION
+  intent: headcount_gap_by_department
+  route: SQL
+  status: partial_for_demo
+  description: ظرفیت یا چارت مصوب هر واحد سازمانی.
+  expression: MAX(v.department_approved_headcount) AS approved_headcount
+  unit: person
+  output_type: grouped_value
+  required_columns:
+  - department_id
+  - department_name
+  - department_approved_headcount
+  - is_active
+  optional_dimensions:
+  - department_id
+  - department_name
+  default_filters:
+  - v.is_active = TRUE
+  recommended_visualization: table
+  sql_template_id: TPL_HEADCOUNT_GAP_BY_DEPARTMENT
+  report_ids:
+  - RPT_HR_012
+  caveats:
+  - در سطح دپارتمان از MAX استفاده شود؛ SUM روی ردیف‌های کارکنان ممنوع است.
+  access_level: aggregate_only
+  tags:
+  - organization
+  - approved_headcount
+  legacy_intent_alias: approved_headcount_by_department
+- kpi_id: KPI_HR_029
+  title_fa: اختلاف نیروی موجود با چارت مصوب
+  group_id: KPI_GRP_ORGANIZATION
+  intent: headcount_gap_by_department
+  route: SQL
+  status: partial_for_demo
+  description: اختلاف بین چارت مصوب و تعداد واقعی کارکنان در سطح دپارتمان.
+  expression: MAX(v.department_approved_headcount) - COUNT(v.employee_id) AS headcount_gap
+  unit: person
+  output_type: grouped_value
+  required_columns:
+  - employee_id
+  - department_id
+  - department_name
+  - department_approved_headcount
+  - is_active
+  optional_dimensions:
+  - department_id
+  - department_name
+  default_filters:
+  - v.is_active = TRUE
+  recommended_visualization: table
+  sql_template_id: TPL_HEADCOUNT_GAP_BY_DEPARTMENT
+  report_ids:
+  - RPT_HR_012
+  interpretation: عدد مثبت می‌تواند نشان‌دهنده کمبود نیرو نسبت به چارت مصوب باشد؛ عدد منفی می‌تواند نشان‌دهنده مازاد نسبت
+    به چارت باشد.
+  caveats:
+  - برای تحلیل مدیریتی کامل باید تعریف رسمی کمبود/مازاد و اعتبار چارت مصوب مشخص باشد.
+  - SUM(v.department_approved_headcount) روی ردیف‌های کارکنان خطاست.
+  access_level: aggregate_only
+  tags:
+  - organization
+  - headcount_gap
+  - partial
+- kpi_id: KPI_HR_030
+  title_fa: تعداد کارکنان به تفکیک استان
+  group_id: KPI_GRP_LOCATION
+  intent: employee_count_by_province
+  route: SQL
+  status: ready_for_demo
+  description: توزیع کارکنان فعال در سطح استان.
+  expression: COUNT(v.employee_id) AS employee_count
+  unit: person
+  output_type: grouped_count
+  required_columns:
+  - employee_id
+  - province
+  - is_active
+  optional_dimensions:
+  - province
+  default_filters:
+  - v.is_active = TRUE
+  recommended_visualization: horizontal_bar_chart_or_table
+  sql_template_id: TPL_EMPLOYEE_COUNT_BY_PROVINCE
+  report_ids:
+  - RPT_HR_009
+  access_level: aggregate_only
+  tags:
+  - location
+  - province
+- kpi_id: KPI_HR_031
+  title_fa: تعداد کارکنان به تفکیک محل خدمت
+  group_id: KPI_GRP_LOCATION
+  intent: employee_count_by_work_location
+  route: SQL
+  status: partial_for_demo
+  description: تعداد کارکنان فعال بر اساس محل خدمت یا site_name.
+  expression: COUNT(v.employee_id) AS employee_count
+  unit: person
+  output_type: grouped_count
+  required_columns:
+  - employee_id
+  - site_name
+  - province
+  - location_type
+  - is_active
+  optional_dimensions:
+  - site_name
+  - province
+  default_filters:
+  - v.is_active = TRUE
+  recommended_visualization: horizontal_bar_chart_or_table
+  sql_template_id: TPL_EMPLOYEE_COUNT_BY_WORK_LOCATION
+  report_ids:
+  - RPT_HR_027
+  caveats:
+  - در MVP فعلی داده مکانی عمدتاً در سطح استان قابل اتکاست؛ تحلیل دقیق سایت/شهر باید با کیفیت داده بررسی شود.
+  access_level: aggregate_only
+  tags:
+  - location
+  - work_location
+  - partial
+- kpi_id: KPI_HR_032
+  title_fa: روند جذب سالانه
+  group_id: KPI_GRP_HIRING
+  intent: hiring_trend_annual
+  route: SQL
+  status: ready_for_demo
+  description: تعداد کارکنان جذب‌شده در هر سال شمسی بر اساس hire_year.
+  expression: COUNT(v.employee_id) AS hiring_count
+  unit: person
+  output_type: time_series
+  required_columns:
+  - employee_id
+  - hire_year
+  - is_active
+  optional_dimensions:
+  - hire_year
+  default_filters:
+  - v.is_active = TRUE
+  recommended_visualization: line_chart
+  sql_template_id: TPL_HIRING_TREND_ANNUAL
+  report_ids:
+  - RPT_HR_010
+  caveats:
+  - hire_year شمسی است و تحلیل ماهانه در MVP فعلی قابل اتکا نیست مگر داده ماه/تقویم تکمیل شود.
+  sort_rule: GROUP BY v.hire_year ORDER BY v.hire_year ASC
+  access_level: aggregate_only
+  tags:
+  - hiring
+  - trend
+  - shamsi_year
+- kpi_id: KPI_HR_033
+  title_fa: جذب ۱۵ سال اخیر
+  group_id: KPI_GRP_HIRING
+  intent: hiring_last_15_years
+  route: SQL
+  status: ready_for_demo
+  description: روند جذب کارکنان در ۱۵ سال اخیر بر اساس سال شمسی.
+  expression: COUNT(v.employee_id) AS hiring_count
+  unit: person
+  output_type: time_series
+  required_columns:
+  - employee_id
+  - hire_year
+  - is_active
+  optional_dimensions:
+  - hire_year
+  default_filters:
+  - v.is_active = TRUE
+  - v.hire_year >= {current_shamsi_year} - 15
+  recommended_visualization: line_chart
+  sql_template_id: TPL_HIRING_LAST_15_YEARS
+  report_ids:
+  - RPT_HR_011
+  caveats:
+  - current_shamsi_year باید توسط برنامه تزریق شود؛ در دیتابیس تست فعلی می‌تواند ۱۴۰۴ در نظر گرفته شود.
+  access_level: aggregate_only
+  tags:
+  - hiring
+  - last_15_years
+- kpi_id: KPI_HR_034
+  title_fa: سال بیشترین جذب
+  group_id: KPI_GRP_HIRING
+  intent: most_or_least_hiring_year
+  route: SQL
+  status: ready_for_demo
+  description: سالی که بیشترین تعداد جذب در آن ثبت شده است.
+  expression: COUNT(v.employee_id) AS hiring_count
+  unit: person
+  output_type: ranked_top_1
+  required_columns:
+  - employee_id
+  - hire_year
+  - is_active
+  optional_dimensions:
+  - hire_year
+  default_filters:
+  - v.is_active = TRUE
+  recommended_visualization: kpi_card_or_table
+  sql_template_id: TPL_MOST_HIRING_YEAR
+  report_ids:
+  - RPT_HR_024
+  caveats:
+  - نباید از MAX(v.hire_year) استفاده شود؛ سؤال درباره سال با بیشترین تعداد جذب است نه آخرین سال.
+  sort_rule: GROUP BY v.hire_year ORDER BY hiring_count DESC LIMIT 1
+  access_level: aggregate_only
+  tags:
+  - hiring
+  - most
+  legacy_intent_alias: most_hiring_year
+- kpi_id: KPI_HR_035
+  title_fa: سال کمترین جذب
+  group_id: KPI_GRP_HIRING
+  intent: most_or_least_hiring_year
+  route: SQL
+  status: ready_for_demo
+  description: سالی که کمترین تعداد جذب در آن ثبت شده است.
+  expression: COUNT(v.employee_id) AS hiring_count
+  unit: person
+  output_type: ranked_bottom_1
+  required_columns:
+  - employee_id
+  - hire_year
+  - is_active
+  optional_dimensions:
+  - hire_year
+  default_filters:
+  - v.is_active = TRUE
+  recommended_visualization: kpi_card_or_table
+  sql_template_id: TPL_LEAST_HIRING_YEAR
+  report_ids:
+  - RPT_HR_025
+  caveats:
+  - نباید از MIN(v.hire_year) استفاده شود؛ سؤال درباره سال با کمترین تعداد جذب است نه قدیمی‌ترین سال.
+  sort_rule: GROUP BY v.hire_year ORDER BY hiring_count ASC LIMIT 1
+  access_level: aggregate_only
+  tags:
+  - hiring
+  - least
+  legacy_intent_alias: least_hiring_year
+- kpi_id: KPI_HR_036
+  title_fa: میانگین سابقه کارکنان
+  group_id: KPI_GRP_HIRING
+  intent: average_service_years
+  route: SQL
+  status: ready_for_demo
+  description: میانگین سابقه خدمت کارکنان فعال.
+  expression: ROUND(AVG(v.service_years), 2) AS average_service_years
+  unit: year
+  output_type: average
+  required_columns:
+  - service_years
+  - is_active
+  optional_dimensions:
+  - gender
+  - service_domain
+  - department_name
+  default_filters:
+  - v.is_active = TRUE
+  recommended_visualization: kpi_card_or_bar_chart
+  sql_template_id: TPL_AVERAGE_SERVICE_YEARS
+  report_ids:
+  - RPT_HR_030
+  access_level: aggregate_only
+  tags:
+  - service_years
+  - average
+- kpi_id: KPI_HR_037
+  title_fa: تعداد کارکنان بدون سابقه
+  group_id: KPI_GRP_HIRING
+  intent: employee_count_without_service_years
+  route: SQL
+  status: ready_for_demo
+  description: تعداد کارکنانی که سابقه خدمت آن‌ها صفر یا نزدیک صفر ثبت شده است.
+  expression: COUNT(v.employee_id) AS employee_count
+  unit: person
+  output_type: single_value
+  required_columns:
+  - employee_id
+  - service_years
+  - is_active
+  default_filters:
+  - v.is_active = TRUE
+  - COALESCE(v.service_years, 0) = 0
+  recommended_visualization: kpi_card
+  sql_template_id: TPL_EMPLOYEE_COUNT_WITHOUT_SERVICE_YEARS
+  report_ids:
+  - RPT_HR_034
+  caveats:
+  - تعریف دقیق «بدون سابقه» باید با HR نهایی شود؛ در MVP معادل service_years = 0 در نظر گرفته شده است.
+  access_level: aggregate_only
+  tags:
+  - service_years
+  - zero
+- kpi_id: KPI_HR_038
+  title_fa: نوع قراردادهای جذب سال اخیر
+  group_id: KPI_GRP_HIRING
+  intent: hiring_by_contract_type_recent_year
+  route: SQL
+  status: ready_for_demo
+  description: توزیع نوع قرارداد کارکنانی که در سال جاری شمسی جذب شده‌اند.
+  expression: COUNT(v.employee_id) AS employee_count
+  unit: person
+  output_type: grouped_count
+  required_columns:
+  - employee_id
+  - hire_year
+  - contract_type
+  - is_active
+  optional_dimensions:
+  - contract_type
+  default_filters:
+  - v.is_active = TRUE
+  - v.hire_year = {current_shamsi_year}
+  recommended_visualization: horizontal_bar_chart_or_table
+  sql_template_id: TPL_HIRING_BY_CONTRACT_TYPE_RECENT_YEAR
+  report_ids:
+  - RPT_HR_026
+  caveats:
+  - current_shamsi_year باید توسط برنامه تزریق شود.
+  access_level: aggregate_only
+  tags:
+  - hiring
+  - contract_type
+  - current_year
+  legacy_intent_alias: contract_type_of_recent_hires
+- kpi_id: KPI_GAP_001
+  title_fa: تحلیل سطح شهر
+  group_id: KPI_GRP_GAP
+  intent: city_level_analysis
+  route: GAP
+  status: data_gap
+  description: تحلیل تعداد یا ترکیب کارکنان در سطح شهر.
+  output_type: status_message
+  required_columns:
+  - city
+  default_filters:
+  - v.is_active = TRUE
+  recommended_visualization: status_message
+  report_ids:
+  - RPT_HR_013
+  gap_reason: در MVP فعلی داده city در View وجود دارد اما قابل اتکا نیست.
+  recommended_response: این سؤال مرتبط است، اما داده شهر در نسخه فعلی قابل اتکا نیست و باید به عنوان Data Gap ثبت شود.
+  access_level: aggregate_only
+  tags:
+  - location
+  - city
+  - data_gap
+- kpi_id: KPI_GAP_002
+  title_fa: تحلیل آستانه بازنشستگی
+  group_id: KPI_GRP_GAP
+  intent: near_retirement_analysis
+  route: GAP
+  status: data_gap
+  description: تعداد یا سهم کارکنان نزدیک به بازنشستگی.
+  output_type: status_message
+  required_columns:
+  - age
+  - service_years
+  - gender
+  default_filters:
+  - v.is_active = TRUE
+  recommended_visualization: status_message
+  report_ids:
+  - RPT_HR_014
+  gap_reason: قانون رسمی بازنشستگی بر اساس سن، سابقه، جنسیت و قواعد سازمانی در MVP فعلی تعریف نشده است.
+  recommended_response: برای پاسخ دقیق، باید قانون بازنشستگی سازمان مشخص و در Metadata ثبت شود.
+  access_level: aggregate_only
+  tags:
+  - retirement
+  - data_gap
+- kpi_id: KPI_GAP_003
+  title_fa: شاخص ریسک سالخوردگی نیروی انسانی
+  group_id: KPI_GRP_GAP
+  intent: workforce_aging_trend_analysis
+  route: GAP
+  status: data_gap
+  description: ارزیابی اینکه ساختار کلی کارکنان به سمت سالخوردگی حرکت می‌کند یا نه.
+  output_type: status_message
+  required_columns:
+  - age
+  - hire_year
+  - service_years
+  default_filters:
+  - v.is_active = TRUE
+  recommended_visualization: status_message
+  report_ids:
+  - RPT_HR_031
+  gap_reason: برای تحلیل ریسک سالخوردگی باید آستانه‌ها، روند چندساله، ترکیب سنی هدف و تعریف رسمی ریسک مشخص شود.
+  recommended_response: داده‌های پایه سن وجود دارد، اما برای نتیجه مدیریتی قابل دفاع باید قواعد شاخص سالخوردگی تعریف شود.
+  access_level: aggregate_only
+  tags:
+  - age
+  - risk
+  - data_gap
+  legacy_intent_alias: workforce_ageing_risk
+- kpi_id: KPI_GAP_004
+  title_fa: شاخص نیاز آموزشی
+  group_id: KPI_GRP_GAP
+  intent: education_training_need_analysis
+  route: GAP
+  status: data_gap
+  description: بررسی اینکه ترکیب تحصیلات نشان‌دهنده نیاز آموزشی یا دوره تخصصی است یا نه.
+  output_type: status_message
+  required_columns:
+  - education_title
+  - education_rank
+  - position_title
+  - min_education_rank
+  default_filters:
+  - v.is_active = TRUE
+  recommended_visualization: status_message
+  report_ids:
+  - RPT_HR_032
+  gap_reason: برای تشخیص نیاز آموزشی، علاوه بر تحصیلات باید داده مهارت، دوره‌های گذرانده‌شده، شغل، شایستگی و سیاست آموزشی
+    وجود داشته باشد.
+  recommended_response: این سؤال مرتبط است، اما در MVP فعلی داده مهارت و آموزش برای تحلیل قطعی موجود نیست.
+  access_level: aggregate_only
+  tags:
+  - education
+  - training
+  - data_gap
+  legacy_intent_alias: training_need_index
+- kpi_id: KPI_GAP_005
+  title_fa: شاخص بهره‌وری پیمانکارها
+  group_id: KPI_GRP_GAP
+  intent: contractor_productivity_analysis
+  route: GAP
+  status: data_gap
+  description: تحلیل مناسب‌بودن بهره‌وری نیروهای پیمانکاری.
+  output_type: status_message
+  required_columns:
+  - is_contractor
+  default_filters:
+  - v.is_active = TRUE
+  recommended_visualization: status_message
+  report_ids:
+  - RPT_HR_038
+  gap_reason: در MVP فعلی داده عملکرد، خروجی کار، هزینه، KPI عملیاتی یا بهره‌وری پیمانکارها وجود ندارد.
+  recommended_response: برای پاسخ دقیق باید داده عملکرد، هزینه و خروجی فعالیت پیمانکارها اضافه شود.
+  access_level: aggregate_only
+  tags:
+  - contractor
+  - productivity
+  - data_gap
+- kpi_id: KPI_GAP_006
+  title_fa: هماهنگی جذب با رشد کار سازمان
+  group_id: KPI_GRP_GAP
+  intent: hiring_business_growth_alignment
+  route: GAP
+  status: data_gap
+  description: بررسی اینکه جذب نیرو با افزایش حجم کار یا رشد سازمان هماهنگ بوده است یا نه.
+  output_type: status_message
+  required_columns:
+  - hire_year
+  default_filters:
+  - v.is_active = TRUE
+  recommended_visualization: status_message
+  report_ids:
+  - RPT_HR_036
+  gap_reason: در MVP فعلی داده حجم کار، رشد عملیات، پروژه‌ها، خدمت‌رسانی یا شاخص عملکرد سازمانی برای مقایسه با جذب وجود ندارد.
+  recommended_response: روند جذب قابل محاسبه است، اما برای مقایسه با رشد کار سازمان باید شاخص‌های حجم کار اضافه شود.
+  access_level: aggregate_only
+  tags:
+  - hiring
+  - workload
+  - data_gap
+  legacy_intent_alias: hiring_workload_alignment
+- kpi_id: KPI_GAP_007
+  title_fa: روند جذب ماهانه
+  group_id: KPI_GRP_GAP
+  intent: monthly_hiring_trend
+  route: GAP
+  status: data_gap
+  description: تعداد جذب در سطح ماه یا روند ماهانه جذب.
+  output_type: status_message
+  required_columns:
+  - hire_date
+  - hire_year
+  default_filters:
+  - v.is_active = TRUE
+  recommended_visualization: status_message
+  gap_reason: در MVP فعلی تحلیل جذب بر اساس hire_year شمسی آماده است؛ برای ماه شمسی نیاز به تقویم شمسی یا ستون ماه استاندارد
+    وجود دارد.
+  recommended_response: تحلیل سالانه جذب قابل ارائه است، اما تحلیل ماهانه نیازمند تکمیل تقویم شمسی یا ستون ماه جذب است.
+  access_level: aggregate_only
+  tags:
+  - hiring
+  - monthly
+  - data_gap
+  legacy_intent_alias: monthly_hiring_trend
+  report_ids:
+  - RPT_HR_043
+kpi_index:
+  by_intent:
+    total_employee_count:
+    - KPI_HR_001
+    employee_count_by_gender:
+    - KPI_HR_002
+    gender_percentage:
+    - KPI_HR_003
+    - KPI_HR_004
+    average_age:
+    - KPI_HR_005
+    employee_count_by_age_group:
+    - KPI_HR_006
+    employee_count_by_age_filter:
+    - KPI_HR_007
+    - KPI_HR_008
+    employee_count_by_marital_status:
+    - KPI_HR_009
+    employee_count_by_gender_age_filter:
+    - KPI_HR_010
+    employee_count_by_education:
+    - KPI_HR_011
+    - KPI_HR_012
+    - KPI_HR_015
+    most_common_education:
+    - KPI_HR_013
+    least_common_education:
+    - KPI_HR_014
+    low_education_in_expert_roles:
+    - KPI_HR_016
+    employee_count_by_employment_type:
+    - KPI_HR_017
+    - KPI_HR_022
+    - KPI_HR_023
+    employee_count_by_contract_type:
+    - KPI_HR_018
+    contractor_share:
+    - KPI_HR_019
+    - KPI_HR_020
+    contractor_share_by_service_domain:
+    - KPI_HR_021
+    employee_count_by_service_domain:
+    - KPI_HR_024
+    - KPI_HR_025
+    employee_count_by_department:
+    - KPI_HR_026
+    headcount_gap_by_department:
+    - KPI_HR_027
+    - KPI_HR_028
+    - KPI_HR_029
+    employee_count_by_province:
+    - KPI_HR_030
+    employee_count_by_work_location:
+    - KPI_HR_031
+    hiring_trend_annual:
+    - KPI_HR_032
+    hiring_last_15_years:
+    - KPI_HR_033
+    most_or_least_hiring_year:
+    - KPI_HR_034
+    - KPI_HR_035
+    average_service_years:
+    - KPI_HR_036
+    employee_count_without_service_years:
+    - KPI_HR_037
+    hiring_by_contract_type_recent_year:
+    - KPI_HR_038
+    city_level_analysis:
+    - KPI_GAP_001
+    near_retirement_analysis:
+    - KPI_GAP_002
+    workforce_aging_trend_analysis:
+    - KPI_GAP_003
+    education_training_need_analysis:
+    - KPI_GAP_004
+    contractor_productivity_analysis:
+    - KPI_GAP_005
+    hiring_business_growth_alignment:
+    - KPI_GAP_006
+    monthly_hiring_trend:
+    - KPI_GAP_007
+  by_sql_template_id:
+    TPL_TOTAL_EMPLOYEE_COUNT:
+    - KPI_HR_001
+    TPL_EMPLOYEE_COUNT_BY_GENDER:
+    - KPI_HR_002
+    TPL_GENDER_PERCENTAGE:
+    - KPI_HR_003
+    - KPI_HR_004
+    TPL_AVERAGE_AGE:
+    - KPI_HR_005
+    TPL_EMPLOYEE_COUNT_BY_AGE_GROUP:
+    - KPI_HR_006
+    TPL_EMPLOYEES_UNDER_30:
+    - KPI_HR_007
+    TPL_EMPLOYEES_AGE_60_PLUS:
+    - KPI_HR_008
+    TPL_EMPLOYEE_COUNT_BY_MARITAL_STATUS:
+    - KPI_HR_009
+    TPL_GENDER_BY_AGE_GROUP:
+    - KPI_HR_010
+    TPL_EMPLOYEE_COUNT_BY_EDUCATION:
+    - KPI_HR_011
+    - KPI_HR_012
+    TPL_MOST_COMMON_EDUCATION:
+    - KPI_HR_013
+    TPL_LEAST_COMMON_EDUCATION:
+    - KPI_HR_014
+    TPL_EMPLOYEE_COUNT_BY_EDUCATION_VALUE:
+    - KPI_HR_015
+    TPL_LOW_EDUCATION_IN_EXPERT_ROLES:
+    - KPI_HR_016
+    TPL_EMPLOYEE_COUNT_BY_EMPLOYMENT_TYPE:
+    - KPI_HR_017
+    TPL_EMPLOYEE_COUNT_BY_CONTRACT_TYPE:
+    - KPI_HR_018
+    TPL_CONTRACTOR_SHARE:
+    - KPI_HR_019
+    - KPI_HR_020
+    TPL_CONTRACTOR_SHARE_BY_SERVICE_DOMAIN:
+    - KPI_HR_021
+    TPL_EMPLOYEE_COUNT_BY_EMPLOYMENT_TYPE_VALUE:
+    - KPI_HR_022
+    - KPI_HR_023
+    TPL_EMPLOYEE_COUNT_BY_SERVICE_DOMAIN:
+    - KPI_HR_024
+    - KPI_HR_025
+    TPL_EMPLOYEE_COUNT_BY_DEPARTMENT:
+    - KPI_HR_026
+    TPL_HEADCOUNT_GAP_BY_DEPARTMENT:
+    - KPI_HR_027
+    - KPI_HR_028
+    - KPI_HR_029
+    TPL_EMPLOYEE_COUNT_BY_PROVINCE:
+    - KPI_HR_030
+    TPL_EMPLOYEE_COUNT_BY_WORK_LOCATION:
+    - KPI_HR_031
+    TPL_HIRING_TREND_ANNUAL:
+    - KPI_HR_032
+    TPL_HIRING_LAST_15_YEARS:
+    - KPI_HR_033
+    TPL_MOST_HIRING_YEAR:
+    - KPI_HR_034
+    TPL_LEAST_HIRING_YEAR:
+    - KPI_HR_035
+    TPL_AVERAGE_SERVICE_YEARS:
+    - KPI_HR_036
+    TPL_EMPLOYEE_COUNT_WITHOUT_SERVICE_YEARS:
+    - KPI_HR_037
+    TPL_HIRING_BY_CONTRACT_TYPE_RECENT_YEAR:
+    - KPI_HR_038
+  by_report_id:
+    RPT_HR_001:
+    - KPI_HR_001
+    RPT_HR_002:
+    - KPI_HR_002
+    RPT_HR_015:
+    - KPI_HR_003
+    - KPI_HR_004
+    RPT_HR_003:
+    - KPI_HR_005
+    RPT_HR_017:
+    - KPI_HR_006
+    - KPI_HR_007
+    - KPI_HR_008
+    RPT_HR_031:
+    - KPI_HR_009
+    - KPI_GAP_003
+    RPT_HR_030:
+    - KPI_HR_010
+    - KPI_HR_036
+    RPT_HR_004:
+    - KPI_HR_011
+    - KPI_HR_012
+    - KPI_HR_015
+    RPT_HR_020:
+    - KPI_HR_013
+    - KPI_HR_016
+    RPT_HR_021:
+    - KPI_HR_014
+    RPT_HR_005:
+    - KPI_HR_017
+    - KPI_HR_022
+    - KPI_HR_023
+    RPT_HR_006:
+    - KPI_HR_018
+    RPT_HR_007:
+    - KPI_HR_019
+    - KPI_HR_020
+    RPT_HR_023:
+    - KPI_HR_021
+    RPT_HR_008:
+    - KPI_HR_024
+    - KPI_HR_025
+    RPT_HR_026:
+    - KPI_HR_026
+    - KPI_HR_038
+    RPT_HR_012:
+    - KPI_HR_027
+    - KPI_HR_028
+    - KPI_HR_029
+    RPT_HR_009:
+    - KPI_HR_030
+    RPT_HR_027:
+    - KPI_HR_031
+    RPT_HR_010:
+    - KPI_HR_032
+    RPT_HR_011:
+    - KPI_HR_033
+    RPT_HR_024:
+    - KPI_HR_034
+    RPT_HR_025:
+    - KPI_HR_035
+    RPT_HR_034:
+    - KPI_HR_037
+    RPT_HR_013:
+    - KPI_GAP_001
+    RPT_HR_014:
+    - KPI_GAP_002
+    RPT_HR_032:
+    - KPI_GAP_004
+    RPT_HR_038:
+    - KPI_GAP_005
+    RPT_HR_036:
+    - KPI_GAP_006
+    RPT_HR_043:
+    - KPI_GAP_007
+  by_group_id:
+    KPI_GRP_HEADCOUNT:
+    - KPI_HR_001
+    KPI_GRP_DEMOGRAPHICS:
+    - KPI_HR_002
+    - KPI_HR_003
+    - KPI_HR_004
+    - KPI_HR_005
+    - KPI_HR_006
+    - KPI_HR_007
+    - KPI_HR_008
+    - KPI_HR_009
+    - KPI_HR_010
+    KPI_GRP_EDUCATION:
+    - KPI_HR_011
+    - KPI_HR_012
+    - KPI_HR_013
+    - KPI_HR_014
+    - KPI_HR_015
+    - KPI_HR_016
+    KPI_GRP_EMPLOYMENT:
+    - KPI_HR_017
+    - KPI_HR_018
+    - KPI_HR_019
+    - KPI_HR_020
+    - KPI_HR_021
+    - KPI_HR_022
+    - KPI_HR_023
+    KPI_GRP_ORGANIZATION:
+    - KPI_HR_024
+    - KPI_HR_025
+    - KPI_HR_026
+    - KPI_HR_027
+    - KPI_HR_028
+    - KPI_HR_029
+    KPI_GRP_LOCATION:
+    - KPI_HR_030
+    - KPI_HR_031
+    KPI_GRP_HIRING:
+    - KPI_HR_032
+    - KPI_HR_033
+    - KPI_HR_034
+    - KPI_HR_035
+    - KPI_HR_036
+    - KPI_HR_037
+    - KPI_HR_038
+    KPI_GRP_GAP:
+    - KPI_GAP_001
+    - KPI_GAP_002
+    - KPI_GAP_003
+    - KPI_GAP_004
+    - KPI_GAP_005
+    - KPI_GAP_006
+    - KPI_GAP_007
+metadata_dependencies:
+  data_dictionary: Template_00_data_dictionary.yaml
+  intent_catalog: Template_01_intent_catalog.yaml
+  report_catalog: Template_02_report_catalog.json
+  semantic_layer: Template_03_semantic_layer.yaml
+  sql_templates: Template_04_sql_templates.yaml
+  sql_validator_rules: Template_05_sql_validator_rules.yaml
+  visualization_rules: Template_06_visualization_rules.yaml
+  evaluation_goldset: Template_07_HR_BI_Assistant_Evaluation.json
+  access_policies: Template_08_access_policies.yaml
+backend_usage:
+  metadata_service.py:
+  - load KPI definitions
+  - validate KPI ids and dependencies
+  - serve KPI formula and dimensions to router/sql_template_engine
+  intent_parser.py:
+  - map user question to KPI candidates when the question is metric-oriented
+  router.py:
+  - select SQL/GAP/REJECT route using KPI status and route
+  sql_template_engine.py:
+  - select sql_template_id from kpi_id or intent
+  - prevent formula hallucination
+  response_builder.py:
+  - use title_fa, unit, output_type and interpretation for final answer
+  chart_builder.py:
+  - use recommended_visualization to select display type
+  evaluation_service.py:
+  - compare detected KPI/intent with goldset expectations
+validation_expectations:
+  must_parse_as_yaml: true
+  kpi_id_unique: true
+  route_allowed_values:
+  - SQL
+  - GAP
+  - REJECT
+  status_allowed_values:
+  - ready_for_demo
+  - partial_for_demo
+  - data_gap
+  - rejected
+  must_not_include_raw_table_sql: true
+  must_not_include_sensitive_columns_as_output: true
+  all_sql_kpis_must_use_main_view: true
+notes:
+- این فایل جایگزین Report Catalog نیست؛ Report Catalog سناریو/گزارش را تعریف می‌کند و KPI Catalog شاخص و فرمول رسمی را.
+- همه KPIهای SQL باید با sql_templates.yaml و intent_catalog.yaml هماهنگ باشند.
+- KPIهای Data Gap حذف نشده‌اند؛ برای جلوگیری از پاسخ ساختگی و ثبت backlog نگه داشته شده‌اند.
+- در نسخه‌های بعدی می‌توان برای هر KPI threshold، target، owner و refresh_frequency اضافه کرد.

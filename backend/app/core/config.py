@@ -23,14 +23,14 @@ class Settings(BaseSettings):
     model_top_p: float = 0.5
     model_timeout: int = 120
 
-    # App database (SQLAlchemy)
+    # App database
     db_host: str
     db_port: int = 5432
     db_name: str
     db_user: str
     db_password: str
 
-    # HR database (psycopg2 — for running generated SQL)
+    # HR database
     hr_db_host: str
     hr_db_port: int = 5432
     hr_db_name: str
@@ -39,6 +39,19 @@ class Settings(BaseSettings):
 
     # CORS
     cors_origins: List[str] = ["http://localhost:5173"]
+
+    # Logging
+    log_level: str = "INFO"
+    log_dir: str = "logs"
+    app_env: str = "development"
+
+    # Phase 2
+    hr_bi_metadata_dir: str = "./metadata"
+    current_shamsi_year: int = 1404
+    default_execute_sql: bool = False
+    enable_llm_sql_fallback: bool = True
+    hr_bi_v2_on_generate: bool = False
+    hr_bi_validate_query_v2: bool = True
 
     @field_validator("cors_origins", mode="before")
     @classmethod

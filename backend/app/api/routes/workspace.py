@@ -7,9 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.db.base import get_db
-from app.db.models import Experiment, Project, Section, Workspace
-from app.schemas.schemas import (
+from app.api.schemas import (
     ExperimentCreate,
     ProjectCreate,
     ProjectOut,
@@ -17,26 +15,35 @@ from app.schemas.schemas import (
     SectionCreate,
     SectionUpdate,
 )
+from app.infrastructure.db.models import (
+    ExperimentORM,
+    ProjectORM,
+    SectionORM,
+    WorkspaceORM,
+)
+from app.infrastructure.db.session import get_db
 
 router = APIRouter(tags=["workspace"])
 
-_PROJECT_LOAD = [selectinload(Project.sections),
-                 selectinload(Project.experiments)]
+_PROJECT_OPTS = [
+    selectinload(ProjectORM.sections),
+    selectinload(ProjectORM.experiments),
+]
 
 
-async def _get_or_create_workspace(db: AsyncSession) -> Workspace:
-    result = await db.execute(select(Workspace).limit(1))
+async def _get_or_create_workspace(db: AsyncSession) -> WorkspaceORM:
+    result = await db.execute(select(WorkspaceORM).limit(1))
     ws = result.scalar_one_or_none()
     if not ws:
-        ws = Workspace()
+        ws = WorkspaceORM()
         db.add(ws)
         await db.flush()
     return ws
 
 
-async def _require_project(project_id: str, db: AsyncSession) -> Project:
+async def _require_project(project_id: str, db: AsyncSession) -> ProjectORM:
     result = await db.execute(
-        select(Project).options(*_PROJECT_LOAD).where(Project.id == project_id)
+        select(ProjectORM).options(*_PROJECT_OPTS).where(ProjectORM.id == project_id)
     )
     project = result.scalar_one_or_none()
     if not project:
@@ -44,37 +51,34 @@ async def _require_project(project_id: str, db: AsyncSession) -> Project:
     return project
 
 
-# ── Projects ──────────────────────────────────────────────────────────────────
-
-@router.get("/projects", response_model=list[ProjectOut])
-async def list_projects(db: AsyncSession = Depends(get_db)) -> list[Project]:
+@router.get("/projects", response_model=list[ProjectOut], summary="List all projects")
+async def list_projects(db: AsyncSession = Depends(get_db)) -> list[ProjectORM]:
     ws = await _get_or_create_workspace(db)
     result = await db.execute(
-        select(Project).options(
-            *_PROJECT_LOAD).where(Project.workspace_id == ws.id)
-        .order_by(Project.created_at.asc())
+        select(ProjectORM).options(*_PROJECT_OPTS)
+        .where(ProjectORM.workspace_id == ws.id)
+        .order_by(ProjectORM.created_at.asc())
     )
     return list(result.scalars().all())
 
 
-@router.post("/projects", response_model=ProjectOut)
-async def create_project(body: ProjectCreate, db: AsyncSession = Depends(get_db)) -> Project:
+@router.post("/projects", response_model=ProjectOut, status_code=201, summary="Create project")
+async def create_project(body: ProjectCreate, db: AsyncSession = Depends(get_db)) -> ProjectORM:
     ws = await _get_or_create_workspace(db)
-    project = Project(workspace_id=ws.id, name=body.name,
-                      description=body.description)
+    project = ProjectORM(workspace_id=ws.id, name=body.name, description=body.description)
     db.add(project)
     await db.flush()
     await db.refresh(project, ["sections", "experiments"])
     return project
 
 
-@router.get("/projects/{project_id}", response_model=ProjectOut)
-async def get_project(project_id: str, db: AsyncSession = Depends(get_db)) -> Project:
+@router.get("/projects/{project_id}", response_model=ProjectOut, summary="Get project")
+async def get_project(project_id: str, db: AsyncSession = Depends(get_db)) -> ProjectORM:
     return await _require_project(project_id, db)
 
 
-@router.patch("/projects/{project_id}", response_model=ProjectOut)
-async def update_project(project_id: str, body: ProjectUpdate, db: AsyncSession = Depends(get_db)) -> Project:
+@router.patch("/projects/{project_id}", response_model=ProjectOut, summary="Update project")
+async def update_project(project_id: str, body: ProjectUpdate, db: AsyncSession = Depends(get_db)) -> ProjectORM:
     project = await _require_project(project_id, db)
     if body.name is not None:
         project.name = body.name
@@ -89,20 +93,16 @@ async def update_project(project_id: str, body: ProjectUpdate, db: AsyncSession 
     return project
 
 
-@router.delete("/projects/{project_id}")
-async def delete_project(project_id: str, db: AsyncSession = Depends(get_db)) -> dict:
+@router.delete("/projects/{project_id}", status_code=204, summary="Delete project")
+async def delete_project(project_id: str, db: AsyncSession = Depends(get_db)) -> None:
     project = await _require_project(project_id, db)
     await db.delete(project)
-    return {"deleted": True}
 
 
-# ── Sections ──────────────────────────────────────────────────────────────────
-
-@router.post("/projects/{project_id}/sections", response_model=ProjectOut)
-async def create_section(project_id: str, body: SectionCreate, db: AsyncSession = Depends(get_db)) -> Project:
+@router.post("/projects/{project_id}/sections", response_model=ProjectOut, status_code=201)
+async def create_section(project_id: str, body: SectionCreate, db: AsyncSession = Depends(get_db)) -> ProjectORM:
     project = await _require_project(project_id, db)
-    section = Section(project_id=project_id, name=body.name,
-                      content=body.content, order=body.order)
+    section = SectionORM(project_id=project_id, name=body.name, content=body.content, order=body.order)
     db.add(section)
     project.updated_at = datetime.now(timezone.utc)
     await db.flush()
@@ -111,7 +111,7 @@ async def create_section(project_id: str, body: SectionCreate, db: AsyncSession 
 
 
 @router.patch("/projects/{project_id}/sections/{section_id}", response_model=ProjectOut)
-async def update_section(project_id: str, section_id: str, body: SectionUpdate, db: AsyncSession = Depends(get_db)) -> Project:
+async def update_section(project_id: str, section_id: str, body: SectionUpdate, db: AsyncSession = Depends(get_db)) -> ProjectORM:
     project = await _require_project(project_id, db)
     section = next((s for s in project.sections if s.id == section_id), None)
     if not section:
@@ -129,7 +129,7 @@ async def update_section(project_id: str, section_id: str, body: SectionUpdate, 
 
 
 @router.delete("/projects/{project_id}/sections/{section_id}", response_model=ProjectOut)
-async def delete_section(project_id: str, section_id: str, db: AsyncSession = Depends(get_db)) -> Project:
+async def delete_section(project_id: str, section_id: str, db: AsyncSession = Depends(get_db)) -> ProjectORM:
     project = await _require_project(project_id, db)
     section = next((s for s in project.sections if s.id == section_id), None)
     if not section:
@@ -141,12 +141,10 @@ async def delete_section(project_id: str, section_id: str, db: AsyncSession = De
     return project
 
 
-# ── Experiments ───────────────────────────────────────────────────────────────
-
-@router.post("/projects/{project_id}/experiments", response_model=ProjectOut)
-async def add_experiment(project_id: str, body: ExperimentCreate, db: AsyncSession = Depends(get_db)) -> Project:
+@router.post("/projects/{project_id}/experiments", response_model=ProjectOut, status_code=201)
+async def add_experiment(project_id: str, body: ExperimentCreate, db: AsyncSession = Depends(get_db)) -> ProjectORM:
     project = await _require_project(project_id, db)
-    exp = Experiment(
+    exp = ExperimentORM(
         project_id=project_id,
         question=body.question,
         sql_output=body.sql_output,

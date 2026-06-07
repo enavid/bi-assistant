@@ -1,0 +1,1259 @@
+version: '1.0'
+project: HR BI Assistant
+phase: Controlled SQL-based MVP
+file_type: data_dictionary
+language: fa
+description_fa: تعریف رسمی ستون‌های View تحلیلی منابع انسانی برای استفاده در metadata_service، SQL Generator، SQL Validator
+  و Response Builder.
+main_view:
+  name: hr_mvp.vw_hr_employee_analytics
+  schema: hr_mvp
+  alias: v
+  database: PostgreSQL
+  row_grain: one_row_per_active_employee
+  row_grain_fa: هر ردیف معادل یک کارمند فعال برای تحلیل منابع انسانی است.
+  safe_for_llm_sql_generation: true
+  description_fa: View اصلی تحلیل منابع انسانی. قرارداد جاری، آخرین مدرک، ساختار سازمانی، محل خدمت، پست و گروه سنی در همین
+    View آماده شده‌اند و مدل نباید به جدول‌های خام دسترسی داشته باشد.
+view_contract:
+  only_allowed_sql_source: hr_mvp.vw_hr_employee_analytics v
+  default_filter: v.is_active = TRUE
+  current_contract_resolved_in_view: true
+  latest_education_resolved_in_view: true
+  raw_tables_hidden_from_model: true
+  joins_by_model_allowed: false
+  select_star_allowed: false
+  individual_employee_output_allowed: false
+  aggregated_reporting_only: true
+source_tables_for_documentation_only:
+- hr_mvp.hr_employees
+- hr_mvp.hr_contracts
+- hr_mvp.hr_employee_education
+- hr_mvp.hr_education_levels
+- hr_mvp.hr_departments
+- hr_mvp.hr_locations
+- hr_mvp.hr_positions
+- hr_mvp.hr_age_groups
+global_sql_rules:
+  employee_count_expression: COUNT(v.employee_id) AS employee_count
+  average_age_expression: ROUND(AVG(v.age), 2) AS average_age
+  average_service_years_expression: ROUND(AVG(v.service_years), 2) AS average_service_years
+  group_share_percentage_expression: ROUND(COUNT(v.employee_id) * 100.0 / NULLIF(SUM(COUNT(v.employee_id)) OVER (), 0), 2)
+    AS percentage
+  condition_percentage_expression: ROUND(SUM(CASE WHEN condition THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(v.employee_id),
+    0), 2) AS percentage
+  headcount_gap_department_expression: MAX(v.department_approved_headcount) - COUNT(v.employee_id) AS headcount_gap
+  headcount_gap_warning_fa: department_approved_headcount روی ردیف کارکنان تکرار می‌شود و نباید مستقیم SUM شود.
+privacy_and_access_rules:
+  output_level: aggregated_only
+  blocked_individual_outputs:
+  - employee_id
+  - birth_date
+  - hire_date
+  - contract_start_date
+  - contract_end_date
+  sensitive_columns_intentionally_excluded_from_view:
+  - national_id
+  - personnel_number
+  - first_name
+  - last_name
+  - phone_number
+  - address
+  - bank_account
+  - insurance_number
+  - personal_identifier
+  access_denied_sql: SELECT 'ACCESS_DENIED' AS status;
+  data_gap_sql: SELECT 'DATA_GAP' AS status;
+data_gap_rules:
+- concept: city_level_analysis
+  trigger_terms_fa:
+  - شهر
+  - سطح شهر
+  - تحلیل شهری
+  status: DATA_GAP
+  reason_fa: در MVP فعلی داده شهر قابل اتکا نیست.
+- concept: near_retirement_analysis
+  trigger_terms_fa:
+  - آستانه بازنشستگی
+  - نزدیک بازنشستگی
+  - در شرف بازنشستگی
+  status: DATA_GAP
+  reason_fa: قانون رسمی بازنشستگی بر اساس سن، سابقه، جنسیت و قواعد سازمانی هنوز در Metadata تعریف نشده است.
+- concept: monthly_hiring_trend
+  trigger_terms_fa:
+  - روند جذب ماهانه
+  - جذب ماهانه
+  status: DATA_GAP
+  reason_fa: در View فعلی ستون ماه/تقویم معتبر برای تحلیل ماهانه وجود ندارد.
+- concept: contractor_productivity_analysis
+  trigger_terms_fa:
+  - بهره‌وری پیمانکار
+  - عملکرد پیمانکارها
+  status: DATA_GAP
+  reason_fa: داده بهره‌وری یا عملکرد پیمانکارها در MVP فعلی وجود ندارد.
+columns:
+- name: employee_id
+  title_fa: شناسه داخلی کارمند
+  data_type: integer
+  category: employee_identity
+  source_expression: e.employee_id
+  description_fa: شناسه داخلی رکورد کارمند در دیتابیس؛ فقط برای شمارش کارکنان استفاده می‌شود.
+  nullable: false
+  permissions:
+    can_select_in_aggregate_output: false
+    can_select_individual_output: false
+    can_group_by: false
+    can_filter: false
+    can_aggregate: true
+  sensitivity:
+    level: medium
+    contains_personal_data: true
+    privacy_rule_fa: نمایش مستقیم employee_id مجاز نیست؛ فقط داخل COUNT(v.employee_id) استفاده شود.
+  data_quality:
+    status: reliable
+  allowed_aggregations:
+  - COUNT
+  semantic_terms_fa:
+  - کارمند
+  - کارکنان
+  - نیرو
+  - پرسنل
+  - تعداد کارکنان
+  sql_usage_notes_fa:
+  - برای تعداد کارکنان از COUNT(v.employee_id) استفاده شود.
+  - در خروجی نهایی به کاربر نمایش داده نشود.
+- name: is_active
+  title_fa: وضعیت فعال بودن کارمند
+  data_type: boolean
+  category: employee_status
+  source_expression: e.is_active
+  description_fa: مشخص می‌کند کارمند در وضعیت فعال است یا خیر. View فعلی فقط کارکنان فعال را نگه می‌دارد، اما فیلتر پیش‌فرض
+    همچنان باید اعمال شود.
+  nullable: false
+  permissions:
+    can_select_in_aggregate_output: false
+    can_select_individual_output: false
+    can_group_by: false
+    can_filter: true
+    can_aggregate: false
+  sensitivity:
+    level: low
+    contains_personal_data: false
+    privacy_rule_fa: نباید به‌صورت مستقیم در خروجی کاربر نمایش داده شود.
+  data_quality:
+    status: reliable
+  semantic_terms_fa:
+  - فعال
+  - کارمند فعال
+  - پرسنل فعال
+  - نیروی فعال
+  allowed_values:
+  - true
+  - false
+  sql_usage_notes_fa:
+  - 'فیلتر پیش‌فرض همه گزارش‌های SQL: v.is_active = TRUE'
+- name: gender
+  title_fa: جنسیت
+  data_type: text
+  category: demographic
+  source_expression: e.gender
+  description_fa: جنسیت کارمند.
+  nullable: true
+  permissions:
+    can_select_in_aggregate_output: true
+    can_select_individual_output: false
+    can_group_by: true
+    can_filter: true
+    can_aggregate: false
+  sensitivity:
+    level: low
+    contains_personal_data: false
+    privacy_rule_fa: فقط در خروجی‌های تجمیعی قابل استفاده است.
+  data_quality:
+    status: reliable
+  semantic_terms_fa:
+  - جنسیت
+  - زن
+  - مرد
+  - خانم
+  - آقا
+  - تفکیک جنسیت
+  - تعداد زن و مرد
+  - درصد زنان
+  - درصد مردان
+  allowed_values:
+  - زن
+  - مرد
+  sql_usage_notes_fa:
+  - برای تفکیک جنسیت از GROUP BY v.gender استفاده شود.
+- name: marital_status
+  title_fa: وضعیت تأهل
+  data_type: text
+  category: demographic
+  source_expression: e.marital_status
+  description_fa: وضعیت تأهل کارمند.
+  nullable: true
+  permissions:
+    can_select_in_aggregate_output: true
+    can_select_individual_output: false
+    can_group_by: true
+    can_filter: true
+    can_aggregate: false
+  sensitivity:
+    level: medium
+    contains_personal_data: true
+    privacy_rule_fa: فقط در خروجی‌های تجمیعی قابل استفاده است.
+  data_quality:
+    status: expected_values_may_expand
+  semantic_terms_fa:
+  - وضعیت تأهل
+  - تاهل
+  - تأهل
+  - مجرد
+  - متأهل
+  - متاهل
+  allowed_values:
+  - مجرد
+  - متأهل
+  sql_usage_notes_fa:
+  - فقط به‌صورت تجمیعی و گروهی استفاده شود.
+- name: birth_date
+  title_fa: تاریخ تولد
+  data_type: date
+  category: demographic
+  source_expression: e.birth_date
+  description_fa: تاریخ تولد کارمند. این ستون برای محاسبه سن در View استفاده شده و نباید مستقیم نمایش داده شود.
+  nullable: true
+  permissions:
+    can_select_in_aggregate_output: false
+    can_select_individual_output: false
+    can_group_by: false
+    can_filter: false
+    can_aggregate: false
+  sensitivity:
+    level: high
+    contains_personal_data: true
+    privacy_rule_fa: تاریخ تولد داده شخصی است و نباید به‌صورت مستقیم در خروجی کاربر نمایش داده شود.
+  data_quality:
+    status: reliable
+  semantic_terms_fa:
+  - تاریخ تولد
+  sql_usage_notes_fa:
+  - برای تحلیل سن از v.age یا v.age_group_title استفاده شود، نه birth_date.
+- name: age
+  title_fa: سن
+  data_type: integer
+  category: demographic
+  source_expression: COALESCE(e.age, EXTRACT(YEAR FROM age(CURRENT_DATE, e.birth_date))::int)
+  description_fa: سن کارمند به سال؛ در صورت خالی بودن سن، از تاریخ تولد محاسبه می‌شود.
+  nullable: true
+  permissions:
+    can_select_in_aggregate_output: false
+    can_select_individual_output: false
+    can_group_by: false
+    can_filter: true
+    can_aggregate: true
+  sensitivity:
+    level: medium
+    contains_personal_data: true
+    privacy_rule_fa: نباید به‌صورت مستقیم در خروجی کاربر نمایش داده شود.
+  data_quality:
+    status: reliable
+  allowed_aggregations:
+  - AVG
+  - MIN
+  - MAX
+  - FILTER_RANGE
+  semantic_terms_fa:
+  - سن
+  - میانگین سن
+  - متوسط سن
+  - زیر ۳۰ سال
+  - کمتر از ۳۰ سال
+  - بالای ۶۰ سال
+  - ۶۰ سال به بالا
+  - بازه سنی
+  sql_usage_notes_fa:
+  - 'برای میانگین سن: ROUND(AVG(v.age), 2)'
+  - 'برای زیر ۳۰ سال: v.age < 30'
+  - 'برای ۶۰ سال به بالا: v.age >= 60'
+  - سن فردی نباید در خروجی ردیفی نمایش داده شود.
+- name: age_group_title
+  title_fa: گروه سنی
+  data_type: text
+  category: demographic
+  source_expression: ag.age_group_title
+  description_fa: عنوان بازه یا گروه سنی کارمند.
+  nullable: true
+  permissions:
+    can_select_in_aggregate_output: true
+    can_select_individual_output: false
+    can_group_by: true
+    can_filter: true
+    can_aggregate: false
+  sensitivity:
+    level: low
+    contains_personal_data: false
+    privacy_rule_fa: فقط در خروجی‌های تجمیعی قابل استفاده است.
+  data_quality:
+    status: reliable
+  semantic_terms_fa:
+  - گروه سنی
+  - بازه سنی
+  - رده سنی
+  - توزیع سنی
+  - سنین مختلف
+  allowed_values:
+  - زیر ۳۰
+  - ۳۰ تا ۴۰
+  - ۴۰ تا ۵۰
+  - ۵۰ تا ۶۰
+  - ۶۰ به بالا
+  sql_usage_notes_fa:
+  - برای سؤال‌های گروه سنی از GROUP BY v.age_group_title استفاده شود.
+  - برای ترتیب منطقی گروه‌های سنی، در صورت نیاز از MIN(v.age) استفاده شود.
+- name: hire_date
+  title_fa: تاریخ جذب
+  data_type: date
+  category: hiring
+  source_expression: e.hire_date
+  description_fa: تاریخ دقیق جذب کارمند. برای تحلیل‌های سالانه، ستون hire_year ترجیح دارد.
+  nullable: true
+  permissions:
+    can_select_in_aggregate_output: false
+    can_select_individual_output: false
+    can_group_by: false
+    can_filter: false
+    can_aggregate: false
+  sensitivity:
+    level: medium
+    contains_personal_data: true
+    privacy_rule_fa: تاریخ جذب فردی نباید به شکل ردیفی نمایش داده شود.
+  data_quality:
+    status: reliable
+  semantic_terms_fa:
+  - تاریخ جذب
+  - تاریخ استخدام
+  sql_usage_notes_fa:
+  - برای روند سالانه از v.hire_year استفاده شود.
+  - تحلیل ماهانه در MVP فعلی Data Gap است مگر ستون ماه/تقویم معتبر اضافه شود.
+- name: hire_year
+  title_fa: سال جذب
+  data_type: integer
+  category: hiring
+  source_expression: e.hire_year
+  description_fa: سال جذب کارمند بر اساس تقویم شمسی/جلالی.
+  nullable: true
+  permissions:
+    can_select_in_aggregate_output: true
+    can_select_individual_output: false
+    can_group_by: true
+    can_filter: true
+    can_aggregate: false
+  sensitivity:
+    level: low
+    contains_personal_data: false
+    privacy_rule_fa: فقط در خروجی‌های تجمیعی قابل استفاده است.
+  data_quality:
+    status: reliable_shamsi_year
+  semantic_terms_fa:
+  - جذب
+  - سال جذب
+  - روند جذب
+  - جذب سالانه
+  - جذب ۱۵ سال اخیر
+  - استخدام سالانه
+  - سال بیشترین جذب
+  - سال کمترین جذب
+  sql_usage_notes_fa:
+  - 'برای روند جذب سالانه: GROUP BY v.hire_year ORDER BY v.hire_year ASC'
+  - برای جذب ۱۵ سال اخیر، مقدار {current_shamsi_year} باید از برنامه تزریق شود.
+  - مدل نباید current_shamsi_year را حدس بزند.
+- name: service_years
+  title_fa: سنوات خدمت
+  data_type: numeric
+  category: hiring
+  source_expression: e.service_years
+  description_fa: میزان سابقه یا سنوات خدمت کارمند بر حسب سال.
+  nullable: true
+  permissions:
+    can_select_in_aggregate_output: false
+    can_select_individual_output: false
+    can_group_by: false
+    can_filter: true
+    can_aggregate: true
+  sensitivity:
+    level: medium
+    contains_personal_data: true
+    privacy_rule_fa: نباید به‌صورت مستقیم در خروجی کاربر نمایش داده شود.
+  data_quality:
+    status: reliable
+  allowed_aggregations:
+  - AVG
+  - MIN
+  - MAX
+  - FILTER_RANGE
+  semantic_terms_fa:
+  - سابقه
+  - سنوات
+  - سنوات خدمت
+  - میانگین سابقه
+  - بدون سابقه
+  sql_usage_notes_fa:
+  - 'برای میانگین سابقه: ROUND(AVG(v.service_years), 2)'
+  - برای بدون سابقه در صورت نیاز از v.service_years = 0 استفاده شود.
+- name: department_id
+  title_fa: شناسه واحد سازمانی
+  data_type: integer
+  category: organization
+  source_expression: d.department_id
+  description_fa: شناسه فنی واحد/دپارتمان محل خدمت. برای group by دقیق دپارتمان و جلوگیری از ادغام نام‌های مشابه استفاده می‌شود.
+  nullable: true
+  permissions:
+    can_select_in_aggregate_output: false
+    can_select_individual_output: false
+    can_group_by: true
+    can_filter: true
+    can_aggregate: false
+  sensitivity:
+    level: low
+    contains_personal_data: false
+    privacy_rule_fa: نباید به‌صورت مستقیم در خروجی کاربر نمایش داده شود.
+  data_quality:
+    status: reliable
+  semantic_terms_fa:
+  - شناسه دپارتمان
+  - شناسه واحد
+  sql_usage_notes_fa:
+  - در محاسبه کمبود نیرو، GROUP BY v.department_id, v.department_name توصیه می‌شود.
+- name: department_code
+  title_fa: کد واحد سازمانی
+  data_type: text
+  category: organization
+  source_expression: d.department_code
+  description_fa: کد داخلی واحد سازمانی.
+  nullable: true
+  permissions:
+    can_select_in_aggregate_output: false
+    can_select_individual_output: false
+    can_group_by: false
+    can_filter: true
+    can_aggregate: false
+  sensitivity:
+    level: low
+    contains_personal_data: false
+    privacy_rule_fa: نباید به‌صورت مستقیم در خروجی کاربر نمایش داده شود.
+  data_quality:
+    status: reliable
+  semantic_terms_fa:
+  - کد واحد
+  - کد دپارتمان
+  sql_usage_notes_fa:
+  - برای خروجی مدیریتی معمولاً department_name کافی است.
+- name: department_name
+  title_fa: نام واحد سازمانی
+  data_type: text
+  category: organization
+  source_expression: d.department_name
+  description_fa: نام واحد، اداره، بخش یا دپارتمان محل خدمت کارمند.
+  nullable: true
+  permissions:
+    can_select_in_aggregate_output: true
+    can_select_individual_output: false
+    can_group_by: true
+    can_filter: true
+    can_aggregate: false
+  sensitivity:
+    level: low
+    contains_personal_data: false
+    privacy_rule_fa: فقط در خروجی‌های تجمیعی قابل استفاده است.
+  data_quality:
+    status: reliable
+  semantic_terms_fa:
+  - واحد
+  - بخش
+  - اداره
+  - دپارتمان
+  - واحد سازمانی
+  - بخش سازمانی
+  - کدام بخش
+  - کدام واحد
+  sql_usage_notes_fa:
+  - برای سؤال‌های بخش/واحد/اداره/دپارتمان از GROUP BY v.department_name استفاده شود.
+- name: service_domain
+  title_fa: حوزه خدمت
+  data_type: text
+  category: organization
+  source_expression: d.service_domain
+  description_fa: حوزه کلان خدمت یا دامنه اصلی سازمانی.
+  nullable: true
+  permissions:
+    can_select_in_aggregate_output: true
+    can_select_individual_output: false
+    can_group_by: true
+    can_filter: true
+    can_aggregate: false
+  sensitivity:
+    level: low
+    contains_personal_data: false
+    privacy_rule_fa: فقط در خروجی‌های تجمیعی قابل استفاده است.
+  data_quality:
+    status: expected_values_may_expand
+  semantic_terms_fa:
+  - حوزه
+  - حوزه خدمت
+  - معاونت
+  - دامنه خدمت
+  - حوزه سازمانی
+  allowed_values:
+  - عمومی و ستادی
+  - فنی و شبکه
+  - منابع انسانی
+  - فناوری اطلاعات
+  - راهبردی و توسعه کسب‌وکار
+  sql_usage_notes_fa:
+  - برای تفکیک حوزه از GROUP BY v.service_domain استفاده شود.
+- name: parent_department_id
+  title_fa: شناسه والد واحد سازمانی
+  data_type: integer
+  category: organization
+  source_expression: d.parent_department_id
+  description_fa: شناسه واحد بالادستی در سلسله‌مراتب سازمانی.
+  nullable: true
+  permissions:
+    can_select_in_aggregate_output: false
+    can_select_individual_output: false
+    can_group_by: false
+    can_filter: true
+    can_aggregate: false
+  sensitivity:
+    level: low
+    contains_personal_data: false
+    privacy_rule_fa: نباید به‌صورت مستقیم در خروجی کاربر نمایش داده شود.
+  data_quality:
+    status: reliable
+  semantic_terms_fa:
+  - واحد بالادستی
+  - دپارتمان والد
+  - ساختار سازمانی
+  sql_usage_notes_fa:
+  - برای تحلیل سلسله‌مراتب پیشرفته بهتر است در بک‌اند یا View تکمیلی استفاده شود.
+- name: department_level
+  title_fa: سطح واحد سازمانی
+  data_type: integer
+  category: organization
+  source_expression: d.department_level
+  description_fa: سطح واحد در ساختار سازمانی؛ مثلاً سطح ۱، ۲ یا ۳.
+  nullable: true
+  permissions:
+    can_select_in_aggregate_output: true
+    can_select_individual_output: false
+    can_group_by: true
+    can_filter: true
+    can_aggregate: false
+  sensitivity:
+    level: low
+    contains_personal_data: false
+    privacy_rule_fa: فقط در خروجی‌های تجمیعی قابل استفاده است.
+  data_quality:
+    status: reliable_in_current_mvp
+  semantic_terms_fa:
+  - سطح دپارتمان
+  - سطح واحد
+  - سطح سازمانی
+  - لایه سازمانی
+  allowed_values:
+  - 1
+  - 2
+  - 3
+  sql_usage_notes_fa:
+  - برای تفکیک سطح سازمانی از GROUP BY v.department_level استفاده شود.
+- name: department_approved_headcount
+  title_fa: چارت مصوب واحد
+  data_type: integer
+  category: organization
+  source_expression: d.approved_headcount AS department_approved_headcount
+  description_fa: تعداد نیروی مصوب/هدف برای واحد سازمانی.
+  nullable: true
+  permissions:
+    can_select_in_aggregate_output: true
+    can_select_individual_output: false
+    can_group_by: false
+    can_filter: true
+    can_aggregate: true
+  sensitivity:
+    level: low
+    contains_personal_data: false
+    privacy_rule_fa: فقط در خروجی‌های تجمیعی قابل استفاده است.
+  data_quality:
+    status: reliable
+  allowed_aggregations:
+  - MAX
+  - MIN
+  - COMPARISON
+  semantic_terms_fa:
+  - چارت مصوب
+  - نیروی مصوب
+  - ظرفیت مصوب
+  - هدف نیروی انسانی
+  - کمبود نیرو
+  - اختلاف چارت و نیروی موجود
+  sql_usage_notes_fa:
+  - این مقدار روی ردیف‌های کارکنان تکرار می‌شود؛ مستقیم SUM نشود.
+  - 'برای سطح دپارتمان: MAX(v.department_approved_headcount) - COUNT(v.employee_id) AS headcount_gap'
+  - برای سطح حوزه ابتدا در سطح دپارتمان تجمیع شود، سپس حوزه تجمیع شود.
+- name: criticality_level
+  title_fa: سطح حساسیت واحد
+  data_type: text
+  category: organization
+  source_expression: d.criticality_level
+  description_fa: سطح حساسیت یا اهمیت واحد سازمانی در صورت ثبت در داده.
+  nullable: true
+  permissions:
+    can_select_in_aggregate_output: true
+    can_select_individual_output: false
+    can_group_by: true
+    can_filter: true
+    can_aggregate: false
+  sensitivity:
+    level: low
+    contains_personal_data: false
+    privacy_rule_fa: فقط در خروجی‌های تجمیعی قابل استفاده است.
+  data_quality:
+    status: values_should_be_checked
+  semantic_terms_fa:
+  - سطح حساسیت
+  - حساسیت واحد
+  - اهمیت واحد
+  - واحد حساس
+  sql_usage_notes_fa:
+  - برای گزارش‌های حساسیت سازمانی از GROUP BY v.criticality_level استفاده شود.
+- name: location_id
+  title_fa: شناسه محل خدمت
+  data_type: integer
+  category: location
+  source_expression: l.location_id
+  description_fa: شناسه فنی محل خدمت.
+  nullable: true
+  permissions:
+    can_select_in_aggregate_output: false
+    can_select_individual_output: false
+    can_group_by: true
+    can_filter: true
+    can_aggregate: false
+  sensitivity:
+    level: low
+    contains_personal_data: false
+    privacy_rule_fa: نباید به‌صورت مستقیم در خروجی کاربر نمایش داده شود.
+  data_quality:
+    status: reliable
+  semantic_terms_fa:
+  - شناسه محل خدمت
+  sql_usage_notes_fa:
+  - برای خروجی مدیریتی معمولاً province یا site_name استفاده شود.
+- name: province
+  title_fa: استان محل خدمت
+  data_type: text
+  category: location
+  source_expression: l.province
+  description_fa: استان محل خدمت کارمند. در MVP فعلی تحلیل مکانی در سطح استان قابل اتکاست.
+  nullable: true
+  permissions:
+    can_select_in_aggregate_output: true
+    can_select_individual_output: false
+    can_group_by: true
+    can_filter: true
+    can_aggregate: false
+  sensitivity:
+    level: low
+    contains_personal_data: false
+    privacy_rule_fa: فقط در خروجی‌های تجمیعی قابل استفاده است.
+  data_quality:
+    status: reliable
+  semantic_terms_fa:
+  - استان
+  - محل خدمت در استان
+  - پراکندگی استانی
+  - توزیع استان‌ها
+  sql_usage_notes_fa:
+  - برای تحلیل استان از GROUP BY v.province استفاده شود.
+- name: city
+  title_fa: شهر محل خدمت
+  data_type: text
+  category: location
+  source_expression: l.city
+  description_fa: شهر محل خدمت. در داده فعلی MVP، سطح شهر قابل اتکا نیست.
+  nullable: true
+  permissions:
+    can_select_in_aggregate_output: false
+    can_select_individual_output: false
+    can_group_by: false
+    can_filter: false
+    can_aggregate: false
+  sensitivity:
+    level: low
+    contains_personal_data: false
+    privacy_rule_fa: نباید به‌صورت مستقیم در خروجی کاربر نمایش داده شود.
+  data_quality:
+    status: unreliable_in_current_mvp
+  semantic_terms_fa:
+  - شهر
+  - محل خدمت شهری
+  - تحلیل شهری
+  sql_usage_notes_fa:
+  - برای هر سؤال سطح شهر، خروجی باید DATA_GAP باشد.
+  gap_rule:
+    route: GAP
+    status: DATA_GAP
+    reason_fa: در MVP فعلی داده شهر قابل اتکا نیست.
+- name: site_name
+  title_fa: نام سایت یا محل خدمت
+  data_type: text
+  category: location
+  source_expression: l.site_name
+  description_fa: نام سایت، شعبه یا محل خدمت ثبت‌شده.
+  nullable: true
+  permissions:
+    can_select_in_aggregate_output: true
+    can_select_individual_output: false
+    can_group_by: true
+    can_filter: true
+    can_aggregate: false
+  sensitivity:
+    level: low
+    contains_personal_data: false
+    privacy_rule_fa: فقط در خروجی‌های تجمیعی قابل استفاده است.
+  data_quality:
+    status: partially_reliable_check_before_demo
+  semantic_terms_fa:
+  - محل خدمت
+  - سایت
+  - شعبه
+  - نام محل خدمت
+  sql_usage_notes_fa:
+  - اگر سؤال کاربر از محل خدمت در سطح استان باشد، province ترجیح دارد.
+  - اگر سؤال دقیقاً سایت/محل خدمت را بخواهد، فقط در صورت کامل بودن داده استفاده شود.
+- name: location_type
+  title_fa: نوع محل خدمت
+  data_type: text
+  category: location
+  source_expression: l.location_type
+  description_fa: نوع محل خدمت؛ در داده فعلی عمدتاً سطح استان است.
+  nullable: true
+  permissions:
+    can_select_in_aggregate_output: true
+    can_select_individual_output: false
+    can_group_by: true
+    can_filter: true
+    can_aggregate: false
+  sensitivity:
+    level: low
+    contains_personal_data: false
+    privacy_rule_fa: فقط در خروجی‌های تجمیعی قابل استفاده است.
+  data_quality:
+    status: current_data_mainly_province_level
+  semantic_terms_fa:
+  - نوع محل خدمت
+  - سطح محل خدمت
+  allowed_values:
+  - استان
+  sql_usage_notes_fa:
+  - برای تشخیص سطح تحلیل مکانی قابل استفاده است.
+- name: position_id
+  title_fa: شناسه پست
+  data_type: integer
+  category: position
+  source_expression: p.position_id
+  description_fa: شناسه فنی پست سازمانی.
+  nullable: true
+  permissions:
+    can_select_in_aggregate_output: false
+    can_select_individual_output: false
+    can_group_by: true
+    can_filter: true
+    can_aggregate: false
+  sensitivity:
+    level: low
+    contains_personal_data: false
+    privacy_rule_fa: نباید به‌صورت مستقیم در خروجی کاربر نمایش داده شود.
+  data_quality:
+    status: reliable
+  semantic_terms_fa:
+  - شناسه پست
+  sql_usage_notes_fa:
+  - برای خروجی مدیریتی معمولاً position_title استفاده شود.
+- name: position_code
+  title_fa: کد پست
+  data_type: text
+  category: position
+  source_expression: p.position_code
+  description_fa: کد داخلی پست سازمانی.
+  nullable: true
+  permissions:
+    can_select_in_aggregate_output: false
+    can_select_individual_output: false
+    can_group_by: false
+    can_filter: true
+    can_aggregate: false
+  sensitivity:
+    level: low
+    contains_personal_data: false
+    privacy_rule_fa: نباید به‌صورت مستقیم در خروجی کاربر نمایش داده شود.
+  data_quality:
+    status: reliable
+  semantic_terms_fa:
+  - کد پست
+  sql_usage_notes_fa:
+  - در خروجی عمومی نمایش داده نشود مگر نیاز مدیریتی مشخص باشد.
+- name: position_title
+  title_fa: عنوان پست
+  data_type: text
+  category: position
+  source_expression: p.position_title
+  description_fa: عنوان پست یا سمت سازمانی کارمند.
+  nullable: true
+  permissions:
+    can_select_in_aggregate_output: true
+    can_select_individual_output: false
+    can_group_by: true
+    can_filter: true
+    can_aggregate: false
+  sensitivity:
+    level: low
+    contains_personal_data: false
+    privacy_rule_fa: فقط در خروجی‌های تجمیعی قابل استفاده است.
+  data_quality:
+    status: reliable
+  semantic_terms_fa:
+  - پست
+  - سمت
+  - عنوان پست
+  - شغل
+  - عنوان شغل
+  sql_usage_notes_fa:
+  - برای تفکیک پست از GROUP BY v.position_title استفاده شود.
+- name: position_level
+  title_fa: سطح پست
+  data_type: text
+  category: position
+  source_expression: p.position_level
+  description_fa: سطح یا رده پست سازمانی.
+  nullable: true
+  permissions:
+    can_select_in_aggregate_output: true
+    can_select_individual_output: false
+    can_group_by: true
+    can_filter: true
+    can_aggregate: false
+  sensitivity:
+    level: low
+    contains_personal_data: false
+    privacy_rule_fa: فقط در خروجی‌های تجمیعی قابل استفاده است.
+  data_quality:
+    status: values_should_be_checked
+  semantic_terms_fa:
+  - سطح پست
+  - رده پست
+  - سطح شغلی
+  sql_usage_notes_fa:
+  - برای تفکیک سطح پست از GROUP BY v.position_level استفاده شود.
+- name: job_family
+  title_fa: خانواده شغلی
+  data_type: text
+  category: position
+  source_expression: p.job_family
+  description_fa: خانواده یا گروه شغلی پست.
+  nullable: true
+  permissions:
+    can_select_in_aggregate_output: true
+    can_select_individual_output: false
+    can_group_by: true
+    can_filter: true
+    can_aggregate: false
+  sensitivity:
+    level: low
+    contains_personal_data: false
+    privacy_rule_fa: فقط در خروجی‌های تجمیعی قابل استفاده است.
+  data_quality:
+    status: values_should_be_checked
+  semantic_terms_fa:
+  - خانواده شغلی
+  - گروه شغلی
+  - رسته شغلی
+  sql_usage_notes_fa:
+  - برای تحلیل خانواده شغلی از GROUP BY v.job_family استفاده شود.
+- name: is_expert_role
+  title_fa: پست کارشناسی
+  data_type: boolean
+  category: position
+  source_expression: p.is_expert_role
+  description_fa: مشخص می‌کند پست از نوع کارشناسی/تخصصی است یا خیر.
+  nullable: true
+  permissions:
+    can_select_in_aggregate_output: true
+    can_select_individual_output: false
+    can_group_by: true
+    can_filter: true
+    can_aggregate: false
+  sensitivity:
+    level: low
+    contains_personal_data: false
+    privacy_rule_fa: فقط در خروجی‌های تجمیعی قابل استفاده است.
+  data_quality:
+    status: reliable
+  semantic_terms_fa:
+  - پست کارشناسی
+  - کارشناسی
+  - نقش تخصصی
+  - پست تخصصی
+  allowed_values:
+  - true
+  - false
+  sql_usage_notes_fa:
+  - برای سؤال‌هایی مثل افراد با تحصیلات پایین در پست کارشناسی از v.is_expert_role = TRUE استفاده شود.
+- name: min_education_rank
+  title_fa: حداقل رتبه تحصیلی پست
+  data_type: integer
+  category: position
+  source_expression: p.min_education_rank
+  description_fa: حداقل رتبه تحصیلی موردنیاز برای پست.
+  nullable: true
+  permissions:
+    can_select_in_aggregate_output: false
+    can_select_individual_output: false
+    can_group_by: false
+    can_filter: true
+    can_aggregate: false
+  sensitivity:
+    level: low
+    contains_personal_data: false
+    privacy_rule_fa: نباید به‌صورت مستقیم در خروجی کاربر نمایش داده شود.
+  data_quality:
+    status: reliable
+  semantic_terms_fa:
+  - حداقل مدرک پست
+  - مدرک موردنیاز پست
+  - نیاز تحصیلی پست
+  sql_usage_notes_fa:
+  - 'برای تشخیص تحصیلات پایین‌تر از نیاز پست: v.education_rank < v.min_education_rank'
+- name: education_title
+  title_fa: مدرک تحصیلی
+  data_type: text
+  category: education
+  source_expression: el.education_title
+  description_fa: آخرین مدرک تحصیلی ثبت‌شده برای کارمند؛ آخرین مدرک داخل View حل شده است.
+  nullable: true
+  permissions:
+    can_select_in_aggregate_output: true
+    can_select_individual_output: false
+    can_group_by: true
+    can_filter: true
+    can_aggregate: false
+  sensitivity:
+    level: low
+    contains_personal_data: false
+    privacy_rule_fa: فقط در خروجی‌های تجمیعی قابل استفاده است.
+  data_quality:
+    status: reliable
+  semantic_terms_fa:
+  - مدرک
+  - مدرک تحصیلی
+  - تحصیلات
+  - آخرین مدرک
+  - سطح تحصیلات
+  - دیپلم
+  - کاردانی
+  - کارشناسی
+  - کارشناسی ارشد
+  - دکترا
+  allowed_values:
+  - کمتر از سیکل
+  - زیر دیپلم
+  - دیپلم
+  - کاردانی
+  - کارشناسی
+  - کارشناسی ارشد
+  - دکترای تخصصی / حرفه‌ای
+  sql_usage_notes_fa:
+  - برای تفکیک مدرک از GROUP BY v.education_title استفاده شود.
+  - برای بیشترین/کمترین مدرک ابتدا GROUP BY و سپس ORDER BY COUNT انجام شود.
+- name: education_rank
+  title_fa: رتبه تحصیلی
+  data_type: integer
+  category: education
+  source_expression: el.education_rank
+  description_fa: رتبه عددی سطح تحصیلات؛ مقدار بزرگ‌تر یعنی سطح تحصیلی بالاتر.
+  nullable: true
+  permissions:
+    can_select_in_aggregate_output: false
+    can_select_individual_output: false
+    can_group_by: false
+    can_filter: true
+    can_aggregate: false
+  sensitivity:
+    level: low
+    contains_personal_data: false
+    privacy_rule_fa: نباید به‌صورت مستقیم در خروجی کاربر نمایش داده شود.
+  data_quality:
+    status: reliable
+  semantic_terms_fa:
+  - رتبه مدرک
+  - سطح عددی تحصیلات
+  - مقایسه سطح تحصیلات
+  sql_usage_notes_fa:
+  - برای ordering سطح تحصیلات و مقایسه با min_education_rank استفاده شود.
+- name: education_category
+  title_fa: گروه تحصیلی
+  data_type: text
+  category: education
+  source_expression: el.education_category
+  description_fa: دسته یا گروه نرمال‌شده مدرک تحصیلی در صورت وجود.
+  nullable: true
+  permissions:
+    can_select_in_aggregate_output: true
+    can_select_individual_output: false
+    can_group_by: true
+    can_filter: true
+    can_aggregate: false
+  sensitivity:
+    level: low
+    contains_personal_data: false
+    privacy_rule_fa: فقط در خروجی‌های تجمیعی قابل استفاده است.
+  data_quality:
+    status: values_should_be_checked
+  semantic_terms_fa:
+  - گروه تحصیلی
+  - دسته تحصیلی
+  - سطح تحصیلات نرمال‌شده
+  sql_usage_notes_fa:
+  - اگر education_category کامل باشد، برای دسته‌بندی نرمال‌شده تحصیلات استفاده شود؛ در غیر این صورت education_title ترجیح
+    دارد.
+- name: field_of_study
+  title_fa: رشته تحصیلی
+  data_type: text
+  category: education
+  source_expression: ee.field_of_study
+  description_fa: رشته تحصیلی آخرین مدرک ثبت‌شده.
+  nullable: true
+  permissions:
+    can_select_in_aggregate_output: true
+    can_select_individual_output: false
+    can_group_by: true
+    can_filter: true
+    can_aggregate: false
+  sensitivity:
+    level: medium
+    contains_personal_data: true
+    privacy_rule_fa: فقط در خروجی‌های تجمیعی قابل استفاده است.
+  data_quality:
+    status: values_should_be_checked
+  semantic_terms_fa:
+  - رشته تحصیلی
+  - رشته
+  - تخصص تحصیلی
+  sql_usage_notes_fa:
+  - فقط به‌صورت تجمیعی و در صورت کافی بودن تعداد گروه‌ها نمایش داده شود.
+- name: graduation_year
+  title_fa: سال فارغ‌التحصیلی
+  data_type: integer
+  category: education
+  source_expression: ee.graduation_year
+  description_fa: سال فارغ‌التحصیلی آخرین مدرک ثبت‌شده، در صورت وجود.
+  nullable: true
+  permissions:
+    can_select_in_aggregate_output: false
+    can_select_individual_output: false
+    can_group_by: true
+    can_filter: true
+    can_aggregate: true
+  sensitivity:
+    level: medium
+    contains_personal_data: true
+    privacy_rule_fa: نباید به‌صورت مستقیم در خروجی کاربر نمایش داده شود.
+  data_quality:
+    status: values_should_be_checked
+  allowed_aggregations:
+  - MIN
+  - MAX
+  - COUNT
+  - FILTER_RANGE
+  semantic_terms_fa:
+  - سال فارغ‌التحصیلی
+  - سال اتمام تحصیل
+  sql_usage_notes_fa:
+  - سال فارغ‌التحصیلی فردی نمایش داده نشود؛ فقط تجمیعی استفاده شود.
+- name: employment_type
+  title_fa: نوع استخدام
+  data_type: text
+  category: employment_contract
+  source_expression: c.employment_type
+  description_fa: نوع استخدام یا وضعیت استخدامی کارمند در قرارداد جاری.
+  nullable: true
+  permissions:
+    can_select_in_aggregate_output: true
+    can_select_individual_output: false
+    can_group_by: true
+    can_filter: true
+    can_aggregate: false
+  sensitivity:
+    level: low
+    contains_personal_data: false
+    privacy_rule_fa: فقط در خروجی‌های تجمیعی قابل استفاده است.
+  data_quality:
+    status: reliable
+  semantic_terms_fa:
+  - نوع استخدام
+  - رسمی
+  - قراردادی
+  - پیمانی
+  - شاغل در پیمانکاری
+  - وضعیت استخدام
+  allowed_values:
+  - رسمی
+  - رسمی - آزمایشی
+  - رسمی _ بیمه ای دائم
+  - شاغل در پیمانکاری
+  - قراردادی
+  - پیمانی
+  sql_usage_notes_fa:
+  - نوع استخدام با contract_type اشتباه نشود.
+  - رسمی/قراردادی/پیمانی در حالت پیش‌فرض به employment_type نگاشت می‌شوند مگر کاربر صراحتاً نوع قرارداد را گفته باشد.
+- name: contract_type
+  title_fa: نوع قرارداد
+  data_type: text
+  category: employment_contract
+  source_expression: c.contract_type
+  description_fa: نوع قرارداد جاری کارمند؛ قرارداد جاری داخل View حل شده است.
+  nullable: true
+  permissions:
+    can_select_in_aggregate_output: true
+    can_select_individual_output: false
+    can_group_by: true
+    can_filter: true
+    can_aggregate: false
+  sensitivity:
+    level: low
+    contains_personal_data: false
+    privacy_rule_fa: فقط در خروجی‌های تجمیعی قابل استفاده است.
+  data_quality:
+    status: reliable
+  semantic_terms_fa:
+  - نوع قرارداد
+  - قرارداد
+  - قرارداد جاری
+  allowed_values:
+  - امور پشتیبانی اداری
+  - امور پشتیبانی خدماتی
+  - حراست
+  - خدمات امور پشتیبانی، اداری و خدماتی استانها (غیرحاکمیتی)
+  - خرید خدمات نگهداری و پشتیبانی سیستم های فناوری اطلاعات
+  - رسمی
+  - رسمی - آزمایشی
+  - رسمی _ بیمه ای دائم
+  - قراردادی
+  - نگهداری تاسیسات - تهران
+  - نگهداری تاسیسات استانها
+  - نگهداری شبکه
+  - پیمانی
+  sql_usage_notes_fa:
+  - فقط وقتی کاربر صراحتاً نوع قرارداد را می‌خواهد از v.contract_type استفاده شود.
+  - برای نوع استخدام از v.employment_type استفاده شود.
+- name: is_contractor
+  title_fa: وضعیت پیمانکاری
+  data_type: boolean
+  category: employment_contract
+  source_expression: c.is_contractor
+  description_fa: مشخص می‌کند کارمند شاغل در پیمانکاری یا تحت آرایش پیمانکاری است.
+  nullable: true
+  permissions:
+    can_select_in_aggregate_output: true
+    can_select_individual_output: false
+    can_group_by: true
+    can_filter: true
+    can_aggregate: true
+  sensitivity:
+    level: low
+    contains_personal_data: false
+    privacy_rule_fa: فقط در خروجی‌های تجمیعی قابل استفاده است.
+  data_quality:
+    status: reliable
+  allowed_aggregations:
+  - SUM_CASE
+  - PERCENTAGE
+  semantic_terms_fa:
+  - پیمانکاری
+  - شاغل در پیمانکاری
+  - نیروی پیمانکاری
+  - سهم پیمانکاری
+  - درصد پیمانکاری
+  - پیمانکار
+  allowed_values:
+  - true
+  - false
+  sql_usage_notes_fa:
+  - برای سهم پیمانکاری از v.is_contractor = TRUE در numerator استفاده شود.
+  - برای سهم پیمانکاری در هر حوزه GROUP BY v.service_domain انجام شود.
+- name: contract_start_date
+  title_fa: تاریخ شروع قرارداد جاری
+  data_type: date
+  category: employment_contract
+  source_expression: c.contract_start_date
+  description_fa: تاریخ شروع قرارداد جاری کارمند.
+  nullable: true
+  permissions:
+    can_select_in_aggregate_output: false
+    can_select_individual_output: false
+    can_group_by: false
+    can_filter: false
+    can_aggregate: false
+  sensitivity:
+    level: medium
+    contains_personal_data: true
+    privacy_rule_fa: تاریخ قرارداد فردی نباید در خروجی کاربر نمایش داده شود.
+  data_quality:
+    status: reliable
+  semantic_terms_fa:
+  - تاریخ شروع قرارداد
+  - شروع قرارداد
+  sql_usage_notes_fa:
+  - در MVP فعلی برای گزارش‌های عمومی استفاده نشود مگر تحلیل تجمیعی و مجاز تعریف شود.
+- name: contract_end_date
+  title_fa: تاریخ پایان قرارداد جاری
+  data_type: date
+  category: employment_contract
+  source_expression: c.contract_end_date
+  description_fa: تاریخ پایان قرارداد جاری کارمند، در صورت وجود.
+  nullable: true
+  permissions:
+    can_select_in_aggregate_output: false
+    can_select_individual_output: false
+    can_group_by: false
+    can_filter: false
+    can_aggregate: false
+  sensitivity:
+    level: medium
+    contains_personal_data: true
+    privacy_rule_fa: تاریخ پایان قرارداد فردی نباید در خروجی کاربر نمایش داده شود.
+  data_quality:
+    status: reliable
+  semantic_terms_fa:
+  - تاریخ پایان قرارداد
+  - پایان قرارداد
+  - انقضای قرارداد
+  sql_usage_notes_fa:
+  - در MVP فعلی برای گزارش‌های عمومی استفاده نشود مگر تحلیل تجمیعی و مجاز تعریف شود.
+validation_expectations:
+  yaml_must_parse: true
+  all_columns_must_exist_in_view: true
+  metadata_service_key_column: name
+  recommended_runtime_checks:
+  - View باید دقیقاً یک ردیف به ازای هر employee_id فعال داشته باشد.
+  - هیچ ستون حساس فردی نباید در View وجود داشته باشد.
+  - ستون‌های gender، age، education_title، employment_type، contract_type، service_domain و province باید برای دمو بررسی null
+    شوند.
+  - city در MVP فعلی غیرقابل اتکا فرض شود.
+notes_fa:
+- این فایل Data Dictionary است و جای Semantic Layer، Intent Catalog یا SQL Template را نمی‌گیرد؛ اما کلیدهای اصلی برای فهم
+  ستون‌ها را فراهم می‌کند.
+- تمام خروجی‌ها باید تجمیعی باشند و نمایش ردیف فردی کارمند مجاز نیست.
+- برای سؤالاتی که به ستون یا قانون تعریف‌نشده نیاز دارند، مسیر Gap انتخاب شود.

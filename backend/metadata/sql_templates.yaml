@@ -1,0 +1,943 @@
+version: '1.0'
+project: HR BI Assistant
+phase: Controlled SQL-based MVP
+file_type: sql_templates
+language: fa-IR
+description_fa: کتابخانه SQL Templateهای امن، View-based و قابل اعتبارسنجی برای گزارش‌ها و intentهای پرتکرار منابع انسانی
+  در فاز دوم.
+main_view:
+  name: hr_mvp.vw_hr_employee_analytics
+  schema: hr_mvp
+  alias: v
+  database: PostgreSQL
+  row_grain: one_row_per_active_employee
+  default_filter: v.is_active = TRUE
+metadata_dependencies:
+  data_dictionary: Template_00_data_dictionary.yaml
+  intent_catalog: Template_01_intent_catalog.yaml
+  report_catalog: Template_02_report_catalog.json
+  semantic_layer: Template_03_semantic_layer.yaml
+  sql_validator_rules: Template_05_sql_validator_rules.yaml
+  visualization_rules: Template_06_visualization_rules.yaml
+  access_policies: Template_08_access_policies.yaml
+  evaluation_goldset: Template_07_HR_BI_Assistant_Evaluation.json
+template_contract:
+  purpose_fa: sql_template_engine.py باید ابتدا intent/report_id را به template_id وصل کند، پارامترهای امن را جایگذاری کند
+    و سپس SQL را به sql_validator.py بدهد.
+  view_only: true
+  allowed_source: hr_mvp.vw_hr_employee_analytics v
+  raw_tables_allowed: false
+  joins_allowed_for_templates: false
+  select_star_allowed: false
+  write_operations_allowed: false
+  individual_employee_rows_allowed: false
+  employee_id_visibility: employee_id فقط داخل COUNT مجاز است و نباید به عنوان خروجی فردی برگردد.
+  status_sql_outputs:
+  - SELECT 'DATA_GAP' AS status;
+  - SELECT 'ACCESS_DENIED' AS status;
+  - SELECT 'OUT_OF_SCOPE' AS status;
+  - SELECT 'NEEDS_CLARIFICATION' AS status;
+global_sql_rules:
+  must_be_single_statement: true
+  must_be_select_only: true
+  with_allowed_only_when_final_statement_is_select: true
+  must_use_schema_prefix: hr_mvp
+  must_use_alias: v
+  must_use_only_view: hr_mvp.vw_hr_employee_analytics v
+  must_not_use_join: true
+  must_not_use_raw_tables:
+  - hr_employees
+  - hr_contracts
+  - hr_employee_education
+  - hr_education_levels
+  - hr_departments
+  - hr_positions
+  - hr_locations
+  - hr_age_groups
+  - hr_workforce_targets
+  must_not_use_select_star: true
+  default_where_clause: v.is_active = TRUE
+  count_expression: COUNT(v.employee_id) AS employee_count
+  average_age_expression: ROUND(AVG(v.age), 2) AS average_age
+  average_service_years_expression: ROUND(AVG(v.service_years), 2) AS average_service_years
+  percentage_rule: همه درصدها باید NULLIF در مخرج داشته باشند.
+  approved_headcount_rule: برای چارت مصوب در سطح دپارتمان از MAX(v.department_approved_headcount) استفاده شود و روی ردیف‌های
+    کارکنان SUM مستقیم انجام نشود.
+parameter_policy:
+  interpolation_allowed_only_for_whitelisted_parameters: true
+  string_parameters_must_be_allowed_values: true
+  numeric_parameters_must_be_cast_and_range_checked: true
+  raw_sql_condition_parameter_allowed: false
+  current_shamsi_year_source: application
+  current_shamsi_year_default_for_mvp_test: 1404
+  missing_optional_numeric_parameter_value: 'NULL'
+  notes_fa: پارامترها نباید مستقیماً از متن کاربر داخل SQL تزریق شوند؛ semantic_mapper و backend باید آن‌ها را normalize و
+    whitelist کنند.
+template_aliases:
+  TPL_PERCENTAGE_OF_WOMEN: TPL_GENDER_PERCENTAGE
+  TPL_CONTRACTOR_SHARE_OVERALL: TPL_CONTRACTOR_SHARE
+  TPL_EMPLOYEES_AGE_60_PLUS_STATIC: TPL_EMPLOYEES_AGE_60_PLUS
+  TPL_EMPLOYEES_UNDER_30_STATIC: TPL_EMPLOYEES_UNDER_30
+template_index:
+  by_report_id:
+    RPT_HR_001: TPL_TOTAL_EMPLOYEE_COUNT
+    RPT_HR_002: TPL_EMPLOYEE_COUNT_BY_GENDER
+    RPT_HR_015: TPL_GENDER_PERCENTAGE
+    RPT_HR_003: TPL_AVERAGE_AGE
+    RPT_HR_016: TPL_EMPLOYEE_COUNT_BY_AGE_GROUP
+    RPT_HR_017: TPL_EMPLOYEE_COUNT_BY_AGE_FILTER
+    RPT_HR_004: TPL_EMPLOYEE_COUNT_BY_EDUCATION
+    RPT_HR_018: TPL_MOST_COMMON_EDUCATION
+    RPT_HR_019: TPL_LEAST_COMMON_EDUCATION
+    RPT_HR_020: TPL_LOW_EDUCATION_IN_EXPERT_ROLES
+    RPT_HR_005: TPL_EMPLOYEE_COUNT_BY_EMPLOYMENT_TYPE
+    RPT_HR_006: TPL_EMPLOYEE_COUNT_BY_CONTRACT_TYPE
+    RPT_HR_007: TPL_CONTRACTOR_SHARE
+    RPT_HR_021: TPL_CONTRACTOR_SHARE_BY_SERVICE_DOMAIN
+    RPT_HR_008: TPL_EMPLOYEE_COUNT_BY_SERVICE_DOMAIN
+    RPT_HR_022: TPL_EMPLOYEE_COUNT_BY_DEPARTMENT
+    RPT_HR_012: TPL_HEADCOUNT_GAP_BY_DEPARTMENT
+    RPT_HR_009: TPL_EMPLOYEE_COUNT_BY_PROVINCE
+    RPT_HR_023: TPL_EMPLOYEE_COUNT_BY_WORK_LOCATION
+    RPT_HR_010: TPL_HIRING_TREND_ANNUAL
+    RPT_HR_011: TPL_HIRING_LAST_15_YEARS
+    RPT_HR_024: TPL_MOST_HIRING_YEAR
+    RPT_HR_025: TPL_LEAST_HIRING_YEAR
+    RPT_HR_026: TPL_HIRING_BY_CONTRACT_TYPE_RECENT_YEAR
+    RPT_HR_027: TPL_AVERAGE_SERVICE_YEARS
+    RPT_HR_028: TPL_EMPLOYEE_COUNT_WITHOUT_SERVICE_YEARS
+    RPT_HR_029: TPL_EMPLOYEE_COUNT_BY_MARITAL_STATUS
+    RPT_HR_030: TPL_GENDER_BY_AGE_GROUP
+    RPT_HR_040: TPL_CONTRACTOR_SHARE_BY_DEPARTMENT
+    RPT_HR_041: TPL_HEADCOUNT_GAP_BY_SERVICE_DOMAIN
+    RPT_HR_042: TPL_EDUCATION_BY_SERVICE_DOMAIN
+  by_intent:
+    total_employee_count:
+    - TPL_TOTAL_EMPLOYEE_COUNT
+    employee_count_by_gender:
+    - TPL_EMPLOYEE_COUNT_BY_GENDER
+    gender_percentage:
+    - TPL_GENDER_PERCENTAGE
+    average_age:
+    - TPL_AVERAGE_AGE
+    - TPL_AVERAGE_AGE_BY_GENDER
+    - TPL_AVERAGE_AGE_BY_SERVICE_DOMAIN
+    employee_count_by_age_group:
+    - TPL_EMPLOYEE_COUNT_BY_AGE_GROUP
+    employee_count_by_age_filter:
+    - TPL_EMPLOYEE_COUNT_BY_AGE_FILTER
+    - TPL_EMPLOYEES_AGE_60_PLUS
+    - TPL_EMPLOYEES_UNDER_30
+    employee_count_by_education:
+    - TPL_EMPLOYEE_COUNT_BY_EDUCATION
+    - TPL_EMPLOYEE_COUNT_BY_EDUCATION_VALUE
+    most_common_education:
+    - TPL_MOST_COMMON_EDUCATION
+    least_common_education:
+    - TPL_LEAST_COMMON_EDUCATION
+    low_education_in_expert_roles:
+    - TPL_LOW_EDUCATION_IN_EXPERT_ROLES
+    employee_count_by_employment_type:
+    - TPL_EMPLOYEE_COUNT_BY_EMPLOYMENT_TYPE
+    - TPL_EMPLOYEE_COUNT_BY_EMPLOYMENT_TYPE_VALUE
+    employee_count_by_contract_type:
+    - TPL_EMPLOYEE_COUNT_BY_CONTRACT_TYPE
+    - TPL_EMPLOYEE_COUNT_BY_CONTRACT_TYPE_VALUE
+    contractor_share:
+    - TPL_CONTRACTOR_SHARE
+    contractor_share_by_service_domain:
+    - TPL_CONTRACTOR_SHARE_BY_SERVICE_DOMAIN
+    contractor_share_by_department: TPL_CONTRACTOR_SHARE_BY_DEPARTMENT
+    employee_count_by_service_domain:
+    - TPL_EMPLOYEE_COUNT_BY_SERVICE_DOMAIN
+    employee_count_by_department:
+    - TPL_EMPLOYEE_COUNT_BY_DEPARTMENT
+    headcount_gap_by_department:
+    - TPL_HEADCOUNT_GAP_BY_DEPARTMENT
+    headcount_gap_by_service_domain: TPL_HEADCOUNT_GAP_BY_SERVICE_DOMAIN
+    employee_count_by_province:
+    - TPL_EMPLOYEE_COUNT_BY_PROVINCE
+    employee_count_by_work_location:
+    - TPL_EMPLOYEE_COUNT_BY_WORK_LOCATION
+    hiring_trend_annual:
+    - TPL_HIRING_TREND_ANNUAL
+    hiring_last_15_years:
+    - TPL_HIRING_LAST_15_YEARS
+    most_or_least_hiring_year:
+    - TPL_MOST_HIRING_YEAR
+    - TPL_LEAST_HIRING_YEAR
+    hiring_by_contract_type_recent_year:
+    - TPL_HIRING_BY_CONTRACT_TYPE_RECENT_YEAR
+    average_service_years:
+    - TPL_AVERAGE_SERVICE_YEARS
+    employee_count_without_service_years:
+    - TPL_EMPLOYEE_COUNT_WITHOUT_SERVICE_YEARS
+    employee_count_by_marital_status:
+    - TPL_EMPLOYEE_COUNT_BY_MARITAL_STATUS
+    employee_count_by_gender_age_filter:
+    - TPL_GENDER_BY_AGE_GROUP
+    education_distribution_by_service_domain: TPL_EDUCATION_BY_SERVICE_DOMAIN
+    education_by_service_domain: TPL_EDUCATION_BY_SERVICE_DOMAIN
+    monthly_hiring_trend: TPL_DATA_GAP
+templates:
+- template_id: TPL_TOTAL_EMPLOYEE_COUNT
+  report_id: RPT_HR_001
+  intent: total_employee_count
+  title_fa: تعداد کل کارکنان فعال
+  route: SQL
+  status: ready_for_demo
+  output_type: kpi_card
+  required_columns:
+  - employee_id
+  - is_active
+  result_columns:
+  - name: employee_count
+    type: integer
+    title_fa: تعداد کارکنان
+  when_to_use_fa: وقتی سؤال درباره تعداد کل کارکنان فعال باشد.
+  sql: "SELECT\n    COUNT(v.employee_id) AS employee_count\nFROM hr_mvp.vw_hr_employee_analytics v\nWHERE v.is_active = TRUE;\n"
+- template_id: TPL_EMPLOYEE_COUNT_BY_GENDER
+  report_id: RPT_HR_002
+  intent: employee_count_by_gender
+  title_fa: تعداد کارکنان به تفکیک جنسیت
+  route: SQL
+  status: ready_for_demo
+  output_type: table_or_pie_chart
+  required_columns:
+  - employee_id
+  - gender
+  - is_active
+  result_columns:
+  - name: gender
+    type: text
+    title_fa: جنسیت
+  - name: employee_count
+    type: integer
+    title_fa: تعداد کارکنان
+  - name: percentage
+    type: numeric
+    title_fa: درصد
+  sql: "SELECT\n    v.gender,\n    COUNT(v.employee_id) AS employee_count,\n    ROUND(\n        COUNT(v.employee_id) * 100.0\n\
+    \        / NULLIF(SUM(COUNT(v.employee_id)) OVER (), 0),\n        2\n    ) AS percentage\nFROM hr_mvp.vw_hr_employee_analytics\
+    \ v\nWHERE v.is_active = TRUE\nGROUP BY v.gender\nORDER BY employee_count DESC;\n"
+- template_id: TPL_GENDER_PERCENTAGE
+  report_id: RPT_HR_015
+  intent: gender_percentage
+  title_fa: درصد کارکنان زن یا مرد
+  route: SQL
+  status: ready_for_demo
+  output_type: kpi_card
+  required_columns:
+  - employee_id
+  - gender
+  - is_active
+  parameters:
+  - name: gender_value
+    type: string
+    required: true
+    allowed_values:
+    - زن
+    - مرد
+    source: intent_parser_or_semantic_mapper
+    notes_fa: مقدار باید قبل از جایگذاری توسط backend از allowed_values / semantic_layer / data_dictionary تأیید شود.
+  result_columns:
+  - name: matched_employee_count
+    type: integer
+    title_fa: تعداد جنسیت انتخاب‌شده
+  - name: total_employee_count
+    type: integer
+    title_fa: کل کارکنان
+  - name: percentage
+    type: numeric
+    title_fa: درصد
+  sql: "SELECT\n    SUM(CASE WHEN v.gender = '{gender_value}' THEN 1 ELSE 0 END) AS matched_employee_count,\n    COUNT(v.employee_id)\
+    \ AS total_employee_count,\n    ROUND(\n        SUM(CASE WHEN v.gender = '{gender_value}' THEN 1 ELSE 0 END) * 100.0\n\
+    \        / NULLIF(COUNT(v.employee_id), 0),\n        2\n    ) AS percentage\nFROM hr_mvp.vw_hr_employee_analytics v\n\
+    WHERE v.is_active = TRUE;\n"
+- template_id: TPL_AVERAGE_AGE
+  report_id: RPT_HR_003
+  intent: average_age
+  title_fa: میانگین سن کارکنان
+  route: SQL
+  status: ready_for_demo
+  output_type: kpi_card
+  required_columns:
+  - age
+  - is_active
+  result_columns:
+  - name: average_age
+    type: numeric
+    title_fa: میانگین سن
+  sql: "SELECT\n    ROUND(AVG(v.age), 2) AS average_age\nFROM hr_mvp.vw_hr_employee_analytics v\nWHERE v.is_active = TRUE;\n"
+- template_id: TPL_AVERAGE_AGE_BY_GENDER
+  intent: average_age
+  title_fa: میانگین سن به تفکیک جنسیت
+  route: SQL
+  status: ready_for_demo
+  output_type: table_or_bar_chart
+  required_columns:
+  - age
+  - gender
+  - is_active
+  result_columns:
+  - name: gender
+    type: text
+    title_fa: جنسیت
+  - name: average_age
+    type: numeric
+    title_fa: میانگین سن
+  sql: "SELECT\n    v.gender,\n    ROUND(AVG(v.age), 2) AS average_age\nFROM hr_mvp.vw_hr_employee_analytics v\nWHERE v.is_active\
+    \ = TRUE\nGROUP BY v.gender\nORDER BY average_age DESC;\n"
+- template_id: TPL_AVERAGE_AGE_BY_SERVICE_DOMAIN
+  intent: average_age
+  title_fa: میانگین سن به تفکیک حوزه خدمت
+  route: SQL
+  status: optional_supported
+  output_type: table_or_bar_chart
+  required_columns:
+  - age
+  - service_domain
+  - is_active
+  result_columns:
+  - name: service_domain
+    type: text
+    title_fa: حوزه خدمت
+  - name: average_age
+    type: numeric
+    title_fa: میانگین سن
+  sql: "SELECT\n    v.service_domain,\n    ROUND(AVG(v.age), 2) AS average_age\nFROM hr_mvp.vw_hr_employee_analytics v\nWHERE\
+    \ v.is_active = TRUE\nGROUP BY v.service_domain\nORDER BY average_age DESC;\n"
+- template_id: TPL_EMPLOYEE_COUNT_BY_AGE_GROUP
+  report_id: RPT_HR_016
+  intent: employee_count_by_age_group
+  title_fa: تعداد کارکنان به تفکیک گروه سنی
+  route: SQL
+  status: ready_for_demo
+  output_type: table_or_bar_chart
+  required_columns:
+  - employee_id
+  - age
+  - age_group_title
+  - is_active
+  result_columns:
+  - name: age_group_title
+    type: text
+    title_fa: گروه سنی
+  - name: employee_count
+    type: integer
+    title_fa: تعداد کارکنان
+  - name: percentage
+    type: numeric
+    title_fa: درصد
+  sql: "SELECT\n    v.age_group_title,\n    COUNT(v.employee_id) AS employee_count,\n    ROUND(\n        COUNT(v.employee_id)\
+    \ * 100.0\n        / NULLIF(SUM(COUNT(v.employee_id)) OVER (), 0),\n        2\n    ) AS percentage\nFROM hr_mvp.vw_hr_employee_analytics\
+    \ v\nWHERE v.is_active = TRUE\nGROUP BY v.age_group_title\nORDER BY MIN(v.age) ASC;\n"
+- template_id: TPL_EMPLOYEE_COUNT_BY_AGE_FILTER
+  report_id: RPT_HR_017
+  intent: employee_count_by_age_filter
+  title_fa: تعداد کارکنان بر اساس بازه سنی
+  route: SQL
+  status: ready_for_demo
+  output_type: kpi_card
+  required_columns:
+  - employee_id
+  - age
+  - is_active
+  parameters:
+  - name: age_min
+    type: integer_or_NULL
+    required: false
+    default: 'NULL'
+    notes_fa: برای ۶۰ سال به بالا مقدار 60 و برای زیر ۳۰ مقدار NULL.
+  - name: age_max_exclusive
+    type: integer_or_NULL
+    required: false
+    default: 'NULL'
+    notes_fa: برای زیر ۳۰ مقدار 30؛ شرط به شکل age < 30 اعمال می‌شود.
+  - name: age_max_inclusive
+    type: integer_or_NULL
+    required: false
+    default: 'NULL'
+    notes_fa: برای بازه‌های شامل انتها استفاده شود؛ در حالت عادی NULL.
+  result_columns:
+  - name: employee_count
+    type: integer
+    title_fa: تعداد کارکنان
+  sql: "SELECT\n    COUNT(v.employee_id) AS employee_count\nFROM hr_mvp.vw_hr_employee_analytics v\nWHERE v.is_active = TRUE\n\
+    \  AND ({age_min} IS NULL OR v.age >= {age_min})\n  AND ({age_max_exclusive} IS NULL OR v.age < {age_max_exclusive})\n\
+    \  AND ({age_max_inclusive} IS NULL OR v.age <= {age_max_inclusive});\n"
+- template_id: TPL_EMPLOYEES_AGE_60_PLUS
+  intent: employee_count_by_age_filter
+  title_fa: تعداد کارکنان ۶۰ سال به بالا
+  route: SQL
+  status: shortcut_template
+  output_type: kpi_card
+  required_columns:
+  - employee_id
+  - age
+  - is_active
+  notes_fa: میانبر برای سؤال‌های پرتکرار Goldset؛ معادل TPL_EMPLOYEE_COUNT_BY_AGE_FILTER با age_min=60 است.
+  sql: "SELECT\n    COUNT(v.employee_id) AS employee_count\nFROM hr_mvp.vw_hr_employee_analytics v\nWHERE v.is_active = TRUE\n\
+    \  AND v.age >= 60;\n"
+- template_id: TPL_EMPLOYEES_UNDER_30
+  intent: employee_count_by_age_filter
+  title_fa: تعداد کارکنان زیر ۳۰ سال
+  route: SQL
+  status: shortcut_template
+  output_type: kpi_card
+  required_columns:
+  - employee_id
+  - age
+  - is_active
+  notes_fa: میانبر برای سؤال‌های پرتکرار Goldset؛ معادل TPL_EMPLOYEE_COUNT_BY_AGE_FILTER با age_max_exclusive=30 است.
+  sql: "SELECT\n    COUNT(v.employee_id) AS employee_count\nFROM hr_mvp.vw_hr_employee_analytics v\nWHERE v.is_active = TRUE\n\
+    \  AND v.age < 30;\n"
+- template_id: TPL_EMPLOYEE_COUNT_BY_EDUCATION
+  report_id: RPT_HR_004
+  intent: employee_count_by_education
+  title_fa: تعداد کارکنان به تفکیک مدرک تحصیلی
+  route: SQL
+  status: ready_for_demo
+  output_type: table_or_bar_chart
+  required_columns:
+  - employee_id
+  - education_title
+  - education_rank
+  - is_active
+  result_columns:
+  - name: education_title
+    type: text
+    title_fa: مدرک تحصیلی
+  - name: employee_count
+    type: integer
+    title_fa: تعداد کارکنان
+  - name: percentage
+    type: numeric
+    title_fa: درصد
+  sql: "SELECT\n    v.education_title,\n    COUNT(v.employee_id) AS employee_count,\n    ROUND(\n        COUNT(v.employee_id)\
+    \ * 100.0\n        / NULLIF(SUM(COUNT(v.employee_id)) OVER (), 0),\n        2\n    ) AS percentage\nFROM hr_mvp.vw_hr_employee_analytics\
+    \ v\nWHERE v.is_active = TRUE\nGROUP BY v.education_title, v.education_rank\nORDER BY v.education_rank ASC;\n"
+- template_id: TPL_EMPLOYEE_COUNT_BY_EDUCATION_VALUE
+  intent: employee_count_by_education
+  title_fa: تعداد کارکنان با یک مدرک تحصیلی مشخص
+  route: SQL
+  status: ready_for_demo
+  output_type: kpi_card
+  required_columns:
+  - employee_id
+  - education_title
+  - is_active
+  parameters:
+  - name: education_title
+    type: string
+    required: true
+    allowed_values_source: data_dictionary.education_title.allowed_values
+    notes_fa: مقدار باید قبل از جایگذاری توسط backend از allowed_values / semantic_layer / data_dictionary تأیید شود.
+  result_columns:
+  - name: employee_count
+    type: integer
+    title_fa: تعداد کارکنان
+  sql: "SELECT\n    COUNT(v.employee_id) AS employee_count\nFROM hr_mvp.vw_hr_employee_analytics v\nWHERE v.is_active = TRUE\n\
+    \  AND v.education_title = '{education_title}';\n"
+- template_id: TPL_MOST_COMMON_EDUCATION
+  report_id: RPT_HR_018
+  intent: most_common_education
+  title_fa: بیشترین مدرک تحصیلی
+  route: SQL
+  status: ready_for_demo
+  output_type: kpi_card_or_table
+  required_columns:
+  - employee_id
+  - education_title
+  - is_active
+  result_columns:
+  - name: education_title
+    type: text
+    title_fa: مدرک تحصیلی
+  - name: employee_count
+    type: integer
+    title_fa: تعداد کارکنان
+  sql: "SELECT\n    v.education_title,\n    COUNT(v.employee_id) AS employee_count\nFROM hr_mvp.vw_hr_employee_analytics v\n\
+    WHERE v.is_active = TRUE\nGROUP BY v.education_title\nORDER BY employee_count DESC\nLIMIT 1;\n"
+- template_id: TPL_LEAST_COMMON_EDUCATION
+  report_id: RPT_HR_019
+  intent: least_common_education
+  title_fa: کمترین مدرک تحصیلی
+  route: SQL
+  status: ready_for_demo
+  output_type: kpi_card_or_table
+  required_columns:
+  - employee_id
+  - education_title
+  - is_active
+  result_columns:
+  - name: education_title
+    type: text
+    title_fa: مدرک تحصیلی
+  - name: employee_count
+    type: integer
+    title_fa: تعداد کارکنان
+  sql: "SELECT\n    v.education_title,\n    COUNT(v.employee_id) AS employee_count\nFROM hr_mvp.vw_hr_employee_analytics v\n\
+    WHERE v.is_active = TRUE\nGROUP BY v.education_title\nORDER BY employee_count ASC\nLIMIT 1;\n"
+- template_id: TPL_LOW_EDUCATION_IN_EXPERT_ROLES
+  report_id: RPT_HR_020
+  intent: low_education_in_expert_roles
+  title_fa: تحصیلات پایین‌تر از حداقل نیاز پست کارشناسی
+  route: SQL
+  status: partial_supported
+  output_type: kpi_card_or_table
+  required_columns:
+  - employee_id
+  - education_rank
+  - min_education_rank
+  - is_expert_role
+  - is_active
+  result_columns:
+  - name: low_education_expert_count
+    type: integer
+    title_fa: تعداد افراد با تحصیلات پایین‌تر از حداقل نیاز
+  - name: total_expert_role_count
+    type: integer
+    title_fa: کل پست‌های کارشناسی
+  - name: percentage
+    type: numeric
+    title_fa: درصد
+  business_rules_fa: فقط زمانی قابل اتکا است که min_education_rank برای پست‌ها و education_rank برای مدارک کامل و صحیح باشد.
+  sql: "SELECT\n    SUM(\n        CASE\n            WHEN v.is_expert_role = TRUE\n             AND v.education_rank IS NOT\
+    \ NULL\n             AND v.min_education_rank IS NOT NULL\n             AND v.education_rank < v.min_education_rank\n\
+    \            THEN 1 ELSE 0\n        END\n    ) AS low_education_expert_count,\n    SUM(CASE WHEN v.is_expert_role = TRUE\
+    \ THEN 1 ELSE 0 END) AS total_expert_role_count,\n    ROUND(\n        SUM(\n            CASE\n                WHEN v.is_expert_role\
+    \ = TRUE\n                 AND v.education_rank IS NOT NULL\n                 AND v.min_education_rank IS NOT NULL\n \
+    \                AND v.education_rank < v.min_education_rank\n                THEN 1 ELSE 0\n            END\n       \
+    \ ) * 100.0\n        / NULLIF(SUM(CASE WHEN v.is_expert_role = TRUE THEN 1 ELSE 0 END), 0),\n        2\n    ) AS percentage\n\
+    FROM hr_mvp.vw_hr_employee_analytics v\nWHERE v.is_active = TRUE;\n"
+- template_id: TPL_EMPLOYEE_COUNT_BY_EMPLOYMENT_TYPE
+  report_id: RPT_HR_005
+  intent: employee_count_by_employment_type
+  title_fa: تعداد کارکنان به تفکیک نوع استخدام
+  route: SQL
+  status: ready_for_demo
+  output_type: table_or_bar_chart
+  required_columns:
+  - employee_id
+  - employment_type
+  - is_active
+  business_rules_fa: نوع استخدام با employment_type سنجیده می‌شود و نباید با contract_type اشتباه شود.
+  sql: "SELECT\n    v.employment_type,\n    COUNT(v.employee_id) AS employee_count,\n    ROUND(\n        COUNT(v.employee_id)\
+    \ * 100.0\n        / NULLIF(SUM(COUNT(v.employee_id)) OVER (), 0),\n        2\n    ) AS percentage\nFROM hr_mvp.vw_hr_employee_analytics\
+    \ v\nWHERE v.is_active = TRUE\nGROUP BY v.employment_type\nORDER BY employee_count DESC;\n"
+- template_id: TPL_EMPLOYEE_COUNT_BY_EMPLOYMENT_TYPE_VALUE
+  intent: employee_count_by_employment_type
+  title_fa: تعداد کارکنان با نوع استخدام مشخص
+  route: SQL
+  status: ready_for_demo
+  output_type: kpi_card
+  required_columns:
+  - employee_id
+  - employment_type
+  - is_active
+  parameters:
+  - name: employment_type
+    type: string
+    required: true
+    allowed_values_source: data_dictionary.employment_type.allowed_values
+    notes_fa: مقدار باید قبل از جایگذاری توسط backend از allowed_values / semantic_layer / data_dictionary تأیید شود.
+  business_rules_fa: برای رسمی/قراردادی/پیمانی در صورت نبود عبارت «نوع قرارداد»، از employment_type استفاده شود.
+  sql: "SELECT\n    COUNT(v.employee_id) AS employee_count\nFROM hr_mvp.vw_hr_employee_analytics v\nWHERE v.is_active = TRUE\n\
+    \  AND v.employment_type = '{employment_type}';\n"
+- template_id: TPL_EMPLOYEE_COUNT_BY_CONTRACT_TYPE
+  report_id: RPT_HR_006
+  intent: employee_count_by_contract_type
+  title_fa: تعداد کارکنان به تفکیک نوع قرارداد
+  route: SQL
+  status: ready_for_demo
+  output_type: table_or_horizontal_bar_chart
+  required_columns:
+  - employee_id
+  - contract_type
+  - is_active
+  business_rules_fa: نوع قرارداد با contract_type سنجیده می‌شود و نباید با employment_type اشتباه شود.
+  sql: "SELECT\n    v.contract_type,\n    COUNT(v.employee_id) AS employee_count,\n    ROUND(\n        COUNT(v.employee_id)\
+    \ * 100.0\n        / NULLIF(SUM(COUNT(v.employee_id)) OVER (), 0),\n        2\n    ) AS percentage\nFROM hr_mvp.vw_hr_employee_analytics\
+    \ v\nWHERE v.is_active = TRUE\nGROUP BY v.contract_type\nORDER BY employee_count DESC;\n"
+- template_id: TPL_EMPLOYEE_COUNT_BY_CONTRACT_TYPE_VALUE
+  intent: employee_count_by_contract_type
+  title_fa: تعداد کارکنان با نوع قرارداد مشخص
+  route: SQL
+  status: ready_for_demo
+  output_type: kpi_card
+  required_columns:
+  - employee_id
+  - contract_type
+  - is_active
+  parameters:
+  - name: contract_type
+    type: string
+    required: true
+    allowed_values_source: data_dictionary.contract_type.allowed_values
+    notes_fa: مقدار باید قبل از جایگذاری توسط backend از allowed_values / semantic_layer / data_dictionary تأیید شود.
+  business_rules_fa: فقط وقتی سؤال صریحاً درباره نوع قرارداد است از contract_type استفاده شود.
+  sql: "SELECT\n    COUNT(v.employee_id) AS employee_count\nFROM hr_mvp.vw_hr_employee_analytics v\nWHERE v.is_active = TRUE\n\
+    \  AND v.contract_type = '{contract_type}';\n"
+- template_id: TPL_CONTRACTOR_SHARE
+  report_id: RPT_HR_007
+  intent: contractor_share
+  title_fa: سهم کلی نیروهای پیمانکاری
+  route: SQL
+  status: ready_for_demo
+  output_type: kpi_card
+  required_columns:
+  - employee_id
+  - is_contractor
+  - is_active
+  business_rules_fa: پیمانکاری برای تحلیل سهم باید از is_contractor = TRUE محاسبه شود.
+  sql: "SELECT\n    SUM(CASE WHEN v.is_contractor = TRUE THEN 1 ELSE 0 END) AS contractor_count,\n    COUNT(v.employee_id)\
+    \ AS total_employee_count,\n    ROUND(\n        SUM(CASE WHEN v.is_contractor = TRUE THEN 1 ELSE 0 END) * 100.0\n    \
+    \    / NULLIF(COUNT(v.employee_id), 0),\n        2\n    ) AS contractor_percentage\nFROM hr_mvp.vw_hr_employee_analytics\
+    \ v\nWHERE v.is_active = TRUE;\n"
+- template_id: TPL_CONTRACTOR_SHARE_BY_SERVICE_DOMAIN
+  report_id: RPT_HR_021
+  intent: contractor_share_by_service_domain
+  title_fa: سهم نیروهای پیمانکاری در هر حوزه
+  route: SQL
+  status: ready_for_demo
+  output_type: table_or_bar_chart
+  required_columns:
+  - employee_id
+  - is_contractor
+  - service_domain
+  - is_active
+  sql: "SELECT\n    v.service_domain,\n    SUM(CASE WHEN v.is_contractor = TRUE THEN 1 ELSE 0 END) AS contractor_count,\n\
+    \    COUNT(v.employee_id) AS total_employee_count,\n    ROUND(\n        SUM(CASE WHEN v.is_contractor = TRUE THEN 1 ELSE\
+    \ 0 END) * 100.0\n        / NULLIF(COUNT(v.employee_id), 0),\n        2\n    ) AS contractor_percentage\nFROM hr_mvp.vw_hr_employee_analytics\
+    \ v\nWHERE v.is_active = TRUE\nGROUP BY v.service_domain\nORDER BY contractor_percentage DESC;\n"
+- template_id: TPL_CONTRACTOR_SHARE_BY_DEPARTMENT
+  intent: contractor_share_by_department
+  title_fa: سهم نیروهای پیمانکاری در هر واحد
+  route: SQL
+  status: optional_supported
+  output_type: table_or_bar_chart
+  required_columns:
+  - employee_id
+  - is_contractor
+  - department_name
+  - is_active
+  sql: "SELECT\n    v.department_name,\n    SUM(CASE WHEN v.is_contractor = TRUE THEN 1 ELSE 0 END) AS contractor_count,\n\
+    \    COUNT(v.employee_id) AS total_employee_count,\n    ROUND(\n        SUM(CASE WHEN v.is_contractor = TRUE THEN 1 ELSE\
+    \ 0 END) * 100.0\n        / NULLIF(COUNT(v.employee_id), 0),\n        2\n    ) AS contractor_percentage\nFROM hr_mvp.vw_hr_employee_analytics\
+    \ v\nWHERE v.is_active = TRUE\nGROUP BY v.department_name\nORDER BY contractor_percentage DESC;\n"
+  report_id: RPT_HR_040
+- template_id: TPL_EMPLOYEE_COUNT_BY_SERVICE_DOMAIN
+  report_id: RPT_HR_008
+  intent: employee_count_by_service_domain
+  title_fa: تعداد کارکنان به تفکیک حوزه خدمت
+  route: SQL
+  status: ready_for_demo
+  output_type: table_or_bar_chart
+  required_columns:
+  - employee_id
+  - service_domain
+  - is_active
+  sql: "SELECT\n    v.service_domain,\n    COUNT(v.employee_id) AS employee_count,\n    ROUND(\n        COUNT(v.employee_id)\
+    \ * 100.0\n        / NULLIF(SUM(COUNT(v.employee_id)) OVER (), 0),\n        2\n    ) AS percentage\nFROM hr_mvp.vw_hr_employee_analytics\
+    \ v\nWHERE v.is_active = TRUE\nGROUP BY v.service_domain\nORDER BY employee_count DESC;\n"
+- template_id: TPL_EMPLOYEE_COUNT_BY_DEPARTMENT
+  report_id: RPT_HR_022
+  intent: employee_count_by_department
+  title_fa: تعداد کارکنان به تفکیک بخش یا واحد
+  route: SQL
+  status: ready_for_demo
+  output_type: table_or_horizontal_bar_chart
+  required_columns:
+  - employee_id
+  - department_name
+  - is_active
+  business_rules_fa: عبارت‌های بخش، واحد، اداره و دپارتمان در MVP به department_name نگاشت می‌شوند.
+  sql: "SELECT\n    v.department_name,\n    COUNT(v.employee_id) AS employee_count,\n    ROUND(\n        COUNT(v.employee_id)\
+    \ * 100.0\n        / NULLIF(SUM(COUNT(v.employee_id)) OVER (), 0),\n        2\n    ) AS percentage\nFROM hr_mvp.vw_hr_employee_analytics\
+    \ v\nWHERE v.is_active = TRUE\nGROUP BY v.department_name\nORDER BY employee_count DESC;\n"
+- template_id: TPL_HEADCOUNT_GAP_BY_DEPARTMENT
+  report_id: RPT_HR_012
+  intent: headcount_gap_by_department
+  title_fa: اختلاف نیروی موجود با چارت مصوب در سطح واحد
+  route: SQL
+  status: partial_supported
+  output_type: table
+  required_columns:
+  - employee_id
+  - department_id
+  - department_name
+  - department_approved_headcount
+  - is_active
+  business_rules_fa: مقدار مثبت headcount_gap یعنی کمبود نیرو. department_approved_headcount نباید روی ردیف‌های کارکنان SUM
+    شود.
+  sql: "SELECT\n    v.department_id,\n    v.department_name,\n    COUNT(v.employee_id) AS actual_headcount,\n    MAX(v.department_approved_headcount)\
+    \ AS approved_headcount,\n    MAX(v.department_approved_headcount) - COUNT(v.employee_id) AS headcount_gap\nFROM hr_mvp.vw_hr_employee_analytics\
+    \ v\nWHERE v.is_active = TRUE\nGROUP BY v.department_id, v.department_name\nORDER BY headcount_gap DESC, actual_headcount\
+    \ DESC;\n"
+- template_id: TPL_HEADCOUNT_GAP_BY_SERVICE_DOMAIN
+  intent: headcount_gap_by_service_domain
+  title_fa: اختلاف نیروی موجود با چارت مصوب در سطح حوزه
+  route: SQL
+  status: partial_supported
+  output_type: table
+  required_columns:
+  - employee_id
+  - department_id
+  - department_name
+  - service_domain
+  - department_approved_headcount
+  - is_active
+  business_rules_fa: ابتدا در سطح department_id تجمیع می‌شود تا چارت مصوب تکراری جمع نشود. WITH مجاز است چون خروجی نهایی SELECT
+    است.
+  sql: "WITH department_level AS (\n    SELECT\n        v.service_domain,\n        v.department_id,\n        COUNT(v.employee_id)\
+    \ AS actual_headcount,\n        MAX(v.department_approved_headcount) AS approved_headcount\n    FROM hr_mvp.vw_hr_employee_analytics\
+    \ v\n    WHERE v.is_active = TRUE\n    GROUP BY v.service_domain, v.department_id\n)\nSELECT\n    service_domain,\n  \
+    \  SUM(actual_headcount) AS actual_headcount,\n    SUM(approved_headcount) AS approved_headcount,\n    SUM(approved_headcount)\
+    \ - SUM(actual_headcount) AS headcount_gap\nFROM department_level\nGROUP BY service_domain\nORDER BY headcount_gap DESC,\
+    \ actual_headcount DESC;\n"
+  report_id: RPT_HR_041
+- template_id: TPL_EMPLOYEE_COUNT_BY_PROVINCE
+  report_id: RPT_HR_009
+  intent: employee_count_by_province
+  title_fa: تعداد کارکنان به تفکیک استان
+  route: SQL
+  status: ready_for_demo
+  output_type: table_or_horizontal_bar_chart
+  required_columns:
+  - employee_id
+  - province
+  - is_active
+  sql: "SELECT\n    v.province,\n    COUNT(v.employee_id) AS employee_count,\n    ROUND(\n        COUNT(v.employee_id) * 100.0\n\
+    \        / NULLIF(SUM(COUNT(v.employee_id)) OVER (), 0),\n        2\n    ) AS percentage\nFROM hr_mvp.vw_hr_employee_analytics\
+    \ v\nWHERE v.is_active = TRUE\nGROUP BY v.province\nORDER BY employee_count DESC;\n"
+- template_id: TPL_EMPLOYEE_COUNT_BY_WORK_LOCATION
+  report_id: RPT_HR_023
+  intent: employee_count_by_work_location
+  title_fa: تعداد کارکنان به تفکیک محل خدمت
+  route: SQL
+  status: ready_for_demo
+  output_type: table_or_horizontal_bar_chart
+  required_columns:
+  - employee_id
+  - site_name
+  - province
+  - is_active
+  business_rules_fa: در MVP محل خدمت بر اساس site_name و در صورت نبود آن بر اساس province گزارش می‌شود؛ تحلیل سطح شهر Data
+    Gap است.
+  sql: "SELECT\n    COALESCE(v.site_name, v.province) AS work_location,\n    COUNT(v.employee_id) AS employee_count\nFROM\
+    \ hr_mvp.vw_hr_employee_analytics v\nWHERE v.is_active = TRUE\nGROUP BY COALESCE(v.site_name, v.province)\nORDER BY employee_count\
+    \ DESC;\n"
+- template_id: TPL_HIRING_TREND_ANNUAL
+  report_id: RPT_HR_010
+  intent: hiring_trend_annual
+  title_fa: روند جذب سالانه
+  route: SQL
+  status: ready_for_demo
+  output_type: table_or_line_chart
+  required_columns:
+  - employee_id
+  - hire_year
+  - is_active
+  business_rules_fa: hire_year سال شمسی است و برای روند سالانه باید مرتب‌سازی صعودی شود.
+  sql: "SELECT\n    v.hire_year,\n    COUNT(v.employee_id) AS employee_count\nFROM hr_mvp.vw_hr_employee_analytics v\nWHERE\
+    \ v.is_active = TRUE\nGROUP BY v.hire_year\nORDER BY v.hire_year ASC;\n"
+- template_id: TPL_HIRING_LAST_15_YEARS
+  report_id: RPT_HR_011
+  intent: hiring_last_15_years
+  title_fa: جذب ۱۵ سال اخیر
+  route: SQL
+  status: ready_for_demo
+  output_type: table_or_line_chart
+  required_columns:
+  - employee_id
+  - hire_year
+  - is_active
+  parameters:
+  - name: current_shamsi_year
+    type: integer
+    required: true
+    source: application
+    default_for_current_mvp_test: 1404
+    notes_fa: مدل نباید سال شمسی را حدس بزند؛ این مقدار باید از برنامه تزریق شود.
+  business_rules_fa: برای تست فعلی اگر سرویس تقویم شمسی نداریم، برنامه می‌تواند حداکثر hire_year موجود در View یعنی ۱۴۰۴ را
+    تزریق کند.
+  sql: "SELECT\n    v.hire_year,\n    COUNT(v.employee_id) AS employee_count\nFROM hr_mvp.vw_hr_employee_analytics v\nWHERE\
+    \ v.is_active = TRUE\n  AND v.hire_year >= {current_shamsi_year} - 15\nGROUP BY v.hire_year\nORDER BY v.hire_year ASC;\n"
+- template_id: TPL_MOST_HIRING_YEAR
+  report_id: RPT_HR_024
+  intent: most_or_least_hiring_year
+  title_fa: سال بیشترین جذب
+  route: SQL
+  status: ready_for_demo
+  output_type: kpi_card_or_table
+  required_columns:
+  - employee_id
+  - hire_year
+  - is_active
+  business_rules_fa: برای سال بیشترین جذب نباید از MAX(v.hire_year) استفاده شود؛ باید تعداد جذب در هر سال محاسبه و مرتب شود.
+  sql: "SELECT\n    v.hire_year,\n    COUNT(v.employee_id) AS employee_count\nFROM hr_mvp.vw_hr_employee_analytics v\nWHERE\
+    \ v.is_active = TRUE\nGROUP BY v.hire_year\nORDER BY employee_count DESC, v.hire_year ASC\nLIMIT 1;\n"
+- template_id: TPL_LEAST_HIRING_YEAR
+  report_id: RPT_HR_025
+  intent: most_or_least_hiring_year
+  title_fa: سال کمترین جذب
+  route: SQL
+  status: ready_for_demo
+  output_type: kpi_card_or_table
+  required_columns:
+  - employee_id
+  - hire_year
+  - is_active
+  business_rules_fa: برای سال کمترین جذب نباید از MIN(v.hire_year) استفاده شود؛ باید تعداد جذب در هر سال محاسبه و مرتب شود.
+  sql: "SELECT\n    v.hire_year,\n    COUNT(v.employee_id) AS employee_count\nFROM hr_mvp.vw_hr_employee_analytics v\nWHERE\
+    \ v.is_active = TRUE\nGROUP BY v.hire_year\nORDER BY employee_count ASC, v.hire_year ASC\nLIMIT 1;\n"
+- template_id: TPL_HIRING_BY_CONTRACT_TYPE_RECENT_YEAR
+  report_id: RPT_HR_026
+  intent: hiring_by_contract_type_recent_year
+  title_fa: نوع قرارداد جذب سال اخیر
+  route: SQL
+  status: ready_for_demo
+  output_type: table_or_bar_chart
+  required_columns:
+  - employee_id
+  - hire_year
+  - contract_type
+  - is_active
+  parameters:
+  - name: current_shamsi_year
+    type: integer
+    required: true
+    source: application
+    default_for_current_mvp_test: 1404
+    notes_fa: برای مفهوم سال اخیر/سال جاری در MVP فعلی مقدار ۱۴۰۴ تزریق شود مگر سرویس تقویم شمسی وجود داشته باشد.
+  business_rules_fa: این Template درباره نوع قرارداد است، بنابراین از contract_type استفاده می‌کند نه employment_type.
+  sql: "SELECT\n    v.contract_type,\n    COUNT(v.employee_id) AS employee_count,\n    ROUND(\n        COUNT(v.employee_id)\
+    \ * 100.0\n        / NULLIF(SUM(COUNT(v.employee_id)) OVER (), 0),\n        2\n    ) AS percentage\nFROM hr_mvp.vw_hr_employee_analytics\
+    \ v\nWHERE v.is_active = TRUE\n  AND v.hire_year = {current_shamsi_year}\nGROUP BY v.contract_type\nORDER BY employee_count\
+    \ DESC;\n"
+- template_id: TPL_AVERAGE_SERVICE_YEARS
+  report_id: RPT_HR_027
+  intent: average_service_years
+  title_fa: میانگین سابقه کارکنان
+  route: SQL
+  status: ready_for_demo
+  output_type: kpi_card
+  required_columns:
+  - service_years
+  - is_active
+  sql: "SELECT\n    ROUND(AVG(v.service_years), 2) AS average_service_years\nFROM hr_mvp.vw_hr_employee_analytics v\nWHERE\
+    \ v.is_active = TRUE;\n"
+- template_id: TPL_EMPLOYEE_COUNT_WITHOUT_SERVICE_YEARS
+  report_id: RPT_HR_028
+  intent: employee_count_without_service_years
+  title_fa: تعداد کارکنان بدون سابقه
+  route: SQL
+  status: ready_for_demo
+  output_type: kpi_card
+  required_columns:
+  - employee_id
+  - service_years
+  - is_active
+  business_rules_fa: بدون سابقه در MVP یعنی service_years = 0. مقدار NULL نباید خودکار به بدون سابقه تفسیر شود.
+  sql: "SELECT\n    COUNT(v.employee_id) AS employee_count\nFROM hr_mvp.vw_hr_employee_analytics v\nWHERE v.is_active = TRUE\n\
+    \  AND v.service_years = 0;\n"
+- template_id: TPL_EMPLOYEE_COUNT_BY_MARITAL_STATUS
+  report_id: RPT_HR_029
+  intent: employee_count_by_marital_status
+  title_fa: تعداد کارکنان به تفکیک وضعیت تأهل
+  route: SQL
+  status: ready_for_demo
+  output_type: table_or_pie_chart
+  required_columns:
+  - employee_id
+  - marital_status
+  - is_active
+  sql: "SELECT\n    v.marital_status,\n    COUNT(v.employee_id) AS employee_count,\n    ROUND(\n        COUNT(v.employee_id)\
+    \ * 100.0\n        / NULLIF(SUM(COUNT(v.employee_id)) OVER (), 0),\n        2\n    ) AS percentage\nFROM hr_mvp.vw_hr_employee_analytics\
+    \ v\nWHERE v.is_active = TRUE\nGROUP BY v.marital_status\nORDER BY employee_count DESC;\n"
+- template_id: TPL_GENDER_BY_AGE_GROUP
+  report_id: RPT_HR_030
+  intent: employee_count_by_gender_age_filter
+  title_fa: توزیع جنسیت در گروه‌های سنی
+  route: SQL
+  status: ready_for_demo
+  output_type: table_or_grouped_bar_chart
+  required_columns:
+  - employee_id
+  - gender
+  - age
+  - age_group_title
+  - is_active
+  business_rules_fa: برای سؤال‌های «در بازه سنی چند زن/مرد حضور دارند» می‌توان این Template را با فیلتر سنی تکمیلی در نسخه
+    بعدی توسعه داد.
+  sql: "SELECT\n    v.age_group_title,\n    v.gender,\n    COUNT(v.employee_id) AS employee_count\nFROM hr_mvp.vw_hr_employee_analytics\
+    \ v\nWHERE v.is_active = TRUE\nGROUP BY v.age_group_title, v.gender\nORDER BY MIN(v.age) ASC, v.gender;\n"
+- template_id: TPL_EDUCATION_BY_SERVICE_DOMAIN
+  intent: education_distribution_by_service_domain
+  title_fa: توزیع مدرک تحصیلی در هر حوزه
+  route: SQL
+  status: optional_supported
+  output_type: table_or_stacked_bar_chart
+  required_columns:
+  - employee_id
+  - service_domain
+  - education_title
+  - education_rank
+  - is_active
+  sql: "SELECT\n    v.service_domain,\n    v.education_title,\n    COUNT(v.employee_id) AS employee_count\nFROM hr_mvp.vw_hr_employee_analytics\
+    \ v\nWHERE v.is_active = TRUE\nGROUP BY v.service_domain, v.education_title, v.education_rank\nORDER BY v.service_domain,\
+    \ v.education_rank ASC;\n"
+  report_id: RPT_HR_042
+status_templates:
+- template_id: TPL_DATA_GAP
+  route: GAP
+  status: DATA_GAP
+  title_fa: داده یا قانون کافی برای پاسخ وجود ندارد
+  when_to_use_fa: برای سؤال‌های مرتبط با منابع انسانی که در MVP فعلی داده، سند، قانون یا شاخص کافی ندارند.
+  sql: 'SELECT ''DATA_GAP'' AS status;
+
+    '
+- template_id: TPL_ACCESS_DENIED
+  route: REJECT
+  status: ACCESS_DENIED
+  title_fa: عدم دسترسی به اطلاعات فردی یا حساس
+  when_to_use_fa: برای درخواست نام، مشخصات، کد ملی، شماره پرسنلی، اطلاعات فردی یا خروجی ردیفی کارکنان.
+  sql: 'SELECT ''ACCESS_DENIED'' AS status;
+
+    '
+- template_id: TPL_OUT_OF_SCOPE
+  route: REJECT
+  status: OUT_OF_SCOPE
+  title_fa: سؤال خارج از دامنه منابع انسانی
+  when_to_use_fa: برای سؤال‌هایی که به HR مربوط نیستند؛ مثل فروش، مالی غیر HR، مشتری، محصول یا عملیات غیر منابع انسانی.
+  sql: 'SELECT ''OUT_OF_SCOPE'' AS status;
+
+    '
+- template_id: TPL_NEEDS_CLARIFICATION
+  route: REJECT
+  status: NEEDS_CLARIFICATION
+  title_fa: سؤال مبهم و نیازمند شفاف‌سازی
+  when_to_use_fa: برای سؤال‌های HR که مبهم‌اند و بدون شفاف‌سازی ممکن است SQL اشتباه تولید شود.
+  sql: 'SELECT ''NEEDS_CLARIFICATION'' AS status;
+
+    '
+gap_and_reject_mapping:
+  city_level_analysis: TPL_DATA_GAP
+  near_retirement_analysis: TPL_DATA_GAP
+  workforce_aging_trend_analysis: TPL_DATA_GAP
+  education_training_need_analysis: TPL_DATA_GAP
+  department_balance_analysis: TPL_DATA_GAP
+  contractor_productivity_analysis: TPL_DATA_GAP
+  employment_stability_impact_analysis: TPL_DATA_GAP
+  hiring_business_growth_alignment: TPL_DATA_GAP
+  individual_employee_info: TPL_ACCESS_DENIED
+  out_of_scope: TPL_OUT_OF_SCOPE
+  ambiguous_hr_question: TPL_NEEDS_CLARIFICATION
+notes_fa:
+- این فایل باید با report_catalog.json و intent_catalog.yaml هم‌نام و هم‌راستا بماند.
+- اگر برای یک سؤال Template آماده وجود داشت، sql_template_engine.py باید Template را به SQL آزاد ترجیح دهد.
+- اگر Template مناسب وجود نداشت، SQL Generator محدود فقط روی View مجاز است و خروجی آن باید از SQL Validator عبور کند.
+- برای سؤال‌های Data Gap نباید SQL حدسی ساخته شود؛ باید TPL_DATA_GAP برگردد.
+- برای اطلاعات فردی کارکنان، TPL_ACCESS_DENIED برگردد.
+- برای شهر، بازنشستگی، بهره‌وری پیمانکارها و تحلیل‌های مدیریتی بدون داده/سند، مسیر GAP است.
