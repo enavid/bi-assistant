@@ -10,7 +10,7 @@ from typing import Any, Mapping, Sequence
 """
 chart_builder.py
 ----------------
-Frontend-ready visualization builder for HR BI Assistant Phase 2: Controlled SQL-based MVP.
+Frontend-ready visualization builder for HR BI Assistant, Controlled SQL-based MVP.
 
 Place this file in:
     backend/app/services/chart_builder.py

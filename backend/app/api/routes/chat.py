@@ -2,28 +2,21 @@ from __future__ import annotations
 
 import logging
 import os
-from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
+from datetime import datetime, timezone
+from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import APIRouter, Depends, HTTPException
 
-from app.api.dependencies import get_generate_sql_use_case, get_hr_bi_orchestrator, get_run_query_use_case
-from app.api.schemas import (
-    ChatSessionCreate,
-    ChatSessionOut,
-    ChatSessionUpdate,
-    GenerateRequest,
-    GenerateResponse,
-    QueryRequest,
-    QueryResponse,
-)
-from app.infrastructure.db.models import ChatSessionORM, ExperimentORM, MessageORM, ProjectORM
 from app.infrastructure.db.session import get_db
-from app.use_cases.chat.generate_sql import GenerateSQLUseCase
 from app.use_cases.chat.run_query import RunQueryUseCase
+from app.use_cases.chat.generate_sql import GenerateSQLUseCase
 from app.use_cases.hr_bi.orchestrate import HRBIOrchestrationUseCase
+from app.infrastructure.db.models import ChatSessionORM, ExperimentORM, MessageORM, ProjectORM
+from app.api.dependencies import get_generate_sql_use_case, get_hr_bi_orchestrator, get_run_query_use_case
+from app.api.schemas import ChatSessionCreate, ChatSessionOut, ChatSessionUpdate, GenerateRequest, GenerateResponse, QueryRequest, QueryResponse
+
 
 logger = logging.getLogger(__name__)
 

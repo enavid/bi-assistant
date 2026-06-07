@@ -45,7 +45,6 @@ class Settings(BaseSettings):
     log_dir: str = "logs"
     app_env: str = "development"
 
-    # Phase 2
     hr_bi_metadata_dir: str = "./metadata"
     current_shamsi_year: int = 1404
     default_execute_sql: bool = False

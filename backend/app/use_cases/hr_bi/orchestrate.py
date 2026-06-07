@@ -1,13 +1,12 @@
 from __future__ import annotations
 
 from typing import Any
-
 from app.domain.entities import GenerationResult
 
 
 class HRBIOrchestrationUseCase:
     """
-    Facade for the Phase 2 controlled SQL pipeline.
+    Facade for controlled SQL pipeline.
     Delegates to the hr_bi orchestrator from infrastructure.
     This use case exists to keep the API layer decoupled from hr_bi internals.
     """

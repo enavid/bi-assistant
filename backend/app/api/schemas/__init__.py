@@ -1,10 +1,8 @@
 from __future__ import annotations
 
-from datetime import datetime
 from typing import Any
-
+from datetime import datetime
 from pydantic import BaseModel, Field
-
 
 # ---------------------------------------------------------------------------
 # Section
@@ -174,7 +172,7 @@ class OllamaHealthResponse(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# HR BI Phase 2
+# HR BI
 # ---------------------------------------------------------------------------
 
 class HRBIRequest(BaseModel):

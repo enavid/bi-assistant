@@ -1,20 +1,21 @@
 from __future__ import annotations
-import asyncio
-import inspect
+
 import re
 import time
 import uuid
-from copy import deepcopy
-from dataclasses import asdict, dataclass, field, is_dataclass
-from datetime import datetime, timezone
+import asyncio
+import inspect
 from enum import Enum
 from pathlib import Path
+from copy import deepcopy
+from datetime import datetime, timezone
 from typing import Any, Callable, Mapping, Protocol
+from dataclasses import asdict, dataclass, field, is_dataclass
 
 """
 llm_orchestrator.py
 -------------------
-Central orchestration layer for HR BI Assistant Phase 2: Controlled SQL-based MVP.
+Central orchestration layer for HR BI Assistant, Controlled SQL-based MVP.
 
 Place this file in:
     backend/app/services/llm_orchestrator.py
@@ -37,7 +38,7 @@ This orchestrator is intentionally dependency-injected:
 - If real modules are provided, it calls them.
 - If a module is not provided yet, it uses conservative fallback logic based on metadata.
 
-The goal is to keep Phase 2 controlled:
+The goal is to keep controlled:
 - SQL route uses only hr_mvp.vw_hr_employee_analytics v.
 - GAP route is used when data/definition is not available.
 - REJECT route is used for non-HR, unsafe, or individual employee questions.
@@ -163,7 +164,7 @@ class AsyncCallableComponent(Protocol):
 
 class LLMOrchestrator:
     """
-    Runs the controlled Phase 2 flow:
+    Runs the controlled flow:
 
         question
           -> domain classifier

@@ -2,12 +2,11 @@ from __future__ import annotations
 
 from functools import lru_cache
 
+from app.use_cases.chat.run_query import RunQueryUseCase
 from app.infrastructure.llm.ollama_client import OllamaClient
 from app.infrastructure.hr_db.executor import HRQueryExecutor
-from app.use_cases.chat.prompt_assembler import PromptAssembler
 from app.use_cases.chat.generate_sql import GenerateSQLUseCase
-from app.use_cases.chat.run_query import RunQueryUseCase
-
+from app.use_cases.chat.prompt_assembler import PromptAssembler
 
 @lru_cache(maxsize=1)
 def get_llm_client() -> OllamaClient:

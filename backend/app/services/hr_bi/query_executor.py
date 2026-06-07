@@ -15,7 +15,7 @@ from typing import Any, Callable, Mapping, Sequence
 """
 query_executor.py
 -----------------
-Safe query execution service for HR BI Assistant Phase 2: Controlled SQL-based MVP.
+Safe query execution service for HR BI Assistant, Controlled SQL-based MVP.
 
 Place this file in:
     backend/app/services/query_executor.py
