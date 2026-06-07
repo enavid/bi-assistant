@@ -45,12 +45,11 @@ class Settings(BaseSettings):
     log_dir: str = "logs"
     app_env: str = "development"
 
-    hr_bi_metadata_dir: str = "./metadata"
+    metadata_dir: str = "./metadata"
     current_shamsi_year: int = 1404
     default_execute_sql: bool = False
     enable_llm_sql_fallback: bool = True
-    hr_bi_v2_on_generate: bool = False
-    hr_bi_validate_query_v2: bool = True
+    validate_sql_before_execution: bool = True
 
     @field_validator("cors_origins", mode="before")
     @classmethod

@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/hr-bi", tags=["hr-bi"])
 
 
-@router.get("/health", summary="Phase 2 metadata and pipeline health")
+@router.get("/health", summary="Metadata and pipeline health")
 async def hr_bi_health() -> dict[str, Any]:
     try:
         from app.infrastructure.metadata.loader import get_metadata
@@ -27,14 +27,13 @@ async def hr_bi_health() -> dict[str, Any]:
             "view": "hr_mvp.vw_hr_employee_analytics",
             "default_execute_sql": settings.default_execute_sql,
             "current_shamsi_year": settings.current_shamsi_year,
-            "hr_bi_v2_on_generate": settings.hr_bi_v2_on_generate,
         }
     except Exception as exc:
         logger.error("HR BI health check failed: %s", exc)
         raise HTTPException(status_code=500, detail=f"Health check failed: {type(exc).__name__}: {exc}") from exc
 
 
-@router.post("/chat", response_model=HRBIResponse, summary="Full Phase 2 pipeline with execution")
+@router.post("/chat", response_model=HRBIResponse, summary="HR analytics pipeline with execution")
 async def hr_bi_chat(request: HRBIRequest) -> dict[str, Any]:
     try:
         orchestrator = get_hr_bi_orchestrator()
@@ -51,7 +50,7 @@ async def hr_bi_chat(request: HRBIRequest) -> dict[str, Any]:
         raise HTTPException(status_code=500, detail=f"HR BI chat failed: {type(exc).__name__}: {exc}") from exc
 
 
-@router.post("/generate", summary="Phase 2 SQL generation only")
+@router.post("/generate", summary="SQL generation only")
 async def hr_bi_generate(request: HRBIRequest) -> dict[str, Any]:
     try:
         orchestrator = get_hr_bi_orchestrator()

@@ -21,8 +21,7 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     setup_logging()
-    logger.info("Starting — env=%s log_level=%s",
-                settings.app_env, settings.log_level)
+    logger.info("Starting: env=%s log_level=%s", settings.app_env, settings.log_level)
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     logger.info("Database tables ready")
@@ -34,11 +33,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 app = FastAPIOffline(
     title="BI Assistant API",
     version="3.0.0",
-    description=(
-        "HR analytics assistant. "
-        "Phase 1: prompt-based SQL. "
-        "Phase 2: controlled SQL pipeline with metadata, templates and validators."
-    ),
+    description="HR analytics assistant — controlled SQL pipeline with metadata, templates and validators.",
     lifespan=lifespan,
 )
 
@@ -57,6 +52,6 @@ app.include_router(hr_bi.router)
 app.include_router(ollama.router)
 
 
-@app.get("/health", tags=["system"], summary="Application health check")
+@app.get("/health", tags=["system"], summary="Health check")
 async def health() -> dict:
     return {"status": "ok", "version": "3.0.0", "env": settings.app_env}

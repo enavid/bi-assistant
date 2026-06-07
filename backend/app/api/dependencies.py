@@ -5,8 +5,7 @@ from functools import lru_cache
 from app.use_cases.chat.run_query import RunQueryUseCase
 from app.infrastructure.llm.ollama_client import OllamaClient
 from app.infrastructure.hr_db.executor import HRQueryExecutor
-from app.use_cases.chat.generate_sql import GenerateSQLUseCase
-from app.use_cases.chat.prompt_assembler import PromptAssembler
+
 
 @lru_cache(maxsize=1)
 def get_llm_client() -> OllamaClient:
@@ -16,19 +15,6 @@ def get_llm_client() -> OllamaClient:
 @lru_cache(maxsize=1)
 def get_query_executor() -> HRQueryExecutor:
     return HRQueryExecutor()
-
-
-@lru_cache(maxsize=1)
-def get_prompt_assembler() -> PromptAssembler:
-    return PromptAssembler()
-
-
-@lru_cache(maxsize=1)
-def get_generate_sql_use_case() -> GenerateSQLUseCase:
-    return GenerateSQLUseCase(
-        llm=get_llm_client(),
-        assembler=get_prompt_assembler(),
-    )
 
 
 @lru_cache(maxsize=1)

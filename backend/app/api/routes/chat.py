@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import logging
-import os
 
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
@@ -11,11 +10,11 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from app.infrastructure.db.session import get_db
 from app.use_cases.chat.run_query import RunQueryUseCase
-from app.use_cases.chat.generate_sql import GenerateSQLUseCase
 from app.use_cases.hr_bi.orchestrate import HRBIOrchestrationUseCase
 from app.infrastructure.db.models import ChatSessionORM, ExperimentORM, MessageORM, ProjectORM
-from app.api.dependencies import get_generate_sql_use_case, get_hr_bi_orchestrator, get_run_query_use_case
+from app.api.dependencies import get_hr_bi_orchestrator, get_run_query_use_case
 from app.api.schemas import ChatSessionCreate, ChatSessionOut, ChatSessionUpdate, GenerateRequest, GenerateResponse, QueryRequest, QueryResponse
+from app.core.config import settings
 
 
 logger = logging.getLogger(__name__)
@@ -23,13 +22,6 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/chat", tags=["chat"])
 
 _SESSION_OPTS = [selectinload(ChatSessionORM.messages)]
-
-
-def _env_bool(name: str, default: bool = False) -> bool:
-    v = os.getenv(name)
-    if v is None:
-        return default
-    return v.strip().lower() in {"1", "true", "yes", "y", "on"}
 
 
 async def _require_session(session_id: str, db: AsyncSession) -> ChatSessionORM:
@@ -117,55 +109,13 @@ async def generate(
     )
 
 
-@router.post("/generate-legacy", response_model=GenerateResponse, summary="Generate SQL via prompt template")
-async def generate_legacy(
-    body: GenerateRequest,
-    db: AsyncSession = Depends(get_db),
-    use_case: GenerateSQLUseCase = Depends(get_generate_sql_use_case),
-) -> GenerateResponse:
-    project = None
-    if body.project_id:
-        r = await db.execute(
-            select(ProjectORM).options(selectinload(ProjectORM.sections)).where(ProjectORM.id == body.project_id)
-        )
-        project = r.scalar_one_or_none()
-
-    from app.domain.entities import Project, Section
-    domain_project = None
-    if project:
-        domain_project = Project(
-            name=project.name,
-            workspace_id=project.workspace_id,
-            description=project.description,
-            notes=project.notes,
-            output_format=project.output_format,
-            sections=[Section(name=s.name, content=s.content, order=s.order, id=s.id) for s in project.sections],
-            id=project.id,
-        )
-
-    result = await use_case.execute(body.question, domain_project, body.model_name)
-    return GenerateResponse(sql=result.sql, success=result.success, error=result.error)
-
-
-@router.post("/generate-v2", response_model=GenerateResponse, summary="Generate SQL via Phase 2 pipeline")
-async def generate_v2(body: GenerateRequest) -> GenerateResponse:
-    orchestrator = get_hr_bi_orchestrator()
-    uc = HRBIOrchestrationUseCase(orchestrator)
-    result = await uc.generate(body.question, model=body.model_name)
-    return GenerateResponse(
-        sql=result.sql, success=result.success, error=result.error,
-        route=result.route, status=result.status,
-        detected_intent=result.detected_intent, warnings=result.warnings,
-    )
-
-
 @router.post("/query", response_model=QueryResponse, summary="Execute SQL against HR database")
 async def run_query(
     body: QueryRequest,
     db: AsyncSession = Depends(get_db),
     use_case: RunQueryUseCase = Depends(get_run_query_use_case),
 ) -> QueryResponse:
-    if _env_bool("HR_BI_VALIDATE_QUERY_V2", default=True):
+    if settings.validate_sql_before_execution:
         orchestrator = get_hr_bi_orchestrator()
         validator = getattr(orchestrator, "sql_validator", None)
         if validator is not None:
