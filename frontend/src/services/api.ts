@@ -44,7 +44,7 @@ export const chatApi = {
   getSession: (id: string) =>
     apiClient.get<ChatSession>(`/chat/sessions/${id}`).then((r) => r.data),
 
-  createSession: (payload: { title?: string; project_id?: string | null; model_name: string }) =>
+  createSession: (payload: { title?: string; project_id?: string | null; model_name: string; template_name?: string })  =>
     apiClient.post<ChatSession>('/chat/sessions', payload).then((r) => r.data),
 
   updateSession: (id: string, payload: { title?: string; project_id?: string | null; model_name?: string }) =>
@@ -70,4 +70,18 @@ export const chatApi = {
 export const ollamaApi = {
   health: () =>
     apiClient.get<OllamaHealth>('/ollama/health').then((r) => r.data),
+}
+
+export const templateApi = {
+  list: () =>
+    apiClient.get<import('@/types').PromptTemplate[]>('/templates').then((r) => r.data),
+
+  activate: (id: string) =>
+    apiClient.post<import('@/types').PromptTemplate>(`/templates/${id}/activate`).then((r) => r.data),
+
+  update: (id: string, payload: Partial<import('@/types').PromptTemplate>) =>
+    apiClient.patch<import('@/types').PromptTemplate>(`/templates/${id}`, payload).then((r) => r.data),
+
+  delete: (id: string) =>
+    apiClient.delete(`/templates/${id}`).then((r) => r.data),
 }

@@ -43,6 +43,7 @@ export interface ChatSession {
   title: string
   project_id: string | null
   model_name: string
+  prompt_template_name: string
   messages: Message[]
   created_at: string
   updated_at: string
@@ -75,8 +76,18 @@ export interface OllamaModel {
 
 export interface OllamaHealth {
   online: boolean
+  model_name: string 
   models: OllamaModel[]
   message: string
+}
+
+export interface PromptTemplate {
+  id: string
+  name: string
+  content: string
+  active: boolean
+  created_at: string
+  updated_at: string
 }
 
 export type Theme = 'dark' | 'light'
