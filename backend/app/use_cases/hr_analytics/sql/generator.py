@@ -1,13 +1,15 @@
 from __future__ import annotations
+
 import asyncio
 import os
 import re
-import time
 import textwrap
+import time
+from collections.abc import Iterable, Mapping
 from copy import deepcopy
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Any, Iterable, Mapping
+from typing import Any
 
 from app.infrastructure.metadata.service import get_metadata_service
 from app.use_cases.hr_analytics.sql.llm_fallback import LLMSQLFallback

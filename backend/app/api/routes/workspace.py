@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
@@ -91,7 +91,7 @@ async def update_project(project_id: str, body: ProjectUpdate, db: AsyncSession 
         project.notes = body.notes
     if body.output_format is not None:
         project.output_format = body.output_format
-    project.updated_at = datetime.now(timezone.utc)
+    project.updated_at = datetime.now(UTC)
     await db.flush()
     return project
 
@@ -107,7 +107,7 @@ async def create_section(project_id: str, body: SectionCreate, db: AsyncSession 
     project = await _require_project(project_id, db)
     section = SectionORM(project_id=project_id, name=body.name, content=body.content, order=body.order)
     db.add(section)
-    project.updated_at = datetime.now(timezone.utc)
+    project.updated_at = datetime.now(UTC)
     await db.flush()
     await db.refresh(project, ["sections", "experiments"])
     return project
@@ -125,7 +125,7 @@ async def update_section(project_id: str, section_id: str, body: SectionUpdate, 
         section.content = body.content
     if body.order is not None:
         section.order = body.order
-    project.updated_at = datetime.now(timezone.utc)
+    project.updated_at = datetime.now(UTC)
     await db.flush()
     await db.refresh(project, ["sections", "experiments"])
     return project
@@ -138,7 +138,7 @@ async def delete_section(project_id: str, section_id: str, db: AsyncSession = De
     if not section:
         raise HTTPException(status_code=404, detail="Section not found")
     await db.delete(section)
-    project.updated_at = datetime.now(timezone.utc)
+    project.updated_at = datetime.now(UTC)
     await db.flush()
     await db.refresh(project, ["sections", "experiments"])
     return project
@@ -156,7 +156,7 @@ async def add_experiment(project_id: str, body: ExperimentCreate, db: AsyncSessi
         comment=body.comment,
     )
     db.add(exp)
-    project.updated_at = datetime.now(timezone.utc)
+    project.updated_at = datetime.now(UTC)
     await db.flush()
     await db.refresh(project, ["sections", "experiments"])
     return project

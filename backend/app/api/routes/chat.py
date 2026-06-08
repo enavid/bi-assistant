@@ -1,21 +1,28 @@
 from __future__ import annotations
 
 import logging
+from datetime import UTC, datetime
 
-from sqlalchemy import select
-from sqlalchemy.orm import selectinload
-from datetime import datetime, timezone
-from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
-from app.infrastructure.db.session import get_db
-from app.use_cases.workspace.run_query import RunQueryUseCase
-from app.use_cases.hr_analytics.orchestrate import HRBIOrchestrationUseCase
-from app.infrastructure.db.models import ChatSessionORM, ExperimentORM, MessageORM, ProjectORM
 from app.api.dependencies import get_hr_bi_orchestrator, get_run_query_use_case
-from app.api.schemas import ChatSessionCreate, ChatSessionOut, ChatSessionUpdate, GenerateRequest, GenerateResponse, QueryRequest, QueryResponse
+from app.api.schemas import (
+    ChatSessionCreate,
+    ChatSessionOut,
+    ChatSessionUpdate,
+    GenerateRequest,
+    GenerateResponse,
+    QueryRequest,
+    QueryResponse,
+)
 from app.core.config import settings
-
+from app.infrastructure.db.models import ChatSessionORM, ExperimentORM, MessageORM, ProjectORM
+from app.infrastructure.db.session import get_db
+from app.use_cases.hr_analytics.orchestrate import HRBIOrchestrationUseCase
+from app.use_cases.workspace.run_query import RunQueryUseCase
 
 logger = logging.getLogger(__name__)
 
@@ -65,7 +72,7 @@ async def update_session(session_id: str, body: ChatSessionUpdate, db: AsyncSess
         session.project_id = body.project_id
     if body.model_name is not None:
         session.model_name = body.model_name
-    session.updated_at = datetime.now(timezone.utc)
+    session.updated_at = datetime.now(UTC)
     await db.flush()
     return session
 
@@ -88,7 +95,7 @@ async def add_message(session_id: str, body: dict, db: AsyncSession = Depends(ge
         query_result=body.get("query_result"),
     )
     db.add(message)
-    session.updated_at = datetime.now(timezone.utc)
+    session.updated_at = datetime.now(UTC)
     await db.flush()
     await db.refresh(session, ["messages"])
     return session

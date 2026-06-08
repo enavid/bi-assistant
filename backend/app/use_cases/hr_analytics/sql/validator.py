@@ -1,9 +1,11 @@
 from __future__ import annotations
+
 import asyncio
 import re
+from collections.abc import Mapping
 from dataclasses import asdict, dataclass, field, is_dataclass
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any
 
 from app.infrastructure.metadata.service import get_metadata_service
 

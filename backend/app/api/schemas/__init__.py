@@ -1,15 +1,5 @@
 from __future__ import annotations
 
-from app.api.schemas.workspace import (
-    ExperimentCreate,
-    ExperimentOut,
-    ProjectCreate,
-    ProjectOut,
-    ProjectUpdate,
-    SectionCreate,
-    SectionOut,
-    SectionUpdate,
-)
 from app.api.schemas.chat import (
     ChatSessionCreate,
     ChatSessionOut,
@@ -22,6 +12,16 @@ from app.api.schemas.chat import (
 )
 from app.api.schemas.hr_bi import HRBIRequest, HRBIResponse
 from app.api.schemas.ollama import OllamaHealthResponse, OllamaModelOut
+from app.api.schemas.workspace import (
+    ExperimentCreate,
+    ExperimentOut,
+    ProjectCreate,
+    ProjectOut,
+    ProjectUpdate,
+    SectionCreate,
+    SectionOut,
+    SectionUpdate,
+)
 
 __all__ = [
     "ExperimentCreate", "ExperimentOut",

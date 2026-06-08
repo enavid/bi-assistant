@@ -1,10 +1,12 @@
 from __future__ import annotations
+
 import re
 import time
+from collections.abc import Mapping
 from copy import deepcopy
 from dataclasses import asdict, dataclass, field, is_dataclass
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any
 
 from app.infrastructure.metadata.service import MetadataService, get_metadata_service
 

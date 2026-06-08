@@ -1,17 +1,18 @@
 from __future__ import annotations
+
 import asyncio
 import inspect
 import logging
 import os
 import re
 import time
+from collections.abc import Callable, Mapping, Sequence
 from contextlib import suppress
 from dataclasses import asdict, dataclass, field, is_dataclass
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from decimal import Decimal
 from pathlib import Path
-from typing import Any, Callable, Mapping, Sequence
-
+from typing import Any
 
 from app.infrastructure.metadata.service import get_metadata_service
 from app.use_cases.hr_analytics.sql.validator import SQLValidator
@@ -933,7 +934,7 @@ def to_plain_value(value: Any) -> Any:
 
 
 def utc_now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 # ---------------------------------------------------------------------------

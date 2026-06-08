@@ -149,7 +149,7 @@ export function ChatPage() {
             const entries = Object.entries(next)
             const trimmed = Object.fromEntries(entries.slice(-500))
             localStorage.setItem('bi-pipeline-cache', JSON.stringify(trimmed))
-          } catch {}
+          } catch { /* storage quota exceeded or unavailable */ }
           return next
         })
       }

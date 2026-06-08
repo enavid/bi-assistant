@@ -1,12 +1,13 @@
 from __future__ import annotations
+
 import math
+from collections.abc import Mapping, Sequence
 from copy import deepcopy
 from dataclasses import asdict, dataclass, field, is_dataclass
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from decimal import Decimal
 from pathlib import Path
-from typing import Any, Mapping, Sequence
-
+from typing import Any
 
 from app.infrastructure.metadata.service import get_metadata_service
 
@@ -1356,7 +1357,7 @@ def _is_number_like(value: Any) -> bool:
 
 
 def _utc_now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 class _suppress_exceptions:

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import List
 from urllib.parse import quote_plus
 
 from pydantic import field_validator
@@ -38,7 +37,7 @@ class Settings(BaseSettings):
     hr_db_password: str
 
     # CORS
-    cors_origins: List[str] = ["http://localhost:5173"]
+    cors_origins: list[str] = ["http://localhost:5173"]
 
     # Logging
     log_level: str = "INFO"
@@ -53,7 +52,7 @@ class Settings(BaseSettings):
 
     @field_validator("cors_origins", mode="before")
     @classmethod
-    def parse_cors(cls, v: object) -> List[str]:
+    def parse_cors(cls, v: object) -> list[str]:
         if isinstance(v, list):
             return v
         if isinstance(v, str):

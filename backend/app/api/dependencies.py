@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from functools import lru_cache
 
-from app.use_cases.workspace.run_query import RunQueryUseCase
-from app.infrastructure.llm.ollama_client import OllamaClient
 from app.infrastructure.hr_db.executor import HRQueryExecutor
+from app.infrastructure.llm.ollama_client import OllamaClient
+from app.use_cases.workspace.run_query import RunQueryUseCase
 
 
 @lru_cache(maxsize=1)
@@ -24,20 +24,20 @@ def get_run_query_use_case() -> RunQueryUseCase:
 
 @lru_cache(maxsize=1)
 def get_hr_bi_orchestrator():
-    from app.core.config import settings
-    from app.infrastructure.metadata.loader import get_metadata
-    from app.use_cases.hr_analytics.steps.domain_classifier import DomainClassifier
-    from app.use_cases.hr_analytics.steps.gap_service import GapService
-    from app.use_cases.hr_analytics.steps.intent_parser import IntentParser
-    from app.use_cases.hr_analytics.orchestrator import LLMOrchestrator
-    from app.infrastructure.hr_db.analytics_executor import QueryExecutor
-    from app.use_cases.hr_analytics.steps.question_validator import QuestionValidator
     from app.adapters.presenters.response_builder import ResponseBuilder
-    from app.use_cases.hr_analytics.steps.decision_router import DecisionRouter
-    from app.use_cases.hr_analytics.steps.semantic_mapper import SemanticMapper
+    from app.core.config import settings
+    from app.infrastructure.hr_db.analytics_executor import QueryExecutor
+    from app.infrastructure.metadata.loader import get_metadata
+    from app.use_cases.hr_analytics.orchestrator import LLMOrchestrator
     from app.use_cases.hr_analytics.sql.generator import SQLGenerator
     from app.use_cases.hr_analytics.sql.template_engine import SQLTemplateEngine
     from app.use_cases.hr_analytics.sql.validator import SQLValidator
+    from app.use_cases.hr_analytics.steps.decision_router import DecisionRouter
+    from app.use_cases.hr_analytics.steps.domain_classifier import DomainClassifier
+    from app.use_cases.hr_analytics.steps.gap_service import GapService
+    from app.use_cases.hr_analytics.steps.intent_parser import IntentParser
+    from app.use_cases.hr_analytics.steps.question_validator import QuestionValidator
+    from app.use_cases.hr_analytics.steps.semantic_mapper import SemanticMapper
 
     metadata = get_metadata()
     sql_validator = SQLValidator(metadata_service=metadata)

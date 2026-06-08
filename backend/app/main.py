@@ -5,8 +5,8 @@ from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
-from fastapi_offline import FastAPIOffline
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi_offline import FastAPIOffline
 
 from app.api.middleware.request_id import RequestIDMiddleware
 from app.api.routes import chat, hr_bi, ollama, workspace

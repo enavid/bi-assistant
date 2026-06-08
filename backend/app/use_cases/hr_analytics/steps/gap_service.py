@@ -1,15 +1,17 @@
 from __future__ import annotations
+
 import asyncio
 import hashlib
 import json
 import os
 import re
 import time
+from collections.abc import Mapping, Sequence
 from dataclasses import asdict, dataclass, field, is_dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from threading import Lock
-from typing import Any, Mapping, Sequence
+from typing import Any
 
 from app.infrastructure.metadata.service import get_metadata_service
 
@@ -879,7 +881,7 @@ class GapService:
 
 
 def utc_now_iso() -> str:
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+    return datetime.now(UTC).replace(microsecond=0).isoformat()
 
 
 def elapsed_ms(started: float) -> float:

@@ -1,17 +1,18 @@
 from __future__ import annotations
 
+import asyncio
+import inspect
 import logging
 import re
 import time
 import uuid
-import asyncio
-import inspect
-from enum import Enum
-from pathlib import Path
+from collections.abc import Callable, Mapping
 from copy import deepcopy
-from datetime import datetime, timezone
-from typing import Any, Callable, Mapping, Protocol
 from dataclasses import asdict, dataclass, field, is_dataclass
+from datetime import UTC, datetime
+from enum import StrEnum
+from pathlib import Path
+from typing import Any, Protocol
 
 from app.infrastructure.metadata.service import MetadataService, get_metadata_service
 
@@ -54,14 +55,14 @@ class OrchestratorError(RuntimeError):
     """Base exception for orchestration errors."""
 
 
-class Route(str, Enum):
+class Route(StrEnum):
     SQL = "SQL"
     GAP = "GAP"
     REJECT = "REJECT"
     NEEDS_CLARIFICATION = "NEEDS_CLARIFICATION"
 
 
-class ValidationStatus(str, Enum):
+class ValidationStatus(StrEnum):
     VALID = "VALID"
     DATA_GAP = "DATA_GAP"
     ANALYTICAL_GAP = "ANALYTICAL_GAP"
@@ -1399,7 +1400,7 @@ class LLMOrchestrator:
 
 
 def utc_now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 async def call_component(component: Any, method_names: list[str], **kwargs: Any) -> Any:
