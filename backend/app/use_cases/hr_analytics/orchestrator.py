@@ -64,6 +64,7 @@ class Route(str, Enum):
 class ValidationStatus(str, Enum):
     VALID = "VALID"
     DATA_GAP = "DATA_GAP"
+    ANALYTICAL_GAP = "ANALYTICAL_GAP"
     ACCESS_DENIED = "ACCESS_DENIED"
     OUT_OF_SCOPE = "OUT_OF_SCOPE"
     NEEDS_CLARIFICATION = "NEEDS_CLARIFICATION"
@@ -707,9 +708,15 @@ class LLMOrchestrator:
                     **gap_payload,
                 }
         else:
+            prior_status = str(context.route_result.get("status") or "").upper()
+            gap_status = (
+                ValidationStatus.ANALYTICAL_GAP.value
+                if prior_status == ValidationStatus.ANALYTICAL_GAP.value
+                else ValidationStatus.DATA_GAP.value
+            )
             context.gap_result = {
                 "route": Route.GAP.value,
-                "status": ValidationStatus.DATA_GAP.value,
+                "status": gap_status,
                 "gap_logged": False,
                 "reason": gap_payload.get("reason") or "Required data or business rule is not available in the current MVP.",
                 **gap_payload,
@@ -990,7 +997,7 @@ class LLMOrchestrator:
                 "status": status_for_route(intent_route, fallback=intent_status),
                 "reason": context.intent_result.get("reason"),
             }
-        if intent_status in {"DATA_GAP", "ACCESS_DENIED", "OUT_OF_SCOPE", "NEEDS_CLARIFICATION"}:
+        if intent_status in {"DATA_GAP", "ANALYTICAL_GAP", "ACCESS_DENIED", "OUT_OF_SCOPE", "NEEDS_CLARIFICATION"}:
             return {
                 "route": route_for_status(intent_status),
                 "status": intent_status,
@@ -1080,7 +1087,7 @@ class LLMOrchestrator:
         allowed_view_pattern = r"hr_mvp\.vw_hr_employee_analytics\s+v"
         if not re.search(allowed_view_pattern, normalized, flags=re.IGNORECASE):
             # Status SQLs like SELECT 'DATA_GAP' AS status; are allowed.
-            status_sql_pattern = r"^SELECT\s+'(DATA_GAP|ACCESS_DENIED|OUT_OF_SCOPE|NEEDS_CLARIFICATION|SQL_VALIDATION_FAILED)'\s+AS\s+status\s*;?$"
+            status_sql_pattern = r"^SELECT\s+'(DATA_GAP|ANALYTICAL_GAP|ACCESS_DENIED|OUT_OF_SCOPE|NEEDS_CLARIFICATION|SQL_VALIDATION_FAILED)'\s+AS\s+status\s*;?$"
             if not re.match(status_sql_pattern, normalized, flags=re.IGNORECASE):
                 errors.append(
                     "SQL must use only hr_mvp.vw_hr_employee_analytics v, or a valid status SELECT.")
@@ -1156,27 +1163,29 @@ class LLMOrchestrator:
     # ------------------------------------------------------------------
 
     def _detect_gap_or_reject_intent(self, question: str) -> JsonDict | None:
+        # (intent_id, terms, reason, is_analytical_gap)
         gap_rules = [
             ("city_level_analysis", ["شهر", "شهری", "هر شهر"],
-             "در MVP فعلی داده شهر قابل اتکا نیست."),
+             "در MVP فعلی داده شهر قابل اتکا نیست.", False),
             ("near_retirement_analysis", [
-             "بازنشستگی", "بازنشسته", "آستانه بازنشستگی"], "قانون رسمی بازنشستگی هنوز تعریف نشده است."),
+             "بازنشستگی", "بازنشسته", "آستانه بازنشستگی"], "قانون رسمی بازنشستگی هنوز تعریف نشده است.", False),
             ("contractor_productivity_analysis", [
-             "بهره وری پیمانکار", "بهره‌وری پیمانکار", "عملکرد پیمانکار"], "داده بهره‌وری پیمانکارها در MVP فعلی وجود ندارد."),
+             "بهره وری پیمانکار", "بهره‌وری پیمانکار", "عملکرد پیمانکار"], "داده بهره‌وری پیمانکارها در MVP فعلی وجود ندارد.", True),
             ("training_need_analysis", ["نیاز آموزشی", "آموزش", "دوره تخصصی"],
-             "تعریف رسمی نیاز آموزشی و داده دوره‌ها در MVP فعلی کامل نیست."),
+             "تعریف رسمی نیاز آموزشی و داده دوره‌ها در MVP فعلی کامل نیست.", True),
             ("workload_hiring_alignment", [
-             "افزایش کار", "حجم کار", "بار کاری"], "داده حجم کار سازمان برای مقایسه با جذب وجود ندارد."),
+             "افزایش کار", "حجم کار", "بار کاری"], "داده حجم کار سازمان برای مقایسه با جذب وجود ندارد.", True),
             ("monthly_hiring_trend", [
-             "ماهانه", "ماه جذب", "در هر ماه"], "تحلیل ماهانه جذب در MVP فعلی آماده نیست."),
+             "ماهانه", "ماه جذب", "در هر ماه"], "تحلیل ماهانه جذب در MVP فعلی آماده نیست.", False),
             ("aging_workforce_analysis", ["سالخوردگی", "پیر شدن", "ساختار سنی"],
-             "برای تحلیل سالخوردگی باید آستانه و قاعده تحلیلی تعریف شود."),
+             "برای تحلیل سالخوردگی باید آستانه و قاعده تحلیلی تعریف شود.", True),
         ]
-        for intent_id, terms, reason in gap_rules:
+        for intent_id, terms, reason, is_analytical in gap_rules:
             if any(term in question for term in terms):
+                status = ValidationStatus.ANALYTICAL_GAP.value if is_analytical else ValidationStatus.DATA_GAP.value
                 return {
                     "route": Route.GAP.value,
-                    "status": ValidationStatus.DATA_GAP.value,
+                    "status": status,
                     "intent": intent_id,
                     "intent_id": intent_id,
                     "confidence": 0.9,
@@ -1207,6 +1216,8 @@ class LLMOrchestrator:
             bonus += 7
         if intent_id == "employee_count_by_education" and any(t in q for t in ["مدرک", "تحصیل", "کارشناسی", "دیپلم", "کاردانی", "دکترا"]):
             bonus += 5
+        if intent_id == "low_education_in_expert_roles" and any(t in q for t in ["نیاز پست", "پایین تر از نیاز", "کمتر از نیاز", "پست کارشناسی", "پایین‌تر از نیاز"]):
+            bonus += 8
         if intent_id == "most_common_education" and ("بیشترین" in q or "بیشترین سهم" in q) and "مدرک" in q:
             bonus += 7
         if intent_id == "least_common_education" and "کمترین" in q and "مدرک" in q:
@@ -1343,6 +1354,10 @@ class LLMOrchestrator:
             reason = payload.get("reason") or context.intent_result.get(
                 "reason") or "داده یا قانون کسب‌وکاری لازم در MVP فعلی موجود نیست."
             return f"این سؤال مرتبط با منابع انسانی است، اما در نسخه فعلی داده/تعریف کافی برای پاسخ دقیق وجود ندارد. دلیل: {reason}"
+        if status == ValidationStatus.ANALYTICAL_GAP.value:
+            reason = payload.get("reason") or context.intent_result.get(
+                "reason") or "شاخص یا سند تحلیلی لازم در MVP فعلی موجود نیست."
+            return f"سؤال مرتبط با منابع انسانی است، ولی داده، شاخص یا سند کافی برای تحلیل قابل اتکا فعلاً نداریم. دلیل: {reason}"
         if status == ValidationStatus.ACCESS_DENIED.value:
             return "امکان پاسخ‌گویی به این سؤال وجود ندارد، چون درخواست شامل اطلاعات فردی یا حساس کارکنان است."
         if status == ValidationStatus.OUT_OF_SCOPE.value:
@@ -1369,6 +1384,7 @@ class LLMOrchestrator:
         status = str(payload.get("status") or "").upper()
         return route in {Route.GAP.value, Route.REJECT.value, Route.NEEDS_CLARIFICATION.value} or status in {
             ValidationStatus.DATA_GAP.value,
+            ValidationStatus.ANALYTICAL_GAP.value,
             ValidationStatus.ACCESS_DENIED.value,
             ValidationStatus.OUT_OF_SCOPE.value,
             ValidationStatus.NEEDS_CLARIFICATION.value,
@@ -1450,7 +1466,7 @@ def to_plain_dict(value: Any) -> JsonDict:
 
 def route_for_status(status: str) -> str:
     status = status.upper()
-    if status == ValidationStatus.DATA_GAP.value:
+    if status in {ValidationStatus.DATA_GAP.value, ValidationStatus.ANALYTICAL_GAP.value}:
         return Route.GAP.value
     if status == ValidationStatus.NEEDS_CLARIFICATION.value:
         return Route.NEEDS_CLARIFICATION.value
@@ -1462,6 +1478,7 @@ def status_for_route(route: str, *, fallback: str | None = None) -> str:
     fallback = (fallback or "").upper()
     if fallback in {
         ValidationStatus.DATA_GAP.value,
+        ValidationStatus.ANALYTICAL_GAP.value,
         ValidationStatus.ACCESS_DENIED.value,
         ValidationStatus.OUT_OF_SCOPE.value,
         ValidationStatus.NEEDS_CLARIFICATION.value,
