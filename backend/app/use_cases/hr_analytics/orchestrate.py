@@ -35,13 +35,18 @@ class HRBIOrchestrationUseCase:
         route = str(payload.get("route") or "")
         errors = payload.get("errors") or []
         rejected = status in {"ACCESS_DENIED", "OUT_OF_SCOPE",
-                              "DATA_GAP", "SQL_VALIDATION_FAILED", "METADATA_ERROR"}
+                              "DATA_GAP", "ANALYTICAL_GAP", "SQL_VALIDATION_FAILED", "METADATA_ERROR"}
         success = bool(sql) and not rejected
 
         error = None
         if not success:
             error = payload.get("message_fa") or (
                 errors[0] if errors else status or "Phase 2 did not generate SQL.")
+
+        ctx = payload.get("context") or {}
+        traces = ctx.get("traces") or []
+        sql_plan = ctx.get("sql_plan") or {}
+        source = sql_plan.get("source") or _derive_source(route, status)
 
         return GenerationResult(
             sql=sql,
@@ -52,4 +57,16 @@ class HRBIOrchestrationUseCase:
             message=payload.get("message_fa"),
             detected_intent=payload.get("detected_intent"),
             warnings=payload.get("warnings") or [],
+            traces=traces,
+            source=source,
         )
+
+
+def _derive_source(route: str, status: str) -> str:
+    if status in {"ACCESS_DENIED", "OUT_OF_SCOPE"} or route == "REJECT":
+        return "reject"
+    if status in {"DATA_GAP", "ANALYTICAL_GAP"} or route == "GAP":
+        return "gap"
+    if status == "NEEDS_CLARIFICATION" or route == "NEEDS_CLARIFICATION":
+        return "clarification"
+    return "unknown"

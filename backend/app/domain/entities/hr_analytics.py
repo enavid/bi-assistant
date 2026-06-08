@@ -13,6 +13,8 @@ class GenerationResult:
     message: str | None = None
     detected_intent: str | None = None
     warnings: list[str] = field(default_factory=list)
+    traces: list[dict] = field(default_factory=list)
+    source: str | None = None
 
 
 @dataclass

@@ -53,6 +53,8 @@ class GenerateResponse(BaseModel):
     status: str | None = None
     detected_intent: str | None = None
     warnings: list[str] = Field(default_factory=list)
+    traces: list[dict] = Field(default_factory=list)
+    source: str | None = None
 
 
 class QueryRequest(BaseModel):

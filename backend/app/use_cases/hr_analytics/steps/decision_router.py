@@ -53,14 +53,23 @@ STATUS_NEEDS_CLARIFICATION = "NEEDS_CLARIFICATION"
 STATUS_SQL_VALIDATION_FAILED = "SQL_VALIDATION_FAILED"
 STATUS_METADATA_ERROR = "METADATA_ERROR"
 
+STATUS_ANALYTICAL_GAP = "ANALYTICAL_GAP"
+
 TERMINAL_STATUS_TO_ROUTE: dict[str, str] = {
     STATUS_DATA_GAP: ROUTE_GAP,
+    STATUS_ANALYTICAL_GAP: ROUTE_GAP,
     STATUS_ACCESS_DENIED: ROUTE_REJECT,
     STATUS_OUT_OF_SCOPE: ROUTE_REJECT,
     STATUS_NEEDS_CLARIFICATION: ROUTE_CLARIFICATION,
     STATUS_SQL_VALIDATION_FAILED: ROUTE_REJECT,
     STATUS_METADATA_ERROR: ROUTE_REJECT,
 }
+
+# Template IDs in the status_templates section of sql_templates.yaml.
+# When an intent maps to one of these, the router must route to status directly.
+_STATUS_TEMPLATE_IDS: frozenset[str] = frozenset({
+    "TPL_DATA_GAP", "TPL_ACCESS_DENIED", "TPL_OUT_OF_SCOPE", "TPL_NEEDS_CLARIFICATION",
+})
 
 ROUTE_TO_DEFAULT_STATUS: dict[str, str] = {
     ROUTE_SQL: STATUS_VALID,
@@ -423,6 +432,31 @@ class DecisionRouter:
         if sql_template_id and not sql_template:
             warnings.append(
                 f"SQL template '{sql_template_id}' was referenced but not found.")
+
+        # Status templates (TPL_ACCESS_DENIED, TPL_DATA_GAP, etc.) must route to
+        # the appropriate status directly; they are not executable SQL templates.
+        if sql_template_id and sql_template_id.upper() in _STATUS_TEMPLATE_IDS:
+            tpl_status = str((sql_template or {}).get("status") or STATUS_DATA_GAP).upper()
+            tpl_route = str((sql_template or {}).get("route") or ROUTE_GAP).upper()
+            resolved_status = self._status_for_terminal(tpl_route, tpl_status)
+            resolved_route = self._route_for_status_or_route(status=resolved_status, route=tpl_route)
+            return self._decision(
+                route=resolved_route,
+                status=resolved_status,
+                reason=f"Intent maps to status template {sql_template_id}; no SQL execution.",
+                decision_source="router.status_template",
+                intent_id=str(intent_id) if intent_id else None,
+                report_id=report_id,
+                sql_template_id=None,
+                confidence=confidence,
+                output_type="status_message",
+                recommended_visualization="status_message",
+                expected_status_sql=self._status_sql(resolved_status, service),
+                started=started,
+                service=service,
+                user_role=user_role,
+                warnings=warnings,
+            )
 
         if self.config.require_template_for_sql and not sql_template:
             if self.config.allow_dynamic_sql_fallback:

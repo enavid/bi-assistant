@@ -39,10 +39,21 @@ ROUTE_CLARIFICATION = "NEEDS_CLARIFICATION"
 STATUS_SUPPORTED = "supported"
 STATUS_VALID = "VALID"
 STATUS_DATA_GAP = "DATA_GAP"
+STATUS_ANALYTICAL_GAP = "ANALYTICAL_GAP"
 STATUS_ACCESS_DENIED = "ACCESS_DENIED"
 STATUS_OUT_OF_SCOPE = "OUT_OF_SCOPE"
 STATUS_NEEDS_CLARIFICATION = "NEEDS_CLARIFICATION"
 STATUS_OK = "OK"
+
+# Intents that represent analytical gaps (no raw data missing, but no analytical
+# methodology/index is defined in the current MVP either).
+ANALYTICAL_GAP_INTENT_IDS: frozenset[str] = frozenset({
+    "contractor_productivity_analysis",
+    "hiring_business_growth_alignment",
+    "employment_stability_impact_analysis",
+    "workforce_aging_trend_analysis",
+    "education_training_need_analysis",
+})
 
 PERSIAN_DIGITS = "۰۱۲۳۴۵۶۷۸۹"
 ARABIC_DIGITS = "٠١٢٣٤٥٦٧٨٩"
@@ -290,6 +301,11 @@ class IntentParser:
         route = str(intent.get("route")
                     or extraction.get("route") or ROUTE_SQL)
         status = self._status_for_route_and_intent(route, intent)
+
+        # Analytical gap intents get a more specific status than generic DATA_GAP.
+        if route == ROUTE_GAP and best.intent_id in ANALYTICAL_GAP_INTENT_IDS:
+            status = STATUS_ANALYTICAL_GAP
+
         sql_template_id = self._choose_sql_template_id(
             best.intent_id, intent, extraction, service)
         report_id = intent.get("report_id") or extraction.get("report_id")
@@ -499,12 +515,12 @@ class IntentParser:
             route = str(semantic_payload.get("route", "")).upper()
             if status in {STATUS_ACCESS_DENIED, STATUS_OUT_OF_SCOPE, STATUS_NEEDS_CLARIFICATION}:
                 return self._terminal_from_payload(semantic_payload, question, service)
-            if status == STATUS_DATA_GAP and self.config.allow_gap_from_semantic_mapper:
+            if status in {STATUS_DATA_GAP, STATUS_ANALYTICAL_GAP} and self.config.allow_gap_from_semantic_mapper:
                 intent_id = self._guess_gap_intent(question, semantic_payload)
                 return self._terminal_result(
                     intent_id=intent_id,
                     route=ROUTE_GAP,
-                    status=STATUS_DATA_GAP,
+                    status=status,
                     question=question,
                     normalized_question=question,
                     reason=semantic_payload.get(
@@ -539,12 +555,13 @@ class IntentParser:
                 started=time.perf_counter(),
             )
 
-        if status == STATUS_DATA_GAP or route == ROUTE_GAP:
+        if status in {STATUS_DATA_GAP, STATUS_ANALYTICAL_GAP} or route == ROUTE_GAP:
             intent_id = self._guess_gap_intent(question, payload)
+            gap_status = status if status in {STATUS_DATA_GAP, STATUS_ANALYTICAL_GAP} else STATUS_DATA_GAP
             return self._terminal_result(
                 intent_id=intent_id,
                 route=ROUTE_GAP,
-                status=STATUS_DATA_GAP,
+                status=gap_status,
                 question=question,
                 normalized_question=question,
                 reason=payload.get(
@@ -596,7 +613,7 @@ class IntentParser:
 
     @staticmethod
     def _status_sql_for_route(route: str, status: str) -> str:
-        if status == STATUS_DATA_GAP or route == ROUTE_GAP:
+        if status in {STATUS_DATA_GAP, STATUS_ANALYTICAL_GAP} or route == ROUTE_GAP:
             return "SELECT 'DATA_GAP' AS status;"
         if status == STATUS_ACCESS_DENIED:
             return "SELECT 'ACCESS_DENIED' AS status;"
@@ -680,7 +697,7 @@ class IntentParser:
             "asks_recent_year": self._has_any(question, ["سال اخیر", "سال جاری", "امسال"]),
             "asks_last_15_years": self._has_any(question, ["۱۵ سال اخیر", "15 سال اخیر", "پانزده سال اخیر"]),
             "asks_zero_service": self._has_any(question, ["بدون سابقه", "سابقه صفر", "0 سال سابقه"]),
-            "asks_individual": self._has_any(question, ["نام", "کد ملی", "شماره پرسنلی", "مشخصات", "لیست کارکنان", "افراد را نمایش"]),
+            "asks_individual": self._has_any(question, ["نام", "کد ملی", "شماره پرسنلی", "مشخصات", "لیست کارکنان", "لیست افراد", "افراد را نمایش", "با شناسه"]),
         })
         features["age_filter"] = self._extract_age_filter(question)
         features["comparison_dimension"] = self._infer_comparison_dimension(

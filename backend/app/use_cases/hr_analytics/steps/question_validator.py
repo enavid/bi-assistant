@@ -74,6 +74,7 @@ ROUTE_NEEDS_CLARIFICATION = "NEEDS_CLARIFICATION"
 STATUS_OK = "OK"
 STATUS_VALID = "VALID"
 STATUS_DATA_GAP = "DATA_GAP"
+STATUS_ANALYTICAL_GAP = "ANALYTICAL_GAP"
 STATUS_ACCESS_DENIED = "ACCESS_DENIED"
 STATUS_OUT_OF_SCOPE = "OUT_OF_SCOPE"
 STATUS_NEEDS_CLARIFICATION = "NEEDS_CLARIFICATION"
@@ -561,6 +562,7 @@ class QuestionValidator:
     ) -> QuestionValidationResult | None:
         matched_rules: list[ValidationRuleMatch] = []
         gap_candidates: list[str] = []
+        has_analytical_gap = False
 
         # Rule definitions intentionally mirror metadata GAP examples.
         for rule in self.data_gap_rules:
@@ -578,6 +580,9 @@ class QuestionValidator:
             if rule_id == "QVAL_GAP_CITY" and self._metadata_says_city_is_reliable(metadata):
                 continue
 
+            if rule.get("gap_type") == "analytical":
+                has_analytical_gap = True
+
             gap_candidates.append(str(rule["gap_key"]))
             matched_rules.append(
                 ValidationRuleMatch(
@@ -588,15 +593,16 @@ class QuestionValidator:
                     message_fa=str(rule.get("message_fa")
                                    or "این سؤال در MVP فعلی Data Gap است."),
                     route=ROUTE_GAP,
-                    status=STATUS_DATA_GAP,
+                    status=STATUS_ANALYTICAL_GAP if rule.get("gap_type") == "analytical" else STATUS_DATA_GAP,
                 )
             )
 
         if matched_rules:
             primary = matched_rules[0]
+            final_status = STATUS_ANALYTICAL_GAP if has_analytical_gap else STATUS_DATA_GAP
             return QuestionValidationResult(
                 route=ROUTE_GAP,
-                status=STATUS_DATA_GAP,
+                status=final_status,
                 is_valid=False,
                 reason=primary.message_en or primary.message_fa or "Known Data Gap for the current MVP.",
                 confidence=0.94,
@@ -1022,6 +1028,7 @@ def _build_sensitive_terms() -> list[str]:
         "مشخصات کارکنان",
         "نام و نام خانوادگی",
         "نام خانوادگی",
+        "با شناسه",
         "national_id",
         "personnel_number",
         "first_name",
@@ -1035,7 +1042,9 @@ def _build_sensitive_terms() -> list[str]:
 def _build_employee_level_terms() -> list[str]:
     return [
         "لیست کارکنان",
+        "لیست افراد",
         "فهرست کارکنان",
+        "فهرست افراد",
         "اسامی کارکنان",
         "لیست اسامی",
         "نام کارکنان",
@@ -1154,6 +1163,7 @@ def _build_data_gap_rules() -> list[JsonDict]:
             "gap_key": "contractor_productivity_analysis",
             "terms": ["بهره وری پیمانکار", "بهره‌وری پیمانکار", "بهره وری پیمانکاری", "بهره‌وری پیمانکاری", "عملکرد پیمانکار"],
             "severity": "medium",
+            "gap_type": "analytical",
             "message_fa": "داده بهره‌وری یا شاخص عملکرد پیمانکارها در MVP فعلی وجود ندارد.",
         },
         {
@@ -1169,6 +1179,7 @@ def _build_data_gap_rules() -> list[JsonDict]:
             "gap_key": "hiring_workload_alignment",
             "terms": ["حجم کار", "افزایش کار", "بار کاری", "رشد کار", "هماهنگ بوده", "هماهنگی جذب"],
             "severity": "medium",
+            "gap_type": "analytical",
             "message_fa": "برای سنجش هماهنگی جذب با حجم کار، داده حجم کار یا شاخص عملیاتی لازم است.",
         },
         {
