@@ -199,7 +199,7 @@ export function QueryResultView({ result }: { result: QueryResult }) {
               Top {BAR_TOP} of {sortedData.length}
             </p>
           )}
-          <div style={{ height: CHART_H }}>
+          <div style={{ height: Math.max(120, Math.min(CHART_H, barData.length * 40 + 60)) }}>
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={barData} layout="vertical" margin={{ top: 4, right: 52, left: 8, bottom: 4 }}>
                 <XAxis

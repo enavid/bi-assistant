@@ -57,7 +57,7 @@ export function ChatPage() {
 
   useEffect(() => {
     bodyRef.current?.scrollTo({ top: bodyRef.current.scrollHeight, behavior: 'smooth' })
-  }, [session?.messages, sending])
+  }, [session?.messages, sending, queryResults])
 
   async function handleSend() {
     const q = question.trim()
