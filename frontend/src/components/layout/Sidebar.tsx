@@ -55,7 +55,7 @@ function SelectField({
 
       {open && (
         <div
-          className="absolute z-50 left-0 right-0 mt-1 rounded-[9px] overflow-hidden overflow-y-auto"
+          className="absolute z-[100] left-0 right-0 mt-1 rounded-[9px] overflow-y-auto"
           style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)', boxShadow: '0 8px 24px rgba(0,0,0,0.18)', maxHeight: 220 }}
         >
           {options.map((opt) => (

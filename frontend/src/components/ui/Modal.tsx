@@ -23,11 +23,11 @@ export function Modal({ open, title, onClose, children }: ModalProps) {
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
       onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
     >
-      <div className="w-full max-w-md mx-4 bg-bg-surface border border-border-default rounded-xl overflow-hidden shadow-xl">
-        <div className="flex items-center justify-between px-5 py-3.5 border-b border-border-default">
-          <span className="text-sm font-medium text-text-1">{title}</span>
-          <button onClick={onClose} className="text-text-3 hover:text-text-1 transition-colors p-1">
-            <Icon name="x" size={15} />
+      <div className="w-full max-w-sm mx-4 rounded-[14px] shadow-2xl" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)' }}>
+        <div className="flex items-center justify-between px-5 py-4 rounded-t-[14px]" style={{ borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-raised)' }}>
+          <span className="text-[14px] font-semibold" style={{ color: 'var(--text-1)' }}>{title}</span>
+          <button onClick={onClose} className="w-7 h-7 flex items-center justify-center rounded-[7px] transition-colors hover:opacity-70" style={{ color: 'var(--text-3)' }}>
+            <Icon name="x" size={14} />
           </button>
         </div>
         <div className="p-5">{children}</div>
