@@ -59,10 +59,10 @@ function looksLikeTimeSeries(labels: string[]): boolean {
 function cellStyle(ci: number, rows: unknown[][]): React.CSSProperties {
   if (rows.length === 0) return {}
   const val = rows[0][ci]
-  if (isNumericVal(val)) return { textAlign: 'right', fontVariantNumeric: 'tabular-nums' }
+  if (isNumericVal(val)) return { textAlign: 'center', fontVariantNumeric: 'tabular-nums' }
   const str = String(val ?? '')
   if (hasPersian(str)) return { textAlign: 'right', direction: 'rtl' }
-  return {}
+  return { textAlign: 'left' }
 }
 
 const TABS: { id: ViewMode; label: string; icon: Parameters<typeof Icon>[0]['name'] }[] = [
