@@ -39,7 +39,7 @@ const STATUS_LABEL: Record<string, string> = {
 
 function PipelineBadges({ info }: { info: GenerateResponse }) {
   const route = info.route ?? ''
-  if (!['SQL', 'GAP'].includes(route)) return null
+  if (!['SQL', 'GAP', 'REJECT'].includes(route)) return null
   const rs = ROUTE_STYLE[route]
   const statusLabel = info.status ? STATUS_LABEL[info.status] : null
   const showIntent = route === 'GAP' && info.detected_intent
@@ -98,7 +98,14 @@ export function ChatPage() {
   const [sending, setSending] = useState(false)
   const [inputFocused, setInputFocused] = useState(false)
   const [queryResults, setQueryResults] = useState<Record<string, QueryResult>>({})
-  const [pipelineInfo, setPipelineInfo] = useState<Record<string, GenerateResponse>>({})
+  const [pipelineInfo, setPipelineInfo] = useState<Record<string, GenerateResponse>>(() => {
+    try {
+      const raw = localStorage.getItem('bi-pipeline-cache')
+      return raw ? (JSON.parse(raw) as Record<string, GenerateResponse>) : {}
+    } catch {
+      return {}
+    }
+  })
   const [dismissed, setDismissed] = useState<Set<string>>(new Set())
   const bodyRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -135,7 +142,17 @@ export function ChatPage() {
       qc.setQueryData(['session', session.id], aiSession)
 
       const lastMsg = aiSession.messages[aiSession.messages.length - 1]
-      if (lastMsg) setPipelineInfo((prev) => ({ ...prev, [lastMsg.id]: result }))
+      if (lastMsg) {
+        setPipelineInfo((prev) => {
+          const next = { ...prev, [lastMsg.id]: result }
+          try {
+            const entries = Object.entries(next)
+            const trimmed = Object.fromEntries(entries.slice(-500))
+            localStorage.setItem('bi-pipeline-cache', JSON.stringify(trimmed))
+          } catch {}
+          return next
+        })
+      }
     } finally {
       setSending(false)
     }
