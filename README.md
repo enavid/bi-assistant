@@ -17,7 +17,7 @@ Natural-language HR questions answered with controlled SQL queries against a Pos
 ## Requirements
 
 - Python 3.12
-- Node 18+
+- Node 20+
 - PostgreSQL 14+
 - Ollama running locally or accessible via network
 
@@ -35,31 +35,52 @@ cp .env.example .env
 
 ```bash
 cd backend
-python -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-
-alembic upgrade head
-uvicorn app.main:app --reload
+make install     # create venv and install dependencies
+make dev         # start API server with hot-reload
 ```
 
 **Frontend:**
 
 ```bash
 cd frontend
-npm install
-npm run dev
-```
-
-**Tests:**
-
-```bash
-cd backend
-source venv/bin/activate
-pytest tests -q
+make install     # npm install
+make dev         # start Vite dev server (http://localhost:5173)
 ```
 
 API docs available at `http://localhost:8000/docs`.
+
+## Running tests
+
+**Backend unit tests:**
+
+```bash
+cd backend
+make test
+```
+
+**Backend routing evaluation (golden test suite):**
+
+```bash
+cd backend
+make eval
+```
+
+This runs 44 labeled test cases covering all routing categories (ACCESS\_DENIED, OUT\_OF\_SCOPE, DATA\_GAP, ANALYTICAL\_GAP, SQL) and prints a full result table.
+
+**Frontend:**
+
+```bash
+cd frontend
+make test        # vitest unit/component tests
+make type-check  # TypeScript type checking
+```
+
+**Full pre-commit check:**
+
+```bash
+cd backend && make check   # lint + test + eval
+cd frontend && make check  # lint + type-check + build
+```
 
 ## Production deployment
 
