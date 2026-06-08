@@ -23,6 +23,54 @@ function getBlockedText(msg: Message, info?: GenerateResponse): string | null {
   return STATUS_FA[status] ?? null
 }
 
+const ROUTE_STYLE: Record<string, { bg: string; text: string; border: string }> = {
+  SQL:                 { bg: 'var(--accent-bg)',  text: 'var(--accent-text)',  border: 'var(--accent-border)' },
+  GAP:                 { bg: 'var(--amber-bg)',   text: 'var(--amber)',        border: 'var(--amber-border)' },
+  REJECT:              { bg: 'var(--red-bg)',     text: 'var(--red)',          border: 'var(--red-border)' },
+  NEEDS_CLARIFICATION: { bg: 'var(--bg-raised)',  text: 'var(--text-3)',       border: 'var(--border-default)' },
+}
+
+const STATUS_LABEL: Record<string, string> = {
+  DATA_GAP:       'Data Gap',
+  ANALYTICAL_GAP: 'Analytical Gap',
+  ACCESS_DENIED:  'Access Denied',
+  OUT_OF_SCOPE:   'Out of Scope',
+}
+
+function PipelineBadges({ info }: { info: GenerateResponse }) {
+  const rs = ROUTE_STYLE[info.route ?? '']
+  if (!rs) return null
+  const statusLabel = info.status ? STATUS_LABEL[info.status] : null
+  const showIntent = info.route === 'GAP' && info.detected_intent
+
+  return (
+    <div className="ml-10 flex items-center gap-1.5 flex-wrap mt-0.5">
+      <span
+        className="text-[10px] font-mono font-medium px-1.5 py-[3px] rounded-[4px]"
+        style={{ background: rs.bg, color: rs.text, border: `1px solid ${rs.border}` }}
+      >
+        {info.route}
+      </span>
+      {statusLabel && (
+        <span
+          className="text-[10px] font-mono px-1.5 py-[3px] rounded-[4px]"
+          style={{ background: 'var(--bg-raised)', color: 'var(--text-3)', border: '1px solid var(--border-default)' }}
+        >
+          {statusLabel}
+        </span>
+      )}
+      {showIntent && (
+        <span
+          className="text-[10px] font-mono truncate max-w-[220px] px-1.5 py-[3px] rounded-[4px]"
+          style={{ background: 'var(--bg-raised)', color: 'var(--text-3)', border: '1px solid var(--border-subtle)' }}
+        >
+          {info.detected_intent}
+        </span>
+      )}
+    </div>
+  )
+}
+
 function KpiCard({ columns, rows }: { columns: string[]; rows: unknown[][] }) {
   if (rows.length !== 1 || columns.length !== 1) return null
   const value = rows[0][0]
@@ -210,6 +258,9 @@ export function ChatPage() {
                   </div>
                 ) : null}
               </div>
+
+              {/* Pipeline trace badges */}
+              {info && <PipelineBadges info={info} />}
 
               {/* Query results */}
               {queryResults[msg.id] && (

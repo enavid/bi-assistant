@@ -21,6 +21,12 @@
   --green-border: #1a3a28;
   --tag-opt-bg:   #162a20;
   --tag-opt-text: #4ade80;
+  --amber:        #fbbf24;
+  --amber-bg:     #1f1505;
+  --amber-border: #3d2a0a;
+  --red:          #f87171;
+  --red-bg:       #1f0a0a;
+  --red-border:   #3d1515;
 }
 
 :root.light {
@@ -42,6 +48,12 @@
   --green-border: #a0dfc2;
   --tag-opt-bg:   #e6f7f0;
   --tag-opt-text: #0d6b44;
+  --amber:        #d97706;
+  --amber-bg:     #fffbeb;
+  --amber-border: #fde68a;
+  --red:          #dc2626;
+  --red-bg:       #fef2f2;
+  --red-border:   #fecaca;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
