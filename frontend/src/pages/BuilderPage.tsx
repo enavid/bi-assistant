@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { clsx } from 'clsx'
 import {
   useProjects, useCreateProject, useUpdateProject, useDeleteProject,
@@ -49,6 +49,16 @@ export function BuilderPage() {
   const [testResult, setTestResult] = useState<{ sql: string; route?: string; intent?: string } | null>(null)
   const [testLoading, setTestLoading] = useState(false)
   const [previewExpanded, setPreviewExpanded] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const menuRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    function close(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false)
+    }
+    if (menuOpen) document.addEventListener('mousedown', close)
+    return () => document.removeEventListener('mousedown', close)
+  }, [menuOpen])
 
   // unsaved changes tracking
   const [sectionDraft, setSectionDraft] = useState<string | null>(null)
@@ -222,14 +232,32 @@ export function BuilderPage() {
           </button>
           <div className="w-px h-4 bg-border-default" />
           <span className="text-[13px] font-medium text-text-1 flex-1 truncate">{selected?.name}</span>
-          <Button variant="danger" size="sm" onClick={async () => { if (selected) { await deleteProject.mutateAsync(selected.id); backToGallery() } }}>
-            <Icon name="trash" size={13} /> Delete
-          </Button>
+          <div className="relative" ref={menuRef}>
+            <button
+              onClick={() => setMenuOpen(v => !v)}
+              className="w-7 h-7 flex items-center justify-center rounded-[7px] transition-colors hover:bg-bg-raised"
+              style={{ color: 'var(--text-3)', fontSize: '18px', letterSpacing: '1px', lineHeight: 1 }}
+              title="More options"
+            >
+              ···
+            </button>
+            {menuOpen && (
+              <div className="absolute right-0 top-9 w-44 rounded-[8px] py-1 z-50 overflow-hidden" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)', boxShadow: '0 4px 16px rgba(0,0,0,0.15)' }}>
+                <button
+                  onClick={async () => { setMenuOpen(false); if (selected) { await deleteProject.mutateAsync(selected.id); backToGallery() } }}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-xs transition-colors hover:bg-bg-raised"
+                  style={{ color: '#f87171' }}
+                >
+                  <Icon name="trash" size={13} /> Delete project
+                </button>
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="flex flex-1 overflow-hidden">
           {/* Section list with ↑ ↓ buttons */}
-          <div className="w-[160px] min-w-[160px] border-r-2 border-border-default flex flex-col bg-bg-raised">
+          <div className="w-[180px] min-w-[180px] border-r-2 border-border-default flex flex-col bg-bg-raised">
             <div className="h-9 border-b border-border-subtle flex items-center px-3 flex-shrink-0">
               <span className="text-[10px] font-medium text-text-3 uppercase tracking-[.7px]">Sections</span>
             </div>
@@ -237,6 +265,7 @@ export function BuilderPage() {
               {sortedSections.map((s, i) => (
                 <div
                   key={s.id}
+                  title={s.name}
                   onClick={() => { setActiveSectionId(s.id); setTab('sections'); setSectionDraft(null) }}
                   className={clsx(
                     'group flex items-center gap-1.5 px-2 py-1.5 rounded-[7px] mb-1 cursor-pointer border transition-all',
@@ -360,10 +389,10 @@ export function BuilderPage() {
                         </button>
                         <button
                           onClick={() => navigator.clipboard.writeText(`{${s.id}}`)}
-                          className="px-1.5 py-0.5 bg-bg-surface border-l border-border-default text-text-3 hover:text-text-2 transition-colors"
-                          title="Click to copy ID"
+                          className="px-1.5 py-0.5 bg-bg-surface border-l border-border-default text-text-3 hover:text-text-2 transition-colors flex items-center"
+                          title="Copy section ID"
                         >
-                          ID
+                          <Icon name="copy" size={11} />
                         </button>
                       </div>
                     ))}
@@ -479,9 +508,27 @@ export function BuilderPage() {
           <div className={clsx('border-l-2 border-border-default flex flex-col bg-bg-raised transition-all', previewExpanded ? 'w-[420px] min-w-[420px]' : 'w-[210px] min-w-[210px]')}>
             <div className="h-9 border-b border-border-subtle flex items-center px-3 flex-shrink-0 gap-2">
               <span className="text-[10px] font-medium text-text-3 uppercase tracking-[.7px] flex-1">Assembled prompt</span>
+              {preview && (
+                <>
+                  <span className="text-[10px]" style={{ color: 'var(--text-3)' }}>{preview.length} chars</span>
+                  <button
+                    onClick={() => navigator.clipboard.writeText(preview)}
+                    className="transition-colors"
+                    style={{ color: 'var(--text-3)' }}
+                    onMouseEnter={e => (e.currentTarget.style.color = 'var(--text-1)')}
+                    onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-3)')}
+                    title="Copy assembled prompt"
+                  >
+                    <Icon name="copy" size={13} />
+                  </button>
+                </>
+              )}
               <button
                 onClick={() => setPreviewExpanded((v) => !v)}
-                className="text-text-3 hover:text-text-1 transition-colors"
+                className="transition-colors"
+                style={{ color: 'var(--text-3)' }}
+                onMouseEnter={e => (e.currentTarget.style.color = 'var(--text-1)')}
+                onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-3)')}
                 title={previewExpanded ? 'Collapse' : 'Expand'}
               >
                 <Icon name={previewExpanded ? 'arrow-right' : 'arrow-left'} size={13} />
@@ -489,9 +536,9 @@ export function BuilderPage() {
             </div>
             <div className="flex-1 overflow-y-auto p-3">
               {preview ? (
-                <pre className="text-[12.5px] font-mono text-text-2 leading-[1.7] whitespace-pre-wrap break-words">{preview}</pre>
+                <HighlightedPreview text={preview} />
               ) : (
-                <p className="text-[12px] text-text-3">Add sections to see preview</p>
+                <p className="text-[12px]" style={{ color: 'var(--text-3)' }}>Add sections to see preview</p>
               )}
             </div>
           </div>
@@ -511,6 +558,21 @@ export function BuilderPage() {
         </div>
       </Modal>
     </>
+  )
+}
+
+function HighlightedPreview({ text }: { text: string }) {
+  const parts = text.split(/(\{[^}]+\})/)
+  return (
+    <pre className="text-[12.5px] font-mono leading-[1.7] whitespace-pre-wrap break-words" style={{ color: 'var(--text-2)' }}>
+      {parts.map((part, i) =>
+        /^\{[^}]+\}$/.test(part) ? (
+          <span key={i} className="rounded px-0.5" style={{ color: 'var(--accent-text)', background: 'var(--accent-bg)' }}>{part}</span>
+        ) : (
+          <span key={i}>{part}</span>
+        )
+      )}
+    </pre>
   )
 }
 
