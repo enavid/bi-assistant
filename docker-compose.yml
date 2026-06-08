@@ -25,6 +25,12 @@ services:
     depends_on:
       backend:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost/index.html"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
 
   nginx:
     image: nginx:1.27-alpine
@@ -38,5 +44,7 @@ services:
       - ./nginx/auth:/etc/nginx/auth:ro
       - /etc/ssl/bi-assistant:/etc/ssl/bi-assistant:ro
     depends_on:
-      - frontend
-      - backend
+      frontend:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
