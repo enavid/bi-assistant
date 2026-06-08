@@ -64,6 +64,25 @@ function cellStyle(ci: number, rows: unknown[][]): React.CSSProperties {
   return { textAlign: 'left' }
 }
 
+function XTick({ x, y, payload }: { x?: number; y?: number; payload?: { value: string } }) {
+  const raw = String(payload?.value ?? '')
+  const label = raw.length > 12 ? raw.slice(0, 11) + '…' : raw
+  return (
+    <g transform={`translate(${x ?? 0},${y ?? 0})`}>
+      <text
+        x={0} y={0} dy={4}
+        textAnchor="end"
+        fill="var(--text-3)"
+        fontSize={10}
+        transform="rotate(-35)"
+      >
+        <title>{raw}</title>
+        {label}
+      </text>
+    </g>
+  )
+}
+
 const TABS: { id: ViewMode; label: string; icon: Parameters<typeof Icon>[0]['name'] }[] = [
   { id: 'table', label: 'Table', icon: 'list'       },
   { id: 'bar',   label: 'Bar',   icon: 'bar-h'      },
@@ -316,15 +335,13 @@ export function QueryResultView({ result }: { result: QueryResult }) {
             </p>
           )}
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={lineData} margin={{ top: 10, right: 16, left: -10, bottom: timeSeries ? 45 : 10 }}>
+            <LineChart data={lineData} margin={{ top: 10, right: 16, left: -10, bottom: 50 }}>
               <CartesianGrid stroke="var(--border-subtle)" strokeDasharray="4 2" />
               <XAxis
                 dataKey="name"
-                tick={timeSeries ? { fontSize: 10, fill: 'var(--text-3)' } : false}
+                tick={<XTick />}
                 axisLine={{ stroke: 'var(--border-default)' }}
                 tickLine={false}
-                angle={-35}
-                textAnchor="end"
                 interval={Math.max(0, Math.ceil(lineData.length / 12) - 1)}
               />
               <YAxis tick={{ fontSize: 11, fill: 'var(--text-3)' }} axisLine={false} tickLine={false} />
@@ -354,7 +371,7 @@ export function QueryResultView({ result }: { result: QueryResult }) {
             </p>
           )}
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={lineData} margin={{ top: 10, right: 16, left: -10, bottom: timeSeries ? 45 : 10 }}>
+            <AreaChart data={lineData} margin={{ top: 10, right: 16, left: -10, bottom: 50 }}>
               <defs>
                 <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#3b6ef5" stopOpacity={0.3} />
@@ -364,11 +381,9 @@ export function QueryResultView({ result }: { result: QueryResult }) {
               <CartesianGrid stroke="var(--border-subtle)" strokeDasharray="4 2" />
               <XAxis
                 dataKey="name"
-                tick={timeSeries ? { fontSize: 10, fill: 'var(--text-3)' } : false}
+                tick={<XTick />}
                 axisLine={{ stroke: 'var(--border-default)' }}
                 tickLine={false}
-                angle={-35}
-                textAnchor="end"
                 interval={Math.max(0, Math.ceil(lineData.length / 12) - 1)}
               />
               <YAxis tick={{ fontSize: 11, fill: 'var(--text-3)' }} axisLine={false} tickLine={false} />
