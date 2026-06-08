@@ -6,7 +6,6 @@ import { useSession, useProjects } from '@/hooks'
 import { Icon } from '@/components/ui/Icon'
 import { SqlBlock } from '@/components/ui/SqlBlock'
 import { QueryResultView } from '@/components/chat/QueryResult'
-import { clsx } from 'clsx'
 import type { GenerateResponse, Message, QueryResult } from '@/types'
 
 const STATUS_FA: Record<string, string> = {

@@ -46,11 +46,9 @@ function SelectField({
         }}
       >
         <span className="truncate">{selected?.label ?? placeholder ?? 'Select…'}</span>
-        <Icon
-          name="chevron-down"
-          size={13}
-          style={{ color: 'var(--text-3)', flexShrink: 0, marginLeft: 8, transition: 'transform 150ms', transform: open ? 'rotate(180deg)' : 'rotate(0deg)' }}
-        />
+        <span style={{ color: 'var(--text-3)', flexShrink: 0, marginLeft: 8, transition: 'transform 150ms', transform: open ? 'rotate(180deg)' : 'rotate(0deg)', display: 'flex' }}>
+          <Icon name="chevron-down" size={13} />
+        </span>
       </button>
 
       {open && (

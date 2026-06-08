@@ -10,7 +10,7 @@ import { useAppStore } from '@/store/appStore'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Icon } from '@/components/ui/Icon'
-import type { Project, Section } from '@/types'
+import type { Project } from '@/types'
 
 type Tab = 'sections' | 'output' | 'notes' | 'experiments'
 type View = 'gallery' | 'detail'
