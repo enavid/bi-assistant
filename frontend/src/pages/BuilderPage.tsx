@@ -124,10 +124,9 @@ export function BuilderPage() {
     if (target < 0 || target >= sections.length) return
     const a = sections[index]
     const b = sections[target]
-    await Promise.all([
-      updateSection.mutateAsync({ projectId: selected.id, sectionId: a.id, payload: { order: b.order } }),
-      updateSection.mutateAsync({ projectId: selected.id, sectionId: b.id, payload: { order: a.order } }),
-    ])
+    // Sequential — not parallel — to avoid React Query cache race condition
+    await updateSection.mutateAsync({ projectId: selected.id, sectionId: a.id, payload: { order: b.order } })
+    await updateSection.mutateAsync({ projectId: selected.id, sectionId: b.id, payload: { order: a.order } })
   }
 
   function insertIntoOutput(sectionId: string) {
@@ -262,42 +261,62 @@ export function BuilderPage() {
               <span className="text-[10px] font-medium text-text-3 uppercase tracking-[.7px]">Sections</span>
             </div>
             <div className="flex-1 overflow-y-auto p-1.5">
-              {sortedSections.map((s, i) => (
-                <div
-                  key={s.id}
-                  title={s.name}
-                  onClick={() => { setActiveSectionId(s.id); setTab('sections'); setSectionDraft(null) }}
-                  className={clsx(
-                    'group flex items-center gap-1.5 px-2 py-1.5 rounded-[7px] mb-1 cursor-pointer border transition-all',
-                    activeSection?.id === s.id && tab === 'sections'
-                      ? 'bg-bg-surface border-border-strong'
-                      : 'border-transparent hover:bg-bg-surface hover:border-border-subtle'
-                  )}
-                >
-                  {/* ↑ ↓ buttons */}
-                  <div className="flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
-                    <button
-                      onClick={(e) => { e.stopPropagation(); handleMoveSection(i, -1) }}
-                      disabled={i === 0}
-                      className="w-4 h-4 flex items-center justify-center rounded text-text-3 hover:text-text-1 disabled:opacity-20"
+              {sortedSections.map((s, i) => {
+                const isActive = activeSection?.id === s.id && tab === 'sections'
+                return (
+                  <div key={s.id} className="group relative mb-0.5">
+                    {/* Clickable section row */}
+                    <div
+                      title={s.name}
+                      onClick={() => { setActiveSectionId(s.id); setTab('sections'); setSectionDraft(null) }}
+                      className={clsx(
+                        'flex items-center gap-2 pl-2.5 pr-[68px] py-2 rounded-[8px] cursor-pointer border transition-all',
+                        isActive
+                          ? 'bg-bg-surface border-border-strong'
+                          : 'border-transparent hover:bg-bg-surface hover:border-border-subtle'
+                      )}
                     >
-                      <svg width="8" height="8" viewBox="0 0 8 8"><path d="M4 1L7 6H1L4 1Z" fill="currentColor"/></svg>
-                    </button>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); handleMoveSection(i, 1) }}
-                      disabled={i === sortedSections.length - 1}
-                      className="w-4 h-4 flex items-center justify-center rounded text-text-3 hover:text-text-1 disabled:opacity-20"
-                    >
-                      <svg width="8" height="8" viewBox="0 0 8 8"><path d="M4 7L1 2H7L4 7Z" fill="currentColor"/></svg>
-                    </button>
+                      <div className={clsx('w-1.5 h-1.5 rounded-full flex-shrink-0 transition-colors', isActive ? 'bg-accent' : 'bg-border-strong')} />
+                      <span className="text-[12px] text-text-1 truncate">{s.name}</span>
+                    </div>
+                    {/* Controls — always inside hover zone, positioned absolute on right */}
+                    <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleMoveSection(i, -1) }}
+                        disabled={i === 0}
+                        title="Move up"
+                        className="w-[22px] h-[22px] flex items-center justify-center rounded-[5px] transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
+                        style={{ color: 'var(--text-3)' }}
+                        onMouseEnter={e => { if (!e.currentTarget.disabled) e.currentTarget.style.color = 'var(--text-1)' }}
+                        onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-3)')}
+                      >
+                        <svg width="11" height="11" viewBox="0 0 11 11"><path d="M5.5 2L10 9H1L5.5 2Z" fill="currentColor"/></svg>
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleMoveSection(i, 1) }}
+                        disabled={i === sortedSections.length - 1}
+                        title="Move down"
+                        className="w-[22px] h-[22px] flex items-center justify-center rounded-[5px] transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
+                        style={{ color: 'var(--text-3)' }}
+                        onMouseEnter={e => { if (!e.currentTarget.disabled) e.currentTarget.style.color = 'var(--text-1)' }}
+                        onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-3)')}
+                      >
+                        <svg width="11" height="11" viewBox="0 0 11 11"><path d="M5.5 9L1 2H10L5.5 9Z" fill="currentColor"/></svg>
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); deleteSection.mutate({ projectId: selected!.id, sectionId: s.id }) }}
+                        title="Delete section"
+                        className="w-[22px] h-[22px] flex items-center justify-center rounded-[5px] transition-colors"
+                        style={{ color: 'var(--text-3)' }}
+                        onMouseEnter={e => (e.currentTarget.style.color = '#f87171')}
+                        onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-3)')}
+                      >
+                        <Icon name="x" size={11} />
+                      </button>
+                    </div>
                   </div>
-                  <div className={clsx('w-1.5 h-1.5 rounded-full flex-shrink-0', activeSection?.id === s.id && tab === 'sections' ? 'bg-accent' : 'bg-border-strong')} />
-                  <span className="text-xs text-text-1 flex-1 truncate">{s.name}</span>
-                  <button onClick={(e) => { e.stopPropagation(); deleteSection.mutate({ projectId: selected!.id, sectionId: s.id }) }} className="opacity-0 group-hover:opacity-100 text-text-3 hover:text-red-400 transition-all">
-                    <Icon name="trash" size={11} />
-                  </button>
-                </div>
-              ))}
+                )
+              })}
             </div>
             <div className="p-2 border-t border-border-subtle flex-shrink-0">
               <button onClick={() => setNewSectionOpen(true)} className="w-full flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-[7px] border border-border-strong bg-bg-surface text-xs font-medium text-text-1 hover:border-accent transition-colors">
