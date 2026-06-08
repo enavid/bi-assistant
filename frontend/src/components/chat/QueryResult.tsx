@@ -343,7 +343,7 @@ export function QueryResultView({ result }: { result: QueryResult }) {
                 axisLine={{ stroke: 'var(--border-default)' }}
                 tickLine={false}
                 height={130}
-                interval={0}
+                interval={Math.max(0, Math.ceil(lineData.length / 15) - 1)}
               />
               <YAxis tick={{ fontSize: 11, fill: 'var(--text-3)' }} axisLine={false} tickLine={false} />
               <Tooltip
@@ -386,7 +386,7 @@ export function QueryResultView({ result }: { result: QueryResult }) {
                 axisLine={{ stroke: 'var(--border-default)' }}
                 tickLine={false}
                 height={130}
-                interval={0}
+                interval={Math.max(0, Math.ceil(lineData.length / 15) - 1)}
               />
               <YAxis tick={{ fontSize: 11, fill: 'var(--text-3)' }} axisLine={false} tickLine={false} />
               <Tooltip
