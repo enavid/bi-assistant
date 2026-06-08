@@ -280,10 +280,11 @@ export function Sidebar() {
         >
           <button
             onClick={openNewChat}
-            className="w-full flex items-center justify-center gap-2 py-2 rounded-[10px] text-xs font-medium transition-opacity hover:opacity-90"
+            className="w-full relative flex items-center justify-center py-2 rounded-[10px] text-xs font-medium transition-opacity hover:opacity-90"
             style={{ background: 'var(--accent)', color: '#fff' }}
           >
-            <Icon name="plus" size={14} /> New chat
+            <Icon name="plus" size={14} className="absolute left-3 top-1/2 -translate-y-1/2" />
+            <span>New chat</span>
           </button>
         </div>
 
