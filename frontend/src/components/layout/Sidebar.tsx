@@ -3,7 +3,6 @@ import { clsx } from 'clsx'
 import { useAppStore } from '@/store/appStore'
 import { useOllamaHealth, useProjects, useSessions, useCreateSession, useDeleteSession } from '@/hooks'
 import { Modal } from '@/components/ui/Modal'
-import { Button } from '@/components/ui/Button'
 import { Icon } from '@/components/ui/Icon'
 import type { AppPage } from '@/types'
 
@@ -328,45 +327,72 @@ export function Sidebar() {
 
       {/* ── New chat modal ── */}
       <Modal open={newChatOpen} title="New chat" onClose={() => setNewChatOpen(false)}>
-        <div className="flex flex-col gap-3">
-          <div>
-            <label className="text-[11px] font-medium block mb-1.5" style={{ color: 'var(--text-2)' }}>
+        <div className="flex flex-col gap-5">
+          {/* Project */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[11px] font-semibold uppercase tracking-[0.6px]" style={{ color: 'var(--text-3)' }}>
               Project
             </label>
-            <select
-              value={selectedProjectId}
-              onChange={(e) => setSelectedProjectId(e.target.value)}
-              className="w-full rounded-[7px] px-3 py-2 text-xs outline-none"
-              style={{ background: 'var(--bg-raised)', border: '1px solid var(--border-default)', color: 'var(--text-1)' }}
-            >
-              <option value="">No project</option>
-              {projects?.map((p) => (
-                <option key={p.id} value={p.id}>{p.name}</option>
-              ))}
-            </select>
+            <div className="relative">
+              <select
+                value={selectedProjectId}
+                onChange={(e) => setSelectedProjectId(e.target.value)}
+                className="w-full rounded-[9px] px-3 py-2.5 text-[13px] outline-none cursor-pointer"
+                style={{ appearance: 'none', paddingRight: '2.25rem', background: 'var(--bg-raised)', border: '1px solid var(--border-default)', color: 'var(--text-1)' }}
+              >
+                <option value="">No project</option>
+                {projects?.map((p) => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </select>
+              <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-3)' }}>
+                <Icon name="chevron-down" size={14} />
+              </div>
+            </div>
           </div>
-          <div>
-            <label className="text-[11px] font-medium block mb-1.5" style={{ color: 'var(--text-2)' }}>
+
+          {/* Model */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[11px] font-semibold uppercase tracking-[0.6px]" style={{ color: 'var(--text-3)' }}>
               Model
             </label>
-            <select
-              value={selectedModel}
-              onChange={(e) => setSelectedModel(e.target.value)}
-              className="w-full rounded-[7px] px-3 py-2 text-xs outline-none"
-              style={{ background: 'var(--bg-raised)', border: '1px solid var(--border-default)', color: 'var(--text-1)' }}
-            >
-              {health?.models.length
-                ? health.models.map((m) => (
-                    <option key={m.name} value={m.name}>
-                      {m.name}{m.size ? ` · ${m.size}` : ''}
-                    </option>
-                  ))
-                : <option value={defaultModelName}>{defaultModelName}</option>}
-            </select>
+            <div className="relative">
+              <select
+                value={selectedModel}
+                onChange={(e) => setSelectedModel(e.target.value)}
+                className="w-full rounded-[9px] px-3 py-2.5 text-[13px] outline-none cursor-pointer"
+                style={{ appearance: 'none', paddingRight: '2.25rem', background: 'var(--bg-raised)', border: '1px solid var(--border-default)', color: 'var(--text-1)' }}
+              >
+                {health?.models.length
+                  ? health.models.map((m) => (
+                      <option key={m.name} value={m.name}>
+                        {m.name.replace(/:latest$/, '')}{m.size ? `  ·  ${m.size}` : ''}
+                      </option>
+                    ))
+                  : <option value={defaultModelName}>{defaultModelName.replace(/:latest$/, '')}</option>}
+              </select>
+              <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-3)' }}>
+                <Icon name="chevron-down" size={14} />
+              </div>
+            </div>
           </div>
-          <div className="flex justify-end gap-2 pt-1">
-            <Button variant="secondary" size="sm" onClick={() => setNewChatOpen(false)}>Cancel</Button>
-            <Button variant="primary" size="sm" onClick={handleCreateSession}>Start chat</Button>
+
+          {/* Actions */}
+          <div className="flex gap-2 pt-1">
+            <button
+              onClick={() => setNewChatOpen(false)}
+              className="flex-1 py-2.5 rounded-[9px] text-[13px] font-medium transition-opacity hover:opacity-70"
+              style={{ background: 'var(--bg-raised)', border: '1px solid var(--border-default)', color: 'var(--text-2)' }}
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleCreateSession}
+              className="flex-1 py-2.5 rounded-[9px] text-[13px] font-medium transition-opacity hover:opacity-90"
+              style={{ background: 'var(--accent)', color: '#fff' }}
+            >
+              Start chat
+            </button>
           </div>
         </div>
       </Modal>
