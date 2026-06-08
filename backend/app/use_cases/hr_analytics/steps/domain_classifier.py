@@ -554,11 +554,16 @@ def _build_hr_terms() -> list[WeightedTerm]:
         "واحد سازمانی",
         "پست سازمانی",
         "پست کارشناسی",
+        "لیست افراد",
+        "فهرست افراد",
+        "لیست کارکنان",
+        "فهرست کارکنان",
     ]
 
     # Weaker HR/context terms. These can be ambiguous alone, so their weights are lower.
     weak = [
         "نیرو",
+        "افراد",
         "حوزه",
         "بخش",
         "واحد",
