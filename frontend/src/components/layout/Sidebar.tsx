@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { clsx } from 'clsx'
 import { useAppStore } from '@/store/appStore'
 import { useOllamaHealth, useProjects, useSessions, useCreateSession, useDeleteSession } from '@/hooks'
@@ -10,6 +10,75 @@ const NAV: { page: AppPage; label: string; icon: Parameters<typeof Icon>[0]['nam
   { page: 'chat',    label: 'Chat',           icon: 'message' },
   { page: 'builder', label: 'Prompt Builder', icon: 'layers'  },
 ]
+
+function SelectField({
+  value, onChange, options, placeholder,
+}: {
+  value: string
+  onChange: (v: string) => void
+  options: { value: string; label: string }[]
+  placeholder?: string
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const handler = (e: MouseEvent) => {
+      if (!ref.current?.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [open])
+
+  const selected = options.find((o) => o.value === value)
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center justify-between rounded-[9px] px-3 py-2.5 text-[13px] text-left"
+        style={{
+          background: 'var(--bg-raised)',
+          border: `1px solid ${open ? 'var(--accent)' : 'var(--border-default)'}`,
+          color: selected ? 'var(--text-1)' : 'var(--text-3)',
+        }}
+      >
+        <span className="truncate">{selected?.label ?? placeholder ?? 'Select…'}</span>
+        <Icon
+          name="chevron-down"
+          size={13}
+          style={{ color: 'var(--text-3)', flexShrink: 0, marginLeft: 8, transition: 'transform 150ms', transform: open ? 'rotate(180deg)' : 'rotate(0deg)' }}
+        />
+      </button>
+
+      {open && (
+        <div
+          className="absolute z-50 left-0 right-0 mt-1 rounded-[9px] overflow-hidden overflow-y-auto"
+          style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)', boxShadow: '0 8px 24px rgba(0,0,0,0.18)', maxHeight: 220 }}
+        >
+          {options.map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => { onChange(opt.value); setOpen(false) }}
+              className="w-full text-left px-3 py-2.5 text-[13px]"
+              style={{
+                background: opt.value === value ? 'var(--accent-bg)' : 'transparent',
+                color: opt.value === value ? 'var(--accent-text)' : 'var(--text-1)',
+              }}
+              onMouseEnter={(e) => { if (opt.value !== value) e.currentTarget.style.background = 'var(--bg-raised)' }}
+              onMouseLeave={(e) => { if (opt.value !== value) e.currentTarget.style.background = 'transparent' }}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
 
 type Session = {
   id: string
@@ -333,22 +402,15 @@ export function Sidebar() {
             <label className="text-[11px] font-semibold uppercase tracking-[0.6px]" style={{ color: 'var(--text-3)' }}>
               Project
             </label>
-            <div className="relative">
-              <select
-                value={selectedProjectId}
-                onChange={(e) => setSelectedProjectId(e.target.value)}
-                className="w-full rounded-[9px] px-3 py-2.5 text-[13px] outline-none cursor-pointer"
-                style={{ appearance: 'none', paddingRight: '2.25rem', background: 'var(--bg-raised)', border: '1px solid var(--border-default)', color: 'var(--text-1)' }}
-              >
-                <option value="">No project</option>
-                {projects?.map((p) => (
-                  <option key={p.id} value={p.id}>{p.name}</option>
-                ))}
-              </select>
-              <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-3)' }}>
-                <Icon name="chevron-down" size={14} />
-              </div>
-            </div>
+            <SelectField
+              value={selectedProjectId}
+              onChange={setSelectedProjectId}
+              placeholder="No project"
+              options={[
+                { value: '', label: 'No project' },
+                ...(projects ?? []).map((p) => ({ value: p.id, label: p.name })),
+              ]}
+            />
           </div>
 
           {/* Model */}
@@ -356,25 +418,18 @@ export function Sidebar() {
             <label className="text-[11px] font-semibold uppercase tracking-[0.6px]" style={{ color: 'var(--text-3)' }}>
               Model
             </label>
-            <div className="relative">
-              <select
-                value={selectedModel}
-                onChange={(e) => setSelectedModel(e.target.value)}
-                className="w-full rounded-[9px] px-3 py-2.5 text-[13px] outline-none cursor-pointer"
-                style={{ appearance: 'none', paddingRight: '2.25rem', background: 'var(--bg-raised)', border: '1px solid var(--border-default)', color: 'var(--text-1)' }}
-              >
-                {health?.models.length
-                  ? health.models.map((m) => (
-                      <option key={m.name} value={m.name}>
-                        {m.name.replace(/:latest$/, '')}{m.size ? `  ·  ${m.size}` : ''}
-                      </option>
-                    ))
-                  : <option value={defaultModelName}>{defaultModelName.replace(/:latest$/, '')}</option>}
-              </select>
-              <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-3)' }}>
-                <Icon name="chevron-down" size={14} />
-              </div>
-            </div>
+            <SelectField
+              value={selectedModel}
+              onChange={setSelectedModel}
+              options={
+                health?.models.length
+                  ? health.models.map((m) => ({
+                      value: m.name,
+                      label: m.name.replace(/:latest$/, '') + (m.size ? `  ·  ${m.size}` : ''),
+                    }))
+                  : [{ value: defaultModelName, label: defaultModelName.replace(/:latest$/, '') }]
+              }
+            />
           </div>
 
           {/* Actions */}
