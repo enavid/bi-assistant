@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { clsx } from 'clsx'
+import { useQueryClient } from '@tanstack/react-query'
 import {
   useProjects, useCreateProject, useUpdateProject, useDeleteProject,
   useCreateSection, useUpdateSection, useDeleteSection,
@@ -27,6 +28,7 @@ function getAvatarColor(id: string) {
 }
 
 export function BuilderPage() {
+  const qc = useQueryClient()
   const { defaultModelName } = useAppStore()
   const { data: projects } = useProjects()
   const createProject = useCreateProject()
@@ -124,9 +126,31 @@ export function BuilderPage() {
     if (target < 0 || target >= sections.length) return
     const a = sections[index]
     const b = sections[target]
-    // Sequential — not parallel — to avoid React Query cache race condition
-    await updateSection.mutateAsync({ projectId: selected.id, sectionId: a.id, payload: { order: b.order } })
-    await updateSection.mutateAsync({ projectId: selected.id, sectionId: b.id, payload: { order: a.order } })
+
+    // Optimistic update: swap orders in cache immediately so UI responds instantly
+    qc.setQueryData<Project[]>(['projects'], (old) =>
+      old?.map((p) =>
+        p.id !== selected.id ? p : {
+          ...p,
+          sections: p.sections.map((s) =>
+            s.id === a.id ? { ...s, order: b.order }
+            : s.id === b.id ? { ...s, order: a.order }
+            : s
+          ),
+        }
+      )
+    )
+
+    // Fire both requests in parallel — cache is already correct, no race risk
+    try {
+      await Promise.all([
+        updateSection.mutateAsync({ projectId: selected.id, sectionId: a.id, payload: { order: b.order } }),
+        updateSection.mutateAsync({ projectId: selected.id, sectionId: b.id, payload: { order: a.order } }),
+      ])
+    } catch {
+      // Rollback on error
+      qc.invalidateQueries({ queryKey: ['projects'] })
+    }
   }
 
   function insertIntoOutput(sectionId: string) {
