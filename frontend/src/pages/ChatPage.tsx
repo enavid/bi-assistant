@@ -360,6 +360,18 @@ export function ChatPage() {
 
           {/* Bottom bar — natural flow, not absolute */}
           <div className="flex items-center gap-2 px-3 pb-2.5">
+            {project && (
+              <span
+                className="text-[10px] px-1.5 py-0.5 rounded-[4px] truncate max-w-[120px] select-none"
+                style={{
+                  background: 'var(--accent-bg)',
+                  color: 'var(--accent-text)',
+                  border: '1px solid var(--accent-border)',
+                }}
+              >
+                {project.name}
+              </span>
+            )}
             {session?.model_name && (
               <span
                 className="text-[10px] font-mono px-1.5 py-0.5 rounded-[4px] truncate max-w-[140px] select-none"
