@@ -1,10 +1,24 @@
 import SyntaxHighlighter from 'react-syntax-highlighter'
 import { atomOneDark } from 'react-syntax-highlighter/dist/esm/styles/hljs'
 import { atomOneLight } from 'react-syntax-highlighter/dist/esm/styles/hljs'
+import { format } from 'sql-formatter'
 import { useAppStore } from '@/store/appStore'
 
 interface SqlBlockProps {
   code: string
+}
+
+function formatSql(sql: string): string {
+  try {
+    return format(sql, {
+      language: 'sql',
+      tabWidth: 2,
+      keywordCase: 'upper',
+      linesBetweenQueries: 1,
+    })
+  } catch {
+    return sql
+  }
 }
 
 export function SqlBlock({ code }: SqlBlockProps) {
@@ -27,7 +41,7 @@ export function SqlBlock({ code }: SqlBlockProps) {
         style: { fontFamily: 'inherit' },
       }}
     >
-      {code}
+      {formatSql(code)}
     </SyntaxHighlighter>
   )
 }
