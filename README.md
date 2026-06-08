@@ -16,7 +16,7 @@ Natural-language HR questions answered with controlled SQL queries against a Pos
 
 ## Requirements
 
-- Python 3.12
+- Python 3.12 + [uv](https://docs.astral.sh/uv/)
 - Node 20+
 - PostgreSQL 14+
 - Ollama running locally or accessible via network
@@ -35,7 +35,7 @@ cp .env.example .env
 
 ```bash
 cd backend
-make install     # create venv and install dependencies
+make install     # uv sync (creates .venv and installs all deps)
 make dev         # start API server with hot-reload
 ```
 

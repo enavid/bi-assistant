@@ -1,9 +1,7 @@
-VENV   := venv
-PYTHON := $(VENV)/bin/python3
-PIP    := $(VENV)/bin/pip
-PYTEST := $(VENV)/bin/pytest
-RUFF   := $(VENV)/bin/ruff
-ALEMBIC:= $(VENV)/bin/alembic
+PYTEST  := uv run pytest
+RUFF    := uv run ruff
+ALEMBIC := uv run alembic
+PYTHON  := uv run python
 
 .DEFAULT_GOAL := help
 
@@ -12,7 +10,7 @@ ALEMBIC:= $(VENV)/bin/alembic
 help:
 	@echo "Usage: make <target>"
 	@echo ""
-	@echo "  install   create venv and install dependencies"
+	@echo "  install   sync dependencies (dev + prod)"
 	@echo "  run       start the API server (production mode)"
 	@echo "  dev       start the API server with hot-reload"
 	@echo "  test      run unit/integration tests"
@@ -21,12 +19,10 @@ help:
 	@echo "  format    auto-format code with ruff"
 	@echo "  check     lint + test + eval (run before committing)"
 	@echo "  migrate   apply database migrations"
-	@echo "  shell     open Python REPL inside the venv"
+	@echo "  shell     open Python REPL"
 
 install:
-	python3 -m venv $(VENV)
-	$(PIP) install --upgrade pip
-	$(PIP) install -r requirements.txt
+	uv sync --group dev
 
 run:
 	$(PYTHON) run.py

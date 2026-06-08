@@ -13,7 +13,6 @@ gap_registry.jsonl
 
 # Temporary / scratch files
 *.txt
-!requirements*.txt
 
 # Secrets
 .env
