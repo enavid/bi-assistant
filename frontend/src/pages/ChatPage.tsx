@@ -38,13 +38,14 @@ const STATUS_LABEL: Record<string, string> = {
 }
 
 function PipelineBadges({ info }: { info: GenerateResponse }) {
-  const rs = ROUTE_STYLE[info.route ?? '']
-  if (!rs) return null
+  const route = info.route ?? ''
+  if (!['SQL', 'GAP'].includes(route)) return null
+  const rs = ROUTE_STYLE[route]
   const statusLabel = info.status ? STATUS_LABEL[info.status] : null
-  const showIntent = info.route === 'GAP' && info.detected_intent
+  const showIntent = route === 'GAP' && info.detected_intent
 
   return (
-    <div className="ml-10 flex items-center gap-1.5 flex-wrap mt-0.5">
+    <div className="ml-10 flex items-center gap-1.5 flex-wrap" style={{ marginTop: '-2px' }}>
       <span
         className="text-[10px] font-mono font-medium px-1.5 py-[3px] rounded-[4px]"
         style={{ background: rs.bg, color: rs.text, border: `1px solid ${rs.border}` }}
