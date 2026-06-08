@@ -112,7 +112,7 @@ export function ChatPage() {
 
   useEffect(() => {
     bodyRef.current?.scrollTo({ top: bodyRef.current.scrollHeight, behavior: 'smooth' })
-  }, [session?.messages, sending, queryResults])
+  }, [session?.messages, sending])
 
   async function handleSend() {
     const q = question.trim()
@@ -164,6 +164,9 @@ export function ChatPage() {
       .find((m) => m.role === 'user' && new Date(m.created_at) < new Date(msg.created_at))?.content
     const result = await chatApi.runQuery(msg.sql, { session_id: session.id, question: userQuestion, project_id: session.project_id })
     setQueryResults((prev) => ({ ...prev, [msg.id]: result }))
+    setTimeout(() => {
+      document.getElementById(`result-${msg.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    }, 50)
   }
 
   if (!activeSessionId) {
@@ -282,7 +285,7 @@ export function ChatPage() {
 
               {/* Query results */}
               {queryResults[msg.id] && (
-                <div className="ml-10 flex flex-col gap-2">
+                <div id={`result-${msg.id}`} className="ml-10 flex flex-col gap-2">
                   {queryResults[msg.id].success && (
                     <KpiCard columns={queryResults[msg.id].columns} rows={queryResults[msg.id].rows} />
                   )}
