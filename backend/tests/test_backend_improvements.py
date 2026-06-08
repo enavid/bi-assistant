@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-
 from app.use_cases.hr_analytics.orchestrator import LLMOrchestrator, ValidationStatus
-from app.use_cases.hr_analytics.steps.question_validator import QuestionValidator
 from app.use_cases.hr_analytics.steps.decision_router import DecisionRouter
+from app.use_cases.hr_analytics.steps.question_validator import QuestionValidator
 
 
 def _run(orchestrator, question: str) -> dict:
