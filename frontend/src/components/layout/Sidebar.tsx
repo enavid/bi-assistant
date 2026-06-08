@@ -299,6 +299,7 @@ export function Sidebar() {
               </p>
               {items.map((s) => {
                 const isActive = activeSessionId === s.id
+                const projectName = s.project_id ? (projects ?? []).find((p) => p.id === s.project_id)?.name : null
                 return (
                   <div
                     key={s.id}
@@ -315,8 +316,14 @@ export function Sidebar() {
                       >
                         {s.title}
                       </p>
-                      <p className="text-[10px] mt-0.5" style={{ color: 'var(--text-3)' }}>
-                        {s.model_name?.split(':')[0]}
+                      <p className="text-[10px] mt-0.5 flex items-center gap-1 truncate" style={{ color: 'var(--text-3)' }}>
+                        {projectName && (
+                          <>
+                            <span style={{ color: 'var(--accent-text)', opacity: 0.85 }} className="truncate max-w-[80px]">{projectName}</span>
+                            <span className="flex-shrink-0">·</span>
+                          </>
+                        )}
+                        <span className="truncate">{s.model_name?.split(':')[0]}</span>
                       </p>
                     </div>
                     <button
