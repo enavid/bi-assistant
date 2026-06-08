@@ -158,14 +158,22 @@ export function QueryResultView({ result }: { result: QueryResult }) {
       {/* ── TABLE ── */}
       {view === 'table' && (
         <div style={{ maxHeight: TABLE_H, overflowY: 'auto', overflowX: 'auto' }}>
-          <table className="w-full text-xs border-collapse">
+          <table className="w-full text-xs border-collapse" style={{ tableLayout: 'fixed' }}>
             <thead style={{ position: 'sticky', top: 0, zIndex: 1, background: 'var(--bg-raised)' }}>
               <tr>
                 {result.columns.map((col, ci) => (
                   <th
                     key={col}
-                    className="px-3 py-2 text-[10px] uppercase tracking-[0.5px] font-medium whitespace-nowrap border-b"
-                    style={{ color: 'var(--text-3)', borderColor: 'var(--border-default)', ...cellStyle(ci, result.rows) }}
+                    className="px-3 py-2 text-[10px] uppercase tracking-[0.5px] font-medium border-b"
+                    style={{
+                      color: 'var(--text-3)',
+                      borderColor: 'var(--border-default)',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                      ...cellStyle(ci, result.rows),
+                    }}
+                    title={col}
                   >
                     {col}
                   </th>
