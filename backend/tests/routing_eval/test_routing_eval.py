@@ -16,6 +16,7 @@ import yaml
 
 CASES_FILE = Path(__file__).parent / "cases.yaml"
 
+
 # ---------------------------------------------------------------------------
 # Load and parametrize
 # ---------------------------------------------------------------------------
@@ -32,7 +33,7 @@ _IDS = [c["id"] for c in _CASES]
 
 
 # ---------------------------------------------------------------------------
-# Helper
+# Helpers
 # ---------------------------------------------------------------------------
 
 
@@ -68,13 +69,17 @@ def _mismatches(payload: dict, expect: dict) -> list[str]:
 
 
 @pytest.mark.parametrize("case", _CASES, ids=_IDS)
-def test_routing(orchestrator: Any, case: dict[str, Any]) -> None:
+def test_routing(request: pytest.FixtureRequest, orchestrator: Any, case: dict[str, Any]) -> None:
     question = case["question"]
     expect = case["expect"]
     category = case.get("category", "unknown")
     description = case.get("description", "")
 
     payload = _run(orchestrator, question)
+
+    # Expose payload to conftest hook for the results table.
+    request.node._eval_payload = payload  # type: ignore[attr-defined]
+
     errors = _mismatches(payload, expect)
 
     if errors:

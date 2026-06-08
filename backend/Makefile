@@ -43,7 +43,7 @@ eval:
 	@echo "  Routing Evaluation — Golden Test Suite"
 	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 	@echo ""
-	$(PYTEST) tests/routing_eval -v --tb=short --no-header -q
+	$(PYTEST) tests/routing_eval -v --tb=short --no-header
 	@echo ""
 
 lint:
