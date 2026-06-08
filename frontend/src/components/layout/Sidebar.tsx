@@ -316,15 +316,19 @@ export function Sidebar() {
                       >
                         {s.title}
                       </p>
-                      <p className="text-[10px] mt-0.5 flex items-center gap-1 truncate" style={{ color: 'var(--text-3)' }}>
+                      <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                         {projectName && (
-                          <>
-                            <span style={{ color: 'var(--accent-text)', opacity: 0.85 }} className="truncate max-w-[80px]">{projectName}</span>
-                            <span className="flex-shrink-0">·</span>
-                          </>
+                          <span
+                            className="text-[9px] font-medium px-1.5 py-[2px] rounded-[4px] flex-shrink-0 max-w-[90px] truncate"
+                            style={{ background: 'var(--accent-bg)', color: 'var(--accent-text)', border: '1px solid var(--accent-border)' }}
+                          >
+                            {projectName}
+                          </span>
                         )}
-                        <span className="truncate">{s.model_name?.split(':')[0]}</span>
-                      </p>
+                        <span className="text-[10px] truncate" style={{ color: 'var(--text-3)' }}>
+                          {s.model_name?.split(':')[0]}
+                        </span>
+                      </div>
                     </div>
                     <button
                       onClick={(e) => {
