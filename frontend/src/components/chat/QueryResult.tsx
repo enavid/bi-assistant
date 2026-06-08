@@ -221,7 +221,10 @@ export function QueryResultView({ result }: { result: QueryResult }) {
                   cursor={{ fill: 'var(--bg-raised)' }}
                   formatter={(v) => [Number(v).toLocaleString(), result.columns[cols.valueCol]]}
                 />
-                <Bar dataKey="value" radius={[0, 4, 4, 0]} maxBarSize={22} fill="var(--accent)">
+                <Bar dataKey="value" radius={[0, 4, 4, 0]} maxBarSize={22}>
+                  {barData.map((_, i) => (
+                    <Cell key={i} fill={PALETTE[i % PALETTE.length]} />
+                  ))}
                   <LabelList
                     dataKey="value"
                     position="right"
@@ -306,11 +309,11 @@ export function QueryResultView({ result }: { result: QueryResult }) {
             </p>
           )}
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={lineData} margin={{ top: 10, right: 16, left: -10, bottom: 45 }}>
+            <LineChart data={lineData} margin={{ top: 10, right: 16, left: -10, bottom: timeSeries ? 45 : 10 }}>
               <CartesianGrid stroke="var(--border-subtle)" strokeDasharray="4 2" />
               <XAxis
                 dataKey="name"
-                tick={{ fontSize: 10, fill: 'var(--text-3)' }}
+                tick={timeSeries ? { fontSize: 10, fill: 'var(--text-3)' } : false}
                 axisLine={{ stroke: 'var(--border-default)' }}
                 tickLine={false}
                 angle={-35}
@@ -344,7 +347,7 @@ export function QueryResultView({ result }: { result: QueryResult }) {
             </p>
           )}
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={lineData} margin={{ top: 10, right: 16, left: -10, bottom: 45 }}>
+            <AreaChart data={lineData} margin={{ top: 10, right: 16, left: -10, bottom: timeSeries ? 45 : 10 }}>
               <defs>
                 <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#3b6ef5" stopOpacity={0.3} />
@@ -354,7 +357,7 @@ export function QueryResultView({ result }: { result: QueryResult }) {
               <CartesianGrid stroke="var(--border-subtle)" strokeDasharray="4 2" />
               <XAxis
                 dataKey="name"
-                tick={{ fontSize: 10, fill: 'var(--text-3)' }}
+                tick={timeSeries ? { fontSize: 10, fill: 'var(--text-3)' } : false}
                 axisLine={{ stroke: 'var(--border-default)' }}
                 tickLine={false}
                 angle={-35}
