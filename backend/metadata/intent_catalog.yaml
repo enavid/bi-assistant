@@ -459,6 +459,8 @@ intents:
   - بیشترین مدرک
   - بیشترین سهم
   - پرتکرارترین مدرک
+  - رایج‌ترین مدرک
+  - رایج ترین مدرک
   metrics: *id001
   required_columns:
   - employee_id

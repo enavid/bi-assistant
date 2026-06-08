@@ -1,0 +1,389 @@
+# Routing Evaluation Golden Test Suite
+#
+# Each case defines a Persian HR question and the expected routing outcome.
+# Fields:
+#   id          - unique slug used as pytest test ID
+#   question    - the user question (Persian)
+#   category    - grouping label for reporting
+#   description - why this case exists / what edge case it covers
+#   expect:
+#     route     - REJECT | GAP | SQL | NEEDS_CLARIFICATION  (required)
+#     status    - ACCESS_DENIED | OUT_OF_SCOPE | DATA_GAP | ANALYTICAL_GAP
+#                 VALID | NEEDS_CLARIFICATION              (optional)
+#     intent    - expected detected_intent id              (optional, SQL only)
+
+cases:
+
+  # ---------------------------------------------------------------------------
+  # ACCESS_DENIED — individual / sensitive data requests
+  # These must NEVER reach SQL execution.
+  # ---------------------------------------------------------------------------
+
+  - id: access-list-with-id
+    question: "لیست افراد بالای ۶۰ سال با شناسه‌شان را بده"
+    category: access_denied
+    description: Listing employees with personal identifier — must be blocked
+    expect:
+      route: REJECT
+      status: ACCESS_DENIED
+
+  - id: access-national-id
+    question: "نام و کد ملی تمام کارکنان را بده"
+    category: access_denied
+    description: Requesting national ID — highest sensitivity field
+    expect:
+      route: REJECT
+      status: ACCESS_DENIED
+
+  - id: access-personnel-number
+    question: "شماره پرسنلی همه کارکنان را بده"
+    category: access_denied
+    description: Bulk personnel number export
+    expect:
+      route: REJECT
+      status: ACCESS_DENIED
+
+  - id: access-name-list
+    question: "لیست اسامی کارکنان دپارتمان مالی"
+    category: access_denied
+    description: Named employee list by department
+    expect:
+      route: REJECT
+      status: ACCESS_DENIED
+
+  - id: access-individual-info
+    question: "مشخصات فردی کارکنان واحد فناوری اطلاعات را بده"
+    category: access_denied
+    description: Individual employee profile dump
+    expect:
+      route: REJECT
+      status: ACCESS_DENIED
+
+  - id: access-list-of-people
+    question: "لیست افراد دپارتمان مالی را بده"
+    category: access_denied
+    description: Plain employee listing without analytics intent
+    expect:
+      route: REJECT
+      status: ACCESS_DENIED
+
+  - id: access-name-with-phone
+    question: "نام کارکنان با شماره تماسشان"
+    category: access_denied
+    description: Personal contact information request
+    expect:
+      route: REJECT
+      status: ACCESS_DENIED
+
+  - id: access-list-identifier-variant
+    question: "فهرست افراد زیر ۳۰ سال با شناسه"
+    category: access_denied
+    description: Variant phrasing of employee list with identifier
+    expect:
+      route: REJECT
+      status: ACCESS_DENIED
+
+  # ---------------------------------------------------------------------------
+  # OUT_OF_SCOPE — questions completely outside HR domain
+  # ---------------------------------------------------------------------------
+
+  - id: oos-dollar-price
+    question: "قیمت دلار چنده؟"
+    category: out_of_scope
+    description: Finance / currency — not HR
+    expect:
+      route: REJECT
+      status: OUT_OF_SCOPE
+
+  - id: oos-last-month-sales
+    question: "فروش ماه گذشته شرکت چقدر بوده؟"
+    category: out_of_scope
+    description: Sales revenue — not HR
+    expect:
+      route: REJECT
+      status: OUT_OF_SCOPE
+
+  - id: oos-inventory
+    question: "موجودی انبار چقدر است؟"
+    category: out_of_scope
+    description: Inventory / warehouse — not HR
+    expect:
+      route: REJECT
+      status: OUT_OF_SCOPE
+
+  - id: oos-profit
+    question: "سود شرکت در سال گذشته چقدر بود؟"
+    category: out_of_scope
+    description: Company profit — financial domain
+    expect:
+      route: REJECT
+      status: OUT_OF_SCOPE
+
+  - id: oos-marketing
+    question: "کمپین بازاریابی ما چه نتایجی داشته؟"
+    category: out_of_scope
+    description: Marketing campaign results — not HR
+    expect:
+      route: REJECT
+      status: OUT_OF_SCOPE
+
+  - id: oos-customer
+    question: "تعداد مشتریان فعال چند نفر است؟"
+    category: out_of_scope
+    description: Customer count — CRM domain, not HR
+    expect:
+      route: REJECT
+      status: OUT_OF_SCOPE
+
+  # ---------------------------------------------------------------------------
+  # DATA_GAP — HR question but raw data not available in current MVP
+  # ---------------------------------------------------------------------------
+
+  - id: gap-city-tehran
+    question: "تعداد کارکنان شهر تهران چند نفر است؟"
+    category: data_gap
+    description: City-level breakdown — location data not reliable in MVP
+    expect:
+      route: GAP
+      status: DATA_GAP
+
+  - id: gap-near-retirement
+    question: "کارکنان در آستانه بازنشستگی چند نفرند؟"
+    category: data_gap
+    description: Retirement threshold not officially defined yet
+    expect:
+      route: GAP
+      status: DATA_GAP
+
+  - id: gap-monthly-hiring
+    question: "جذب ماهانه کارکنان در سال گذشته چند نفر بوده؟"
+    category: data_gap
+    description: Monthly hiring breakdown — not available in MVP
+    expect:
+      route: GAP
+      status: DATA_GAP
+
+  - id: gap-city-isfahan
+    question: "چند نفر از کارکنان در شهر اصفهان هستند؟"
+    category: data_gap
+    description: City variant — Isfahan, same city-level data gap
+    expect:
+      route: GAP
+      status: DATA_GAP
+
+  - id: gap-retirement-threshold
+    question: "کارکنانی که به زودی بازنشسته می‌شوند چند نفرند؟"
+    category: data_gap
+    description: Retirement soon — same near_retirement gap
+    expect:
+      route: GAP
+      status: DATA_GAP
+
+  # ---------------------------------------------------------------------------
+  # ANALYTICAL_GAP — HR question but analytical index/method not defined
+  # Different from DATA_GAP: the raw data may exist but the methodology doesn't.
+  # ---------------------------------------------------------------------------
+
+  - id: agap-contractor-productivity
+    question: "بهره وری پیمانکار در هر حوزه چقدر است؟"
+    category: analytical_gap
+    description: Contractor productivity — no defined KPI/index in MVP
+    expect:
+      route: GAP
+      status: ANALYTICAL_GAP
+
+  - id: agap-workload-alignment
+    question: "آیا جذب نیرو با حجم کار سازمان هماهنگ بوده؟"
+    category: analytical_gap
+    description: Hiring vs workload alignment — methodology not defined
+    expect:
+      route: GAP
+      status: ANALYTICAL_GAP
+
+  - id: agap-aging-workforce
+    question: "سالخوردگی نیروی انسانی چه روندی داشته؟"
+    category: analytical_gap
+    description: Workforce aging trend — needs defined threshold and analysis rule
+    expect:
+      route: GAP
+      status: ANALYTICAL_GAP
+
+  - id: agap-training-need
+    question: "نیاز آموزشی کارکنان در هر حوزه چیست؟"
+    category: analytical_gap
+    description: Training need analysis — course data and formal definition missing
+    expect:
+      route: GAP
+      status: ANALYTICAL_GAP
+
+  - id: agap-contractor-performance
+    question: "عملکرد پیمانکاران در مقایسه با کارکنان رسمی چگونه است؟"
+    category: analytical_gap
+    description: Contractor vs employee performance comparison — no performance index
+    expect:
+      route: GAP
+      status: ANALYTICAL_GAP
+
+  # ---------------------------------------------------------------------------
+  # SQL — supported queries with known intents
+  # route must be SQL; intent check is strict for regression-prone cases.
+  # ---------------------------------------------------------------------------
+
+  - id: sql-total-headcount
+    question: "تعداد کل کارکنان چند نفر است؟"
+    category: sql
+    description: Most basic HR query — total headcount
+    expect:
+      route: SQL
+      intent: total_employee_count
+
+  - id: sql-female-percentage
+    question: "سهم کارکنان زن چند درصد است؟"
+    category: sql
+    description: Gender ratio — female share percentage
+    expect:
+      route: SQL
+      intent: gender_percentage
+
+  - id: sql-average-age
+    question: "میانگین سن کارکنان چقدر است؟"
+    category: sql
+    description: Average employee age
+    expect:
+      route: SQL
+      intent: average_age
+
+  - id: sql-over-50
+    question: "تعداد کارکنان بالای ۵۰ سال چند نفر است؟"
+    category: sql
+    description: Age filter — over 50
+    expect:
+      route: SQL
+      intent: employee_count_by_age_filter
+
+  - id: sql-under-30
+    question: "چند نفر از کارکنان زیر ۳۰ سال دارند؟"
+    category: sql
+    description: Age filter — under 30
+    expect:
+      route: SQL
+      intent: employee_count_by_age_filter
+
+  - id: sql-most-hiring-year
+    question: "بیشترین جذب"
+    category: sql
+    description: Regression fix — was being rejected before; must map to most_or_least_hiring_year
+    expect:
+      route: SQL
+      intent: most_or_least_hiring_year
+
+  - id: sql-least-hiring-year
+    question: "کمترین جذب در چه سالی بوده؟"
+    category: sql
+    description: Least hiring year — mirrors most_or_least_hiring_year intent
+    expect:
+      route: SQL
+      intent: most_or_least_hiring_year
+
+  - id: sql-low-education-expert-roles
+    question: "تعداد افراد با مدرک پایین‌تر از نیاز پست چقدر است؟"
+    category: sql
+    description: Regression fix — was mapping to employee_count_by_education instead
+    expect:
+      route: SQL
+      intent: low_education_in_expert_roles
+
+  - id: sql-contractor-share-by-domain
+    question: "سهم پیمانکاری در هر حوزه خدمت چند درصد است؟"
+    category: sql
+    description: Contractor share broken down by service domain
+    expect:
+      route: SQL
+      intent: contractor_share_by_service_domain
+
+  - id: sql-employment-type
+    question: "تعداد کارکنان بر اساس نوع استخدام"
+    category: sql
+    description: Headcount by employment type
+    expect:
+      route: SQL
+      intent: employee_count_by_employment_type
+
+  - id: sql-annual-hiring-trend
+    question: "روند جذب سالانه کارکنان"
+    category: sql
+    description: Annual hiring trend over time
+    expect:
+      route: SQL
+      intent: hiring_trend_annual
+
+  - id: sql-15-year-hiring
+    question: "جذب نیرو در ۱۵ سال گذشته"
+    category: sql
+    description: Hiring over past 15 years
+    expect:
+      route: SQL
+      intent: hiring_last_15_years
+
+  - id: sql-average-service-years
+    question: "میانگین سابقه خدمت کارکنان چند سال است؟"
+    category: sql
+    description: Average years of service
+    expect:
+      route: SQL
+      intent: average_service_years
+
+  - id: sql-headcount-by-department
+    question: "تعداد کارکنان در هر واحد سازمانی"
+    category: sql
+    description: Headcount broken down by department
+    expect:
+      route: SQL
+      intent: employee_count_by_department
+
+  - id: sql-headcount-gap
+    question: "کمبود نیرو در هر بخش چقدر است؟"
+    category: sql
+    description: Gap between approved org chart and actual headcount
+    expect:
+      route: SQL
+      intent: headcount_gap_by_department
+
+  - id: sql-most-common-education
+    question: "رایج‌ترین مدرک تحصیلی کارکنان چیست؟"
+    category: sql
+    description: Most common education level
+    expect:
+      route: SQL
+      intent: most_common_education
+
+  - id: sql-headcount-by-province
+    question: "تعداد کارکنان هر استان چند نفر است؟"
+    category: sql
+    description: Headcount by province
+    expect:
+      route: SQL
+      intent: employee_count_by_province
+
+  - id: sql-contract-type
+    question: "توزیع کارکنان بر اساس نوع قرارداد"
+    category: sql
+    description: Headcount by contract type
+    expect:
+      route: SQL
+      intent: employee_count_by_contract_type
+
+  - id: sql-gender-count
+    question: "تعداد کارکنان زن و مرد چند نفر است؟"
+    category: sql
+    description: Headcount by gender (count not percentage)
+    expect:
+      route: SQL
+
+  - id: sql-education-by-level
+    question: "تعداد کارکنان بر اساس مدرک تحصیلی"
+    category: sql
+    description: Headcount by education level
+    expect:
+      route: SQL
+      intent: employee_count_by_education

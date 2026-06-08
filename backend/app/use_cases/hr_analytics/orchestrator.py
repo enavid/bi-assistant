@@ -857,7 +857,7 @@ class LLMOrchestrator:
 
         individual_terms = [
             "نام کارکنان", "نام و مشخصات", "کد ملی", "شماره پرسنلی", "شماره ملی", "شماره تماس", "آدرس",
-            "مشخصات فردی", "لیست افراد", "اسامی کارکنان", "حقوق هر فرد", "اطلاعات شخصی",
+            "مشخصات فردی", "لیست افراد", "فهرست افراد", "اسامی کارکنان", "حقوق هر فرد", "اطلاعات شخصی",
             "first_name", "last_name", "national_id", "personnel_number",
         ]
         if any(term in question for term in individual_terms):
@@ -1218,7 +1218,7 @@ class LLMOrchestrator:
             bonus += 5
         if intent_id == "low_education_in_expert_roles" and any(t in q for t in ["نیاز پست", "پایین تر از نیاز", "کمتر از نیاز", "پست کارشناسی", "پایین‌تر از نیاز"]):
             bonus += 8
-        if intent_id == "most_common_education" and ("بیشترین" in q or "بیشترین سهم" in q) and "مدرک" in q:
+        if intent_id == "most_common_education" and ("بیشترین" in q or "بیشترین سهم" in q or "رایج‌ترین" in q or "رایج ترین" in q) and "مدرک" in q:
             bonus += 7
         if intent_id == "least_common_education" and "کمترین" in q and "مدرک" in q:
             bonus += 7

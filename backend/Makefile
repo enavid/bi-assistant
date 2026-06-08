@@ -7,7 +7,7 @@ ALEMBIC:= $(VENV)/bin/alembic
 
 .DEFAULT_GOAL := help
 
-.PHONY: help install run dev test lint format check migrate shell
+.PHONY: help install run dev test eval lint format check migrate shell
 
 help:
 	@echo "Usage: make <target>"
@@ -15,10 +15,11 @@ help:
 	@echo "  install   create venv and install dependencies"
 	@echo "  run       start the API server (production mode)"
 	@echo "  dev       start the API server with hot-reload"
-	@echo "  test      run all tests"
+	@echo "  test      run unit/integration tests"
+	@echo "  eval      run routing evaluation (golden test suite)"
 	@echo "  lint      check code with ruff"
 	@echo "  format    auto-format code with ruff"
-	@echo "  check     lint + test (run before committing)"
+	@echo "  check     lint + test + eval (run before committing)"
 	@echo "  migrate   apply database migrations"
 	@echo "  shell     open Python REPL inside the venv"
 
@@ -34,7 +35,16 @@ dev:
 	$(PYTHON) run.py --reload
 
 test:
-	$(PYTEST) tests -q
+	$(PYTEST) tests -q --ignore=tests/routing_eval
+
+eval:
+	@echo ""
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	@echo "  Routing Evaluation — Golden Test Suite"
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	@echo ""
+	$(PYTEST) tests/routing_eval -v --tb=short --no-header -q
+	@echo ""
 
 lint:
 	$(RUFF) check .
@@ -43,7 +53,7 @@ format:
 	$(RUFF) check . --fix
 	$(RUFF) format .
 
-check: lint test
+check: lint test eval
 
 migrate:
 	$(ALEMBIC) upgrade head
