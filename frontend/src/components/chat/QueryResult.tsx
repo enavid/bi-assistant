@@ -17,7 +17,6 @@ const PALETTE = [
 ]
 
 const CHART_H  = 380
-const TABLE_H  = 380
 const BAR_TOP  = 15
 const PIE_TOP  = 9
 const LINE_MAX = 50
@@ -157,7 +156,7 @@ export function QueryResultView({ result }: { result: QueryResult }) {
 
       {/* ── TABLE ── */}
       {view === 'table' && (
-        <div style={{ maxHeight: TABLE_H, overflowY: 'auto', overflowX: 'auto' }}>
+        <div style={{ overflowX: 'auto' }}>
           <table className="w-full text-xs border-collapse" style={{ tableLayout: 'fixed' }}>
             <thead style={{ position: 'sticky', top: 0, zIndex: 1, background: 'var(--bg-raised)' }}>
               <tr>
