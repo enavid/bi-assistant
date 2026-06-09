@@ -75,7 +75,32 @@ function MetaChip({ label }: { label: string }) {
 
 type TraceStep = { step: string; status: string; duration_ms: number; details?: Record<string, unknown> }
 
+function formatDetailValue(v: unknown): string {
+  if (v === null || v === undefined) return '—'
+  if (typeof v === 'boolean') return v ? 'true' : 'false'
+  if (Array.isArray(v)) return v.length === 0 ? '[]' : v.map((x) => (typeof x === 'object' ? JSON.stringify(x) : String(x))).join(', ')
+  if (typeof v === 'object') return JSON.stringify(v)
+  return String(v)
+}
+
+function TraceDetails({ details }: { details: Record<string, unknown> }) {
+  const entries = Object.entries(details).filter(([k]) => k !== 'decision_by')
+  if (entries.length === 0) return null
+  return (
+    <div className="px-2.5 py-2 flex flex-col gap-[3px]" style={{ borderTop: '1px solid var(--border-subtle)', background: 'var(--bg-base)' }}>
+      {entries.map(([k, v]) => (
+        <div key={k} className="flex gap-2 text-[10px] font-mono leading-relaxed">
+          <span className="flex-shrink-0 w-[160px] truncate" style={{ color: 'var(--text-3)' }}>{k}</span>
+          <span className="flex-1 break-all" style={{ color: 'var(--text-2)' }}>{formatDetailValue(v)}</span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 function TracePanel({ traces }: { traces: TraceStep[] }) {
+  const [expandedRow, setExpandedRow] = useState<number | null>(null)
+
   return (
     <div
       className="mt-1.5 rounded-[6px] overflow-hidden text-[10px] font-mono"
@@ -92,14 +117,24 @@ function TracePanel({ traces }: { traces: TraceStep[] }) {
         {/* rows */}
         {traces.map((t, i) => {
           const isLast = i === traces.length - 1
+          const isExpanded = expandedRow === i
+          const hasDetails = t.details && Object.keys(t.details).filter((k) => k !== 'decision_by').length > 0
           const decision = (t.details?.decision_by as string | undefined) ?? '—'
           const ds = DECISION_STYLE[decision]
           const statusColor = traceStatusColor(t.status)
           const isErrorStatus = statusColor === 'var(--red)'
-          const rowBorder = isLast ? undefined : '1px solid var(--border-subtle)'
+          const rowBorder = (!isLast || isExpanded) ? '1px solid var(--border-subtle)' : undefined
           return (
             <>
-              <div key={`s-${i}`} className="px-2.5 py-[5px]" style={{ color: 'var(--text-2)', borderBottom: rowBorder }}>{t.step}</div>
+              <div
+                key={`s-${i}`}
+                className={hasDetails ? 'px-2.5 py-[5px] cursor-pointer hover:opacity-70' : 'px-2.5 py-[5px]'}
+                style={{ color: 'var(--text-2)', borderBottom: rowBorder }}
+                onClick={() => hasDetails && setExpandedRow(isExpanded ? null : i)}
+              >
+                {hasDetails && <span className="mr-1" style={{ color: 'var(--text-3)' }}>{isExpanded ? '▾' : '▸'}</span>}
+                {t.step}
+              </div>
               <div key={`st-${i}`} className="px-2.5 py-[5px]" style={{ borderBottom: rowBorder }}>
                 <span style={{ color: statusColor, fontWeight: isErrorStatus ? 600 : undefined }}>{t.status}</span>
               </div>
@@ -110,6 +145,11 @@ function TracePanel({ traces }: { traces: TraceStep[] }) {
                   {decision}
                 </span>
               </div>
+              {isExpanded && t.details && (
+                <div key={`det-${i}`} className="col-span-4" style={{ borderBottom: isLast ? undefined : '1px solid var(--border-subtle)' }}>
+                  <TraceDetails details={t.details} />
+                </div>
+              )}
             </>
           )
         })}
