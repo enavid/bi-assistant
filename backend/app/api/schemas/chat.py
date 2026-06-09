@@ -76,3 +76,4 @@ class QueryResponse(BaseModel):
     elapsed_ms: float
     success: bool
     error: str | None = None
+    experiment_id: str | None = None

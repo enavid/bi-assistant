@@ -26,7 +26,7 @@ class Section:
 class ExperimentEntry:
     question: str
     sql_output: str
-    correct: bool
+    correct: bool | None = None
     elapsed_ms: float = 0.0
     comment: str = ""
     id: str = field(default_factory=_uid)

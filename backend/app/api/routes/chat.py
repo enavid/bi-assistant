@@ -147,20 +147,25 @@ async def run_query(
 
     result = use_case.execute(body.sql)
 
+    experiment_id = None
     if result.success and body.project_id and body.question:
         exp = use_case.build_experiment(body.question, body.sql, result)
         if exp:
             r = await db.execute(select(ProjectORM).where(ProjectORM.id == body.project_id))
             if r.scalar_one_or_none():
-                db.add(ExperimentORM(
+                orm_exp = ExperimentORM(
                     project_id=body.project_id,
                     question=exp.question,
                     sql_output=exp.sql_output,
                     correct=exp.correct,
                     elapsed_ms=exp.elapsed_ms,
-                ))
+                )
+                db.add(orm_exp)
+                await db.flush()
+                experiment_id = orm_exp.id
 
     return QueryResponse(
         columns=result.columns, rows=result.rows, row_count=result.row_count,
         elapsed_ms=result.elapsed_ms, success=result.success, error=result.error,
+        experiment_id=experiment_id,
     )

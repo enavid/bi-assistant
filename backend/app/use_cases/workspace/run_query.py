@@ -27,6 +27,6 @@ class RunQueryUseCase:
         return ExperimentEntry(
             question=question,
             sql_output=sql,
-            correct=True,
+            correct=None,
             elapsed_ms=result.elapsed_ms,
         )

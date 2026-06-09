@@ -43,7 +43,7 @@ def test_build_experiment_returns_entry_on_success():
     assert entry is not None
     assert entry.question == "how many?"
     assert entry.sql_output == "SELECT 1;"
-    assert entry.correct is True
+    assert entry.correct is None
 
 
 def test_build_experiment_returns_none_on_failure():

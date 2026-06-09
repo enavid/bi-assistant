@@ -56,6 +56,7 @@ export interface QueryResult {
   elapsed_ms: number
   success: boolean
   error?: string | null
+  experiment_id?: string | null
 }
 
 export interface GenerateResponse {

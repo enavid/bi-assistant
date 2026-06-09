@@ -10,6 +10,8 @@ from sqlalchemy.orm import selectinload
 
 from app.api.schemas import (
     ExperimentCreate,
+    ExperimentFeedback,
+    ExperimentOut,
     ProjectCreate,
     ProjectOut,
     ProjectUpdate,
@@ -160,3 +162,14 @@ async def add_experiment(project_id: str, body: ExperimentCreate, db: AsyncSessi
     await db.flush()
     await db.refresh(project, ["sections", "experiments"])
     return project
+
+
+@router.patch("/experiments/{experiment_id}/feedback", response_model=ExperimentOut, summary="Set experiment correctness feedback")
+async def set_experiment_feedback(experiment_id: str, body: ExperimentFeedback, db: AsyncSession = Depends(get_db)) -> ExperimentORM:
+    result = await db.execute(select(ExperimentORM).where(ExperimentORM.id == experiment_id))
+    exp = result.scalar_one_or_none()
+    if not exp:
+        raise HTTPException(status_code=404, detail="Experiment not found")
+    exp.correct = body.correct
+    await db.flush()
+    return exp

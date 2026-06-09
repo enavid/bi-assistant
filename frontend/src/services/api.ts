@@ -36,6 +36,9 @@ export const projectApi = {
 
   addExperiment: (projectId: string, payload: { question: string; sql_output: string; correct: boolean; elapsed_ms: number; comment?: string }) =>
     apiClient.post<Project>(`/projects/${projectId}/experiments`, payload).then((r) => r.data),
+
+  setExperimentFeedback: (experimentId: string, correct: boolean) =>
+    apiClient.patch(`/workspace/experiments/${experimentId}/feedback`, { correct }).then((r) => r.data),
 }
 
 export const chatApi = {

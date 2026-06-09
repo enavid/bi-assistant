@@ -1,6 +1,6 @@
 import { useRef, useEffect, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { chatApi } from '@/services/api'
+import { chatApi, projectApi } from '@/services/api'
 import { useAppStore } from '@/store/appStore'
 import { useSession, useProjects } from '@/hooks'
 import { Icon } from '@/components/ui/Icon'
@@ -291,6 +291,7 @@ export function ChatPage() {
     }
   })
   const [dismissed, setDismissed] = useState<Set<string>>(new Set())
+  const [feedback, setFeedback] = useState<Record<string, boolean | null>>({})
   const bodyRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
@@ -351,6 +352,17 @@ export function ChatPage() {
     setTimeout(() => {
       document.getElementById(`result-${msg.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
     }, 50)
+  }
+
+  async function handleFeedback(msgId: string, correct: boolean) {
+    const experimentId = queryResults[msgId]?.experiment_id
+    if (!experimentId) return
+    setFeedback((prev) => ({ ...prev, [msgId]: correct }))
+    try {
+      await projectApi.setExperimentFeedback(experimentId, correct)
+    } catch {
+      setFeedback((prev) => ({ ...prev, [msgId]: null }))
+    }
   }
 
   if (!activeSessionId) {
@@ -474,6 +486,28 @@ export function ChatPage() {
                     <KpiCard columns={queryResults[msg.id].columns} rows={queryResults[msg.id].rows} />
                   )}
                   <QueryResultView result={queryResults[msg.id]} />
+                  {queryResults[msg.id].success && queryResults[msg.id].experiment_id && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px]" style={{ color: 'var(--text-3)' }}>Was this correct?</span>
+                      {([true, false] as const).map((val) => {
+                        const active = feedback[msg.id] === val
+                        return (
+                          <button
+                            key={String(val)}
+                            onClick={() => handleFeedback(msg.id, val)}
+                            className="text-[11px] px-2 py-[3px] rounded-[5px] transition-colors"
+                            style={{
+                              background: active ? (val ? 'var(--accent-bg)' : 'var(--red-bg)') : 'var(--bg-raised)',
+                              color: active ? (val ? 'var(--accent-text)' : 'var(--red)') : 'var(--text-3)',
+                              border: `1px solid ${active ? (val ? 'var(--accent-border)' : 'var(--red-border)') : 'var(--border-default)'}`,
+                            }}
+                          >
+                            {val ? '✓ yes' : '✗ no'}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  )}
                 </div>
               )}
             </div>

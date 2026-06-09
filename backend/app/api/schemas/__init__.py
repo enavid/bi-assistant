@@ -14,6 +14,7 @@ from app.api.schemas.hr_bi import HRBIRequest, HRBIResponse
 from app.api.schemas.ollama import OllamaHealthResponse, OllamaModelOut
 from app.api.schemas.workspace import (
     ExperimentCreate,
+    ExperimentFeedback,
     ExperimentOut,
     ProjectCreate,
     ProjectOut,
@@ -24,7 +25,7 @@ from app.api.schemas.workspace import (
 )
 
 __all__ = [
-    "ExperimentCreate", "ExperimentOut",
+    "ExperimentCreate", "ExperimentFeedback", "ExperimentOut",
     "ProjectCreate", "ProjectOut", "ProjectUpdate",
     "SectionCreate", "SectionOut", "SectionUpdate",
     "ChatSessionCreate", "ChatSessionOut", "ChatSessionUpdate",

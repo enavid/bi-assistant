@@ -30,7 +30,7 @@ class ExperimentOut(BaseModel):
     id: str
     question: str
     sql_output: str
-    correct: bool
+    correct: bool | None = None
     elapsed_ms: float
     comment: str
     created_at: datetime
@@ -40,9 +40,13 @@ class ExperimentOut(BaseModel):
 class ExperimentCreate(BaseModel):
     question: str
     sql_output: str
-    correct: bool
+    correct: bool | None = None
     elapsed_ms: float = 0.0
     comment: str = ""
+
+
+class ExperimentFeedback(BaseModel):
+    correct: bool
 
 
 class ProjectOut(BaseModel):

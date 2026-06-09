@@ -64,7 +64,7 @@ class ExperimentORM(Base):
     project_id: Mapped[str] = mapped_column(String, ForeignKey("projects.id", ondelete="CASCADE"))
     question: Mapped[str] = mapped_column(Text, nullable=False)
     sql_output: Mapped[str] = mapped_column(Text, default="")
-    correct: Mapped[bool] = mapped_column(Boolean, default=True)
+    correct: Mapped[bool | None] = mapped_column(Boolean, nullable=True, default=None)
     elapsed_ms: Mapped[float] = mapped_column(Float, default=0.0)
     comment: Mapped[str] = mapped_column(Text, default="")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
