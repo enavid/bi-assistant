@@ -38,7 +38,7 @@ export const projectApi = {
     apiClient.post<Project>(`/projects/${projectId}/experiments`, payload).then((r) => r.data),
 
   setExperimentFeedback: (experimentId: string, correct: boolean) =>
-    apiClient.patch(`/workspace/experiments/${experimentId}/feedback`, { correct }).then((r) => r.data),
+    apiClient.patch(`/experiments/${experimentId}/feedback`, { correct }).then((r) => r.data),
 }
 
 export const chatApi = {

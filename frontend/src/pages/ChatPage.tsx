@@ -488,21 +488,21 @@ export function ChatPage() {
                   <QueryResultView result={queryResults[msg.id]} />
                   {queryResults[msg.id].success && queryResults[msg.id].experiment_id && (
                     <div className="flex items-center gap-2">
-                      <span className="text-[10px]" style={{ color: 'var(--text-3)' }}>Was this correct?</span>
+                      <span className="text-[11px]" style={{ color: 'var(--text-2)' }}>Was this correct?</span>
                       {([true, false] as const).map((val) => {
                         const active = feedback[msg.id] === val
                         return (
                           <button
                             key={String(val)}
                             onClick={() => handleFeedback(msg.id, val)}
-                            className="text-[11px] px-2 py-[3px] rounded-[5px] transition-colors"
+                            className="text-[11px] px-2.5 py-0.5 rounded-[5px] font-medium transition-all"
                             style={{
                               background: active ? (val ? 'var(--accent-bg)' : 'var(--red-bg)') : 'var(--bg-raised)',
-                              color: active ? (val ? 'var(--accent-text)' : 'var(--red)') : 'var(--text-3)',
+                              color: active ? (val ? 'var(--accent-text)' : 'var(--red)') : 'var(--text-2)',
                               border: `1px solid ${active ? (val ? 'var(--accent-border)' : 'var(--red-border)') : 'var(--border-default)'}`,
                             }}
                           >
-                            {val ? '✓ yes' : '✗ no'}
+                            {val ? '✓ Yes' : '✗ No'}
                           </button>
                         )
                       })}
