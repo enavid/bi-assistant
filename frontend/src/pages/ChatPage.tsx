@@ -37,6 +37,15 @@ const STATUS_LABEL: Record<string, string> = {
   OUT_OF_SCOPE:   'Out of Scope',
 }
 
+const DECISION_STYLE: Record<string, { color: string; bg: string; border: string }> = {
+  rule:      { color: 'var(--text-3)',      bg: 'transparent',       border: 'var(--border-subtle)' },
+  policy:    { color: 'var(--red)',         bg: 'var(--red-bg)',      border: 'var(--red-border)' },
+  template:  { color: 'var(--accent-text)', bg: 'var(--accent-bg)',   border: 'var(--accent-border)' },
+  llm:       { color: 'var(--amber)',       bg: 'var(--amber-bg)',    border: 'var(--amber-border)' },
+  db:        { color: 'var(--text-2)',      bg: 'var(--bg-raised)',   border: 'var(--border-default)' },
+  component: { color: 'var(--text-2)',      bg: 'var(--bg-raised)',   border: 'var(--border-default)' },
+}
+
 function sqlSourceLabel(source?: string | null): string | null {
   if (!source) return null
   if (source.includes('template')) return 'template'
@@ -55,7 +64,51 @@ function MetaChip({ label }: { label: string }) {
   )
 }
 
+type TraceStep = { step: string; status: string; duration_ms: number; details?: Record<string, unknown> }
+
+function TracePanel({ traces }: { traces: TraceStep[] }) {
+  return (
+    <div
+      className="mt-1.5 rounded-[6px] overflow-hidden text-[10px] font-mono"
+      style={{ border: '1px solid var(--border-subtle)', background: 'var(--bg-base)' }}
+    >
+      <table className="w-full border-collapse">
+        <thead>
+          <tr style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+            {['step', 'status', 'ms', 'decision'].map((h) => (
+              <th key={h} className="px-2 py-1 text-left font-medium" style={{ color: 'var(--text-3)' }}>{h}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {traces.map((t, i) => {
+            const decision = (t.details?.decision_by as string | undefined) ?? '—'
+            const ds = DECISION_STYLE[decision]
+            return (
+              <tr key={i} style={{ borderBottom: i < traces.length - 1 ? '1px solid var(--border-subtle)' : undefined }}>
+                <td className="px-2 py-[5px]" style={{ color: 'var(--text-2)' }}>{t.step}</td>
+                <td className="px-2 py-[5px]" style={{ color: 'var(--text-3)' }}>{t.status}</td>
+                <td className="px-2 py-[5px] tabular-nums" style={{ color: 'var(--text-3)' }}>{t.duration_ms.toFixed(1)}</td>
+                <td className="px-2 py-[5px]">
+                  {ds ? (
+                    <span className="px-1 py-[1px] rounded-[3px]" style={{ color: ds.color, background: ds.bg, border: `1px solid ${ds.border}` }}>
+                      {decision}
+                    </span>
+                  ) : (
+                    <span style={{ color: 'var(--text-3)' }}>{decision}</span>
+                  )}
+                </td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
 function PipelineBadges({ info }: { info: GenerateResponse }) {
+  const [open, setOpen] = useState(false)
   const route = info.route ?? ''
   if (!['SQL', 'GAP', 'REJECT'].includes(route)) return null
   const rs = ROUTE_STYLE[route]
@@ -65,28 +118,45 @@ function PipelineBadges({ info }: { info: GenerateResponse }) {
   const rowsLabel = route === 'SQL'
     ? (info.executed ? `${info.row_count ?? 0} rows` : 'not run')
     : null
+  const traces = (info.traces ?? []) as TraceStep[]
+  const hasTraces = traces.length > 0
 
   return (
-    <div className="ml-10 flex items-center gap-1.5 flex-wrap" style={{ marginTop: '-2px' }}>
-      <span
-        className="text-[10px] font-mono font-medium px-1.5 py-[3px] rounded-[4px]"
-        style={{ background: rs.bg, color: rs.text, border: `1px solid ${rs.border}` }}
-      >
-        {info.route}
-      </span>
-      {statusLabel && <MetaChip label={statusLabel} />}
-      {route === 'GAP' && info.detected_intent && <MetaChip label={info.detected_intent} />}
-      {srcLabel && <MetaChip label={srcLabel} />}
-      {templateId && (
+    <div className="ml-10" style={{ marginTop: '-2px' }}>
+      <div className="flex items-center gap-1.5 flex-wrap">
         <span
-          className="text-[10px] font-mono truncate max-w-[200px] px-1.5 py-[3px] rounded-[4px]"
-          style={{ background: 'var(--bg-raised)', color: 'var(--text-3)', border: '1px solid var(--border-subtle)' }}
-          title={templateId}
+          className="text-[10px] font-mono font-medium px-1.5 py-[3px] rounded-[4px]"
+          style={{ background: rs.bg, color: rs.text, border: `1px solid ${rs.border}` }}
         >
-          {templateId}
+          {info.route}
         </span>
-      )}
-      {rowsLabel && <MetaChip label={rowsLabel} />}
+        {statusLabel && <MetaChip label={statusLabel} />}
+        {route === 'GAP' && info.detected_intent && <MetaChip label={info.detected_intent} />}
+        {srcLabel && <MetaChip label={srcLabel} />}
+        {templateId && (
+          <span
+            className="text-[10px] font-mono truncate max-w-[200px] px-1.5 py-[3px] rounded-[4px]"
+            style={{ background: 'var(--bg-raised)', color: 'var(--text-3)', border: '1px solid var(--border-subtle)' }}
+            title={templateId}
+          >
+            {templateId}
+          </span>
+        )}
+        {rowsLabel && <MetaChip label={rowsLabel} />}
+        {hasTraces && (
+          <button
+            onClick={() => setOpen((v) => !v)}
+            className="ml-0.5 flex items-center gap-0.5 text-[10px] font-mono transition-opacity hover:opacity-70"
+            style={{ color: 'var(--text-3)' }}
+          >
+            <span style={{ display: 'inline-flex', transform: open ? 'rotate(180deg)' : undefined }}>
+              <Icon name="chevron-down" size={10} />
+            </span>
+            trace
+          </button>
+        )}
+      </div>
+      {open && hasTraces && <TracePanel traces={traces} />}
     </div>
   )
 }
