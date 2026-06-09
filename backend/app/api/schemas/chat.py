@@ -56,6 +56,9 @@ class GenerateResponse(BaseModel):
     warnings: list[str] = Field(default_factory=list)
     traces: list[dict] = Field(default_factory=list)
     source: str | None = None
+    template_id: str | None = None
+    executed: bool = False
+    row_count: int | None = None
 
 
 class QueryRequest(BaseModel):

@@ -15,6 +15,9 @@ class GenerationResult:
     warnings: list[str] = field(default_factory=list)
     traces: list[dict] = field(default_factory=list)
     source: str | None = None
+    template_id: str | None = None
+    executed: bool = False
+    row_count: int | None = None
 
 
 @dataclass

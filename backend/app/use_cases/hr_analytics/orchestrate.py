@@ -47,7 +47,13 @@ class HRBIOrchestrationUseCase:
         ctx = payload.get("context") or {}
         traces = ctx.get("traces") or []
         sql_plan = ctx.get("sql_plan") or {}
+        query_result = ctx.get("query_result") or {}
         source = sql_plan.get("source") or _derive_source(route, status)
+        template_id = sql_plan.get("template_id") or sql_plan.get("report_id")
+        execution_status = str(query_result.get("execution_status") or "")
+        executed = execution_status == "SUCCESS"
+        rows = query_result.get("rows") or []
+        row_count = len(rows) if executed else None
 
         return GenerationResult(
             sql=sql,
@@ -60,6 +66,9 @@ class HRBIOrchestrationUseCase:
             warnings=payload.get("warnings") or [],
             traces=traces,
             source=source,
+            template_id=str(template_id) if template_id else None,
+            executed=executed,
+            row_count=row_count,
         )
 
 

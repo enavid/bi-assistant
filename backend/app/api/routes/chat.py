@@ -117,6 +117,9 @@ async def generate(
             route=result.route, status=result.status,
             detected_intent=result.detected_intent, warnings=result.warnings,
             traces=result.traces, source=result.source,
+            template_id=result.template_id,
+            executed=result.executed,
+            row_count=result.row_count,
         )
     except Exception as exc:
         logger.error("generate failed: %s", exc, exc_info=True)
