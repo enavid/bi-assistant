@@ -18,6 +18,7 @@ class GenerationResult:
     template_id: str | None = None
     executed: bool = False
     row_count: int | None = None
+    model_called: str | None = None
 
 
 @dataclass

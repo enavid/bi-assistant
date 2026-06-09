@@ -120,6 +120,7 @@ async def generate(
             template_id=result.template_id,
             executed=result.executed,
             row_count=result.row_count,
+            model_called=result.model_called,
         )
     except Exception as exc:
         logger.error("generate failed: %s", exc, exc_info=True)

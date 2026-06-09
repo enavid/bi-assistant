@@ -72,6 +72,7 @@ export interface GenerateResponse {
   template_id?: string | null
   executed?: boolean
   row_count?: number | null
+  model_called?: string | null
 }
 
 export interface OllamaModel {

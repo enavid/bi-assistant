@@ -620,7 +620,8 @@ class LLMOrchestrator:
                 "sql": sql,
                 "rows": [],
             }
-            context.add_trace("query_executor", "not_executed", started, {"decision_by": "rule"})
+            context.add_trace("query_executor", "not_executed", started, {
+                "decision_by": "rule", "reason": "execute_sql=False", "sql_chars": len(sql)})
             return
 
         if self.query_executor is None:
@@ -631,7 +632,8 @@ class LLMOrchestrator:
                 "sql": sql,
                 "rows": [],
             }
-            context.add_trace("query_executor", "not_configured", started, {"decision_by": "rule"})
+            context.add_trace("query_executor", "not_configured", started, {
+                "decision_by": "rule", "reason": "query_executor not configured"})
             return
 
         logger.debug(

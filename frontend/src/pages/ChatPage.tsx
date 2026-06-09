@@ -106,7 +106,7 @@ function TracePanel({ traces }: { traces: TraceStep[] }) {
       className="mt-1.5 rounded-[6px] overflow-hidden text-[10px] font-mono"
       style={{ border: '1px solid var(--border-subtle)', background: 'var(--bg-raised)' }}
     >
-      <div className="grid" style={{ gridTemplateColumns: '1fr auto auto auto', gap: 0 }}>
+      <div className="grid" style={{ gridTemplateColumns: 'minmax(130px, 1.8fr) minmax(90px, 1fr) 52px 96px', gap: 0 }}>
         {/* header */}
         {(['step', 'status', 'ms', 'decision'] as const).map((h) => (
           <div key={h} className="px-2.5 py-1.5 font-semibold uppercase tracking-wide text-[9px]"
@@ -166,6 +166,7 @@ function PipelineBadges({ info }: { info: GenerateResponse }) {
   const statusLabel = info.status ? STATUS_LABEL[info.status] : null
   const srcLabel = route === 'SQL' ? sqlSourceLabel(info.source) : null
   const templateId = route === 'SQL' && info.template_id ? info.template_id : null
+  const modelLabel = route === 'SQL' && srcLabel === 'llm' && info.model_called ? info.model_called : null
   const rowsLabel = route === 'SQL'
     ? (info.executed ? `${info.row_count ?? 0} rows` : 'not run')
     : null
@@ -184,10 +185,11 @@ function PipelineBadges({ info }: { info: GenerateResponse }) {
         {statusLabel && <MetaChip label={statusLabel} />}
         {route === 'GAP' && info.detected_intent && <MetaChip label={info.detected_intent} />}
         {srcLabel && <MetaChip label={srcLabel} />}
+        {modelLabel && <MetaChip label={modelLabel} />}
         {templateId && (
           <span
             className="text-[10px] font-mono truncate max-w-[200px] px-1.5 py-[3px] rounded-[4px]"
-            style={{ background: 'var(--bg-raised)', color: 'var(--text-3)', border: '1px solid var(--border-subtle)' }}
+            style={{ background: 'var(--bg-base)', color: 'var(--text-2)', border: '1px dashed var(--border-default)', fontStyle: 'italic' }}
             title={templateId}
           >
             {templateId}
@@ -197,8 +199,13 @@ function PipelineBadges({ info }: { info: GenerateResponse }) {
         {hasTraces && (
           <button
             onClick={() => setOpen((v) => !v)}
-            className="ml-0.5 text-[10px] font-mono transition-opacity hover:opacity-70 select-none"
-            style={{ color: 'var(--text-3)' }}
+            className="ml-0.5 text-[10px] font-mono select-none transition-colors"
+            style={{
+              color: open ? 'var(--accent-text)' : 'var(--text-3)',
+              background: open ? 'var(--accent-bg)' : 'var(--bg-raised)',
+              border: `1px solid ${open ? 'var(--accent-border)' : 'var(--border-default)'}`,
+              borderRadius: '4px', padding: '2px 6px',
+            }}
           >
             {open ? '↑' : '↓'} trace
           </button>

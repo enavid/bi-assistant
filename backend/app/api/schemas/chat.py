@@ -59,6 +59,7 @@ class GenerateResponse(BaseModel):
     template_id: str | None = None
     executed: bool = False
     row_count: int | None = None
+    model_called: str | None = None
 
 
 class QueryRequest(BaseModel):
