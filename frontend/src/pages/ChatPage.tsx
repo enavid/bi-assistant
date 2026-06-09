@@ -38,12 +38,21 @@ const STATUS_LABEL: Record<string, string> = {
 }
 
 const DECISION_STYLE: Record<string, { color: string; bg: string; border: string }> = {
-  rule:      { color: 'var(--text-3)',      bg: 'transparent',       border: 'var(--border-subtle)' },
+  rule:      { color: 'var(--text-3)',      bg: 'var(--bg-raised)',   border: 'var(--border-subtle)' },
   policy:    { color: 'var(--red)',         bg: 'var(--red-bg)',      border: 'var(--red-border)' },
   template:  { color: 'var(--accent-text)', bg: 'var(--accent-bg)',   border: 'var(--accent-border)' },
   llm:       { color: 'var(--amber)',       bg: 'var(--amber-bg)',    border: 'var(--amber-border)' },
   db:        { color: 'var(--text-2)',      bg: 'var(--bg-raised)',   border: 'var(--border-default)' },
   component: { color: 'var(--text-2)',      bg: 'var(--bg-raised)',   border: 'var(--border-default)' },
+}
+
+function traceStatusColor(status: string): string {
+  const s = status.toLowerCase()
+  if (s.includes('fail') || s.includes('error') || s.includes('invalid') || s.includes('denied') || s.includes('blocked'))
+    return 'var(--red)'
+  if (s === 'warning' || s === 'not_configured' || s === 'unknown')
+    return 'var(--amber)'
+  return 'var(--text-3)'
 }
 
 function sqlSourceLabel(source?: string | null): string | null {
@@ -70,39 +79,41 @@ function TracePanel({ traces }: { traces: TraceStep[] }) {
   return (
     <div
       className="mt-1.5 rounded-[6px] overflow-hidden text-[10px] font-mono"
-      style={{ border: '1px solid var(--border-subtle)', background: 'var(--bg-base)' }}
+      style={{ border: '1px solid var(--border-subtle)', background: 'var(--bg-raised)' }}
     >
-      <table className="w-full border-collapse">
-        <thead>
-          <tr style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-            {['step', 'status', 'ms', 'decision'].map((h) => (
-              <th key={h} className="px-2 py-1 text-left font-medium" style={{ color: 'var(--text-3)' }}>{h}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {traces.map((t, i) => {
-            const decision = (t.details?.decision_by as string | undefined) ?? '—'
-            const ds = DECISION_STYLE[decision]
-            return (
-              <tr key={i} style={{ borderBottom: i < traces.length - 1 ? '1px solid var(--border-subtle)' : undefined }}>
-                <td className="px-2 py-[5px]" style={{ color: 'var(--text-2)' }}>{t.step}</td>
-                <td className="px-2 py-[5px]" style={{ color: 'var(--text-3)' }}>{t.status}</td>
-                <td className="px-2 py-[5px] tabular-nums" style={{ color: 'var(--text-3)' }}>{t.duration_ms.toFixed(1)}</td>
-                <td className="px-2 py-[5px]">
-                  {ds ? (
-                    <span className="px-1 py-[1px] rounded-[3px]" style={{ color: ds.color, background: ds.bg, border: `1px solid ${ds.border}` }}>
-                      {decision}
-                    </span>
-                  ) : (
-                    <span style={{ color: 'var(--text-3)' }}>{decision}</span>
-                  )}
-                </td>
-              </tr>
-            )
-          })}
-        </tbody>
-      </table>
+      <div className="grid" style={{ gridTemplateColumns: '1fr auto auto auto', gap: 0 }}>
+        {/* header */}
+        {(['step', 'status', 'ms', 'decision'] as const).map((h) => (
+          <div key={h} className="px-2.5 py-1.5 font-semibold uppercase tracking-wide text-[9px]"
+            style={{ color: 'var(--text-3)', borderBottom: '1px solid var(--border-subtle)' }}>
+            {h}
+          </div>
+        ))}
+        {/* rows */}
+        {traces.map((t, i) => {
+          const isLast = i === traces.length - 1
+          const decision = (t.details?.decision_by as string | undefined) ?? '—'
+          const ds = DECISION_STYLE[decision]
+          const statusColor = traceStatusColor(t.status)
+          const isErrorStatus = statusColor === 'var(--red)'
+          const rowBorder = isLast ? undefined : '1px solid var(--border-subtle)'
+          return (
+            <>
+              <div key={`s-${i}`} className="px-2.5 py-[5px]" style={{ color: 'var(--text-2)', borderBottom: rowBorder }}>{t.step}</div>
+              <div key={`st-${i}`} className="px-2.5 py-[5px]" style={{ borderBottom: rowBorder }}>
+                <span style={{ color: statusColor, fontWeight: isErrorStatus ? 600 : undefined }}>{t.status}</span>
+              </div>
+              <div key={`ms-${i}`} className="px-2.5 py-[5px] tabular-nums text-right" style={{ color: 'var(--text-3)', borderBottom: rowBorder }}>{t.duration_ms.toFixed(1)}</div>
+              <div key={`d-${i}`} className="px-2.5 py-[5px]" style={{ borderBottom: rowBorder }}>
+                <span className="px-1.5 py-[2px] rounded-[3px] whitespace-nowrap"
+                  style={{ color: ds?.color ?? 'var(--text-3)', background: ds?.bg ?? 'transparent', border: `1px solid ${ds?.border ?? 'var(--border-subtle)'}` }}>
+                  {decision}
+                </span>
+              </div>
+            </>
+          )
+        })}
+      </div>
     </div>
   )
 }
@@ -146,13 +157,10 @@ function PipelineBadges({ info }: { info: GenerateResponse }) {
         {hasTraces && (
           <button
             onClick={() => setOpen((v) => !v)}
-            className="ml-0.5 flex items-center gap-0.5 text-[10px] font-mono transition-opacity hover:opacity-70"
+            className="ml-0.5 text-[10px] font-mono transition-opacity hover:opacity-70 select-none"
             style={{ color: 'var(--text-3)' }}
           >
-            <span style={{ display: 'inline-flex', transform: open ? 'rotate(180deg)' : undefined }}>
-              <Icon name="chevron-down" size={10} />
-            </span>
-            trace
+            {open ? '↑' : '↓'} trace
           </button>
         )}
       </div>
