@@ -37,12 +37,34 @@ const STATUS_LABEL: Record<string, string> = {
   OUT_OF_SCOPE:   'Out of Scope',
 }
 
+function sqlSourceLabel(source?: string | null): string | null {
+  if (!source) return null
+  if (source.includes('template')) return 'template'
+  if (source.includes('generator') || source.includes('llm')) return 'llm'
+  return null
+}
+
+function MetaChip({ label }: { label: string }) {
+  return (
+    <span
+      className="text-[10px] font-mono px-1.5 py-[3px] rounded-[4px]"
+      style={{ background: 'var(--bg-raised)', color: 'var(--text-3)', border: '1px solid var(--border-subtle)' }}
+    >
+      {label}
+    </span>
+  )
+}
+
 function PipelineBadges({ info }: { info: GenerateResponse }) {
   const route = info.route ?? ''
   if (!['SQL', 'GAP', 'REJECT'].includes(route)) return null
   const rs = ROUTE_STYLE[route]
   const statusLabel = info.status ? STATUS_LABEL[info.status] : null
-  const showIntent = route === 'GAP' && info.detected_intent
+  const srcLabel = route === 'SQL' ? sqlSourceLabel(info.source) : null
+  const templateId = route === 'SQL' && info.template_id ? info.template_id : null
+  const rowsLabel = route === 'SQL'
+    ? (info.executed ? `${info.row_count ?? 0} rows` : 'not run')
+    : null
 
   return (
     <div className="ml-10 flex items-center gap-1.5 flex-wrap" style={{ marginTop: '-2px' }}>
@@ -52,22 +74,19 @@ function PipelineBadges({ info }: { info: GenerateResponse }) {
       >
         {info.route}
       </span>
-      {statusLabel && (
+      {statusLabel && <MetaChip label={statusLabel} />}
+      {route === 'GAP' && info.detected_intent && <MetaChip label={info.detected_intent} />}
+      {srcLabel && <MetaChip label={srcLabel} />}
+      {templateId && (
         <span
-          className="text-[10px] font-mono px-1.5 py-[3px] rounded-[4px]"
-          style={{ background: 'var(--bg-raised)', color: 'var(--text-3)', border: '1px solid var(--border-default)' }}
-        >
-          {statusLabel}
-        </span>
-      )}
-      {showIntent && (
-        <span
-          className="text-[10px] font-mono truncate max-w-[220px] px-1.5 py-[3px] rounded-[4px]"
+          className="text-[10px] font-mono truncate max-w-[200px] px-1.5 py-[3px] rounded-[4px]"
           style={{ background: 'var(--bg-raised)', color: 'var(--text-3)', border: '1px solid var(--border-subtle)' }}
+          title={templateId}
         >
-          {info.detected_intent}
+          {templateId}
         </span>
       )}
+      {rowsLabel && <MetaChip label={rowsLabel} />}
     </div>
   )
 }

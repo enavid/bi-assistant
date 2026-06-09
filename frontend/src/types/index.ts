@@ -67,6 +67,11 @@ export interface GenerateResponse {
   status?: string | null
   detected_intent?: string | null
   warnings?: string[]
+  traces?: Record<string, unknown>[]
+  source?: string | null
+  template_id?: string | null
+  executed?: boolean
+  row_count?: number | null
 }
 
 export interface OllamaModel {
