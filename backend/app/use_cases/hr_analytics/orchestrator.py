@@ -365,14 +365,14 @@ class LLMOrchestrator:
             context.errors.extend(
                 context.metadata_health.get("errors", []) or [])
         context.add_trace("metadata_health", "ok" if context.metadata_health.get(
-            "ok", False) else "warning", started)
+            "ok", False) else "warning", started, {"decision_by": "rule"})
 
     async def _normalize_question(self, context: RequestContext) -> None:
         started = time.perf_counter()
         context.normalized_question = self.metadata.normalize_question(
             context.question)
         context.add_trace("normalize_question", "ok", started, {
-                          "normalized_question": context.normalized_question})
+            "normalized_question": context.normalized_question, "decision_by": "rule"})
 
     async def _classify_domain(self, context: RequestContext) -> None:
         started = time.perf_counter()
@@ -387,8 +387,8 @@ class LLMOrchestrator:
         else:
             result = self._fallback_domain_classifier(context)
         context.domain_result = normalize_result(result)
-        context.add_trace("domain_classifier", context.domain_result.get(
-            "status", "ok"), started, context.domain_result)
+        context.add_trace("domain_classifier", context.domain_result.get("status", "ok"), started, {
+            **context.domain_result, "decision_by": "component" if self.domain_classifier is not None else "rule"})
 
     async def _validate_question(self, context: RequestContext) -> None:
         started = time.perf_counter()
@@ -403,8 +403,8 @@ class LLMOrchestrator:
         else:
             result = self._fallback_question_validator(context)
         context.validation_result = normalize_result(result)
-        context.add_trace("question_validator", context.validation_result.get(
-            "status", "ok"), started, context.validation_result)
+        context.add_trace("question_validator", context.validation_result.get("status", "ok"), started, {
+            **context.validation_result, "decision_by": "component" if self.question_validator is not None else "rule"})
 
     async def _map_semantics(self, context: RequestContext) -> None:
         started = time.perf_counter()
@@ -419,8 +419,8 @@ class LLMOrchestrator:
         else:
             result = self._fallback_semantic_mapper(context)
         context.semantic_result = normalize_result(result)
-        context.add_trace("semantic_mapper", context.semantic_result.get(
-            "status", "ok"), started, context.semantic_result)
+        context.add_trace("semantic_mapper", context.semantic_result.get("status", "ok"), started, {
+            **context.semantic_result, "decision_by": "component" if self.semantic_mapper is not None else "rule"})
 
     async def _parse_intent(self, context: RequestContext) -> None:
         started = time.perf_counter()
@@ -435,8 +435,8 @@ class LLMOrchestrator:
         else:
             result = self._fallback_intent_parser(context)
         context.intent_result = normalize_result(result)
-        context.add_trace("intent_parser", context.intent_result.get(
-            "status", "ok"), started, context.intent_result)
+        context.add_trace("intent_parser", context.intent_result.get("status", "ok"), started, {
+            **context.intent_result, "decision_by": "component" if self.intent_parser is not None else "rule"})
 
     async def _route(self, context: RequestContext) -> None:
         started = time.perf_counter()
@@ -451,8 +451,14 @@ class LLMOrchestrator:
         else:
             result = self._fallback_router(context)
         context.route_result = normalize_result(result)
-        context.add_trace("router", context.route_result.get(
-            "route", "unknown"), started, context.route_result)
+        _route_status = str(context.route_result.get("status") or "")
+        _router_decision = (
+            "policy" if _route_status in {"ACCESS_DENIED", "OUT_OF_SCOPE"}
+            else "component" if self.router is not None
+            else "rule"
+        )
+        context.add_trace("router", context.route_result.get("route", "unknown"), started, {
+            **context.route_result, "decision_by": _router_decision})
 
     async def _plan_sql(self, context: RequestContext) -> None:
         started = time.perf_counter()
@@ -512,8 +518,14 @@ class LLMOrchestrator:
             plan.setdefault("source", "sql_generator")
 
         context.sql_plan = plan
-        context.add_trace("sql_planner", plan.get(
-            "status", "ok"), started, redact_sql_for_trace(plan))
+        _plan_source = str(plan.get("source") or "").lower()
+        _sql_decision = (
+            "template" if "template" in _plan_source
+            else "llm" if any(x in _plan_source for x in ("generator", "llm"))
+            else "rule"
+        )
+        context.add_trace("sql_planner", plan.get("status", "ok"), started, {
+            **redact_sql_for_trace(plan), "decision_by": _sql_decision})
 
     def _template_plan_is_incomplete(self, context: RequestContext, plan: JsonDict) -> bool:
         sql = str(plan.get("sql") or "")
@@ -593,8 +605,8 @@ class LLMOrchestrator:
         else:
             result = self._fallback_sql_validator(sql)
         context.sql_validation = normalize_result(result)
-        context.add_trace("sql_validator", context.sql_validation.get(
-            "status", "unknown"), started, context.sql_validation)
+        context.add_trace("sql_validator", context.sql_validation.get("status", "unknown"), started, {
+            **context.sql_validation, "decision_by": "rule"})
 
     async def _execute_sql(self, context: RequestContext) -> None:
         started = time.perf_counter()
@@ -608,7 +620,7 @@ class LLMOrchestrator:
                 "sql": sql,
                 "rows": [],
             }
-            context.add_trace("query_executor", "not_executed", started)
+            context.add_trace("query_executor", "not_executed", started, {"decision_by": "rule"})
             return
 
         if self.query_executor is None:
@@ -619,7 +631,7 @@ class LLMOrchestrator:
                 "sql": sql,
                 "rows": [],
             }
-            context.add_trace("query_executor", "not_configured", started)
+            context.add_trace("query_executor", "not_configured", started, {"decision_by": "rule"})
             return
 
         logger.debug(
@@ -657,7 +669,7 @@ class LLMOrchestrator:
             }
             context.errors.append(str(exc))
         context.add_trace("query_executor", context.query_result.get(
-            "execution_status", "unknown"), started)
+            "execution_status", "unknown"), started, {"decision_by": "db"})
 
     async def _select_visualization(self, context: RequestContext) -> None:
         started = time.perf_counter()
@@ -675,7 +687,7 @@ class LLMOrchestrator:
                 "fallback_visualization": "table",
             }
         context.visualization_plan = visual
-        context.add_trace("visualization_selector", "ok", started, visual)
+        context.add_trace("visualization_selector", "ok", started, {**visual, "decision_by": "rule"})
 
     async def _handle_gap(self, context: RequestContext) -> None:
         started = time.perf_counter()
@@ -722,8 +734,8 @@ class LLMOrchestrator:
                 "reason": gap_payload.get("reason") or "Required data or business rule is not available in the current MVP.",
                 **gap_payload,
             }
-        context.add_trace("gap_service", context.gap_result.get(
-            "status", "DATA_GAP"), started, context.gap_result)
+        context.add_trace("gap_service", context.gap_result.get("status", "DATA_GAP"), started, {
+            **context.gap_result, "decision_by": "component" if self.gap_service is not None else "rule"})
 
     async def _finalize(self, context: RequestContext, status_payload: JsonDict) -> OrchestratorResponse:  # noqa: PLR0912
         started = time.perf_counter()
@@ -770,7 +782,7 @@ class LLMOrchestrator:
 
         response = self._fallback_response_builder(context, status_payload)
         context.final_response = response.to_dict()
-        context.add_trace("response_builder", response.status, started)
+        context.add_trace("response_builder", response.status, started, {"decision_by": "rule"})
         response.context = context.to_dict()
         logger.info(
             "pipeline finalized request_id=%s route=%s status=%s warnings=%d errors=%d",
