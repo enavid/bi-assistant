@@ -75,25 +75,65 @@ function MetaChip({ label }: { label: string }) {
 
 type TraceStep = { step: string; status: string; duration_ms: number; details?: Record<string, unknown> }
 
-function formatDetailValue(v: unknown): string {
-  if (v === null || v === undefined) return '—'
-  if (typeof v === 'boolean') return v ? 'true' : 'false'
-  if (Array.isArray(v)) return v.length === 0 ? '[]' : v.map((x) => (typeof x === 'object' ? JSON.stringify(x) : String(x))).join(', ')
-  if (typeof v === 'object') return JSON.stringify(v)
-  return String(v)
+function isComplex(v: unknown): boolean {
+  if (v === null || v === undefined) return false
+  if (Array.isArray(v)) return v.length > 0
+  if (typeof v === 'object') return Object.keys(v as object).length > 0
+  return false
 }
 
 function TraceDetails({ details }: { details: Record<string, unknown> }) {
   const entries = Object.entries(details).filter(([k]) => k !== 'decision_by')
   if (entries.length === 0) return null
+
+  const simple = entries.filter(([, v]) => !isComplex(v))
+  const complex = entries.filter(([, v]) => isComplex(v))
+
   return (
-    <div className="px-2.5 py-2 flex flex-col gap-[3px]" style={{ borderTop: '1px solid var(--border-subtle)', background: 'var(--bg-base)' }}>
-      {entries.map(([k, v]) => (
-        <div key={k} className="flex gap-2 text-[10px] font-mono leading-relaxed">
-          <span className="flex-shrink-0 w-[160px] truncate" style={{ color: 'var(--text-3)' }}>{k}</span>
-          <span className="flex-1 break-all" style={{ color: 'var(--text-2)' }}>{formatDetailValue(v)}</span>
+    <div
+      className="text-[10px] font-mono"
+      style={{
+        borderTop: '1px solid var(--border-subtle)',
+        background: 'var(--bg-base)',
+        borderLeft: '3px solid var(--accent-border)',
+      }}
+    >
+      {/* simple key-value grid */}
+      {simple.length > 0 && (
+        <div
+          className="grid px-3 py-2 gap-x-4 gap-y-[3px]"
+          style={{ gridTemplateColumns: 'minmax(100px, max-content) 1fr' }}
+        >
+          {simple.map(([k, v]) => (
+            <>
+              <span key={`k-${k}`} style={{ color: 'var(--text-3)' }}>{k}</span>
+              <span key={`v-${k}`} className="break-all" style={{ color: 'var(--text-2)' }}>
+                {v === null || v === undefined ? '—' : String(v)}
+              </span>
+            </>
+          ))}
         </div>
-      ))}
+      )}
+
+      {/* complex values — each in its own labeled block */}
+      {complex.length > 0 && (
+        <div
+          className="flex flex-col gap-2 px-3 pb-2.5"
+          style={{ borderTop: simple.length > 0 ? '1px solid var(--border-subtle)' : undefined, paddingTop: '8px' }}
+        >
+          {complex.map(([k, v]) => (
+            <div key={k}>
+              <div className="mb-0.5 font-semibold" style={{ color: 'var(--text-3)' }}>{k}</div>
+              <pre
+                className="px-2.5 py-2 rounded-[4px] text-[9.5px] overflow-x-auto leading-relaxed"
+                style={{ background: 'var(--bg-raised)', color: 'var(--text-2)', border: '1px solid var(--border-subtle)' }}
+              >
+                {JSON.stringify(v, null, 2)}
+              </pre>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
