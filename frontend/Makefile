@@ -2,12 +2,13 @@ NPM := npm
 
 .DEFAULT_GOAL := help
 
-.PHONY: help install dev build preview type-check test lint format check
+.PHONY: help install run dev build preview type-check test lint format check
 
 help:
 	@echo "Usage: make <target>"
 	@echo ""
 	@echo "  install      install dependencies"
+	@echo "  run          start dev server (alias for dev)"
 	@echo "  dev          start dev server with hot-reload"
 	@echo "  build        production build (type-check + bundle)"
 	@echo "  preview      serve the production build locally"
@@ -19,6 +20,8 @@ help:
 
 install:
 	$(NPM) install
+
+run: dev
 
 dev:
 	$(NPM) run dev
