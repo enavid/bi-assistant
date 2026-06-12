@@ -37,12 +37,6 @@ export function SettingsPage() {
               {item.label}
             </button>
           ))}
-          <div className="border-t border-border-subtle mt-2 pt-2 px-2.5">
-            <div className="text-[11px] text-text-3 flex items-center gap-1.5 opacity-50">
-              <Icon name="eye" size={13} /> Users
-            </div>
-            <div className="text-[9px] text-text-3 mt-0.5">Coming with auth</div>
-          </div>
         </div>
 
         <div className="flex-1 overflow-y-auto p-6">
