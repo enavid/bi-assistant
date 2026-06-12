@@ -209,6 +209,18 @@ export function useAddEvalQuestion() {
   })
 }
 
+export function useDeleteEvalQuestion() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ setId, questionId }: { setId: string; questionId: string }) =>
+      evalApi.deleteQuestion(setId, questionId),
+    onSuccess: (_, { setId }) => {
+      qc.invalidateQueries({ queryKey: ['eval-questions', setId] })
+      qc.invalidateQueries({ queryKey: ['eval-sets'] })
+    },
+  })
+}
+
 export function useEvalRun(runId: string | null, isRunning: boolean) {
   return useQuery({
     queryKey: ['eval-run', runId],

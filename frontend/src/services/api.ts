@@ -114,5 +114,8 @@ export const evalApi = {
     apiClient
       .post(`/eval/question-sets/${setId}/questions`, [q])
       .then((r) => r.data),
+
+  deleteQuestion: (setId: string, questionId: string) =>
+    apiClient.delete(`/eval/question-sets/${setId}/questions/${questionId}`).then((r) => r.data),
 }
 

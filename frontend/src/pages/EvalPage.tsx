@@ -4,6 +4,7 @@ import { Modal } from '@/components/ui/Modal'
 import {
   useAddEvalQuestion,
   useCreateEvalSet,
+  useDeleteEvalQuestion,
   useDeleteEvalSet,
   useEvalQuestions,
   useEvalRun,
@@ -12,7 +13,7 @@ import {
   useImportEvalQuestions,
   useTriggerEvalRun,
 } from '@/hooks'
-import type { EvalRun, EvalRunResult } from '@/types'
+import type { EvalQuestion, EvalRun, EvalRunResult } from '@/types'
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -946,6 +947,87 @@ function RunResults({ runId, isRunning }: { runId: string; isRunning: boolean })
 }
 
 // ---------------------------------------------------------------------------
+// Question list (shown before first run)
+// ---------------------------------------------------------------------------
+
+function QuestionList({ questions, setId }: { questions: EvalQuestion[]; setId: string }) {
+  const deleteQ = useDeleteEvalQuestion()
+
+  const byCat: Record<string, EvalQuestion[]> = {}
+  for (const q of questions) {
+    const cat = q.category ?? ''
+    if (!byCat[cat]) byCat[cat] = []
+    byCat[cat].push(q)
+  }
+  const cats = Object.keys(byCat).sort()
+
+  return (
+    <div
+      className="rounded-[8px] overflow-hidden mx-0"
+      style={{ border: '1px solid var(--border-default)', background: 'var(--bg-surface)' }}
+    >
+      {cats.map((cat, ci) => (
+        <div key={cat} style={{ borderBottom: ci < cats.length - 1 ? '1px solid var(--border-subtle)' : undefined }}>
+          {/* Category header */}
+          {cat && (
+            <div
+              className="px-4 py-2 text-[11px] font-semibold uppercase tracking-wide"
+              style={{ color: 'var(--text-3)', background: 'var(--bg-raised)', borderBottom: '1px solid var(--border-subtle)' }}
+            >
+              {humanCategory(cat)}
+            </div>
+          )}
+          {/* Questions */}
+          {byCat[cat].map((q, qi) => (
+            <div
+              key={q.id}
+              className="group flex items-center gap-3 px-4 py-2.5"
+              style={{ borderTop: (qi > 0 || cat) ? '1px solid var(--border-subtle)' : undefined }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-raised)')}
+              onMouseLeave={(e) => (e.currentTarget.style.background = '')}
+            >
+              <span className="flex-shrink-0" style={{ color: 'var(--text-3)' }}>
+                <Icon name="list" size={13} />
+              </span>
+              <span
+                className="flex-1 text-[13px] leading-snug"
+                style={{ color: 'var(--text-1)', direction: 'rtl', textAlign: 'right' }}
+              >
+                {q.question}
+              </span>
+              <div className="flex items-center gap-1.5 flex-shrink-0">
+                {q.expected_route && (
+                  <span
+                    className="text-[10px] font-mono px-1.5 py-[2px] rounded-[4px]"
+                    style={
+                      EVAL_ROUTE_STYLE[q.expected_route]
+                        ? { background: EVAL_ROUTE_STYLE[q.expected_route].bg, color: EVAL_ROUTE_STYLE[q.expected_route].text, border: `1px solid ${EVAL_ROUTE_STYLE[q.expected_route].border}` }
+                        : { background: 'var(--bg-raised)', color: 'var(--text-3)', border: '1px solid var(--border-subtle)' }
+                    }
+                  >
+                    {q.expected_route}
+                  </span>
+                )}
+                <button
+                  onClick={() => deleteQ.mutate({ setId, questionId: q.question_id })}
+                  className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-[5px]"
+                  style={{ color: 'var(--text-3)' }}
+                  onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--red)')}
+                  onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-3)')}
+                  title="Delete question"
+                >
+                  <Icon name="trash" size={12} />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // Set detail panel (right)
 // ---------------------------------------------------------------------------
 
@@ -1053,22 +1135,24 @@ function SetDetail({ setId }: { setId: string }) {
           </div>
         )}
 
-        {/* Results */}
+        {/* Results or question list */}
         <div className="flex-1 overflow-hidden">
           {displayRunId
             ? <RunResults runId={displayRunId} isRunning={isRunning} />
-            : (
-              <div className="flex items-center justify-center h-full" style={{ color: 'var(--text-3)' }}>
-                <div className="text-center">
-                  <span className="block mb-3 opacity-30"><Icon name="flask" size={32} /></span>
-                  <p className="text-[13px]">
-                    {questions?.length
-                      ? 'Press "Run eval" to start the first evaluation.'
-                      : 'Add or import questions first, then run the evaluation.'}
-                  </p>
+            : questions?.length
+              ? (
+                <div className="h-full overflow-y-auto">
+                  <QuestionList questions={questions} setId={setId} />
                 </div>
-              </div>
-            )}
+              )
+              : (
+                <div className="flex items-center justify-center h-full" style={{ color: 'var(--text-3)' }}>
+                  <div className="text-center">
+                    <span className="block mb-3 opacity-30"><Icon name="flask" size={32} /></span>
+                    <p className="text-[13px]">Add or import questions, then run the evaluation.</p>
+                  </div>
+                </div>
+              )}
         </div>
       </div>
 
