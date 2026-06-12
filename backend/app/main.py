@@ -25,9 +25,57 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     logger.info("Database tables ready")
+    await _seed_eval_defaults()
     yield
     await engine.dispose()
     logger.info("Shutdown complete")
+
+
+async def _seed_eval_defaults() -> None:
+    from pathlib import Path
+
+    from sqlalchemy import select
+
+    from app.infrastructure.db.models import EvalQuestionORM, EvalQuestionSetORM
+    from app.infrastructure.db.session import AsyncSessionLocal
+
+    phase2_file = Path(__file__).parents[1] / "eval" / "phase2_trace_questions.json"
+    if not phase2_file.exists():
+        return
+
+    async with AsyncSessionLocal() as db:
+        existing = (
+            await db.execute(
+                select(EvalQuestionSetORM).where(EvalQuestionSetORM.is_default == True)  # noqa: E712
+            )
+        ).scalar_one_or_none()
+        if existing:
+            return
+
+        import json
+
+        questions_data: list[dict] = json.loads(phase2_file.read_text(encoding="utf-8"))
+        qs = EvalQuestionSetORM(
+            name="Consultant Questions",
+            description="240 consultant questions for evaluation",
+            is_default=True,
+        )
+        db.add(qs)
+        await db.flush()
+        for q in questions_data:
+            db.add(
+                EvalQuestionORM(
+                    set_id=qs.id,
+                    question_id=q.get("question_id", ""),
+                    question=q.get("question", ""),
+                    category=q.get("category") or None,
+                    expected_route=q.get("expected_route") or None,
+                    expected_status=q.get("expected_status") or None,
+                    expected_intent=q.get("expected_intent") or None,
+                )
+            )
+        await db.commit()
+        logger.info("Seeded %d default eval questions", len(questions_data))
 
 
 app = FastAPIOffline(

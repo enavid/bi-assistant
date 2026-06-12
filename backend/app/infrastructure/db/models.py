@@ -133,6 +133,7 @@ class EvalQuestionSetORM(Base):
     id: Mapped[str] = mapped_column(String, primary_key=True, default=_uid)
     name: Mapped[str] = mapped_column(String, nullable=False)
     description: Mapped[str] = mapped_column(Text, default="")
+    is_default: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     questions: Mapped[list[EvalQuestionORM]] = relationship(
@@ -176,6 +177,7 @@ class EvalRunORM(Base):
         String, ForeignKey("eval_question_sets.id", ondelete="CASCADE")
     )
     status: Mapped[str] = mapped_column(String, nullable=False, default="pending")
+    model_name: Mapped[str | None] = mapped_column(String, nullable=True)
     total: Mapped[int] = mapped_column(Integer, default=0)
     passed: Mapped[int] = mapped_column(Integer, default=0)
     failed: Mapped[int] = mapped_column(Integer, default=0)

@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Sidebar } from '@/components/layout/Sidebar'
 import { ChatPage } from '@/pages/ChatPage'
 import { BuilderPage } from '@/pages/BuilderPage'
+import { EvalPage } from '@/pages/EvalPage'
 import { SettingsPage } from '@/pages/SettingsPage'
 import { useAppStore } from '@/store/appStore'
 
@@ -23,6 +24,7 @@ function AppShell() {
       <main className="flex flex-1 overflow-hidden min-w-0" style={{ background: 'var(--bg-base)' }}>
         {activePage === 'chat'     && <ChatPage />}
         {activePage === 'builder'  && <BuilderPage />}
+        {activePage === 'eval'     && <EvalPage />}
         {activePage === 'settings' && <SettingsPage />}
       </main>
     </div>

@@ -9,6 +9,7 @@ import type { AppPage } from '@/types'
 const NAV: { page: AppPage; label: string; icon: Parameters<typeof Icon>[0]['name'] }[] = [
   { page: 'chat',    label: 'Chat',           icon: 'message' },
   { page: 'builder', label: 'Prompt Builder', icon: 'layers'  },
+  { page: 'eval',    label: 'Evaluation',     icon: 'flask'   },
 ]
 
 function SelectField({

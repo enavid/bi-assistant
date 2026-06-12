@@ -1,6 +1,9 @@
 import apiClient from './apiClient'
 import type {
   ChatSession,
+  EvalQuestion,
+  EvalQuestionSet,
+  EvalRun,
   GenerateResponse,
   OllamaHealth,
   Project,
@@ -74,5 +77,42 @@ export const chatApi = {
 export const ollamaApi = {
   health: () =>
     apiClient.get<OllamaHealth>('/ollama/health').then((r) => r.data),
+}
+
+export const evalApi = {
+  listSets: () =>
+    apiClient.get<EvalQuestionSet[]>('/eval/question-sets').then((r) => r.data),
+
+  createSet: (name: string, description = '') =>
+    apiClient.post<EvalQuestionSet>('/eval/question-sets', { name, description }).then((r) => r.data),
+
+  deleteSet: (id: string) =>
+    apiClient.delete(`/eval/question-sets/${id}`).then((r) => r.data),
+
+  listQuestions: (setId: string) =>
+    apiClient.get<EvalQuestion[]>(`/eval/question-sets/${setId}/questions`).then((r) => r.data),
+
+  importQuestions: (setId: string, questions: Omit<EvalQuestion, 'id' | 'set_id' | 'created_at'>[]) =>
+    apiClient.post(`/eval/question-sets/${setId}/questions`, questions).then((r) => r.data),
+
+  listRuns: (setId: string) =>
+    apiClient.get<EvalRun[]>(`/eval/question-sets/${setId}/runs`).then((r) => r.data),
+
+  seedDefaults: () =>
+    apiClient.post<EvalQuestionSet>('/eval/seed-defaults').then((r) => r.data),
+
+  triggerRun: (setId: string, opts?: { category?: string; model_name?: string }) =>
+    apiClient.post<EvalRun>(`/eval/question-sets/${setId}/run`, opts ?? {}).then((r) => r.data),
+
+  getRun: (runId: string) =>
+    apiClient.get<EvalRun>(`/eval/runs/${runId}`).then((r) => r.data),
+
+  addQuestion: (
+    setId: string,
+    q: { question_id: string; question: string; category?: string; expected_route?: string; expected_status?: string },
+  ) =>
+    apiClient
+      .post(`/eval/question-sets/${setId}/questions`, [q])
+      .then((r) => r.data),
 }
 

@@ -89,4 +89,72 @@ export interface OllamaHealth {
 }
 
 export type Theme = 'dark' | 'light'
-export type AppPage = 'chat' | 'builder' | 'settings'
+export type AppPage = 'chat' | 'builder' | 'settings' | 'eval'
+
+// ---------------------------------------------------------------------------
+// Eval types
+// ---------------------------------------------------------------------------
+
+export interface EvalQuestionSet {
+  id: string
+  name: string
+  description: string
+  is_default: boolean
+  question_count: number
+  created_at: string
+}
+
+export interface EvalQuestion {
+  id: string
+  set_id: string
+  question_id: string
+  question: string
+  category: string | null
+  expected_route: string | null
+  expected_status: string | null
+  expected_intent: string | null
+  created_at: string
+}
+
+export interface EvalRun {
+  id: string
+  set_id: string
+  status: 'pending' | 'running' | 'done'
+  model_name: string | null
+  total: number
+  passed: number
+  failed: number
+  started_at: string | null
+  finished_at: string | null
+  created_at: string
+  results?: EvalRunResult[]
+}
+
+export interface EvalRunResult {
+  id: string
+  run_id: string
+  question_id: string
+  question: string
+  category: string | null
+  actual_route: string | null
+  actual_status: string | null
+  actual_intent: string | null
+  source: string | null
+  model_called: string | null
+  template_id: string | null
+  sql_validator_status: string | null
+  executed: boolean
+  row_count: number | null
+  visualization: string | null
+  total_duration_ms: number
+  passed: boolean
+  trace_steps: Array<{
+    step?: string
+    status?: string
+    duration_ms?: number
+    decision_by?: string
+  }> | null
+  error: string | null
+  warnings: unknown[] | null
+  created_at: string
+}

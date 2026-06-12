@@ -138,16 +138,19 @@ async def test_execute_run_sets_status_to_done(db_engine):
         qs = EvalQuestionSetORM(name="bg test")
         session.add(qs)
         await session.flush()
-        session.add(EvalQuestionORM(set_id=qs.id, question_id="q001", question="سوال اول"))
+        q = EvalQuestionORM(set_id=qs.id, question_id="q001", question="سوال اول")
+        session.add(q)
+        await session.flush()
         run = EvalRunORM(set_id=qs.id, status="pending", total=1)
         session.add(run)
         await session.commit()
         run_id = run.id
+        question_ids = [q.id]
 
     mock_orchestrator = AsyncMock()
     mock_orchestrator.arun.return_value = _make_mock_response()
 
-    await _run_evaluation_background(run_id=run_id, session_factory=factory, orchestrator=mock_orchestrator)
+    await _run_evaluation_background(run_id=run_id, question_ids=question_ids, session_factory=factory, orchestrator=mock_orchestrator)
 
     async with factory() as session:
         updated = (await session.execute(select(EvalRunORM).where(EvalRunORM.id == run_id))).scalar_one()
@@ -167,19 +170,22 @@ async def test_execute_run_saves_results(db_engine):
         qs = EvalQuestionSetORM(name="results test")
         session.add(qs)
         await session.flush()
-        session.add(EvalQuestionORM(
+        q = EvalQuestionORM(
             set_id=qs.id, question_id="q001", question="سوال",
             category="demographics", expected_route="SQL",
-        ))
+        )
+        session.add(q)
+        await session.flush()
         run = EvalRunORM(set_id=qs.id, status="pending", total=1)
         session.add(run)
         await session.commit()
         run_id = run.id
+        question_ids = [q.id]
 
     mock_orchestrator = AsyncMock()
     mock_orchestrator.arun.return_value = _make_mock_response(route="SQL", status="NOT_EXECUTED")
 
-    await _run_evaluation_background(run_id=run_id, session_factory=factory, orchestrator=mock_orchestrator)
+    await _run_evaluation_background(run_id=run_id, question_ids=question_ids, session_factory=factory, orchestrator=mock_orchestrator)
 
     async with factory() as session:
         results = (
@@ -202,16 +208,19 @@ async def test_execute_run_sets_failed_on_error(db_engine):
         qs = EvalQuestionSetORM(name="error test")
         session.add(qs)
         await session.flush()
-        session.add(EvalQuestionORM(set_id=qs.id, question_id="q001", question="سوال"))
+        q = EvalQuestionORM(set_id=qs.id, question_id="q001", question="سوال")
+        session.add(q)
+        await session.flush()
         run = EvalRunORM(set_id=qs.id, status="pending", total=1)
         session.add(run)
         await session.commit()
         run_id = run.id
+        question_ids = [q.id]
 
     mock_orchestrator = AsyncMock()
     mock_orchestrator.arun.side_effect = RuntimeError("LLM unavailable")
 
-    await _run_evaluation_background(run_id=run_id, session_factory=factory, orchestrator=mock_orchestrator)
+    await _run_evaluation_background(run_id=run_id, question_ids=question_ids, session_factory=factory, orchestrator=mock_orchestrator)
 
     async with factory() as session:
         updated = (await session.execute(select(EvalRunORM).where(EvalRunORM.id == run_id))).scalar_one()

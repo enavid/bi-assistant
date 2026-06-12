@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { chatApi, ollamaApi, projectApi } from '@/services/api'
-import type { Project, Section } from '@/types'
+import { chatApi, evalApi, ollamaApi, projectApi } from '@/services/api'
+import type { EvalQuestion, Project, Section } from '@/types'
 
 export function useOllamaHealth() {
   return useQuery({
@@ -113,5 +113,107 @@ export function useDeleteSession() {
   return useMutation({
     mutationFn: (id: string) => chatApi.deleteSession(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['sessions'] }),
+  })
+}
+
+// ---------------------------------------------------------------------------
+// Eval hooks
+// ---------------------------------------------------------------------------
+
+export function useEvalSets() {
+  return useQuery({ queryKey: ['eval-sets'], queryFn: evalApi.listSets })
+}
+
+export function useCreateEvalSet() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ name, description }: { name: string; description?: string }) =>
+      evalApi.createSet(name, description),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['eval-sets'] }),
+  })
+}
+
+export function useDeleteEvalSet() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => evalApi.deleteSet(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['eval-sets'] }),
+  })
+}
+
+export function useEvalQuestions(setId: string | null) {
+  return useQuery({
+    queryKey: ['eval-questions', setId],
+    queryFn: () => evalApi.listQuestions(setId!),
+    enabled: !!setId,
+  })
+}
+
+export function useImportEvalQuestions() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ setId, questions }: { setId: string; questions: Omit<EvalQuestion, 'id' | 'set_id' | 'created_at'>[] }) =>
+      evalApi.importQuestions(setId, questions),
+    onSuccess: (_, { setId }) => {
+      qc.invalidateQueries({ queryKey: ['eval-questions', setId] })
+      qc.invalidateQueries({ queryKey: ['eval-sets'] })
+    },
+  })
+}
+
+export function useEvalRuns(setId: string | null) {
+  return useQuery({
+    queryKey: ['eval-runs', setId],
+    queryFn: () => evalApi.listRuns(setId!),
+    enabled: !!setId,
+  })
+}
+
+export function useSeedEvalDefaults() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: evalApi.seedDefaults,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['eval-sets'] }),
+  })
+}
+
+export function useTriggerEvalRun() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ setId, category, model_name }: { setId: string; category?: string; model_name?: string }) =>
+      evalApi.triggerRun(setId, { category, model_name }),
+    onSuccess: (_, { setId }) => qc.invalidateQueries({ queryKey: ['eval-runs', setId] }),
+  })
+}
+
+export function useAddEvalQuestion() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      setId,
+      question_id,
+      question,
+      category,
+      expected_route,
+    }: {
+      setId: string
+      question_id: string
+      question: string
+      category?: string
+      expected_route?: string
+    }) => evalApi.addQuestion(setId, { question_id, question, category, expected_route }),
+    onSuccess: (_, { setId }) => {
+      qc.invalidateQueries({ queryKey: ['eval-questions', setId] })
+      qc.invalidateQueries({ queryKey: ['eval-sets'] })
+    },
+  })
+}
+
+export function useEvalRun(runId: string | null, isRunning: boolean) {
+  return useQuery({
+    queryKey: ['eval-run', runId],
+    queryFn: () => evalApi.getRun(runId!),
+    enabled: !!runId,
+    refetchInterval: isRunning ? 3000 : false,
   })
 }

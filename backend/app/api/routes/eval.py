@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import json
 import logging
 import time
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Body, Depends, HTTPException, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from sqlalchemy.orm import selectinload
@@ -17,6 +19,8 @@ from app.api.schemas.eval import (
     EvalQuestionSetCreate,
     EvalQuestionSetOut,
     EvalRunOut,
+    EvalRunResultOut,
+    TriggerRunRequest,
 )
 from app.infrastructure.db.models import (
     EvalQuestionORM,
@@ -29,6 +33,62 @@ from app.infrastructure.db.session import AsyncSessionLocal, get_db
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/eval", tags=["eval"])
+
+_PHASE2_FILE = Path(__file__).parents[3] / "eval" / "phase2_trace_questions.json"
+_DEFAULT_SET_NAME = "Consultant Questions"
+
+
+# ---------------------------------------------------------------------------
+# Orchestrator factory (non-cached, supports model override)
+# ---------------------------------------------------------------------------
+
+
+def build_orchestrator(model_name: str | None = None) -> Any:
+    from app.adapters.presenters.response_builder import ResponseBuilder
+    from app.core.config import settings
+    from app.infrastructure.hr_db.analytics_executor import QueryExecutor
+    from app.infrastructure.llm.ollama_client import OllamaClient
+    from app.infrastructure.metadata.loader import get_metadata
+    from app.use_cases.hr_analytics.orchestrator import LLMOrchestrator
+    from app.use_cases.hr_analytics.sql.generator import SQLGenerator
+    from app.use_cases.hr_analytics.sql.template_engine import SQLTemplateEngine
+    from app.use_cases.hr_analytics.sql.validator import SQLValidator
+    from app.use_cases.hr_analytics.steps.decision_router import DecisionRouter
+    from app.use_cases.hr_analytics.steps.domain_classifier import DomainClassifier
+    from app.use_cases.hr_analytics.steps.gap_service import GapService
+    from app.use_cases.hr_analytics.steps.intent_parser import IntentParser
+    from app.use_cases.hr_analytics.steps.question_validator import QuestionValidator
+    from app.use_cases.hr_analytics.steps.semantic_mapper import SemanticMapper
+
+    metadata = get_metadata()
+    sql_validator = SQLValidator(metadata_service=metadata)
+    llm_client = OllamaClient(default_model=model_name) if model_name else None
+
+    kwargs: dict[str, Any] = dict(
+        metadata_service=metadata,
+        domain_classifier=DomainClassifier(),
+        question_validator=QuestionValidator(),
+        semantic_mapper=SemanticMapper(metadata_service=metadata),
+        intent_parser=IntentParser(metadata_service=metadata),
+        router=DecisionRouter(metadata_service=metadata),
+        sql_template_engine=SQLTemplateEngine(metadata_service=metadata),
+        sql_generator=SQLGenerator(metadata_service=metadata),
+        sql_validator=sql_validator,
+        query_executor=QueryExecutor(
+            metadata_service=metadata,
+            sql_validator=sql_validator,
+            database_url=settings.hr_db_dsn,
+        ),
+        gap_service=GapService(metadata_service=metadata),
+        response_builder=ResponseBuilder(metadata_service=metadata),
+        default_execute_sql=settings.default_execute_sql,
+        current_shamsi_year=settings.current_shamsi_year,
+        strict_metadata=True,
+    )
+    if llm_client:
+        kwargs["llm_client"] = llm_client
+
+    return LLMOrchestrator(**kwargs)
 
 
 # ---------------------------------------------------------------------------
@@ -70,6 +130,64 @@ async def delete_question_set(set_id: str, db: AsyncSession = Depends(get_db)):
     if not qs:
         raise HTTPException(status_code=404, detail="Question set not found")
     await db.delete(qs)
+
+
+# ---------------------------------------------------------------------------
+# Seed defaults
+# ---------------------------------------------------------------------------
+
+
+@router.post(
+    "/seed-defaults", response_model=EvalQuestionSetOut, status_code=status.HTTP_201_CREATED
+)
+async def seed_defaults(db: AsyncSession = Depends(get_db)):
+    existing = (
+        await db.execute(
+            select(EvalQuestionSetORM).where(EvalQuestionSetORM.is_default == True)  # noqa: E712
+        )
+    ).scalar_one_or_none()
+
+    if existing:
+        count = (
+            await db.execute(select(func.count()).where(EvalQuestionORM.set_id == existing.id))
+        ).scalar_one()
+        out = EvalQuestionSetOut.model_validate(existing)
+        out.question_count = count
+        from fastapi.responses import JSONResponse
+
+        return JSONResponse(content=out.model_dump(mode="json"), status_code=200)
+
+    if not _PHASE2_FILE.exists():
+        raise HTTPException(status_code=404, detail="Default questions file not found")
+
+    questions_data: list[dict] = json.loads(_PHASE2_FILE.read_text(encoding="utf-8"))
+
+    qs = EvalQuestionSetORM(
+        name=_DEFAULT_SET_NAME,
+        description="240 consultant questions for evaluation",
+        is_default=True,
+    )
+    db.add(qs)
+    await db.flush()
+
+    for q in questions_data:
+        db.add(
+            EvalQuestionORM(
+                set_id=qs.id,
+                question_id=q.get("question_id", ""),
+                question=q.get("question", ""),
+                category=q.get("category") or None,
+                expected_route=q.get("expected_route") or None,
+                expected_status=q.get("expected_status") or None,
+                expected_intent=q.get("expected_intent") or None,
+            )
+        )
+
+    await db.flush()
+
+    out = EvalQuestionSetOut.model_validate(qs)
+    out.question_count = len(questions_data)
+    return out
 
 
 # ---------------------------------------------------------------------------
@@ -147,8 +265,33 @@ async def delete_question(set_id: str, question_id: str, db: AsyncSession = Depe
 
 @router.get("/question-sets/{set_id}/runs", response_model=list[EvalRunOut])
 async def list_runs(set_id: str, db: AsyncSession = Depends(get_db)):
-    rows = (await db.execute(select(EvalRunORM).where(EvalRunORM.set_id == set_id))).scalars().all()
-    return [EvalRunOut.model_validate(r) for r in rows]
+    rows = (
+        (
+            await db.execute(
+                select(EvalRunORM)
+                .where(EvalRunORM.set_id == set_id)
+                .order_by(EvalRunORM.created_at.desc())
+            )
+        )
+        .scalars()
+        .all()
+    )
+    return [
+        EvalRunOut(
+            id=r.id,
+            set_id=r.set_id,
+            status=r.status,
+            model_name=r.model_name,
+            total=r.total,
+            passed=r.passed,
+            failed=r.failed,
+            started_at=r.started_at,
+            finished_at=r.finished_at,
+            created_at=r.created_at,
+            results=[],
+        )
+        for r in rows
+    ]
 
 
 @router.post(
@@ -159,6 +302,7 @@ async def list_runs(set_id: str, db: AsyncSession = Depends(get_db)):
 async def trigger_run(
     set_id: str,
     background_tasks: BackgroundTasks,
+    body: TriggerRunRequest = Body(default_factory=TriggerRunRequest),
     db: AsyncSession = Depends(get_db),
 ):
     qs = (
@@ -167,28 +311,50 @@ async def trigger_run(
     if not qs:
         raise HTTPException(status_code=404, detail="Question set not found")
 
-    questions = (
-        (await db.execute(select(EvalQuestionORM).where(EvalQuestionORM.set_id == set_id)))
-        .scalars()
-        .all()
-    )
+    q_query = select(EvalQuestionORM).where(EvalQuestionORM.set_id == set_id)
+    if body.category:
+        q_query = q_query.where(EvalQuestionORM.category == body.category)
+
+    questions = (await db.execute(q_query)).scalars().all()
+
     if not questions:
+        if body.category:
+            raise HTTPException(
+                status_code=400,
+                detail=f"No questions found for category '{body.category}'",
+            )
         raise HTTPException(status_code=400, detail="Question set has no questions")
 
-    run = EvalRunORM(set_id=set_id, status="pending", total=len(questions))
+    run = EvalRunORM(
+        set_id=set_id,
+        status="pending",
+        total=len(questions),
+        model_name=body.model_name,
+    )
     db.add(run)
-    await db.flush()
-
-    from app.api.dependencies import get_hr_bi_orchestrator
+    await db.commit()
 
     background_tasks.add_task(
         _run_evaluation_background,
         run_id=run.id,
+        question_ids=[q.id for q in questions],
         session_factory=AsyncSessionLocal,
-        orchestrator=get_hr_bi_orchestrator(),
+        orchestrator=build_orchestrator(body.model_name),
     )
 
-    return EvalRunOut.model_validate(run)
+    return EvalRunOut(
+        id=run.id,
+        set_id=run.set_id,
+        status=run.status,
+        model_name=run.model_name,
+        total=run.total,
+        passed=run.passed,
+        failed=run.failed,
+        started_at=run.started_at,
+        finished_at=run.finished_at,
+        created_at=run.created_at,
+        results=[],
+    )
 
 
 @router.get("/runs/{run_id}", response_model=EvalRunOut)
@@ -202,7 +368,9 @@ async def get_run(run_id: str, db: AsyncSession = Depends(get_db)):
     ).scalar_one_or_none()
     if not run:
         raise HTTPException(status_code=404, detail="Run not found")
-    return EvalRunOut.model_validate(run)
+    out = EvalRunOut.model_validate(run)
+    out.results = [EvalRunResultOut.model_validate(r) for r in run.results]
+    return out
 
 
 # ---------------------------------------------------------------------------
@@ -212,13 +380,14 @@ async def get_run(run_id: str, db: AsyncSession = Depends(get_db)):
 
 async def _run_evaluation_background(
     run_id: str,
+    question_ids: list[str],
     session_factory: async_sessionmaker,
     orchestrator: Any,
 ) -> None:
     async with session_factory() as db:
         run = (await db.execute(select(EvalRunORM).where(EvalRunORM.id == run_id))).scalar_one()
         questions = (
-            (await db.execute(select(EvalQuestionORM).where(EvalQuestionORM.set_id == run.set_id)))
+            (await db.execute(select(EvalQuestionORM).where(EvalQuestionORM.id.in_(question_ids))))
             .scalars()
             .all()
         )

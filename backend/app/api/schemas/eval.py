@@ -14,9 +14,15 @@ class EvalQuestionSetOut(BaseModel):
     id: str
     name: str
     description: str
+    is_default: bool = False
     created_at: datetime
     question_count: int = 0
     model_config = {"from_attributes": True}
+
+
+class TriggerRunRequest(BaseModel):
+    category: str | None = None
+    model_name: str | None = None
 
 
 class EvalQuestionIn(BaseModel):
@@ -48,12 +54,14 @@ class EvalRunOut(BaseModel):
     id: str
     set_id: str
     status: str
+    model_name: str | None = None
     total: int
     passed: int
     failed: int
     started_at: datetime | None = None
     finished_at: datetime | None = None
     created_at: datetime
+    results: list[EvalRunResultOut] = []
     model_config = {"from_attributes": True}
 
 
