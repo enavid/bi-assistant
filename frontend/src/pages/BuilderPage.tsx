@@ -50,7 +50,6 @@ export function BuilderPage() {
   const [testQuestion, setTestQuestion] = useState('')
   const [testResult, setTestResult] = useState<{ sql: string; route?: string; intent?: string } | null>(null)
   const [testLoading, setTestLoading] = useState(false)
-  const [previewExpanded, setPreviewExpanded] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
 
@@ -416,6 +415,7 @@ export function BuilderPage() {
             {/* OUTPUT FORMAT TAB */}
             {tab === 'output' && selected && (
               <div className="flex-1 flex flex-col overflow-hidden">
+                {/* Section references */}
                 <div className="flex-shrink-0 px-3.5 pt-3 pb-2">
                   <div className="text-[10px] font-medium text-text-3 uppercase tracking-[.6px] mb-2">
                     Section references — click name to insert, click ID to copy
@@ -448,7 +448,8 @@ export function BuilderPage() {
                   </div>
                 </div>
 
-                <div className="flex-1 px-3.5 overflow-hidden flex flex-col gap-2">
+                {/* Output format textarea — takes available space */}
+                <div className="flex-1 px-3.5 flex flex-col gap-2 min-h-0">
                   <textarea
                     key={selected.id + '-out'}
                     value={outputDraft ?? selected.output_format}
@@ -468,37 +469,53 @@ export function BuilderPage() {
                   </div>
                 </div>
 
-                {/* Test prompt */}
-                <div className="flex-shrink-0 border-t border-border-default p-3.5">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Icon name="play" size={14} className="text-accent" />
-                    <span className="text-[11px] font-medium text-text-1 uppercase tracking-[.5px]">Test prompt</span>
+                {/* Test prompt — fixed at bottom */}
+                <div className="flex-shrink-0 border-t border-border-default"
+                  style={{ background: 'var(--bg-surface)' }}>
+                  <div className="flex items-center gap-2 px-3.5 py-2 border-b border-border-subtle"
+                    style={{ background: 'var(--bg-raised)' }}>
+                    <span style={{ color: 'var(--accent)', display: 'inline-flex' }}><Icon name="play" size={12} /></span>
+                    <span className="text-[10px] font-semibold uppercase tracking-[.6px]" style={{ color: 'var(--text-2)' }}>Test prompt</span>
                   </div>
-                  <div className="flex gap-2 mb-2">
-                    <input
-                      value={testQuestion}
-                      onChange={(e) => setTestQuestion(e.target.value)}
-                      onKeyDown={(e) => { if (e.key === 'Enter') handleTest() }}
-                      placeholder="Enter a question and press Enter…"
-                      className="flex-1 bg-bg-raised border border-border-default rounded-[7px] px-3 py-1.5 text-xs text-text-1 outline-none focus:border-accent"
-                    />
-                    <Button variant="primary" size="sm" onClick={handleTest} disabled={testLoading || !testQuestion.trim()}>
-                      <Icon name={testLoading ? 'refresh' : 'play'} size={13} />
-                      {testLoading ? 'Running…' : 'Test'}
-                    </Button>
-                  </div>
-                  {testResult && (
-                    <div className="rounded-[8px] overflow-hidden border border-border-default">
-                      <div className="bg-bg-raised px-3 py-1.5 flex items-center gap-2 border-b border-border-subtle">
-                        <span className="text-[10px] font-mono text-text-3">SQL</span>
-                        {testResult.route && <span className="text-[10px] px-1.5 py-0.5 rounded bg-accent-bg text-accent-text border border-accent-border font-mono">{testResult.route}</span>}
-                        <button onClick={() => navigator.clipboard.writeText(testResult.sql)} className="ml-auto text-[11px] text-text-3 hover:text-text-1 flex items-center gap-1">
-                          <Icon name="copy" size={12} /> Copy
-                        </button>
-                      </div>
-                      <pre className="p-3 text-[11px] font-mono text-text-2 leading-[1.65] overflow-x-auto whitespace-pre-wrap bg-bg-raised">{testResult.sql}</pre>
+                  <div className="px-3.5 py-2.5 flex flex-col gap-2">
+                    <div className="flex gap-2">
+                      <input
+                        value={testQuestion}
+                        onChange={(e) => setTestQuestion(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') handleTest() }}
+                        placeholder="Enter a question and press Enter…"
+                        className="flex-1 border border-border-default rounded-[8px] px-3 py-2 text-[12px] text-text-1 outline-none focus:border-accent transition-colors"
+                        style={{ background: 'var(--bg-raised)' }}
+                      />
+                      <Button variant="primary" size="sm" onClick={handleTest} disabled={testLoading || !testQuestion.trim()}>
+                        <Icon name={testLoading ? 'refresh' : 'play'} size={13} />
+                        {testLoading ? 'Running…' : 'Test'}
+                      </Button>
                     </div>
-                  )}
+                    {testResult && (
+                      <div className="rounded-[8px] overflow-hidden border border-border-default">
+                        <div className="px-3 py-1.5 flex items-center gap-2 border-b border-border-subtle"
+                          style={{ background: 'var(--bg-raised)' }}>
+                          <span className="text-[10px] font-mono" style={{ color: 'var(--text-3)' }}>SQL</span>
+                          {testResult.route && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded font-mono"
+                              style={{ background: 'var(--accent-bg)', color: 'var(--accent-text)', border: '1px solid var(--accent-border)' }}>
+                              {testResult.route}
+                            </span>
+                          )}
+                          <button onClick={() => navigator.clipboard.writeText(testResult.sql)}
+                            className="ml-auto flex items-center gap-1 text-[11px] hover:opacity-70 transition-opacity"
+                            style={{ color: 'var(--text-3)' }}>
+                            <Icon name="copy" size={12} /> Copy
+                          </button>
+                        </div>
+                        <pre className="p-3 text-[11px] font-mono leading-[1.65] overflow-x-auto whitespace-pre-wrap max-h-[180px]"
+                          style={{ color: 'var(--text-2)', background: 'var(--bg-raised)' }}>
+                          {testResult.sql}
+                        </pre>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             )}
@@ -547,8 +564,8 @@ export function BuilderPage() {
             )}
           </div>
 
-          {/* Preview panel with expand button */}
-          <div className={clsx('border-l-2 border-border-default flex flex-col bg-bg-raised transition-all', previewExpanded ? 'w-[420px] min-w-[420px]' : 'w-[210px] min-w-[210px]')}>
+          {/* Preview panel — always expanded */}
+          <div className="w-[420px] min-w-[420px] border-l-2 border-border-default flex flex-col bg-bg-raised">
             <div className="h-9 border-b border-border-subtle flex items-center px-3 flex-shrink-0 gap-2">
               <span className="text-[10px] font-medium text-text-3 uppercase tracking-[.7px] flex-1">Assembled prompt</span>
               {preview && (
@@ -566,16 +583,6 @@ export function BuilderPage() {
                   </button>
                 </>
               )}
-              <button
-                onClick={() => setPreviewExpanded((v) => !v)}
-                className="transition-colors"
-                style={{ color: 'var(--text-3)' }}
-                onMouseEnter={e => (e.currentTarget.style.color = 'var(--text-1)')}
-                onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-3)')}
-                title={previewExpanded ? 'Collapse' : 'Expand'}
-              >
-                <Icon name={previewExpanded ? 'arrow-right' : 'arrow-left'} size={13} />
-              </button>
             </div>
             <div className="flex-1 overflow-y-auto p-3">
               {preview ? (
