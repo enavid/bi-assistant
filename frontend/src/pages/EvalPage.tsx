@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { Icon } from '@/components/ui/Icon'
 import { Modal } from '@/components/ui/Modal'
 import {
@@ -582,6 +582,86 @@ function RunModal({
 // Helpers
 // ---------------------------------------------------------------------------
 
+const EVAL_ROUTE_STYLE: Record<string, { bg: string; text: string; border: string }> = {
+  SQL:                 { bg: 'var(--accent-bg)',  text: 'var(--accent-text)',  border: 'var(--accent-border)' },
+  GAP:                 { bg: 'var(--amber-bg)',   text: 'var(--amber)',        border: 'var(--amber-border)' },
+  REJECT:              { bg: 'var(--red-bg)',     text: 'var(--red)',          border: 'var(--red-border)' },
+  NEEDS_CLARIFICATION: { bg: 'var(--bg-raised)',  text: 'var(--text-3)',       border: 'var(--border-default)' },
+  _default:            { bg: 'var(--bg-raised)',  text: 'var(--text-3)',       border: 'var(--border-subtle)' },
+}
+
+const EVAL_STATUS_LABEL: Record<string, string> = {
+  DATA_GAP:       'Data Gap',
+  ANALYTICAL_GAP: 'Analytical Gap',
+  ACCESS_DENIED:  'Access Denied',
+  OUT_OF_SCOPE:   'Out of Scope',
+}
+
+const DECISION_STYLE: Record<string, { color: string; bg: string; border: string }> = {
+  rule:      { color: 'var(--text-3)',      bg: 'var(--bg-raised)',   border: 'var(--border-subtle)' },
+  policy:    { color: 'var(--red)',         bg: 'var(--red-bg)',      border: 'var(--red-border)' },
+  template:  { color: 'var(--accent-text)', bg: 'var(--accent-bg)',   border: 'var(--accent-border)' },
+  llm:       { color: 'var(--amber)',       bg: 'var(--amber-bg)',    border: 'var(--amber-border)' },
+  db:        { color: 'var(--text-2)',      bg: 'var(--bg-raised)',   border: 'var(--border-default)' },
+  component: { color: 'var(--text-2)',      bg: 'var(--bg-raised)',   border: 'var(--border-default)' },
+}
+
+function traceStatusColor(status: string): string {
+  const s = status.toLowerCase()
+  if (s.includes('fail') || s.includes('error') || s.includes('invalid') || s.includes('denied') || s.includes('blocked'))
+    return 'var(--red)'
+  if (s === 'warning' || s === 'not_configured' || s === 'unknown')
+    return 'var(--amber)'
+  return 'var(--text-3)'
+}
+
+function EvalTracePanel({ steps }: { steps: NonNullable<EvalRunResult['trace_steps']> }) {
+  const [expandedRow, setExpandedRow] = useState<number | null>(null)
+  return (
+    <div
+      className="mt-1 rounded-[6px] overflow-hidden text-[10px] font-mono"
+      style={{ border: '1px solid var(--border-subtle)', background: 'var(--bg-raised)' }}
+    >
+      <div className="grid" style={{ gridTemplateColumns: 'minmax(130px, 1.8fr) minmax(90px, 1fr) 52px 96px', gap: 0 }}>
+        {(['step', 'status', 'ms', 'decision'] as const).map((h) => (
+          <div key={h} className="px-2.5 py-1.5 font-semibold uppercase tracking-wide text-[9px]"
+            style={{ color: 'var(--text-3)', borderBottom: '1px solid var(--border-subtle)' }}>
+            {h}
+          </div>
+        ))}
+        {steps.map((t, i) => {
+          const isLast = i === steps.length - 1
+          const isExpanded = expandedRow === i
+          const decision = t.decision_by ?? '—'
+          const ds = DECISION_STYLE[decision]
+          const status = t.status ?? ''
+          const statusColor = traceStatusColor(status)
+          const rowBorder = (!isLast || isExpanded) ? '1px solid var(--border-subtle)' : undefined
+          return (
+            <React.Fragment key={i}>
+              <div className="px-2.5 py-[5px]" style={{ color: 'var(--text-2)', borderBottom: rowBorder }}>
+                {t.step ?? '—'}
+              </div>
+              <div className="px-2.5 py-[5px]" style={{ borderBottom: rowBorder }}>
+                <span style={{ color: statusColor, fontWeight: statusColor === 'var(--red)' ? 600 : undefined }}>{status || '—'}</span>
+              </div>
+              <div className="px-2.5 py-[5px] tabular-nums text-right" style={{ color: 'var(--text-3)', borderBottom: rowBorder }}>
+                {t.duration_ms != null ? t.duration_ms.toFixed(1) : '—'}
+              </div>
+              <div className="px-2.5 py-[5px]" style={{ borderBottom: rowBorder }}>
+                <span className="px-1.5 py-[2px] rounded-[3px] whitespace-nowrap"
+                  style={{ color: ds?.color ?? 'var(--text-3)', background: ds?.bg ?? 'transparent', border: `1px solid ${ds?.border ?? 'var(--border-subtle)'}` }}>
+                  {decision}
+                </span>
+              </div>
+            </React.Fragment>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 function humanCategory(cat: string) {
   return cat.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
 }
@@ -590,147 +670,158 @@ function humanCategory(cat: string) {
 // Category accordion
 // ---------------------------------------------------------------------------
 
+function QuestionRow({ r, isLatest }: { r: EvalRunResult; isLatest: boolean }) {
+  const [traceOpen, setTraceOpen] = useState(false)
+  const routeStyle = EVAL_ROUTE_STYLE[r.actual_route ?? ''] ?? EVAL_ROUTE_STYLE._default
+  const statusLabel = r.actual_status ? (EVAL_STATUS_LABEL[r.actual_status] ?? r.actual_status) : null
+  const hasTrace = (r.trace_steps?.length ?? 0) > 0
+
+  return (
+    <div className="flex flex-col gap-[3px]">
+      {/* badge + bubble */}
+      <div className="flex gap-3 items-start">
+        <div
+          className="w-7 h-7 rounded-[8px] flex items-center justify-center flex-shrink-0 mt-0.5"
+          style={
+            r.passed
+              ? { background: 'var(--accent-bg)', color: 'var(--accent-text)', border: '1px solid var(--accent-border)' }
+              : { background: 'var(--red-bg)', color: 'var(--red)', border: '1px solid var(--red-border)' }
+          }
+        >
+          <Icon name={r.passed ? 'check' : 'x'} size={12} />
+        </div>
+        <div
+          className="flex-1 px-4 py-2 text-[13px] leading-[1.5] min-w-0"
+          style={{
+            background: 'var(--bg-raised)',
+            border: '1px solid var(--border-default)',
+            borderRadius: '4px 18px 18px 18px',
+            direction: 'rtl',
+            textAlign: 'right',
+            color: 'var(--text-1)',
+            outline: isLatest ? '2px solid var(--accent-border)' : undefined,
+            outlineOffset: '1px',
+          }}
+        >
+          {r.question}
+        </div>
+      </div>
+
+      {/* chips row — like PipelineBadges */}
+      <div className="ml-10 flex items-center gap-1.5 flex-wrap" style={{ marginTop: '-2px' }}>
+        {isLatest && (
+          <span className="text-[9px] px-1.5 py-[2px] rounded-[4px] font-mono animate-pulse"
+            style={{ background: 'var(--accent-bg)', color: 'var(--accent-text)', border: '1px solid var(--accent-border)' }}>
+            now
+          </span>
+        )}
+        {r.actual_route && (
+          <span className="text-[10px] font-mono font-medium px-1.5 py-[3px] rounded-[4px]"
+            style={{ background: routeStyle.bg, color: routeStyle.text, border: `1px solid ${routeStyle.border}` }}>
+            {r.actual_route}
+          </span>
+        )}
+        {statusLabel && (
+          <span className="text-[10px] font-mono px-1.5 py-[3px] rounded-[4px]"
+            style={{ background: 'var(--bg-raised)', color: 'var(--text-3)', border: '1px solid var(--border-subtle)' }}>
+            {statusLabel}
+          </span>
+        )}
+        <span className="text-[10px] font-mono tabular-nums px-1.5 py-[3px] rounded-[4px]"
+          style={{ background: 'var(--bg-raised)', color: 'var(--text-3)', border: '1px solid var(--border-subtle)' }}>
+          {Math.round(r.total_duration_ms)}ms
+        </span>
+        {r.error && (
+          <span className="text-[10px] font-mono px-1.5 py-[3px] rounded-[4px]"
+            style={{ background: 'var(--red-bg)', color: 'var(--red)', border: '1px solid var(--red-border)' }}
+            title={r.error}>
+            {r.error.length > 40 ? r.error.slice(0, 40) + '…' : r.error}
+          </span>
+        )}
+        {hasTrace && (
+          <button
+            onClick={() => setTraceOpen((v) => !v)}
+            className="text-[10px] font-mono px-1.5 py-[3px] rounded-[4px]"
+            style={{
+              background: traceOpen ? 'var(--accent-bg)' : 'var(--bg-raised)',
+              color: traceOpen ? 'var(--accent-text)' : 'var(--text-3)',
+              border: `1px solid ${traceOpen ? 'var(--accent-border)' : 'var(--border-default)'}`,
+            }}
+          >
+            {traceOpen ? '↑' : '↓'} trace
+          </button>
+        )}
+      </div>
+
+      {/* inline trace panel — like ChatPage */}
+      {traceOpen && hasTrace && (
+        <div className="ml-10">
+          <EvalTracePanel steps={r.trace_steps!} />
+        </div>
+      )}
+    </div>
+  )
+}
+
 function CategorySection({
   category,
   results,
   isLastActive,
-  onTrace,
 }: {
   category: string
   results: EvalRunResult[]
   isLastActive: boolean
-  onTrace: (r: EvalRunResult) => void
 }) {
   const passed = results.filter((r) => r.passed).length
   const total = results.length
   const pct = Math.round((passed / total) * 100)
   const hasFail = passed < total
 
-  // Open by default only when there are failures
   const [open, setOpen] = useState(hasFail)
 
-  const accentColor = pct >= 80 ? '#22c55e' : pct >= 50 ? '#f59e0b' : '#f87171'
-
   return (
-    <div
-      className="rounded-[8px] overflow-hidden"
-      style={{
-        border: '1px solid var(--border-default)',
-        borderLeft: `3px solid ${accentColor}`,
-      }}
-    >
+    <div style={{ borderBottom: '1px solid var(--border-subtle)' }}>
       {/* Header */}
       <button
         onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center gap-3 px-3 py-2.5 text-left"
+        className="w-full flex items-center gap-2.5 px-4 py-2.5 text-left"
         style={{ background: 'var(--bg-raised)' }}
+        onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.85')}
+        onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
       >
-        <span
-          className="flex-shrink-0 transition-transform duration-150"
-          style={{ color: 'var(--text-3)', transform: open ? 'rotate(90deg)' : 'none', display: 'inline-flex' }}
-        >
-          <Icon name="arrow-right" size={11} />
+        <span style={{ color: 'var(--text-3)', display: 'inline-flex', flexShrink: 0, transition: 'transform 0.15s', transform: open ? 'rotate(90deg)' : 'none' }}>
+          <Icon name="arrow-right" size={10} />
         </span>
-
         <span className="flex-1 text-[12px] font-semibold" style={{ color: 'var(--text-1)' }}>
           {humanCategory(category)}
         </span>
-
         <div className="flex items-center gap-3 flex-shrink-0">
-          {/* mini bar */}
-          <div className="w-[72px] h-[4px] rounded-full overflow-hidden" style={{ background: 'var(--border-default)' }}>
-            <div className="h-full rounded-full" style={{ width: `${pct}%`, background: accentColor }} />
+          <div className="w-[60px] h-[3px] rounded-full overflow-hidden" style={{ background: 'var(--border-default)' }}>
+            <div className="h-full rounded-full" style={{ width: `${pct}%`, background: hasFail ? 'var(--red)' : 'var(--accent)' }} />
           </div>
-          <span className="text-[11px] font-semibold tabular-nums" style={{ color: accentColor, minWidth: 32, textAlign: 'right' }}>
-            {pct}%
-          </span>
-          <span className="text-[11px] tabular-nums" style={{ color: 'var(--text-3)', minWidth: 36, textAlign: 'right' }}>
+          <span className="text-[11px] tabular-nums" style={{ color: 'var(--text-3)', minWidth: 32, textAlign: 'right' }}>
             {passed}/{total}
           </span>
-          <span
-            className="text-[10px] px-1.5 py-[1px] rounded font-medium"
-            style={{
-              background: hasFail ? 'rgba(248,113,113,0.12)' : 'rgba(34,197,94,0.10)',
-              color: hasFail ? '#f87171' : '#22c55e',
-              minWidth: 52,
-              textAlign: 'center',
-            }}
-          >
-            {hasFail ? `${total - passed} fail` : 'all pass'}
-          </span>
+          {hasFail ? (
+            <span className="text-[10px] px-1.5 py-[1px] rounded tabular-nums"
+              style={{ background: 'var(--red-bg)', color: 'var(--red)', border: '1px solid var(--red-border)', minWidth: 44, textAlign: 'center' }}>
+              {total - passed} fail
+            </span>
+          ) : (
+            <span className="text-[10px] px-1.5 py-[1px] rounded"
+              style={{ background: 'var(--accent-bg)', color: 'var(--accent-text)', border: '1px solid var(--accent-border)', minWidth: 44, textAlign: 'center' }}>
+              {pct}%
+            </span>
+          )}
         </div>
       </button>
 
-      {/* Rows */}
+      {/* Questions */}
       {open && (
-        <div style={{ borderTop: '1px solid var(--border-subtle)' }}>
-          {results.map((r, idx) => {
-            const isLatest = isLastActive && idx === results.length - 1
-            return (
-              <div
-                key={r.id}
-                className="flex items-center gap-2 px-3 py-1.5 group"
-                style={{
-                  borderTop: idx > 0 ? '1px solid var(--border-subtle)' : undefined,
-                  background: isLatest ? 'rgba(99,102,241,0.05)' : undefined,
-                }}
-                onMouseEnter={(e) => { if (!isLatest) e.currentTarget.style.background = 'var(--bg-raised)' }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = isLatest ? 'rgba(99,102,241,0.05)' : '' }}
-              >
-                {/* icon */}
-                <span className="flex-shrink-0 w-4 flex justify-center">
-                  {r.passed
-                    ? <span style={{ color: '#22c55e' }}><Icon name="check" size={12} /></span>
-                    : <span style={{ color: '#f87171' }}><Icon name="x" size={12} /></span>}
-                </span>
-
-                {/* question */}
-                <span
-                  className="flex-1 text-[12px] truncate"
-                  style={{ color: r.passed ? 'var(--text-1)' : 'var(--text-1)', direction: 'rtl', textAlign: 'right' }}
-                  title={r.question}
-                >
-                  {r.question}
-                </span>
-
-                {/* error inline */}
-                {r.error && (
-                  <span className="text-[10px] truncate max-w-[140px] flex-shrink-0" style={{ color: '#f87171' }} title={r.error}>
-                    {r.error}
-                  </span>
-                )}
-
-                {/* meta */}
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  {isLatest && (
-                    <span className="text-[9px] px-1 py-[1px] rounded animate-pulse" style={{ background: 'rgba(99,102,241,0.15)', color: '#818cf8' }}>
-                      now
-                    </span>
-                  )}
-                  <span className="font-mono text-[10px] tabular-nums" style={{ color: 'var(--text-3)', minWidth: 36 }}>
-                    {r.actual_route ?? '—'}
-                  </span>
-                  <span className="font-mono text-[10px] tabular-nums" style={{ color: 'var(--text-3)', minWidth: 88 }}>
-                    {r.actual_status ?? '—'}
-                  </span>
-                  <span className="text-[10px] tabular-nums" style={{ color: 'var(--text-3)', minWidth: 40, textAlign: 'right' }}>
-                    {Math.round(r.total_duration_ms)}ms
-                  </span>
-                  {(r.trace_steps?.length ?? 0) > 0 ? (
-                    <button
-                      onClick={() => onTrace(r)}
-                      className="text-[10px] px-1.5 py-[1px] rounded opacity-0 group-hover:opacity-100 transition-opacity"
-                      style={{ background: 'var(--bg-raised)', border: '1px solid var(--border-default)', color: 'var(--text-3)' }}
-                    >
-                      trace
-                    </button>
-                  ) : (
-                    <span className="w-[38px]" />
-                  )}
-                </div>
-              </div>
-            )
-          })}
+        <div className="flex flex-col gap-2.5 px-4 py-3">
+          {results.map((r, idx) => (
+            <QuestionRow key={r.id} r={r} isLatest={isLastActive && idx === results.length - 1} />
+          ))}
         </div>
       )}
     </div>
@@ -743,7 +834,6 @@ function CategorySection({
 
 function RunResults({ runId, isRunning }: { runId: string; isRunning: boolean }) {
   const [filterPassed, setFilterPassed] = useState<'all' | 'pass' | 'fail'>('all')
-  const [traceResult, setTraceResult] = useState<EvalRunResult | null>(null)
 
   const { data: run, isLoading } = useEvalRun(runId, isRunning)
 
@@ -753,7 +843,6 @@ function RunResults({ runId, isRunning }: { runId: string; isRunning: boolean })
   const results = run.results ?? []
   const done = results.length
   const pct = passRate(run)
-  const overallColor = (pct ?? 0) >= 80 ? '#22c55e' : (pct ?? 0) >= 50 ? '#f59e0b' : '#f87171'
 
   // Group by category
   const categoryOrder: string[] = []
@@ -782,30 +871,28 @@ function RunResults({ runId, isRunning }: { runId: string; isRunning: boolean })
   return (
     <div className="flex flex-col gap-3 h-full">
 
-      {/* ── Summary bar ── */}
+      {/* Summary bar */}
       <div className="flex items-center gap-3 flex-shrink-0 flex-wrap">
-
-        {/* big pass count */}
-        <div className="flex items-baseline gap-1.5">
-          <span className="text-[22px] font-bold tabular-nums leading-none" style={{ color: overallColor }}>
-            {run.passed}
+        <div className="flex items-center gap-1.5">
+          <span className="text-[13px] font-semibold tabular-nums" style={{ color: 'var(--text-1)' }}>
+            {run.passed}/{run.total}
           </span>
-          <span className="text-[13px]" style={{ color: 'var(--text-3)' }}>/ {run.total}</span>
           {pct !== null && (
-            <span className="text-[12px] font-semibold" style={{ color: overallColor }}>({pct}%)</span>
+            <span className="text-[12px]" style={{ color: 'var(--text-3)' }}>({pct}%)</span>
           )}
         </div>
 
         <StatusBadge status={run.status} />
+
         {run.model_name && (
           <span className="text-[10px] px-2 py-[2px] rounded font-mono" style={{ background: 'var(--bg-raised)', color: 'var(--text-3)' }}>
             {run.model_name}
           </span>
         )}
 
-        {/* live progress bar */}
+        {/* progress bar during run */}
         {isRunning && run.total > 0 && (
-          <div className="flex items-center gap-2 flex-1 min-w-[100px]">
+          <div className="flex items-center gap-2 flex-1 min-w-[80px]">
             <div className="flex-1 h-[3px] rounded-full overflow-hidden" style={{ background: 'var(--border-default)' }}>
               <div
                 className="h-full rounded-full transition-all duration-700"
@@ -837,8 +924,11 @@ function RunResults({ runId, isRunning }: { runId: string; isRunning: boolean })
         </div>
       </div>
 
-      {/* ── Accordions ── */}
-      <div className="flex-1 overflow-y-auto flex flex-col gap-1.5 pr-0.5">
+      {/* Accordion list */}
+      <div
+        className="flex-1 overflow-y-auto rounded-[8px]"
+        style={{ border: '1px solid var(--border-default)', background: 'var(--bg-surface)' }}
+      >
         {visible.length === 0 && (
           <p className="text-center py-10 text-[12px]" style={{ color: 'var(--text-3)' }}>No results yet.</p>
         )}
@@ -848,14 +938,9 @@ function RunResults({ runId, isRunning }: { runId: string; isRunning: boolean })
             category={cat}
             results={byCategory[cat]}
             isLastActive={isRunning && cat === lastCategory}
-            onTrace={setTraceResult}
           />
         ))}
       </div>
-
-      {traceResult && (
-        <TraceModal result={traceResult} onClose={() => setTraceResult(null)} />
-      )}
     </div>
   )
 }
