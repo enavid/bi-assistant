@@ -1,0 +1,390 @@
+[
+  {
+    "question_id": "q001",
+    "question": "تعداد کارکنان زن و مرد چند نفر است؟",
+    "passed": true,
+    "expected_route": "SQL",
+    "actual_route": "SQL",
+    "route_match": true,
+    "expected_status": "NOT_EXECUTED",
+    "actual_status": "NOT_EXECUTED",
+    "status_match": true,
+    "expected_intent": "employee_count_by_gender",
+    "actual_intent": "employee_count_by_gender",
+    "intent_match": true,
+    "source": "sql_template_engine",
+    "model_called": null,
+    "template_id": "TPL_EMPLOYEE_COUNT_BY_GENDER",
+    "sql_validator_status": "VALID",
+    "executed": false,
+    "row_count": null,
+    "visualization": "pie_chart",
+    "total_duration_ms": 277.03,
+    "trace_steps": [
+      {
+        "step": "metadata_health",
+        "status": "ok",
+        "duration_ms": 0.098,
+        "decision_by": "rule"
+      },
+      {
+        "step": "normalize_question",
+        "status": "ok",
+        "duration_ms": 0.082,
+        "decision_by": "rule"
+      },
+      {
+        "step": "domain_classifier",
+        "status": "OK",
+        "duration_ms": 4.748,
+        "decision_by": "component"
+      },
+      {
+        "step": "question_validator",
+        "status": "OK",
+        "duration_ms": 1.863,
+        "decision_by": "component"
+      },
+      {
+        "step": "semantic_mapper",
+        "status": "OK",
+        "duration_ms": 194.728,
+        "decision_by": "component"
+      },
+      {
+        "step": "intent_parser",
+        "status": "supported",
+        "duration_ms": 52.615,
+        "decision_by": "component"
+      },
+      {
+        "step": "router",
+        "status": "SQL",
+        "duration_ms": 3.389,
+        "decision_by": "component"
+      },
+      {
+        "step": "sql_planner",
+        "status": "OK",
+        "duration_ms": 4.087,
+        "decision_by": "template"
+      },
+      {
+        "step": "sql_validator",
+        "status": "VALID",
+        "duration_ms": 15.347,
+        "decision_by": "rule"
+      },
+      {
+        "step": "query_executor",
+        "status": "not_executed",
+        "duration_ms": 0.02,
+        "decision_by": "rule"
+      },
+      {
+        "step": "visualization_selector",
+        "status": "ok",
+        "duration_ms": 0.048,
+        "decision_by": "rule"
+      }
+    ],
+    "error": null,
+    "warnings": []
+  },
+  {
+    "question_id": "q002",
+    "question": "تعداد کارکنان در هر واحد سازمانی",
+    "passed": true,
+    "expected_route": "SQL",
+    "actual_route": "SQL",
+    "route_match": true,
+    "expected_status": "NOT_EXECUTED",
+    "actual_status": "NOT_EXECUTED",
+    "status_match": true,
+    "expected_intent": "employee_count_by_department",
+    "actual_intent": "employee_count_by_department",
+    "intent_match": true,
+    "source": "sql_template_engine",
+    "model_called": null,
+    "template_id": "TPL_EMPLOYEE_COUNT_BY_DEPARTMENT",
+    "sql_validator_status": "VALID",
+    "executed": false,
+    "row_count": null,
+    "visualization": "horizontal_bar_chart",
+    "total_duration_ms": 336.58,
+    "trace_steps": [
+      {
+        "step": "metadata_health",
+        "status": "ok",
+        "duration_ms": 0.055,
+        "decision_by": "rule"
+      },
+      {
+        "step": "normalize_question",
+        "status": "ok",
+        "duration_ms": 0.066,
+        "decision_by": "rule"
+      },
+      {
+        "step": "domain_classifier",
+        "status": "OK",
+        "duration_ms": 3.874,
+        "decision_by": "component"
+      },
+      {
+        "step": "question_validator",
+        "status": "OK",
+        "duration_ms": 1.026,
+        "decision_by": "component"
+      },
+      {
+        "step": "semantic_mapper",
+        "status": "OK",
+        "duration_ms": 234.067,
+        "decision_by": "component"
+      },
+      {
+        "step": "intent_parser",
+        "status": "supported",
+        "duration_ms": 84.476,
+        "decision_by": "component"
+      },
+      {
+        "step": "router",
+        "status": "SQL",
+        "duration_ms": 4.229,
+        "decision_by": "component"
+      },
+      {
+        "step": "sql_planner",
+        "status": "OK",
+        "duration_ms": 3.672,
+        "decision_by": "template"
+      },
+      {
+        "step": "sql_validator",
+        "status": "VALID",
+        "duration_ms": 5.041,
+        "decision_by": "rule"
+      },
+      {
+        "step": "query_executor",
+        "status": "not_executed",
+        "duration_ms": 0.024,
+        "decision_by": "rule"
+      },
+      {
+        "step": "visualization_selector",
+        "status": "ok",
+        "duration_ms": 0.046,
+        "decision_by": "rule"
+      }
+    ],
+    "error": null,
+    "warnings": []
+  },
+  {
+    "question_id": "q003",
+    "question": "میانگین سابقه خدمت کارکنان چند سال است؟",
+    "passed": true,
+    "expected_route": "SQL",
+    "actual_route": "SQL",
+    "route_match": true,
+    "expected_status": "NOT_EXECUTED",
+    "actual_status": "NOT_EXECUTED",
+    "status_match": true,
+    "expected_intent": "average_service_years",
+    "actual_intent": "average_service_years",
+    "intent_match": true,
+    "source": "sql_template_engine",
+    "model_called": null,
+    "template_id": "TPL_AVERAGE_SERVICE_YEARS",
+    "sql_validator_status": "VALID",
+    "executed": false,
+    "row_count": null,
+    "visualization": "kpi_card",
+    "total_duration_ms": 242.64,
+    "trace_steps": [
+      {
+        "step": "metadata_health",
+        "status": "ok",
+        "duration_ms": 0.043,
+        "decision_by": "rule"
+      },
+      {
+        "step": "normalize_question",
+        "status": "ok",
+        "duration_ms": 0.058,
+        "decision_by": "rule"
+      },
+      {
+        "step": "domain_classifier",
+        "status": "OK",
+        "duration_ms": 4.044,
+        "decision_by": "component"
+      },
+      {
+        "step": "question_validator",
+        "status": "OK",
+        "duration_ms": 1.021,
+        "decision_by": "component"
+      },
+      {
+        "step": "semantic_mapper",
+        "status": "OK",
+        "duration_ms": 197.012,
+        "decision_by": "component"
+      },
+      {
+        "step": "intent_parser",
+        "status": "supported",
+        "duration_ms": 36.173,
+        "decision_by": "component"
+      },
+      {
+        "step": "router",
+        "status": "SQL",
+        "duration_ms": 1.505,
+        "decision_by": "component"
+      },
+      {
+        "step": "sql_planner",
+        "status": "OK",
+        "duration_ms": 1.645,
+        "decision_by": "template"
+      },
+      {
+        "step": "sql_validator",
+        "status": "VALID",
+        "duration_ms": 1.111,
+        "decision_by": "rule"
+      },
+      {
+        "step": "query_executor",
+        "status": "not_executed",
+        "duration_ms": 0.008,
+        "decision_by": "rule"
+      },
+      {
+        "step": "visualization_selector",
+        "status": "ok",
+        "duration_ms": 0.018,
+        "decision_by": "rule"
+      }
+    ],
+    "error": null,
+    "warnings": []
+  },
+  {
+    "question_id": "q004",
+    "question": "درآمد ماهانه کارکنان چقدر است؟",
+    "passed": false,
+    "expected_route": "REJECT",
+    "actual_route": "REJECT",
+    "route_match": true,
+    "expected_status": "ACCESS_DENIED",
+    "actual_status": "OUT_OF_SCOPE",
+    "status_match": false,
+    "expected_intent": null,
+    "actual_intent": "out_of_scope",
+    "intent_match": null,
+    "source": null,
+    "model_called": null,
+    "template_id": null,
+    "sql_validator_status": null,
+    "executed": false,
+    "row_count": null,
+    "visualization": null,
+    "total_duration_ms": 224.29,
+    "trace_steps": [
+      {
+        "step": "metadata_health",
+        "status": "ok",
+        "duration_ms": 0.022,
+        "decision_by": "rule"
+      },
+      {
+        "step": "normalize_question",
+        "status": "ok",
+        "duration_ms": 0.03,
+        "decision_by": "rule"
+      },
+      {
+        "step": "domain_classifier",
+        "status": "OK",
+        "duration_ms": 2.18,
+        "decision_by": "component"
+      },
+      {
+        "step": "question_validator",
+        "status": "OK",
+        "duration_ms": 0.549,
+        "decision_by": "component"
+      },
+      {
+        "step": "semantic_mapper",
+        "status": "OUT_OF_SCOPE",
+        "duration_ms": 219.48,
+        "decision_by": "component"
+      },
+      {
+        "step": "intent_parser",
+        "status": "OUT_OF_SCOPE",
+        "duration_ms": 1.026,
+        "decision_by": "component"
+      },
+      {
+        "step": "router",
+        "status": "REJECT",
+        "duration_ms": 1.0,
+        "decision_by": "policy"
+      }
+    ],
+    "error": null,
+    "warnings": []
+  },
+  {
+    "question_id": "q005",
+    "question": "آب و هوای تهران چطور است؟",
+    "passed": true,
+    "expected_route": "REJECT",
+    "actual_route": "REJECT",
+    "route_match": true,
+    "expected_status": "OUT_OF_SCOPE",
+    "actual_status": "OUT_OF_SCOPE",
+    "status_match": true,
+    "expected_intent": null,
+    "actual_intent": null,
+    "intent_match": null,
+    "source": null,
+    "model_called": null,
+    "template_id": null,
+    "sql_validator_status": null,
+    "executed": false,
+    "row_count": null,
+    "visualization": null,
+    "total_duration_ms": 4.29,
+    "trace_steps": [
+      {
+        "step": "metadata_health",
+        "status": "ok",
+        "duration_ms": 0.049,
+        "decision_by": "rule"
+      },
+      {
+        "step": "normalize_question",
+        "status": "ok",
+        "duration_ms": 0.051,
+        "decision_by": "rule"
+      },
+      {
+        "step": "domain_classifier",
+        "status": "OUT_OF_SCOPE",
+        "duration_ms": 4.186,
+        "decision_by": "component"
+      }
+    ],
+    "error": null,
+    "warnings": []
+  }
+]

@@ -1,0 +1,35 @@
+[
+  {
+    "question_id": "q001",
+    "question": "تعداد کارکنان زن و مرد چند نفر است؟",
+    "expected_route": "SQL",
+    "expected_status": "NOT_EXECUTED",
+    "expected_intent": "employee_count_by_gender"
+  },
+  {
+    "question_id": "q002",
+    "question": "تعداد کارکنان در هر واحد سازمانی",
+    "expected_route": "SQL",
+    "expected_status": "NOT_EXECUTED",
+    "expected_intent": "employee_count_by_department"
+  },
+  {
+    "question_id": "q003",
+    "question": "میانگین سابقه خدمت کارکنان چند سال است؟",
+    "expected_route": "SQL",
+    "expected_status": "NOT_EXECUTED",
+    "expected_intent": "average_service_years"
+  },
+  {
+    "question_id": "q004",
+    "question": "درآمد ماهانه کارکنان چقدر است؟",
+    "expected_route": "REJECT",
+    "expected_status": "ACCESS_DENIED"
+  },
+  {
+    "question_id": "q005",
+    "question": "آب و هوای تهران چطور است؟",
+    "expected_route": "REJECT",
+    "expected_status": "OUT_OF_SCOPE"
+  }
+]
