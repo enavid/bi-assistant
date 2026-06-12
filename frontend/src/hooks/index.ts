@@ -120,6 +120,10 @@ export function useDeleteSession() {
 // Connection hooks
 // ---------------------------------------------------------------------------
 
+export function useSystemDatabases() {
+  return useQuery({ queryKey: ['system-databases'], queryFn: connectionApi.systemDatabases })
+}
+
 export function useQueryDatabases() {
   return useQuery({ queryKey: ['query-databases'], queryFn: connectionApi.list })
 }

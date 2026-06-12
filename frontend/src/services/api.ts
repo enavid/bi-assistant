@@ -10,6 +10,7 @@ import type {
   QueryDatabase,
   QueryResult,
   Section,
+  SystemDatabases,
   TestConnectionResult,
 } from '@/types'
 
@@ -82,6 +83,9 @@ export const ollamaApi = {
 }
 
 export const connectionApi = {
+  systemDatabases: () =>
+    apiClient.get<SystemDatabases>('/connections/system-databases').then((r) => r.data),
+
   list: () =>
     apiClient.get<QueryDatabase[]>('/connections/databases').then((r) => r.data),
 

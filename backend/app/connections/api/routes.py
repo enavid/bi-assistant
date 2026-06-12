@@ -27,6 +27,26 @@ def _repo(db: AsyncSession = Depends(get_db)) -> QueryDatabaseRepository:
     return QueryDatabaseRepository(db)
 
 
+@router.get("/system-databases")
+async def get_system_databases() -> dict:
+    from app.core.config import settings
+
+    return {
+        "app_db": {
+            "host": settings.db_host,
+            "port": settings.db_port,
+            "db_name": settings.db_name,
+            "username": settings.db_user,
+        },
+        "hr_db": {
+            "host": settings.hr_db_host,
+            "port": settings.hr_db_port,
+            "db_name": settings.hr_db_name,
+            "username": settings.hr_db_user,
+        },
+    }
+
+
 @router.get("/databases", response_model=list[QueryDatabaseOut])
 async def list_databases(repo: QueryDatabaseRepository = Depends(_repo)):
     rows = await repo.list()

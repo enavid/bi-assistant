@@ -88,6 +88,18 @@ export interface OllamaHealth {
   message: string
 }
 
+export interface SystemDbInfo {
+  host: string
+  port: number
+  db_name: string
+  username: string
+}
+
+export interface SystemDatabases {
+  app_db: SystemDbInfo
+  hr_db: SystemDbInfo
+}
+
 export interface QueryDatabase {
   id: string
   name: string

@@ -7,6 +7,7 @@ import {
   useDeleteQueryDatabase,
   useOllamaHealth,
   useQueryDatabases,
+  useSystemDatabases,
   useTestConnection,
   useUpdateQueryDatabase,
 } from '@/hooks'
@@ -256,6 +257,24 @@ function DbCard({
   )
 }
 
+function SystemDbCard() {
+  const { data: sys, isLoading, isError } = useSystemDatabases()
+  const info = sys?.app_db
+
+  return (
+    <div className="text-[11px] bg-bg-raised border border-border-default rounded-[7px] px-3 py-2 font-mono text-text-2">
+      {isLoading && <span className="text-text-3">loading…</span>}
+      {isError && <span className="text-text-3">DB_HOST · DB_PORT · DB_NAME · DB_USER</span>}
+      {info && (
+        <span>
+          <span className="text-text-1">{info.host}</span>:{info.port}/
+          <span className="text-text-1">{info.db_name}</span> · {info.username}
+        </span>
+      )}
+    </div>
+  )
+}
+
 function DatabaseSection() {
   const { data: databases = [], isLoading } = useQueryDatabases()
   const createMut = useCreateQueryDatabase()
@@ -335,15 +354,10 @@ function DatabaseSection() {
           <Icon name="database" size={15} className="text-accent-text" />
           <span className="text-[13px] font-medium text-text-1">System databases</span>
         </div>
-        <p className="text-[11px] text-text-2 mb-3">Configured via .env — read-only from UI.</p>
-        <div className="flex flex-col gap-2">
-          <div className="text-[11px] text-text-3 bg-bg-raised border border-border-default rounded-[8px] px-3.5 py-2.5 font-mono">
-            DB_HOST · DB_PORT · DB_NAME · DB_USER · DB_PASSWORD
-          </div>
-          <div className="text-[11px] text-text-3 bg-bg-raised border border-border-default rounded-[8px] px-3.5 py-2.5 font-mono">
-            HR_DB_HOST · HR_DB_PORT · HR_DB_NAME · HR_DB_USER · HR_DB_PASSWORD
-          </div>
-        </div>
+        <p className="text-[11px] text-text-2 mb-3.5">
+          Read-only. To change these connections, update the corresponding variables in <code className="text-[10px] bg-bg-raised border border-border-default rounded px-1 py-0.5">.env</code> on the server and restart the service.
+        </p>
+        <SystemDbCard />
       </div>
 
       {/* Query databases manager */}
