@@ -13,8 +13,11 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
-  lint-backend:
-    name: Lint backend
+  # ---------------------------------------------------------------------------
+  # Backend — code quality
+  # ---------------------------------------------------------------------------
+  check-backend:
+    name: Check backend (ruff)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -22,9 +25,31 @@ jobs:
         with: { python-version: "3.12" }
       - run: pip install ruff
       - run: ruff check backend/app
+      - run: ruff format --check backend/app
 
-  lint-frontend:
-    name: Lint frontend
+  # ---------------------------------------------------------------------------
+  # Backend — tests
+  # ---------------------------------------------------------------------------
+  test-backend:
+    name: Test backend (pytest)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - uses: astral-sh/setup-uv@v6
+        with: { enable-cache: true, cache-dependency-glob: "backend/uv.lock" }
+      - run: uv sync --dev
+      - run: uv run pytest tests --ignore=tests/routing_eval -q
+
+  # ---------------------------------------------------------------------------
+  # Frontend — code quality
+  # ---------------------------------------------------------------------------
+  check-frontend:
+    name: Check frontend (tsc)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -35,10 +60,28 @@ jobs:
       - run: npm run type-check
         working-directory: frontend
 
+  # ---------------------------------------------------------------------------
+  # Frontend — tests
+  # ---------------------------------------------------------------------------
+  test-frontend:
+    name: Test frontend (vitest)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "20", cache: "npm", cache-dependency-path: frontend/package-lock.json }
+      - run: npm ci
+        working-directory: frontend
+      - run: npm test
+        working-directory: frontend
+
+  # ---------------------------------------------------------------------------
+  # Build & push — backend
+  # ---------------------------------------------------------------------------
   build-backend:
     name: Build & push backend
     runs-on: ubuntu-latest
-    needs: lint-backend
+    needs: [check-backend, test-backend]
     permissions: { contents: read, packages: write }
     steps:
       - uses: actions/checkout@v4
@@ -61,10 +104,13 @@ jobs:
           cache-to: type=gha,mode=max
           provenance: false
 
+  # ---------------------------------------------------------------------------
+  # Build & push — frontend
+  # ---------------------------------------------------------------------------
   build-frontend:
     name: Build & push frontend
     runs-on: ubuntu-latest
-    needs: lint-frontend
+    needs: [check-frontend, test-frontend]
     permissions: { contents: read, packages: write }
     steps:
       - uses: actions/checkout@v4
