@@ -8,7 +8,9 @@ def test_response_builder_builds_success_response(metadata_service):
     context = {
         "intent_result": {"intent": "total_employee_count", "route": "SQL"},
         "route_result": {"route": "SQL", "status": "SUCCESS"},
-        "sql_plan": {"sql": "SELECT COUNT(v.employee_id) AS employee_count FROM hr_mvp.vw_hr_employee_analytics v WHERE v.is_active = TRUE;"},
+        "sql_plan": {
+            "sql": "SELECT COUNT(v.employee_id) AS employee_count FROM hr_mvp.vw_hr_employee_analytics v WHERE v.is_active = TRUE;"
+        },
         "query_result": {
             "status": "SUCCESS",
             "execution_status": "SUCCESS",
@@ -40,7 +42,9 @@ def test_response_builder_returns_access_denied(metadata_service):
         "route_result": {"route": "REJECT", "status": "ACCESS_DENIED"},
         "query_result": {},
     }
-    result = builder.build(context=context, status_payload={"status": "ACCESS_DENIED", "route": "REJECT"})
+    result = builder.build(
+        context=context, status_payload={"status": "ACCESS_DENIED", "route": "REJECT"}
+    )
     assert result["route"] == "REJECT"
     assert result["status"] == "ACCESS_DENIED"
 

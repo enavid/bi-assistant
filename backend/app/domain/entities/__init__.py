@@ -11,6 +11,12 @@ from app.domain.entities.workspace import (
 )
 
 __all__ = [
-    "ChatSession", "ExperimentEntry", "Message", "Project", "Section", "Workspace",
-    "GenerationResult", "QueryResult",
+    "ChatSession",
+    "ExperimentEntry",
+    "Message",
+    "Project",
+    "Section",
+    "Workspace",
+    "GenerationResult",
+    "QueryResult",
 ]

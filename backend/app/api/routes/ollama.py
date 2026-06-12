@@ -9,7 +9,9 @@ from app.infrastructure.llm.ollama_client import OllamaClient
 router = APIRouter(prefix="/ollama", tags=["ollama"])
 
 
-@router.get("/health", response_model=OllamaHealthResponse, summary="Ollama health and available models")
+@router.get(
+    "/health", response_model=OllamaHealthResponse, summary="Ollama health and available models"
+)
 async def ollama_health(client: OllamaClient = Depends(get_llm_client)) -> OllamaHealthResponse:
     data = await client.health()
     return OllamaHealthResponse(

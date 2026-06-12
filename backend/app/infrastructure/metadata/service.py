@@ -139,64 +139,59 @@ METADATA_FILE_SPECS: tuple[MetadataFileSpec, ...] = (
         key="data_dictionary",
         kind="yaml",
         canonical_name="data_dictionary.yaml",
-        aliases=("Template_00_data_dictionary.yaml",
-                 "Template 00 -data_dictionary.yaml"),
+        aliases=("Template_00_data_dictionary.yaml", "Template 00 -data_dictionary.yaml"),
     ),
     MetadataFileSpec(
         key="intent_catalog",
         kind="yaml",
         canonical_name="intent_catalog.yaml",
-        aliases=("Template_01_intent_catalog.yaml",
-                 "Template 01 - intent_catalog.yaml"),
+        aliases=("Template_01_intent_catalog.yaml", "Template 01 - intent_catalog.yaml"),
     ),
     MetadataFileSpec(
         key="report_catalog",
         kind="json",
         canonical_name="report_catalog.json",
-        aliases=("Template_02_report_catalog.json",
-                 "Template 02 - report_catalog.json"),
+        aliases=("Template_02_report_catalog.json", "Template 02 - report_catalog.json"),
     ),
     MetadataFileSpec(
         key="semantic_layer",
         kind="yaml",
         canonical_name="semantic_layer.yaml",
-        aliases=("Template_03_semantic_layer.yaml",
-                 "Template 03 - semantic_layer.yaml"),
+        aliases=("Template_03_semantic_layer.yaml", "Template 03 - semantic_layer.yaml"),
     ),
     MetadataFileSpec(
         key="sql_templates",
         kind="yaml",
         canonical_name="sql_templates.yaml",
-        aliases=("Template_04_sql_templates.yaml",
-                 "Template 04 -  sql_templates.yaml"),
+        aliases=("Template_04_sql_templates.yaml", "Template 04 -  sql_templates.yaml"),
     ),
     MetadataFileSpec(
         key="sql_validator_rules",
         kind="yaml",
         canonical_name="sql_validator_rules.yaml",
-        aliases=("Template_05_sql_validator_rules.yaml",
-                 "Template 05 - sql_validator_rules.yaml"),
+        aliases=("Template_05_sql_validator_rules.yaml", "Template 05 - sql_validator_rules.yaml"),
     ),
     MetadataFileSpec(
         key="visualization_rules",
         kind="yaml",
         canonical_name="visualization_rules.yaml",
-        aliases=("Template_06_visualization_rules.yaml",
-                 "Template 06 - visualization_rules.yaml"),
+        aliases=("Template_06_visualization_rules.yaml", "Template 06 - visualization_rules.yaml"),
     ),
     MetadataFileSpec(
         key="evaluation_goldset",
         kind="json",
         canonical_name="evaluation_goldset.json",
-        aliases=("HR_BI_Assistant_Evaluation.json", "Template_07_HR_BI_Assistant_Evaluation.json",
-                 "Template 07 - HR BI Assistant Evaluation.json"),
+        aliases=(
+            "HR_BI_Assistant_Evaluation.json",
+            "Template_07_HR_BI_Assistant_Evaluation.json",
+            "Template 07 - HR BI Assistant Evaluation.json",
+        ),
     ),
     MetadataFileSpec(
         key="access_policies",
         kind="yaml",
         canonical_name="access_policies.yaml",
-        aliases=("Template_08_access_policies.yaml",
-                 "Template 08 - access_policies.yaml"),
+        aliases=("Template_08_access_policies.yaml", "Template 08 - access_policies.yaml"),
     ),
     MetadataFileSpec(
         key="kpi_catalog",
@@ -237,9 +232,10 @@ class MetadataService:
         schema_context = metadata.build_schema_context_for_prompt()
     """
 
-    def __init__(self, metadata_dir: str | Path | None = None, *, strict: bool = True, auto_load: bool = True) -> None:
-        self.metadata_dir = Path(
-            metadata_dir) if metadata_dir else self._default_metadata_dir()
+    def __init__(
+        self, metadata_dir: str | Path | None = None, *, strict: bool = True, auto_load: bool = True
+    ) -> None:
+        self.metadata_dir = Path(metadata_dir) if metadata_dir else self._default_metadata_dir()
         self.strict = strict
         self._raw: dict[str, JsonDict] = {}
         self._resolved_paths: dict[str, Path] = {}
@@ -266,8 +262,7 @@ class MetadataService:
 
     @staticmethod
     def _default_metadata_dir() -> Path:
-        env_value = os.getenv(
-            "HR_BI_METADATA_DIR") or os.getenv("METADATA_DIR")
+        env_value = os.getenv("HR_BI_METADATA_DIR") or os.getenv("METADATA_DIR")
         if env_value:
             return Path(env_value)
 
@@ -344,7 +339,12 @@ class MetadataService:
         self._build_indexes()
         self._cross_validate_references(strict=False)
         loaded = sum(1 for s in self._file_statuses if s.loaded)
-        logger.info("metadata loaded files=%d/%d warnings=%d", loaded, len(self._file_statuses), len(self._warnings))
+        logger.info(
+            "metadata loaded files=%d/%d warnings=%d",
+            loaded,
+            len(self._file_statuses),
+            len(self._warnings),
+        )
         return self.bundle
 
     def _resolve_file(self, spec: MetadataFileSpec) -> Path | None:
@@ -366,18 +366,16 @@ class MetadataService:
             elif spec.kind == "yaml":
                 if yaml is None:
                     raise MetadataParseError(
-                        "PyYAML is not installed. Add PyYAML>=6.0.2 to backend/requirements.txt")
+                        "PyYAML is not installed. Add PyYAML>=6.0.2 to backend/requirements.txt"
+                    )
                 data = yaml.safe_load(text)
             else:
-                raise MetadataParseError(
-                    f"Unsupported metadata kind: {spec.kind}")
+                raise MetadataParseError(f"Unsupported metadata kind: {spec.kind}")
         except Exception as exc:
-            raise MetadataParseError(
-                f"Could not parse {path.name}: {exc}") from exc
+            raise MetadataParseError(f"Could not parse {path.name}: {exc}") from exc
 
         if not isinstance(data, dict):
-            raise MetadataParseError(
-                f"{path.name} must contain a top-level object/dictionary.")
+            raise MetadataParseError(f"{path.name} must contain a top-level object/dictionary.")
         return data
 
     # ------------------------------------------------------------------
@@ -402,33 +400,46 @@ class MetadataService:
             document = self._raw.get(metadata_key) or {}
             for key in keys:
                 if key not in document:
-                    errors.append(
-                        f"{metadata_key} is missing required top-level key: {key}")
+                    errors.append(f"{metadata_key} is missing required top-level key: {key}")
         if errors and strict:
             raise MetadataValidationError("\n".join(errors))
         self._warnings.extend(errors)
 
     def _build_indexes(self) -> None:
-        self._columns_by_name = self._index_by(self._raw.get(
-            "data_dictionary", {}).get("columns", []), "name")
-        self._intents_by_id = self._index_by(self._raw.get(
-            "intent_catalog", {}).get("intents", []), "intent_id")
-        self._reports_by_id = self._index_by(self._raw.get(
-            "report_catalog", {}).get("reports", []), "report_id")
-        self._templates_by_id = self._index_by((self._raw.get("sql_templates", {}).get("templates", []) or [
-        ]) + (self._raw.get("sql_templates", {}).get("status_templates", []) or []), "template_id")
-        self._template_aliases = {**FALLBACK_TEMPLATE_ALIASES, **(
-            self._raw.get("sql_templates", {}).get("template_aliases", {}) or {})}
-        self._kpis_by_id = self._index_by(self._raw.get(
-            "kpi_catalog", {}).get("kpis", []), "kpi_id")
-        self._visuals_by_intent = self._index_by(self._raw.get(
-            "visualization_rules", {}).get("intent_visualization_map", []), "intent")
-        self._visuals_by_report = self._index_by(self._raw.get(
-            "visualization_rules", {}).get("report_visualization_map", []), "report_id")
-        self._semantic_concepts_by_id = self._index_by(self._raw.get(
-            "semantic_layer", {}).get("semantic_concepts", []), "concept_id")
-        self._term_index = self._raw.get("semantic_layer", {}).get(
-            "term_index_for_semantic_mapper", {}) or {}
+        self._columns_by_name = self._index_by(
+            self._raw.get("data_dictionary", {}).get("columns", []), "name"
+        )
+        self._intents_by_id = self._index_by(
+            self._raw.get("intent_catalog", {}).get("intents", []), "intent_id"
+        )
+        self._reports_by_id = self._index_by(
+            self._raw.get("report_catalog", {}).get("reports", []), "report_id"
+        )
+        self._templates_by_id = self._index_by(
+            (self._raw.get("sql_templates", {}).get("templates", []) or [])
+            + (self._raw.get("sql_templates", {}).get("status_templates", []) or []),
+            "template_id",
+        )
+        self._template_aliases = {
+            **FALLBACK_TEMPLATE_ALIASES,
+            **(self._raw.get("sql_templates", {}).get("template_aliases", {}) or {}),
+        }
+        self._kpis_by_id = self._index_by(
+            self._raw.get("kpi_catalog", {}).get("kpis", []), "kpi_id"
+        )
+        self._visuals_by_intent = self._index_by(
+            self._raw.get("visualization_rules", {}).get("intent_visualization_map", []), "intent"
+        )
+        self._visuals_by_report = self._index_by(
+            self._raw.get("visualization_rules", {}).get("report_visualization_map", []),
+            "report_id",
+        )
+        self._semantic_concepts_by_id = self._index_by(
+            self._raw.get("semantic_layer", {}).get("semantic_concepts", []), "concept_id"
+        )
+        self._term_index = (
+            self._raw.get("semantic_layer", {}).get("term_index_for_semantic_mapper", {}) or {}
+        )
 
     @staticmethod
     def _index_by(items: Any, key: str) -> dict[str, JsonDict]:
@@ -445,39 +456,61 @@ class MetadataService:
 
         for intent_id, intent in self._intents_by_id.items():
             template_id = intent.get("sql_template_id")
-            if template_id and self.resolve_sql_template_id(template_id) not in self._templates_by_id:
+            if (
+                template_id
+                and self.resolve_sql_template_id(template_id) not in self._templates_by_id
+            ):
                 warnings.append(
-                    f"Intent '{intent_id}' references missing sql_template_id '{template_id}'.")
+                    f"Intent '{intent_id}' references missing sql_template_id '{template_id}'."
+                )
             report_id = intent.get("report_id")
             if report_id and report_id not in self._reports_by_id:
-                warnings.append(
-                    f"Intent '{intent_id}' references missing report_id '{report_id}'.")
-            warnings.extend(self._missing_columns_warning(
-                "Intent", intent_id, intent.get("required_columns", [])))
+                warnings.append(f"Intent '{intent_id}' references missing report_id '{report_id}'.")
+            warnings.extend(
+                self._missing_columns_warning(
+                    "Intent", intent_id, intent.get("required_columns", [])
+                )
+            )
 
         for report_id, report in self._reports_by_id.items():
             template_id = report.get("sql_template_id")
-            if report.get("route") == "SQL" and template_id and self.resolve_sql_template_id(template_id) not in self._templates_by_id:
+            if (
+                report.get("route") == "SQL"
+                and template_id
+                and self.resolve_sql_template_id(template_id) not in self._templates_by_id
+            ):
                 warnings.append(
-                    f"Report '{report_id}' references missing sql_template_id '{template_id}'.")
+                    f"Report '{report_id}' references missing sql_template_id '{template_id}'."
+                )
             intent_id = report.get("intent")
             if intent_id and intent_id not in self._intents_by_id:
-                warnings.append(
-                    f"Report '{report_id}' references missing intent '{intent_id}'.")
-            warnings.extend(self._missing_columns_warning(
-                "Report", report_id, report.get("required_columns", [])))
+                warnings.append(f"Report '{report_id}' references missing intent '{intent_id}'.")
+            warnings.extend(
+                self._missing_columns_warning(
+                    "Report", report_id, report.get("required_columns", [])
+                )
+            )
 
         for template_id, template in self._templates_by_id.items():
-            warnings.extend(self._missing_columns_warning(
-                "SQL template", template_id, template.get("required_columns", [])))
+            warnings.extend(
+                self._missing_columns_warning(
+                    "SQL template", template_id, template.get("required_columns", [])
+                )
+            )
 
         for kpi_id, kpi in self._kpis_by_id.items():
             template_id = kpi.get("sql_template_id")
-            if kpi.get("route") == "SQL" and template_id and self.resolve_sql_template_id(template_id) not in self._templates_by_id:
+            if (
+                kpi.get("route") == "SQL"
+                and template_id
+                and self.resolve_sql_template_id(template_id) not in self._templates_by_id
+            ):
                 warnings.append(
-                    f"KPI '{kpi_id}' references missing sql_template_id '{template_id}'.")
-            warnings.extend(self._missing_columns_warning(
-                "KPI", kpi_id, kpi.get("required_columns", [])))
+                    f"KPI '{kpi_id}' references missing sql_template_id '{template_id}'."
+                )
+            warnings.extend(
+                self._missing_columns_warning("KPI", kpi_id, kpi.get("required_columns", []))
+            )
 
         if warnings:
             self._warnings.extend(warnings)
@@ -485,11 +518,12 @@ class MetadataService:
             raise MetadataValidationError("\n".join(warnings))
         return warnings
 
-    def _missing_columns_warning(self, entity_type: str, entity_id: str, required_columns: Any) -> list[str]:
+    def _missing_columns_warning(
+        self, entity_type: str, entity_id: str, required_columns: Any
+    ) -> list[str]:
         if not isinstance(required_columns, list):
             return []
-        missing = [str(col) for col in required_columns if str(
-            col) not in self._columns_by_name]
+        missing = [str(col) for col in required_columns if str(col) not in self._columns_by_name]
         if not missing:
             return []
         return [f"{entity_type} '{entity_id}' references missing columns: {', '.join(missing)}."]
@@ -537,8 +571,11 @@ class MetadataService:
     # ------------------------------------------------------------------
 
     def get_main_view(self) -> JsonDict:
-        view = self._raw.get("data_dictionary", {}).get(
-            "main_view") or self._raw.get("report_catalog", {}).get("main_view") or {}
+        view = (
+            self._raw.get("data_dictionary", {}).get("main_view")
+            or self._raw.get("report_catalog", {}).get("main_view")
+            or {}
+        )
         return deepcopy(view)
 
     def get_columns(self, *, include_restricted: bool = True) -> list[JsonDict]:
@@ -551,50 +588,55 @@ class MetadataService:
         column = self._columns_by_name.get(column_name)
         return deepcopy(column) if column else None
 
-    def list_intents(self, *, route: str | None = None, demo_ready: bool | None = None) -> list[JsonDict]:
+    def list_intents(
+        self, *, route: str | None = None, demo_ready: bool | None = None
+    ) -> list[JsonDict]:
         items = list(self._intents_by_id.values())
         if route:
             items = [item for item in items if item.get("route") == route]
         if demo_ready is not None:
-            items = [item for item in items if bool(
-                item.get("demo_ready")) == demo_ready]
+            items = [item for item in items if bool(item.get("demo_ready")) == demo_ready]
         return deepcopy(items)
 
     def get_intent(self, intent_id: str) -> JsonDict | None:
         item = self._intents_by_id.get(intent_id)
         return deepcopy(item) if item else None
 
-    def list_reports(self, *, route: str | None = None, status: str | None = None, demo_only: bool = False) -> list[JsonDict]:
+    def list_reports(
+        self, *, route: str | None = None, status: str | None = None, demo_only: bool = False
+    ) -> list[JsonDict]:
         items = list(self._reports_by_id.values())
         if route:
             items = [item for item in items if item.get("route") == route]
         if status:
             items = [item for item in items if item.get("status") == status]
         if demo_only:
-            items = [item for item in items if item.get(
-                "demo_priority") not in (None, 98, 99)]
+            items = [item for item in items if item.get("demo_priority") not in (None, 98, 99)]
         return deepcopy(sorted(items, key=lambda i: i.get("demo_priority", 999)))
 
     def get_report(self, report_id: str) -> JsonDict | None:
         item = self._reports_by_id.get(report_id)
         return deepcopy(item) if item else None
 
-    def list_kpis(self, *, route: str | None = None, status: str | None = None, group_id: str | None = None) -> list[JsonDict]:
+    def list_kpis(
+        self, *, route: str | None = None, status: str | None = None, group_id: str | None = None
+    ) -> list[JsonDict]:
         items = list(self._kpis_by_id.values())
         if route:
             items = [item for item in items if item.get("route") == route]
         if status:
             items = [item for item in items if item.get("status") == status]
         if group_id:
-            items = [item for item in items if item.get(
-                "group_id") == group_id]
+            items = [item for item in items if item.get("group_id") == group_id]
         return deepcopy(items)
 
     def get_kpi(self, kpi_id: str) -> JsonDict | None:
         item = self._kpis_by_id.get(kpi_id)
         return deepcopy(item) if item else None
 
-    def list_sql_templates(self, *, route: str | None = None, status: str | None = None) -> list[JsonDict]:
+    def list_sql_templates(
+        self, *, route: str | None = None, status: str | None = None
+    ) -> list[JsonDict]:
         items = list(self._templates_by_id.values())
         if route:
             items = [item for item in items if item.get("route") == route]
@@ -615,7 +657,9 @@ class MetadataService:
         item = self._templates_by_id.get(resolved_id)
         return deepcopy(item) if item else None
 
-    def render_sql_template(self, template_id: str, params: Mapping[str, Any] | None = None) -> str | None:
+    def render_sql_template(
+        self, template_id: str, params: Mapping[str, Any] | None = None
+    ) -> str | None:
         template = self.get_sql_template(template_id)
         if not template:
             return None
@@ -627,8 +671,7 @@ class MetadataService:
         for key, value in params.items():
             if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", str(key)):
                 raise ValueError(f"Unsafe template parameter name: {key}")
-            rendered = rendered.replace(
-                "{" + str(key) + "}", self._format_sql_literal(value))
+            rendered = rendered.replace("{" + str(key) + "}", self._format_sql_literal(value))
         return rendered
 
     @staticmethod
@@ -652,8 +695,7 @@ class MetadataService:
 
     def get_status_sql(self, status: str) -> str | None:
         normalized = status.upper().strip()
-        status_map = self._raw.get("sql_validator_rules", {}).get(
-            "default_status_sql", {}) or {}
+        status_map = self._raw.get("sql_validator_rules", {}).get("default_status_sql", {}) or {}
         key_by_status = {
             "DATA_GAP": "on_data_gap",
             "ACCESS_DENIED": "on_access_denied",
@@ -665,8 +707,7 @@ class MetadataService:
         if isinstance(value, str):
             return value
 
-        status_templates = self._raw.get(
-            "sql_templates", {}).get("status_templates", []) or []
+        status_templates = self._raw.get("sql_templates", {}).get("status_templates", []) or []
         for template in status_templates:
             if isinstance(template, dict) and str(template.get("status", "")).upper() == normalized:
                 return str(template.get("sql", "")).strip()
@@ -700,8 +741,9 @@ class MetadataService:
         # Prefer structured semantic_concepts because it includes maps_to details.
         for concept_id, concept in self._semantic_concepts_by_id.items():
             terms = concept.get("user_terms_fa", []) or []
-            matched_terms = [term for term in terms if isinstance(
-                term, str) and term and term in normalized]
+            matched_terms = [
+                term for term in terms if isinstance(term, str) and term and term in normalized
+            ]
             if matched_terms:
                 matches.append(
                     {
@@ -716,8 +758,12 @@ class MetadataService:
                 )
 
         priority_rank = {"high": 0, "medium": 1, "low": 2}
-        matches.sort(key=lambda item: (priority_rank.get(
-            item.get("priority"), 99), -len(item.get("matched_terms", []))))
+        matches.sort(
+            key=lambda item: (
+                priority_rank.get(item.get("priority"), 99),
+                -len(item.get("matched_terms", [])),
+            )
+        )
         return deepcopy(matches[:max_matches])
 
     def get_data_gap_semantics(self) -> JsonDict:
@@ -726,7 +772,9 @@ class MetadataService:
             {
                 "data_gap_semantics": semantic_layer.get("data_gap_semantics", {}),
                 "data_gap_rules": self._raw.get("data_dictionary", {}).get("data_gap_rules", []),
-                "validator_data_gap_rules": self._raw.get("sql_validator_rules", {}).get("data_gap_rules", []),
+                "validator_data_gap_rules": self._raw.get("sql_validator_rules", {}).get(
+                    "data_gap_rules", []
+                ),
             }
         )
 
@@ -734,7 +782,9 @@ class MetadataService:
     # Prompt/schema context helpers
     # ------------------------------------------------------------------
 
-    def build_schema_context_for_prompt(self, *, include_allowed_values: bool = True, include_semantics: bool = True) -> str:
+    def build_schema_context_for_prompt(
+        self, *, include_allowed_values: bool = True, include_semantics: bool = True
+    ) -> str:
         """
         Build a compact text context for the SQL generator prompt.
 
@@ -742,8 +792,9 @@ class MetadataService:
         It intentionally contains metadata only, not raw data rows.
         """
         main_view = self.get_main_view()
-        view_name = main_view.get("name") or main_view.get(
-            "relation") or "hr_mvp.vw_hr_employee_analytics"
+        view_name = (
+            main_view.get("name") or main_view.get("relation") or "hr_mvp.vw_hr_employee_analytics"
+        )
         alias = main_view.get("alias") or "v"
 
         lines: list[str] = [
@@ -761,8 +812,9 @@ class MetadataService:
             title = column.get("title_fa", "")
             description = column.get("description_fa", "")
             sensitivity = column.get("sensitivity", "")
-            permissions = column.get("permissions", {}) if isinstance(
-                column.get("permissions"), dict) else {}
+            permissions = (
+                column.get("permissions", {}) if isinstance(column.get("permissions"), dict) else {}
+            )
             output_allowed = permissions.get("output_allowed")
 
             line = f"- {name}: {data_type}"
@@ -784,8 +836,9 @@ class MetadataService:
 
         if include_semantics:
             lines.extend(["", "Semantic mappings:"])
-            semantic_concepts = self._raw.get(
-                "semantic_layer", {}).get("semantic_concepts", []) or []
+            semantic_concepts = (
+                self._raw.get("semantic_layer", {}).get("semantic_concepts", []) or []
+            )
             for concept in semantic_concepts[:80]:
                 if not isinstance(concept, dict):
                     continue
@@ -793,8 +846,9 @@ class MetadataService:
                 maps_to = concept.get("maps_to", {}) or {}
                 if not terms or not maps_to:
                     continue
-                mapped_column = maps_to.get("column") or maps_to.get(
-                    "metric") or maps_to.get("route")
+                mapped_column = (
+                    maps_to.get("column") or maps_to.get("metric") or maps_to.get("route")
+                )
                 sample_terms = ", ".join(str(t) for t in terms[:8])
                 lines.append(f"- {sample_terms} => {mapped_column}")
 
@@ -820,10 +874,12 @@ class MetadataService:
         if not intent:
             return {"found": False, "intent_id": intent_id}
 
-        report = self.get_report(str(intent.get("report_id"))) if intent.get(
-            "report_id") else None
-        template = self.get_sql_template(
-            str(intent.get("sql_template_id"))) if intent.get("sql_template_id") else None
+        report = self.get_report(str(intent.get("report_id"))) if intent.get("report_id") else None
+        template = (
+            self.get_sql_template(str(intent.get("sql_template_id")))
+            if intent.get("sql_template_id")
+            else None
+        )
         visualization = self.get_visualization_for_intent(intent_id)
 
         return {
@@ -843,22 +899,24 @@ class MetadataService:
 
     def get_min_group_size(self, default: int = 5) -> int:
         policies = self._raw.get("access_policies", {})
-        aggregation_rules = policies.get("aggregation_rules", {}) if isinstance(
-            policies.get("aggregation_rules"), dict) else {}
+        aggregation_rules = (
+            policies.get("aggregation_rules", {})
+            if isinstance(policies.get("aggregation_rules"), dict)
+            else {}
+        )
         for key in ("minimum_group_size", "min_group_size", "min_group_size_default"):
             value = aggregation_rules.get(key)
             if isinstance(value, int):
                 return value
-        global_rules = self._raw.get(
-            "visualization_rules", {}).get("global_rules", {}) or {}
+        global_rules = self._raw.get("visualization_rules", {}).get("global_rules", {}) or {}
         value = global_rules.get("min_group_size_default")
         return int(value) if isinstance(value, int | float) else default
 
     def get_sensitive_columns(self) -> list[str]:
-        blocklist = self._raw.get("sql_validator_rules", {}).get(
-            "sensitive_columns_blocklist", []) or []
-        access_sensitive = self._raw.get("access_policies", {}).get(
-            "sensitive_columns", []) or []
+        blocklist = (
+            self._raw.get("sql_validator_rules", {}).get("sensitive_columns_blocklist", []) or []
+        )
+        access_sensitive = self._raw.get("access_policies", {}).get("sensitive_columns", []) or []
         names: list[str] = []
         for item in [*blocklist, *access_sensitive]:
             if isinstance(item, str):
@@ -870,12 +928,17 @@ class MetadataService:
         return sorted(set(names))
 
     def get_allowed_output_columns(self) -> list[str]:
-        return [str(col.get("name")) for col in self.get_columns(include_restricted=False) if col.get("name")]
+        return [
+            str(col.get("name"))
+            for col in self.get_columns(include_restricted=False)
+            if col.get("name")
+        ]
 
     @staticmethod
     def _is_output_allowed_column(column: JsonDict) -> bool:
-        permissions = column.get("permissions") if isinstance(
-            column.get("permissions"), dict) else {}
+        permissions = (
+            column.get("permissions") if isinstance(column.get("permissions"), dict) else {}
+        )
         if permissions.get("output_allowed") is False:
             return False
         if permissions.get("individual_output_allowed") is True:
@@ -893,16 +956,19 @@ class MetadataService:
 _service: MetadataService | None = None
 
 
-def get_metadata_service(*, reload: bool = False, metadata_dir: str | Path | None = None, strict: bool = True) -> MetadataService:
+def get_metadata_service(
+    *, reload: bool = False, metadata_dir: str | Path | None = None, strict: bool = True
+) -> MetadataService:
     """Return a process-wide MetadataService singleton."""
     global _service
     if reload or _service is None or metadata_dir is not None:
-        _service = MetadataService(
-            metadata_dir=metadata_dir, strict=strict, auto_load=True)
+        _service = MetadataService(metadata_dir=metadata_dir, strict=strict, auto_load=True)
     return _service
 
 
-def reload_metadata(metadata_dir: str | Path | None = None, *, strict: bool = True) -> MetadataService:
+def reload_metadata(
+    metadata_dir: str | Path | None = None, *, strict: bool = True
+) -> MetadataService:
     """Force reload metadata files from disk."""
     return get_metadata_service(reload=True, metadata_dir=metadata_dir, strict=strict)
 

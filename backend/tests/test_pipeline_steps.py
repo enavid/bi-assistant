@@ -9,6 +9,7 @@ from app.use_cases.hr_analytics.steps.semantic_mapper import SemanticMapper
 # SemanticMapper
 # ---------------------------------------------------------------------------
 
+
 def test_semantic_mapper_maps_employee_count_question(metadata_service):
     result = SemanticMapper(metadata_service=metadata_service).map("تعداد کل کارکنان چند نفر است؟")
     assert isinstance(result, dict)
@@ -39,6 +40,7 @@ def test_semantic_mapper_callable_returns_same_as_map(metadata_service):
 # IntentParser
 # ---------------------------------------------------------------------------
 
+
 def test_intent_parser_parses_employee_count(metadata_service):
     result = IntentParser(metadata_service=metadata_service).parse("تعداد کل کارکنان چند نفر است؟")
     assert isinstance(result, dict)
@@ -46,7 +48,9 @@ def test_intent_parser_parses_employee_count(metadata_service):
 
 
 def test_intent_parser_parses_gender_question(metadata_service):
-    result = IntentParser(metadata_service=metadata_service).parse("درصد کارکنان زن و مرد چقدر است؟")
+    result = IntentParser(metadata_service=metadata_service).parse(
+        "درصد کارکنان زن و مرد چقدر است؟"
+    )
     assert isinstance(result, dict)
     assert result.get("route") in {"SQL", "GAP"}
 
@@ -66,6 +70,7 @@ def test_intent_parser_result_has_required_fields(metadata_service):
 # ---------------------------------------------------------------------------
 # DecisionRouter
 # ---------------------------------------------------------------------------
+
 
 def test_decision_router_routes_sql_intent(metadata_service):
     router = DecisionRouter(metadata_service=metadata_service)
@@ -104,6 +109,7 @@ def test_decision_router_routes_gap(metadata_service):
 # ---------------------------------------------------------------------------
 # GapService
 # ---------------------------------------------------------------------------
+
 
 def test_gap_service_creates_gap_record(metadata_service):
     service = GapService(metadata_service=metadata_service)

@@ -6,6 +6,7 @@ from app.infrastructure.llm.prompt_builder import PromptBuilder, SQLFallbackProm
 def _make_context(**kwargs):
     class Ctx:
         pass
+
     ctx = Ctx()
     for k, v in kwargs.items():
         setattr(ctx, k, v)

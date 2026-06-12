@@ -14,6 +14,7 @@ def _run(orchestrator, question: str) -> dict:
 # 1. Trace: context and traces present in response
 # ---------------------------------------------------------------------------
 
+
 def test_trace_context_present_in_response(metadata_service):
     orch = LLMOrchestrator(metadata_service=metadata_service, default_execute_sql=False)
     payload = _run(orch, "تعداد کل کارکنان چند نفر است؟")
@@ -37,6 +38,7 @@ def test_trace_steps_named(metadata_service):
 # ---------------------------------------------------------------------------
 # 2. ANALYTICAL_GAP: contractor productivity and workload alignment
 # ---------------------------------------------------------------------------
+
 
 def test_analytical_gap_for_contractor_productivity(metadata_service):
     orch = LLMOrchestrator(metadata_service=metadata_service, default_execute_sql=False)
@@ -70,6 +72,7 @@ def test_analytical_gap_message_is_specific(metadata_service):
 # 3. Routing bugs
 # ---------------------------------------------------------------------------
 
+
 def test_most_hiring_year_not_rejected(metadata_service):
     orch = LLMOrchestrator(metadata_service=metadata_service, default_execute_sql=False)
     payload = _run(orch, "بیشترین جذب")
@@ -93,6 +96,7 @@ def test_list_with_identifier_is_access_denied(metadata_service):
 
 def test_domain_classifier_passes_list_with_identifier_as_hr():
     from app.use_cases.hr_analytics.steps.domain_classifier import DomainClassifier
+
     clf = DomainClassifier()
     result = clf.classify("لیست افراد بالای ۶۰ سال با شناسه‌شان را بده")
     assert result["is_hr"] is True, f"Expected HR but got: {result}"
@@ -101,6 +105,7 @@ def test_domain_classifier_passes_list_with_identifier_as_hr():
 # ---------------------------------------------------------------------------
 # 4. Status templates in decision router
 # ---------------------------------------------------------------------------
+
 
 def test_decision_router_status_template_routes_to_reject(metadata_service):
     router = DecisionRouter(metadata_service=metadata_service)
@@ -152,6 +157,7 @@ def test_decision_router_status_template_data_gap(metadata_service):
 # ---------------------------------------------------------------------------
 # 5. Question validator: analytical gap rules
 # ---------------------------------------------------------------------------
+
 
 def test_question_validator_analytical_gap_contractor():
     validator = QuestionValidator()

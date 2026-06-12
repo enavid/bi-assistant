@@ -49,9 +49,15 @@ async def list_sessions(db: AsyncSession = Depends(get_db)) -> list[ChatSessionO
     return list(result.scalars().all())
 
 
-@router.post("/sessions", response_model=ChatSessionOut, status_code=201, summary="Create chat session")
-async def create_session(body: ChatSessionCreate, db: AsyncSession = Depends(get_db)) -> ChatSessionORM:
-    session = ChatSessionORM(title=body.title, project_id=body.project_id, model_name=body.model_name)
+@router.post(
+    "/sessions", response_model=ChatSessionOut, status_code=201, summary="Create chat session"
+)
+async def create_session(
+    body: ChatSessionCreate, db: AsyncSession = Depends(get_db)
+) -> ChatSessionORM:
+    session = ChatSessionORM(
+        title=body.title, project_id=body.project_id, model_name=body.model_name
+    )
     db.add(session)
     await db.flush()
     await db.refresh(session, ["messages"])
@@ -63,8 +69,12 @@ async def get_session(session_id: str, db: AsyncSession = Depends(get_db)) -> Ch
     return await _require_session(session_id, db)
 
 
-@router.patch("/sessions/{session_id}", response_model=ChatSessionOut, summary="Update chat session")
-async def update_session(session_id: str, body: ChatSessionUpdate, db: AsyncSession = Depends(get_db)) -> ChatSessionORM:
+@router.patch(
+    "/sessions/{session_id}", response_model=ChatSessionOut, summary="Update chat session"
+)
+async def update_session(
+    session_id: str, body: ChatSessionUpdate, db: AsyncSession = Depends(get_db)
+) -> ChatSessionORM:
     session = await _require_session(session_id, db)
     if body.title is not None:
         session.title = body.title
@@ -83,8 +93,14 @@ async def delete_session(session_id: str, db: AsyncSession = Depends(get_db)) ->
     await db.delete(session)
 
 
-@router.post("/sessions/{session_id}/messages", response_model=ChatSessionOut, summary="Add message to session")
-async def add_message(session_id: str, body: dict, db: AsyncSession = Depends(get_db)) -> ChatSessionORM:
+@router.post(
+    "/sessions/{session_id}/messages",
+    response_model=ChatSessionOut,
+    summary="Add message to session",
+)
+async def add_message(
+    session_id: str, body: dict, db: AsyncSession = Depends(get_db)
+) -> ChatSessionORM:
     session = await _require_session(session_id, db)
     message = MessageORM(
         session_id=session_id,
@@ -110,13 +126,20 @@ async def generate(
         uc = HRBIOrchestrationUseCase(orchestrator)
         result = await uc.generate(body.question, model=body.model_name)
         if not result.success:
-            logger.warning("generate returned non-success route=%s status=%s", result.route, result.status)
+            logger.warning(
+                "generate returned non-success route=%s status=%s", result.route, result.status
+            )
         return GenerateResponse(
-            sql=result.sql, success=result.success, error=result.error,
+            sql=result.sql,
+            success=result.success,
+            error=result.error,
             message_fa=result.message,
-            route=result.route, status=result.status,
-            detected_intent=result.detected_intent, warnings=result.warnings,
-            traces=result.traces, source=result.source,
+            route=result.route,
+            status=result.status,
+            detected_intent=result.detected_intent,
+            warnings=result.warnings,
+            traces=result.traces,
+            source=result.source,
             template_id=result.template_id,
             executed=result.executed,
             row_count=result.row_count,
@@ -143,7 +166,14 @@ async def run_query(
             if not (vd.get("is_valid") and vd.get("can_execute_sql")):
                 violations = vd.get("violations") or []
                 msg = ", ".join(str(v) for v in violations) or vd.get("status", "invalid")
-                return QueryResponse(columns=[], rows=[], row_count=0, elapsed_ms=0, success=False, error=f"SQL blocked: {msg}")
+                return QueryResponse(
+                    columns=[],
+                    rows=[],
+                    row_count=0,
+                    elapsed_ms=0,
+                    success=False,
+                    error=f"SQL blocked: {msg}",
+                )
 
     result = use_case.execute(body.sql)
 
@@ -165,7 +195,11 @@ async def run_query(
                 experiment_id = orm_exp.id
 
     return QueryResponse(
-        columns=result.columns, rows=result.rows, row_count=result.row_count,
-        elapsed_ms=result.elapsed_ms, success=result.success, error=result.error,
+        columns=result.columns,
+        rows=result.rows,
+        row_count=result.row_count,
+        elapsed_ms=result.elapsed_ms,
+        success=result.success,
+        error=result.error,
         experiment_id=experiment_id,
     )

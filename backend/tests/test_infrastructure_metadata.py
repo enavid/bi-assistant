@@ -61,6 +61,7 @@ def test_metadata_service_reload_returns_bundle(metadata_service):
 
 def test_get_metadata_service_singleton():
     from pathlib import Path
+
     metadata_dir = Path(__file__).resolve().parents[1] / "metadata"
     s1 = get_metadata_service(reload=True, metadata_dir=metadata_dir, strict=True)
     s2 = get_metadata_service(strict=True)

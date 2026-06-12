@@ -9,6 +9,7 @@ Usage:
     uv run python eval/run_evaluation.py --input eval/questions.csv --format csv
     uv run python eval/run_evaluation.py --input eval/questions.json --output results/run_01
 """
+
 from __future__ import annotations
 
 import argparse
@@ -78,11 +79,7 @@ def _extract(response: Any, elapsed_ms: float, case: dict[str, Any]) -> dict[str
     rows = query_result.get("rows") or []
     row_count = len(rows) if executed else None
 
-    visualization = (
-        viz_plan.get("primary_visualization")
-        or viz_plan.get("visualization")
-        or ""
-    )
+    visualization = viz_plan.get("primary_visualization") or viz_plan.get("visualization") or ""
 
     trace_steps = [
         {
@@ -186,14 +183,30 @@ async def _run_all(cases: list[dict[str, Any]], concurrency: int = 1) -> list[di
 
 
 _CSV_FIELDS = [
-    "question_id", "question", "category", "passed",
-    "expected_route", "actual_route", "route_match",
-    "expected_status", "actual_status", "status_match",
-    "expected_intent", "actual_intent", "intent_match",
-    "source", "model_called", "template_id",
-    "sql_validator_status", "executed", "row_count",
-    "visualization", "total_duration_ms",
-    "error", "warnings", "trace_steps",
+    "question_id",
+    "question",
+    "category",
+    "passed",
+    "expected_route",
+    "actual_route",
+    "route_match",
+    "expected_status",
+    "actual_status",
+    "status_match",
+    "expected_intent",
+    "actual_intent",
+    "intent_match",
+    "source",
+    "model_called",
+    "template_id",
+    "sql_validator_status",
+    "executed",
+    "row_count",
+    "visualization",
+    "total_duration_ms",
+    "error",
+    "warnings",
+    "trace_steps",
 ]
 
 
@@ -260,17 +273,20 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="HR BI Pipeline Evaluation Runner")
     parser.add_argument("--input", "-i", required=True, help="Input file: JSON or CSV")
     parser.add_argument(
-        "--output", "-o",
+        "--output",
+        "-o",
         help="Output base path without extension (default: <input_dir>/evaluation_trace_results)",
     )
     parser.add_argument(
-        "--format", "-f",
+        "--format",
+        "-f",
         choices=["json", "csv", "both"],
         default="both",
         help="Output format (default: both)",
     )
     parser.add_argument(
-        "--concurrency", "-c",
+        "--concurrency",
+        "-c",
         type=int,
         default=1,
         help="Parallel questions (default: 1 — sequential)",
@@ -283,9 +299,7 @@ def main() -> None:
         sys.exit(1)
 
     output_base = (
-        Path(args.output)
-        if args.output
-        else input_path.parent / "evaluation_trace_results"
+        Path(args.output) if args.output else input_path.parent / "evaluation_trace_results"
     )
 
     print("\n  HR BI Evaluation Runner")

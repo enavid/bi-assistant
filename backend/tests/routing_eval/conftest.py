@@ -2,6 +2,7 @@
 Routing eval conftest: collects per-case results and prints a full report
 at the end of the session, regardless of pass/fail.
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -19,11 +20,11 @@ _CATEGORY_ORDER = [
 ]
 
 _CATEGORY_LABEL = {
-    "access_denied":  "ACCESS DENIED",
-    "out_of_scope":   "OUT OF SCOPE",
-    "data_gap":       "DATA GAP",
+    "access_denied": "ACCESS DENIED",
+    "out_of_scope": "OUT OF SCOPE",
+    "data_gap": "DATA GAP",
     "analytical_gap": "ANALYTICAL GAP",
-    "sql":            "SQL",
+    "sql": "SQL",
 }
 
 
@@ -35,7 +36,7 @@ def pytest_runtest_makereport(item: pytest.Item, call: pytest.CallInfo) -> Any: 
 
     report = outcome.get_result()
     case: dict[str, Any] | None = None
-    for arg in (item.callspec.params.values() if hasattr(item, "callspec") else []):
+    for arg in item.callspec.params.values() if hasattr(item, "callspec") else []:
         if isinstance(arg, dict) and "question" in arg:
             case = arg
             break
@@ -79,9 +80,7 @@ def pytest_terminal_summary(terminalreporter: Any, exitstatus: int, config: Any)
     for r in _RESULTS:
         by_cat.setdefault(r["category"], []).append(r)
 
-    header = (
-        f"  {'Question':<{col_q}}  {'Route':<{col_r}}  {'Status':<{col_s}}  {'Intent'}"
-    )
+    header = f"  {'Question':<{col_q}}  {'Route':<{col_r}}  {'Status':<{col_s}}  {'Intent'}"
 
     for cat in _CATEGORY_ORDER + [c for c in by_cat if c not in _CATEGORY_ORDER]:
         rows = by_cat.get(cat, [])
@@ -96,7 +95,9 @@ def pytest_terminal_summary(terminalreporter: Any, exitstatus: int, config: Any)
         if passed == total:
             tr.write_line(f"  ▌ {label}  [{passed}/{total} ✓]", green=True, bold=True)
         else:
-            tr.write_line(f"  ▌ {label}  [{passed}/{total} — {total-passed} FAILED]", red=True, bold=True)
+            tr.write_line(
+                f"  ▌ {label}  [{passed}/{total} — {total - passed} FAILED]", red=True, bold=True
+            )
 
         tr.write_line(sep())
         tr.write_line(header)
@@ -139,4 +140,6 @@ def pytest_terminal_summary(terminalreporter: Any, exitstatus: int, config: Any)
     if failed_all == 0:
         tr.write_line(f"  All {total_all} routing cases passed.\n", bold=True, green=True)
     else:
-        tr.write_line(f"  {passed_all}/{total_all} passed,  {failed_all} failed.\n", bold=True, red=True)
+        tr.write_line(
+            f"  {passed_all}/{total_all} passed,  {failed_all} failed.\n", bold=True, red=True
+        )

@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi_offline import FastAPIOffline
 
 from app.api.middleware.request_id import RequestIDMiddleware
-from app.api.routes import chat, hr_bi, ollama, workspace
+from app.api.routes import chat, eval, hr_bi, ollama, workspace
 from app.core.config import settings
 from app.core.logging import setup_logging
 from app.infrastructure.db.models import Base  # noqa: F401
@@ -50,6 +50,7 @@ app.include_router(workspace.router)
 app.include_router(chat.router)
 app.include_router(hr_bi.router)
 app.include_router(ollama.router)
+app.include_router(eval.router)
 
 
 @app.get("/health", tags=["system"], summary="Health check")

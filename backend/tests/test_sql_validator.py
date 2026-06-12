@@ -11,6 +11,7 @@ def validate(sql: str, metadata_service, question: str | None = None):
 # Allowed SQL
 # ---------------------------------------------------------------------------
 
+
 def test_validator_accepts_safe_select_on_view(metadata_service):
     sql = """
     SELECT COUNT(v.employee_id) AS employee_count
@@ -51,6 +52,7 @@ def test_validator_allows_status_access_denied(metadata_service):
 # Blocked SQL — structure violations
 # ---------------------------------------------------------------------------
 
+
 def test_validator_rejects_select_star(metadata_service):
     sql = "SELECT * FROM hr_mvp.vw_hr_employee_analytics v WHERE v.is_active = TRUE;"
     result = validate(sql, metadata_service)
@@ -88,6 +90,7 @@ def test_validator_blocks_sensitive_column(metadata_service):
 # Blocked SQL — write operations
 # ---------------------------------------------------------------------------
 
+
 def test_validator_rejects_insert(metadata_service):
     sql = "INSERT INTO hr_mvp.vw_hr_employee_analytics VALUES (1, 'test');"
     result = validate(sql, metadata_service)
@@ -115,6 +118,7 @@ def test_validator_rejects_drop(metadata_service):
 # ---------------------------------------------------------------------------
 # Edge cases
 # ---------------------------------------------------------------------------
+
 
 def test_validator_rejects_empty_sql(metadata_service):
     result = validate("", metadata_service)

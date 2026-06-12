@@ -29,7 +29,6 @@ It creates a SQL plan that must still pass sql_validator.py before execution.
 """
 
 
-
 JsonDict = dict[str, Any]
 _PLACEHOLDER_RE = re.compile(r"\{([A-Za-z_][A-Za-z0-9_]*)\}")
 _SAFE_PARAM_NAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
@@ -114,13 +113,13 @@ class SQLTemplateEngine:
         if metadata_service is not None:
             self.metadata = metadata_service
         elif get_metadata_service is not None:
-            self.metadata = get_metadata_service(
-                metadata_dir=metadata_dir, strict=False)
+            self.metadata = get_metadata_service(metadata_dir=metadata_dir, strict=False)
         else:
             self.metadata = None
 
-        default_year = current_shamsi_year or self._read_default_current_shamsi_year(
-            self.metadata) or 1404
+        default_year = (
+            current_shamsi_year or self._read_default_current_shamsi_year(self.metadata) or 1404
+        )
         self.config = SQLTemplateEngineConfig(
             current_shamsi_year=int(default_year),
             strict_parameter_validation=strict_parameter_validation,
@@ -153,19 +152,17 @@ class SQLTemplateEngine:
                 errors=["Metadata service is not available."],
             ).to_dict()
 
-        intent_payload = self._payload_from(
-            context, "intent_result", intent_result)
-        route_payload = self._payload_from(
-            context, "route_result", route_result)
-        semantic_payload = self._payload_from(
-            context, "semantic_result", semantic_result)
-        runtime_payload = self._runtime_params_from(
-            context, runtime_params, kwargs)
-        normalized_question = question or self._get_context_value(
-            context, "normalized_question") or self._get_context_value(context, "question")
+        intent_payload = self._payload_from(context, "intent_result", intent_result)
+        route_payload = self._payload_from(context, "route_result", route_result)
+        semantic_payload = self._payload_from(context, "semantic_result", semantic_result)
+        runtime_payload = self._runtime_params_from(context, runtime_params, kwargs)
+        normalized_question = (
+            question
+            or self._get_context_value(context, "normalized_question")
+            or self._get_context_value(context, "question")
+        )
 
-        status_plan = self._maybe_status_plan(
-            service, route_payload, intent_payload)
+        status_plan = self._maybe_status_plan(service, route_payload, intent_payload)
         if status_plan is not None:
             return status_plan.to_dict()
 
@@ -225,19 +222,17 @@ class SQLTemplateEngine:
             runtime_payload=runtime_payload,
         )
         validation_errors, validation_warnings = self._validate_template_params(
-            service, template, params)
+            service, template, params
+        )
         if validation_errors:
             return SQLTemplatePlan(
                 status="PARAMETER_VALIDATION_FAILED",
                 route="SQL",
                 source=self.config.source_name,
                 intent=str(intent_id or template.get("intent") or "") or None,
-                report_id=str(report_id or template.get(
-                    "report_id") or "") or None,
-                template_id=str(template.get("template_id")
-                                or resolved_template_id),
-                resolved_template_id=str(template.get(
-                    "template_id") or resolved_template_id),
+                report_id=str(report_id or template.get("report_id") or "") or None,
+                template_id=str(template.get("template_id") or resolved_template_id),
+                resolved_template_id=str(template.get("template_id") or resolved_template_id),
                 params=self._redact_params(params),
                 can_execute_sql=False,
                 reason="SQL template parameters failed validation.",
@@ -247,20 +242,16 @@ class SQLTemplateEngine:
             ).to_dict()
 
         try:
-            sql = self.render_sql_text(
-                str(template.get("sql", "")), params, template=template)
+            sql = self.render_sql_text(str(template.get("sql", "")), params, template=template)
         except SQLTemplateEngineError as exc:
             return SQLTemplatePlan(
                 status="TEMPLATE_RENDER_FAILED",
                 route="SQL",
                 source=self.config.source_name,
                 intent=str(intent_id or template.get("intent") or "") or None,
-                report_id=str(report_id or template.get(
-                    "report_id") or "") or None,
-                template_id=str(template.get("template_id")
-                                or resolved_template_id),
-                resolved_template_id=str(template.get(
-                    "template_id") or resolved_template_id),
+                report_id=str(report_id or template.get("report_id") or "") or None,
+                template_id=str(template.get("template_id") or resolved_template_id),
+                resolved_template_id=str(template.get("template_id") or resolved_template_id),
                 params=self._redact_params(params),
                 can_execute_sql=False,
                 reason=str(exc),
@@ -277,15 +268,11 @@ class SQLTemplateEngine:
                 source=self.config.source_name,
                 sql=sql,
                 intent=str(intent_id or template.get("intent") or "") or None,
-                report_id=str(report_id or template.get(
-                    "report_id") or "") or None,
-                template_id=str(template.get("template_id")
-                                or resolved_template_id),
-                resolved_template_id=str(template.get(
-                    "template_id") or resolved_template_id),
+                report_id=str(report_id or template.get("report_id") or "") or None,
+                template_id=str(template.get("template_id") or resolved_template_id),
+                resolved_template_id=str(template.get("template_id") or resolved_template_id),
                 params=self._redact_params(params),
-                result_columns=deepcopy(
-                    template.get("result_columns", []) or []),
+                result_columns=deepcopy(template.get("result_columns", []) or []),
                 output_type=template.get("output_type"),
                 can_execute_sql=False,
                 reason="Rendered SQL failed lightweight template safety checks.",
@@ -300,17 +287,14 @@ class SQLTemplateEngine:
             source=self.config.source_name,
             sql=sql,
             intent=str(intent_id or template.get("intent") or "") or None,
-            report_id=str(report_id or template.get(
-                "report_id") or "") or None,
-            template_id=str(template.get("template_id")
-                            or resolved_template_id),
-            resolved_template_id=str(template.get(
-                "template_id") or resolved_template_id),
+            report_id=str(report_id or template.get("report_id") or "") or None,
+            template_id=str(template.get("template_id") or resolved_template_id),
+            resolved_template_id=str(template.get("template_id") or resolved_template_id),
             params=self._redact_params(params),
             result_columns=deepcopy(template.get("result_columns", []) or []),
             output_type=template.get("output_type"),
-            visualization_hint=template.get(
-                "recommended_visualization") or template.get("output_type"),
+            visualization_hint=template.get("recommended_visualization")
+            or template.get("output_type"),
             can_execute_sql=True,
             reason="SQL was rendered from a controlled metadata template.",
             warnings=validation_warnings,
@@ -341,32 +325,34 @@ class SQLTemplateEngine:
     # Template resolution
     # ------------------------------------------------------------------
 
-    def _maybe_status_plan(self, service: Any, route_payload: JsonDict, intent_payload: JsonDict) -> SQLTemplatePlan | None:
-        route = str(route_payload.get("route")
-                    or intent_payload.get("route") or "").upper()
-        status = str(route_payload.get("status")
-                     or intent_payload.get("status") or "").upper()
+    def _maybe_status_plan(
+        self, service: Any, route_payload: JsonDict, intent_payload: JsonDict
+    ) -> SQLTemplatePlan | None:
+        route = str(route_payload.get("route") or intent_payload.get("route") or "").upper()
+        status = str(route_payload.get("status") or intent_payload.get("status") or "").upper()
         if route not in self.STATUS_ROUTES and status not in self.STATUS_VALUES:
             return None
 
         status = self._normalize_status(status=status, route=route)
-        sql = self._get_status_sql(
-            service, status) if self.config.allow_status_sql else None
+        sql = self._get_status_sql(service, status) if self.config.allow_status_sql else None
         return SQLTemplatePlan(
             status=status,
-            route=route if route in self.STATUS_ROUTES else self._route_for_status(
-                status),
+            route=route if route in self.STATUS_ROUTES else self._route_for_status(status),
             source=self.config.source_name,
             sql=sql,
-            intent=self._first_non_empty(intent_payload.get(
-                "intent"), intent_payload.get("intent_id")),
-            report_id=self._first_non_empty(route_payload.get(
-                "report_id"), intent_payload.get("report_id")),
+            intent=self._first_non_empty(
+                intent_payload.get("intent"), intent_payload.get("intent_id")
+            ),
+            report_id=self._first_non_empty(
+                route_payload.get("report_id"), intent_payload.get("report_id")
+            ),
             can_execute_sql=False,
-            reason=route_payload.get("reason") or intent_payload.get(
-                "reason") or f"Route/status resolved as {status} before SQL planning.",
+            reason=route_payload.get("reason")
+            or intent_payload.get("reason")
+            or f"Route/status resolved as {status} before SQL planning.",
             warnings=[
-                "Status SQL is returned only as a controlled status marker; business SQL must not be executed."],
+                "Status SQL is returned only as a controlled status marker; business SQL must not be executed."
+            ],
         )
 
     @staticmethod
@@ -413,11 +399,11 @@ class SQLTemplateEngine:
 
         if intent_id and hasattr(service, "build_metadata_context_for_intent"):
             try:
-                metadata_context = service.build_metadata_context_for_intent(intent_id) or {
-                }
+                metadata_context = service.build_metadata_context_for_intent(intent_id) or {}
                 template = metadata_context.get("sql_template") or {}
                 template_id = template.get("template_id") or (
-                    metadata_context.get("intent") or {}).get("sql_template_id")
+                    metadata_context.get("intent") or {}
+                ).get("sql_template_id")
                 if template_id:
                     return self._resolve_sql_template_alias(service, str(template_id))
             except Exception:
@@ -432,7 +418,9 @@ class SQLTemplateEngine:
         if intent_id and hasattr(service, "list_sql_templates"):
             for template in service.list_sql_templates():
                 if str(template.get("intent")) == str(intent_id):
-                    return self._resolve_sql_template_alias(service, str(template.get("template_id")))
+                    return self._resolve_sql_template_alias(
+                        service, str(template.get("template_id"))
+                    )
 
         return None
 
@@ -451,8 +439,11 @@ class SQLTemplateEngine:
             template = service.get_sql_template(template_id)
             return deepcopy(template) if template else None
         if isinstance(service, dict):
-            templates = ((service.get("sql_templates") or {}).get("templates") or [
-            ]) if isinstance(service.get("sql_templates"), dict) else []
+            templates = (
+                ((service.get("sql_templates") or {}).get("templates") or [])
+                if isinstance(service.get("sql_templates"), dict)
+                else []
+            )
             for template in templates:
                 if isinstance(template, dict) and str(template.get("template_id")) == template_id:
                     return deepcopy(template)
@@ -466,8 +457,11 @@ class SQLTemplateEngine:
             except Exception:
                 return None
         if isinstance(service, dict):
-            status_templates = ((service.get("sql_templates") or {}).get(
-                "status_templates") or []) if isinstance(service.get("sql_templates"), dict) else []
+            status_templates = (
+                ((service.get("sql_templates") or {}).get("status_templates") or [])
+                if isinstance(service.get("sql_templates"), dict)
+                else []
+            )
             for item in status_templates:
                 if isinstance(item, dict) and str(item.get("status", "")).upper() == status:
                     sql = item.get("sql")
@@ -498,7 +492,11 @@ class SQLTemplateEngine:
         )
         params["current_shamsi_year"] = int(current_year)
 
-        for payload in (semantic_payload.get("params", {}), intent_payload.get("params", {}), runtime_payload):
+        for payload in (
+            semantic_payload.get("params", {}),
+            intent_payload.get("params", {}),
+            runtime_payload,
+        ):
             if isinstance(payload, Mapping):
                 params.update({str(k): v for k, v in payload.items()})
 
@@ -508,8 +506,7 @@ class SQLTemplateEngine:
         for payload in (semantic_payload, intent_payload):
             value = payload.get("filters")
             if isinstance(value, list):
-                filters.extend(
-                    [item for item in value if isinstance(item, dict)])
+                filters.extend([item for item in value if isinstance(item, dict)])
         self._merge_filter_params(params, filters)
 
         # Apply parameter defaults from template metadata.
@@ -521,8 +518,7 @@ class SQLTemplateEngine:
                 continue
             name = str(name)
             if name not in params and "default" in spec:
-                params[name] = self._normalize_default_value(
-                    spec.get("default"))
+                params[name] = self._normalize_default_value(spec.get("default"))
             if name not in params and spec.get("required") is False:
                 params[name] = None
 
@@ -536,7 +532,10 @@ class SQLTemplateEngine:
             operator = str(item.get("operator") or "")
             value = item.get("value")
 
-            if column in {"gender", "education_title", "employment_type", "contract_type"} and value is not None:
+            if (
+                column in {"gender", "education_title", "employment_type", "contract_type"}
+                and value is not None
+            ):
                 key_by_column = {
                     "gender": "gender_value",
                     "education_title": "education_title",
@@ -551,8 +550,7 @@ class SQLTemplateEngine:
                         numeric = int(value)
                     except Exception:
                         continue
-                    params.setdefault(
-                        "age_min", numeric if operator == ">=" else numeric + 1)
+                    params.setdefault("age_min", numeric if operator == ">=" else numeric + 1)
                 elif operator == "<" and value is not None:
                     try:
                         params.setdefault("age_max_exclusive", int(value))
@@ -563,7 +561,11 @@ class SQLTemplateEngine:
                         params.setdefault("age_max_inclusive", int(value))
                     except Exception:
                         continue
-                elif operator.upper() == "BETWEEN" and isinstance(value, (list, tuple)) and len(value) == 2:
+                elif (
+                    operator.upper() == "BETWEEN"
+                    and isinstance(value, (list, tuple))
+                    and len(value) == 2
+                ):
                     try:
                         params.setdefault("age_min", int(value[0]))
                         params.setdefault("age_max_inclusive", int(value[1]))
@@ -576,11 +578,12 @@ class SQLTemplateEngine:
             return None
         return value
 
-    def _validate_template_params(self, service: Any, template: JsonDict, params: JsonDict) -> tuple[list[str], list[str]]:
+    def _validate_template_params(
+        self, service: Any, template: JsonDict, params: JsonDict
+    ) -> tuple[list[str], list[str]]:
         errors: list[str] = []
         warnings: list[str] = []
-        placeholders = set(_PLACEHOLDER_RE.findall(
-            str(template.get("sql", ""))))
+        placeholders = set(_PLACEHOLDER_RE.findall(str(template.get("sql", ""))))
         specs_by_name = {
             str(spec.get("name")): spec
             for spec in (template.get("parameters", []) or [])
@@ -593,14 +596,12 @@ class SQLTemplateEngine:
                 if spec.get("required") is False:
                     params[name] = None
                 else:
-                    errors.append(
-                        f"Missing required SQL template parameter: {name}")
+                    errors.append(f"Missing required SQL template parameter: {name}")
 
         for name, spec in specs_by_name.items():
             required = bool(spec.get("required"))
             if required and self._is_empty_param(params.get(name)):
-                errors.append(
-                    f"Required SQL template parameter is empty: {name}")
+                errors.append(f"Required SQL template parameter is empty: {name}")
                 continue
             if name not in params:
                 continue
@@ -611,27 +612,25 @@ class SQLTemplateEngine:
             param_type = str(spec.get("type") or "").lower()
             if "integer" in param_type:
                 if not self._can_be_int(value):
-                    errors.append(
-                        f"Parameter '{name}' must be integer or NULL; got {value!r}.")
+                    errors.append(f"Parameter '{name}' must be integer or NULL; got {value!r}.")
                 else:
                     numeric = int(value)
                     if name == "current_shamsi_year" and not (1300 <= numeric <= 1500):
                         errors.append(
-                            "current_shamsi_year is outside expected Shamsi year range 1300..1500.")
+                            "current_shamsi_year is outside expected Shamsi year range 1300..1500."
+                        )
                     if name.startswith("age_") and not (0 <= numeric <= 120):
-                        errors.append(
-                            f"Age parameter '{name}' is outside allowed range 0..120.")
+                        errors.append(f"Age parameter '{name}' is outside allowed range 0..120.")
 
             allowed_values = self._allowed_values_for_param(service, spec)
             if allowed_values is not None and str(value) not in {str(v) for v in allowed_values}:
-                errors.append(
-                    f"Parameter '{name}' value {value!r} is not in allowed values.")
+                errors.append(f"Parameter '{name}' value {value!r} is not in allowed values.")
 
         unknown_params = sorted(
-            set(params) - placeholders - set(specs_by_name) - {"current_shamsi_year"})
+            set(params) - placeholders - set(specs_by_name) - {"current_shamsi_year"}
+        )
         if unknown_params:
-            warnings.append("Unused normalized parameter(s): " +
-                            ", ".join(unknown_params))
+            warnings.append("Unused normalized parameter(s): " + ", ".join(unknown_params))
 
         return errors, warnings
 
@@ -658,7 +657,8 @@ class SQLTemplateEngine:
             return None
         source_text = str(source)
         match = re.fullmatch(
-            r"data_dictionary\.([A-Za-z_][A-Za-z0-9_]*)\.allowed_values", source_text)
+            r"data_dictionary\.([A-Za-z_][A-Za-z0-9_]*)\.allowed_values", source_text
+        )
         if not match:
             return None
         column_name = match.group(1)
@@ -675,8 +675,11 @@ class SQLTemplateEngine:
             except Exception:
                 return None
         if isinstance(service, dict):
-            columns = ((service.get("data_dictionary") or {}).get("columns") or [
-            ]) if isinstance(service.get("data_dictionary"), dict) else []
+            columns = (
+                ((service.get("data_dictionary") or {}).get("columns") or [])
+                if isinstance(service.get("data_dictionary"), dict)
+                else []
+            )
             for column in columns:
                 if isinstance(column, dict) and str(column.get("name")) == column_name:
                     return deepcopy(column)
@@ -686,7 +689,9 @@ class SQLTemplateEngine:
     # Rendering
     # ------------------------------------------------------------------
 
-    def render_sql_text(self, template_sql: str, params: Mapping[str, Any], *, template: JsonDict | None = None) -> str:
+    def render_sql_text(
+        self, template_sql: str, params: Mapping[str, Any], *, template: JsonDict | None = None
+    ) -> str:
         if not template_sql or not template_sql.strip():
             raise SQLTemplateEngineError("SQL template text is empty.")
 
@@ -694,11 +699,9 @@ class SQLTemplateEngine:
         placeholders = sorted(set(_PLACEHOLDER_RE.findall(rendered)))
         for name in placeholders:
             if not _SAFE_PARAM_NAME_RE.fullmatch(name):
-                raise SQLTemplateEngineError(
-                    f"Unsafe template placeholder name: {name}")
+                raise SQLTemplateEngineError(f"Unsafe template placeholder name: {name}")
             if name not in params:
-                raise SQLTemplateParameterError(
-                    f"Missing SQL template parameter: {name}")
+                raise SQLTemplateParameterError(f"Missing SQL template parameter: {name}")
             literal = self.sql_literal(params.get(name))
             placeholder = "{" + name + "}"
             # Replace quoted placeholders first so strings do not become ''value''.
@@ -709,7 +712,8 @@ class SQLTemplateEngine:
         unresolved = sorted(set(_PLACEHOLDER_RE.findall(rendered)))
         if unresolved:
             raise SQLTemplateEngineError(
-                "Unresolved SQL template placeholder(s): " + ", ".join(unresolved))
+                "Unresolved SQL template placeholder(s): " + ", ".join(unresolved)
+            )
         return rendered
 
     @staticmethod
@@ -722,8 +726,7 @@ class SQLTemplateEngine:
             return str(value)
         if isinstance(value, float):
             if value != value or value in {float("inf"), float("-inf")}:
-                raise SQLTemplateParameterError(
-                    "Non-finite numeric SQL parameter is not allowed.")
+                raise SQLTemplateParameterError("Non-finite numeric SQL parameter is not allowed.")
             return repr(value)
         if isinstance(value, Decimal):
             return str(value)
@@ -747,15 +750,16 @@ class SQLTemplateEngine:
             errors.append("Rendered SQL must start with SELECT or WITH.")
         if "hr_mvp.vw_hr_employee_analytics" not in normalized:
             # Status SQL, if any, is returned through _maybe_status_plan with can_execute_sql=False.
-            errors.append(
-                "Rendered SQL must use hr_mvp.vw_hr_employee_analytics.")
+            errors.append("Rendered SQL must use hr_mvp.vw_hr_employee_analytics.")
         if re.search(r"\bjoin\b", normalized):
             errors.append("Rendered template SQL must not contain JOIN.")
         if re.search(r"\bselect\s+\*\b", normalized):
             errors.append("Rendered template SQL must not contain SELECT *.")
-        if re.search(r"\b(insert|update|delete|drop|alter|create|truncate|grant|revoke|copy|execute)\b", normalized):
-            errors.append(
-                "Rendered template SQL contains a blocked SQL command.")
+        if re.search(
+            r"\b(insert|update|delete|drop|alter|create|truncate|grant|revoke|copy|execute)\b",
+            normalized,
+        ):
+            errors.append("Rendered template SQL contains a blocked SQL command.")
         # Reject multiple statements except a single trailing semicolon.
         body = sql.strip()
         if ";" in body.rstrip(";"):
@@ -767,7 +771,9 @@ class SQLTemplateEngine:
     # ------------------------------------------------------------------
 
     @staticmethod
-    def _payload_from(context: Any | None, attr: str, explicit: Mapping[str, Any] | None) -> JsonDict:
+    def _payload_from(
+        context: Any | None, attr: str, explicit: Mapping[str, Any] | None
+    ) -> JsonDict:
         if explicit is not None:
             return deepcopy(dict(explicit))
         value = SQLTemplateEngine._get_context_value(context, attr)
@@ -776,7 +782,9 @@ class SQLTemplateEngine:
         return {}
 
     @staticmethod
-    def _runtime_params_from(context: Any | None, explicit: Mapping[str, Any] | None, kwargs: Mapping[str, Any]) -> JsonDict:
+    def _runtime_params_from(
+        context: Any | None, explicit: Mapping[str, Any] | None, kwargs: Mapping[str, Any]
+    ) -> JsonDict:
         params: JsonDict = {}
         value = SQLTemplateEngine._get_context_value(context, "runtime_params")
         if isinstance(value, Mapping):
@@ -784,7 +792,14 @@ class SQLTemplateEngine:
         if explicit is not None:
             params.update(dict(explicit))
         for key, value in kwargs.items():
-            if key not in {"metadata", "context", "question", "intent_result", "route_result", "semantic_result"}:
+            if key not in {
+                "metadata",
+                "context",
+                "question",
+                "intent_result",
+                "route_result",
+                "semantic_result",
+            }:
                 params[key] = value
         return params
 
@@ -807,8 +822,13 @@ class SQLTemplateEngine:
     def _redact_params(params: Mapping[str, Any]) -> JsonDict:
         # These params are normalized metadata values, but keep this hook for future
         # sensitive template parameters. Do not expose arbitrary raw user text.
-        sensitive_names = {"national_id", "personnel_number",
-                           "first_name", "last_name", "phone_number"}
+        sensitive_names = {
+            "national_id",
+            "personnel_number",
+            "first_name",
+            "last_name",
+            "phone_number",
+        }
         result: JsonDict = {}
         for key, value in params.items():
             result[str(key)] = "***" if str(key).lower() in sensitive_names else value
@@ -823,8 +843,7 @@ class SQLTemplateEngine:
                 doc = service.get("sql_templates") or {}
             else:
                 return None
-            policy = doc.get("parameter_policy", {}
-                             ) if isinstance(doc, dict) else {}
+            policy = doc.get("parameter_policy", {}) if isinstance(doc, dict) else {}
             value = policy.get("current_shamsi_year_default_for_mvp_test")
             return int(value) if value is not None else None
         except Exception:
@@ -878,7 +897,10 @@ if __name__ == "__main__":  # pragma: no cover
     engine = SQLTemplateEngine(metadata_dir=Path(__file__).resolve().parent)
     examples = [
         {
-            "intent_result": {"intent": "total_employee_count", "sql_template_id": "TPL_TOTAL_EMPLOYEE_COUNT"},
+            "intent_result": {
+                "intent": "total_employee_count",
+                "sql_template_id": "TPL_TOTAL_EMPLOYEE_COUNT",
+            },
             "route_result": {"route": "SQL", "status": "VALID"},
         },
         {

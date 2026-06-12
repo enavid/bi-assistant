@@ -13,8 +13,7 @@ from app.infrastructure.db import models  # noqa: F401
 from app.infrastructure.db.models import Base
 
 config = context.config
-config.set_main_option(
-    "sqlalchemy.url", settings.async_db_url.replace("%", "%%"))
+config.set_main_option("sqlalchemy.url", settings.async_db_url.replace("%", "%%"))
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)

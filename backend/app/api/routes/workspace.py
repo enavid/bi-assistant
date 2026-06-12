@@ -60,7 +60,8 @@ async def _require_project(project_id: str, db: AsyncSession) -> ProjectORM:
 async def list_projects(db: AsyncSession = Depends(get_db)) -> list[ProjectORM]:
     ws = await _get_or_create_workspace(db)
     result = await db.execute(
-        select(ProjectORM).options(*_PROJECT_OPTS)
+        select(ProjectORM)
+        .options(*_PROJECT_OPTS)
         .where(ProjectORM.workspace_id == ws.id)
         .order_by(ProjectORM.created_at.asc())
     )
@@ -83,7 +84,9 @@ async def get_project(project_id: str, db: AsyncSession = Depends(get_db)) -> Pr
 
 
 @router.patch("/projects/{project_id}", response_model=ProjectOut, summary="Update project")
-async def update_project(project_id: str, body: ProjectUpdate, db: AsyncSession = Depends(get_db)) -> ProjectORM:
+async def update_project(
+    project_id: str, body: ProjectUpdate, db: AsyncSession = Depends(get_db)
+) -> ProjectORM:
     project = await _require_project(project_id, db)
     if body.name is not None:
         project.name = body.name
@@ -105,9 +108,13 @@ async def delete_project(project_id: str, db: AsyncSession = Depends(get_db)) ->
 
 
 @router.post("/projects/{project_id}/sections", response_model=ProjectOut, status_code=201)
-async def create_section(project_id: str, body: SectionCreate, db: AsyncSession = Depends(get_db)) -> ProjectORM:
+async def create_section(
+    project_id: str, body: SectionCreate, db: AsyncSession = Depends(get_db)
+) -> ProjectORM:
     project = await _require_project(project_id, db)
-    section = SectionORM(project_id=project_id, name=body.name, content=body.content, order=body.order)
+    section = SectionORM(
+        project_id=project_id, name=body.name, content=body.content, order=body.order
+    )
     db.add(section)
     project.updated_at = datetime.now(UTC)
     await db.flush()
@@ -116,7 +123,9 @@ async def create_section(project_id: str, body: SectionCreate, db: AsyncSession 
 
 
 @router.patch("/projects/{project_id}/sections/{section_id}", response_model=ProjectOut)
-async def update_section(project_id: str, section_id: str, body: SectionUpdate, db: AsyncSession = Depends(get_db)) -> ProjectORM:
+async def update_section(
+    project_id: str, section_id: str, body: SectionUpdate, db: AsyncSession = Depends(get_db)
+) -> ProjectORM:
     project = await _require_project(project_id, db)
     section = next((s for s in project.sections if s.id == section_id), None)
     if not section:
@@ -134,7 +143,9 @@ async def update_section(project_id: str, section_id: str, body: SectionUpdate, 
 
 
 @router.delete("/projects/{project_id}/sections/{section_id}", response_model=ProjectOut)
-async def delete_section(project_id: str, section_id: str, db: AsyncSession = Depends(get_db)) -> ProjectORM:
+async def delete_section(
+    project_id: str, section_id: str, db: AsyncSession = Depends(get_db)
+) -> ProjectORM:
     project = await _require_project(project_id, db)
     section = next((s for s in project.sections if s.id == section_id), None)
     if not section:
@@ -147,7 +158,9 @@ async def delete_section(project_id: str, section_id: str, db: AsyncSession = De
 
 
 @router.post("/projects/{project_id}/experiments", response_model=ProjectOut, status_code=201)
-async def add_experiment(project_id: str, body: ExperimentCreate, db: AsyncSession = Depends(get_db)) -> ProjectORM:
+async def add_experiment(
+    project_id: str, body: ExperimentCreate, db: AsyncSession = Depends(get_db)
+) -> ProjectORM:
     project = await _require_project(project_id, db)
     exp = ExperimentORM(
         project_id=project_id,
@@ -164,8 +177,14 @@ async def add_experiment(project_id: str, body: ExperimentCreate, db: AsyncSessi
     return project
 
 
-@router.patch("/experiments/{experiment_id}/feedback", response_model=ExperimentOut, summary="Set experiment correctness feedback")
-async def set_experiment_feedback(experiment_id: str, body: ExperimentFeedback, db: AsyncSession = Depends(get_db)) -> ExperimentORM:
+@router.patch(
+    "/experiments/{experiment_id}/feedback",
+    response_model=ExperimentOut,
+    summary="Set experiment correctness feedback",
+)
+async def set_experiment_feedback(
+    experiment_id: str, body: ExperimentFeedback, db: AsyncSession = Depends(get_db)
+) -> ExperimentORM:
     result = await db.execute(select(ExperimentORM).where(ExperimentORM.id == experiment_id))
     exp = result.scalar_one_or_none()
     if not exp:

@@ -176,14 +176,17 @@ class QuestionValidator:
         metadata: Any | None = None,
         user_role: str | None = None,
     ) -> JsonDict:
-        raw_question = question or _get_context_value(
-            context, "normalized_question") or _get_context_value(context, "question") or ""
-        normalized_question = self._normalize_question(
-            str(raw_question), metadata=metadata)
-        effective_user_role = user_role or _get_context_value(
-            context, "user_role") or "demo_user"
+        raw_question = (
+            question
+            or _get_context_value(context, "normalized_question")
+            or _get_context_value(context, "question")
+            or ""
+        )
+        normalized_question = self._normalize_question(str(raw_question), metadata=metadata)
+        effective_user_role = user_role or _get_context_value(context, "user_role") or "demo_user"
         policy_hints = self._build_policy_hints(
-            metadata=metadata, user_role=str(effective_user_role))
+            metadata=metadata, user_role=str(effective_user_role)
+        )
 
         base_details = {
             "user_role": effective_user_role,
@@ -267,8 +270,7 @@ class QuestionValidator:
 
         output_level = self._detect_output_level(normalized_question)
         question_type = self._detect_question_type(normalized_question)
-        safety_flags = self._collect_non_terminal_flags(
-            normalized_question, context=context)
+        safety_flags = self._collect_non_terminal_flags(normalized_question, context=context)
 
         return QuestionValidationResult(
             route=None,
@@ -349,7 +351,11 @@ class QuestionValidator:
                 details={"domain_result": dict(domain_result)},
             )
 
-        if status == STATUS_NEEDS_CLARIFICATION or route == ROUTE_NEEDS_CLARIFICATION or domain == DOMAIN_UNKNOWN:
+        if (
+            status == STATUS_NEEDS_CLARIFICATION
+            or route == ROUTE_NEEDS_CLARIFICATION
+            or domain == DOMAIN_UNKNOWN
+        ):
             return QuestionValidationResult(
                 route=ROUTE_NEEDS_CLARIFICATION,
                 status=STATUS_NEEDS_CLARIFICATION,
@@ -385,11 +391,12 @@ class QuestionValidator:
         lower_question = question.lower()
 
         prompt_matches = _find_terms(
-            lower_question, self.prompt_injection_terms, case_sensitive=False)
+            lower_question, self.prompt_injection_terms, case_sensitive=False
+        )
         dangerous_sql_matches = _find_terms(
-            lower_question, self.dangerous_sql_terms, case_sensitive=False)
-        raw_table_matches = _find_terms(
-            lower_question, self.raw_table_terms, case_sensitive=False)
+            lower_question, self.dangerous_sql_terms, case_sensitive=False
+        )
+        raw_table_matches = _find_terms(lower_question, self.raw_table_terms, case_sensitive=False)
         direct_sql_match = self._looks_like_direct_sql(lower_question)
 
         if prompt_matches or dangerous_sql_matches or raw_table_matches or direct_sql_match:
@@ -457,20 +464,21 @@ class QuestionValidator:
                 safety_flags=["prompt_injection_or_sql_abuse"],
                 policy_hints=policy_hints,
                 suggested_next_step="Return ACCESS_DENIED response and do not continue to SQL generation.",
-                details={**base_details,
-                         "direct_sql_detected": direct_sql_match},
+                details={**base_details, "direct_sql_detected": direct_sql_match},
             )
 
-        employee_level_matches = _find_terms(
-            question, self.employee_level_terms)
+        employee_level_matches = _find_terms(question, self.employee_level_terms)
         sensitive_matches = _find_terms(question, self.sensitive_terms)
-        sensitive_column_matches = self._find_sensitive_columns(
-            question, metadata=metadata)
+        sensitive_column_matches = self._find_sensitive_columns(question, metadata=metadata)
         asks_for_visible_rows = self._asks_for_employee_level_rows(question)
 
         # Avoid false positive: "employee count" is valid aggregate. Employee-level terms
         # need either sensitive terms or list/detail/output-level signals.
-        if sensitive_matches or sensitive_column_matches or (employee_level_matches and asks_for_visible_rows):
+        if (
+            sensitive_matches
+            or sensitive_column_matches
+            or (employee_level_matches and asks_for_visible_rows)
+        ):
             return QuestionValidationResult(
                 route=ROUTE_REJECT,
                 status=STATUS_ACCESS_DENIED,
@@ -486,14 +494,18 @@ class QuestionValidator:
                         category="privacy",
                         severity="critical",
                         matched_terms=sorted(
-                            set(employee_level_matches + sensitive_matches + sensitive_column_matches)),
+                            set(
+                                employee_level_matches
+                                + sensitive_matches
+                                + sensitive_column_matches
+                            )
+                        ),
                         message_fa="نمایش اطلاعات فردی یا حساس کارکنان مجاز نیست.",
                         route=ROUTE_REJECT,
                         status=STATUS_ACCESS_DENIED,
                     ).to_dict()
                 ],
-                violations=["individual_employee_output",
-                            "sensitive_personal_data"],
+                violations=["individual_employee_output", "sensitive_personal_data"],
                 safety_flags=["privacy_risk"],
                 policy_hints=policy_hints,
                 suggested_next_step="Return ACCESS_DENIED response.",
@@ -548,8 +560,7 @@ class QuestionValidator:
                 violations=["out_of_scope"],
                 policy_hints=policy_hints,
                 suggested_next_step="Return OUT_OF_SCOPE response.",
-                details={**base_details,
-                         "matched_out_of_scope_terms": out_matches},
+                details={**base_details, "matched_out_of_scope_terms": out_matches},
             )
 
         return None
@@ -592,10 +603,11 @@ class QuestionValidator:
                     category="data_gap",
                     severity=str(rule.get("severity") or "medium"),
                     matched_terms=matched,
-                    message_fa=str(rule.get("message_fa")
-                                   or "این سؤال در MVP فعلی Data Gap است."),
+                    message_fa=str(rule.get("message_fa") or "این سؤال در MVP فعلی Data Gap است."),
                     route=ROUTE_GAP,
-                    status=STATUS_ANALYTICAL_GAP if rule.get("gap_type") == "analytical" else STATUS_DATA_GAP,
+                    status=STATUS_ANALYTICAL_GAP
+                    if rule.get("gap_type") == "analytical"
+                    else STATUS_DATA_GAP,
                 )
             )
 
@@ -606,7 +618,9 @@ class QuestionValidator:
                 route=ROUTE_GAP,
                 status=final_status,
                 is_valid=False,
-                reason=primary.message_en or primary.message_fa or "Known Data Gap for the current MVP.",
+                reason=primary.message_en
+                or primary.message_fa
+                or "Known Data Gap for the current MVP.",
                 confidence=0.94,
                 normalized_question=question,
                 detected_output_level=self._detect_output_level(question),
@@ -638,8 +652,7 @@ class QuestionValidator:
         hr_matches = _find_terms(question, self.hr_anchor_terms)
         generic_matches = _find_terms(question, self.generic_ambiguous_terms)
 
-        metadata_matches = self._safe_metadata_semantic_matches(
-            question, metadata)
+        metadata_matches = self._safe_metadata_semantic_matches(question, metadata)
         has_metadata_signal = bool(metadata_matches)
 
         # Very short generic requests like "give report" should not be guessed.
@@ -666,13 +679,17 @@ class QuestionValidator:
                 ],
                 policy_hints=policy_hints,
                 suggested_next_step="Ask which HR metric or breakdown the user wants.",
-                details={**base_details,
-                         "metadata_matches_found": len(metadata_matches)},
+                details={**base_details, "metadata_matches_found": len(metadata_matches)},
             )
 
         # If the question does not request a metric/action and has no metadata
         # signal, intent parsing would likely hallucinate.
-        if not aggregate_matches and not hr_matches and not has_metadata_signal and len(tokens) <= 8:
+        if (
+            not aggregate_matches
+            and not hr_matches
+            and not has_metadata_signal
+            and len(tokens) <= 8
+        ):
             return QuestionValidationResult(
                 route=ROUTE_NEEDS_CLARIFICATION,
                 status=STATUS_NEEDS_CLARIFICATION,
@@ -761,7 +778,10 @@ class QuestionValidator:
             r"\bwhere\b.+\bgroup\s+by\b",
             r"\bfrom\s+hr_mvp\.",
         ]
-        return any(re.search(pattern, question_lower, flags=re.IGNORECASE | re.DOTALL) for pattern in sql_patterns)
+        return any(
+            re.search(pattern, question_lower, flags=re.IGNORECASE | re.DOTALL)
+            for pattern in sql_patterns
+        )
 
     def _find_sensitive_columns(self, question: str, *, metadata: Any | None) -> list[str]:
         # Static list from access policy and prompt/schema context.
@@ -783,13 +803,15 @@ class QuestionValidator:
             "حساب بانکی",
             "شماره بیمه",
         ]
-        matches = _find_terms(
-            question, static_sensitive_columns, case_sensitive=False)
+        matches = _find_terms(question, static_sensitive_columns, case_sensitive=False)
 
         # Metadata-aware sensitivity scan when available.
         try:
-            columns = metadata.list_columns() if metadata is not None and hasattr(
-                metadata, "list_columns") else []
+            columns = (
+                metadata.list_columns()
+                if metadata is not None and hasattr(metadata, "list_columns")
+                else []
+            )
         except Exception:
             columns = []
 
@@ -797,13 +819,13 @@ class QuestionValidator:
             if not isinstance(col, Mapping):
                 continue
             name = str(col.get("column_name") or col.get("name") or "")
-            sensitivity = str(col.get("sensitivity") or col.get(
-                "privacy_level") or "").lower()
+            sensitivity = str(col.get("sensitivity") or col.get("privacy_level") or "").lower()
             output_allowed = col.get("output_allowed")
             if not name:
                 continue
-            is_sensitive = any(token in sensitivity for token in [
-                               "sensitive", "restricted", "personal", "pii"])
+            is_sensitive = any(
+                token in sensitivity for token in ["sensitive", "restricted", "personal", "pii"]
+            )
             if output_allowed is False or is_sensitive:
                 if name.lower() in question.lower():
                     matches.append(name)
@@ -835,7 +857,9 @@ class QuestionValidator:
                 pass
         return normalize_fa_text(question)
 
-    def _safe_metadata_semantic_matches(self, question: str, metadata: Any | None) -> list[JsonDict]:
+    def _safe_metadata_semantic_matches(
+        self, question: str, metadata: Any | None
+    ) -> list[JsonDict]:
         if metadata is None or not hasattr(metadata, "find_semantic_matches"):
             return []
         try:
@@ -848,8 +872,7 @@ class QuestionValidator:
         if metadata is None:
             return False
         try:
-            column = metadata.get_column("city") if hasattr(
-                metadata, "get_column") else None
+            column = metadata.get_column("city") if hasattr(metadata, "get_column") else None
         except Exception:
             column = None
         if isinstance(column, Mapping):
@@ -857,7 +880,12 @@ class QuestionValidator:
                 val = column.get(key)
                 if isinstance(val, bool):
                     return val
-                if isinstance(val, str) and val.lower() in {"reliable", "populated", "available", "true"}:
+                if isinstance(val, str) and val.lower() in {
+                    "reliable",
+                    "populated",
+                    "available",
+                    "true",
+                }:
                     return True
         return False
 
@@ -879,11 +907,11 @@ class QuestionValidator:
         # exposes it directly or through get_metadata.
         policies: Any = None
         for attr in ("access_policies", "metadata", "documents"):
-            obj = getattr(metadata, attr,
-                          None) if metadata is not None else None
+            obj = getattr(metadata, attr, None) if metadata is not None else None
             if isinstance(obj, Mapping):
-                policies = obj.get("access_policies") or obj.get(
-                    "Template_08_access_policies") or obj
+                policies = (
+                    obj.get("access_policies") or obj.get("Template_08_access_policies") or obj
+                )
                 break
         if policies is None and metadata is not None and hasattr(metadata, "get_metadata"):
             try:
@@ -892,21 +920,33 @@ class QuestionValidator:
                 policies = None
 
         if isinstance(policies, Mapping):
-            default_policy = policies.get("default_policy") if isinstance(
-                policies.get("default_policy"), Mapping) else {}
-            aggregation_rules = policies.get("aggregation_rules") if isinstance(
-                policies.get("aggregation_rules"), Mapping) else {}
-            minimum_group = aggregation_rules.get("minimum_group_size") if isinstance(
-                aggregation_rules.get("minimum_group_size"), Mapping) else {}
+            default_policy = (
+                policies.get("default_policy")
+                if isinstance(policies.get("default_policy"), Mapping)
+                else {}
+            )
+            aggregation_rules = (
+                policies.get("aggregation_rules")
+                if isinstance(policies.get("aggregation_rules"), Mapping)
+                else {}
+            )
+            minimum_group = (
+                aggregation_rules.get("minimum_group_size")
+                if isinstance(aggregation_rules.get("minimum_group_size"), Mapping)
+                else {}
+            )
             if "allow_individual_employee_output" in default_policy:
                 hints["allow_individual_employee_output"] = bool(
-                    default_policy.get("allow_individual_employee_output"))
+                    default_policy.get("allow_individual_employee_output")
+                )
             if "allow_sensitive_personal_data" in default_policy:
                 hints["allow_sensitive_personal_data"] = bool(
-                    default_policy.get("allow_sensitive_personal_data"))
+                    default_policy.get("allow_sensitive_personal_data")
+                )
             if "allow_raw_table_access_for_llm" in default_policy:
                 hints["allow_raw_table_access"] = bool(
-                    default_policy.get("allow_raw_table_access_for_llm"))
+                    default_policy.get("allow_raw_table_access_for_llm")
+                )
             if isinstance(minimum_group.get("value"), int):
                 hints["minimum_group_size"] = int(minimum_group["value"])
 
@@ -1163,7 +1203,13 @@ def _build_data_gap_rules() -> list[JsonDict]:
         {
             "rule_id": "QVAL_GAP_CONTRACTOR_PRODUCTIVITY",
             "gap_key": "contractor_productivity_analysis",
-            "terms": ["بهره وری پیمانکار", "بهره‌وری پیمانکار", "بهره وری پیمانکاری", "بهره‌وری پیمانکاری", "عملکرد پیمانکار"],
+            "terms": [
+                "بهره وری پیمانکار",
+                "بهره‌وری پیمانکار",
+                "بهره وری پیمانکاری",
+                "بهره‌وری پیمانکاری",
+                "عملکرد پیمانکار",
+            ],
             "severity": "medium",
             "gap_type": "analytical",
             "message_fa": "داده بهره‌وری یا شاخص عملکرد پیمانکارها در MVP فعلی وجود ندارد.",
@@ -1187,7 +1233,13 @@ def _build_data_gap_rules() -> list[JsonDict]:
         {
             "rule_id": "QVAL_GAP_TRAINING_NEED",
             "gap_key": "education_training_need_analysis",
-            "terms": ["نیاز آموزشی", "نیاز به آموزش", "دوره تخصصی", "کمبود تخصص", "افزایش نیاز به آموزش"],
+            "terms": [
+                "نیاز آموزشی",
+                "نیاز به آموزش",
+                "دوره تخصصی",
+                "کمبود تخصص",
+                "افزایش نیاز به آموزش",
+            ],
             "severity": "medium",
             "message_fa": "تحلیل نیاز آموزشی نیازمند تعریف شاخص یا اسناد آموزشی است و در MVP فعلی کامل نیست.",
         },
@@ -1201,7 +1253,13 @@ def _build_data_gap_rules() -> list[JsonDict]:
         {
             "rule_id": "QVAL_GAP_ADVANCED_BALANCE",
             "gap_key": "department_balance_analysis",
-            "terms": ["تعادل نیروی انسانی", "متوازن است", "توازن بین بخش", "تعادل بین چارت", "واقعیت نیروی انسانی"],
+            "terms": [
+                "تعادل نیروی انسانی",
+                "متوازن است",
+                "توازن بین بخش",
+                "تعادل بین چارت",
+                "واقعیت نیروی انسانی",
+            ],
             "severity": "medium",
             "message_fa": "تحلیل پیشرفته تعادل نیروی انسانی نیازمند تعریف شاخص و قانون کسب‌وکاری است؛ محاسبه ساده اختلاف چارت فقط partial پشتیبانی می‌شود.",
         },

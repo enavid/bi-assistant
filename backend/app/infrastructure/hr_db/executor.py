@@ -51,6 +51,15 @@ class HRQueryExecutor:
                 success=True,
             )
         except psycopg2.OperationalError as exc:
-            return QueryResult(columns=[], rows=[], row_count=0, elapsed_ms=0, success=False, error=f"Connection failed: {exc}")
+            return QueryResult(
+                columns=[],
+                rows=[],
+                row_count=0,
+                elapsed_ms=0,
+                success=False,
+                error=f"Connection failed: {exc}",
+            )
         except Exception as exc:
-            return QueryResult(columns=[], rows=[], row_count=0, elapsed_ms=0, success=False, error=str(exc))
+            return QueryResult(
+                columns=[], rows=[], row_count=0, elapsed_ms=0, success=False, error=str(exc)
+            )

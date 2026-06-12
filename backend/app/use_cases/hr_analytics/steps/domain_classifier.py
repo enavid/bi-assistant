@@ -193,8 +193,7 @@ class DomainClassifier:
     ) -> JsonDict:
         """Classify whether the question is in HR BI domain."""
         raw_question = question or _get_context_question(context) or ""
-        normalized_question = self._normalize_question(
-            raw_question, metadata=metadata)
+        normalized_question = self._normalize_question(raw_question, metadata=metadata)
 
         if not normalized_question or len(normalized_question.strip()) < 3:
             return DomainClassificationResult(
@@ -208,17 +207,23 @@ class DomainClassifier:
             ).to_dict()
 
         matched_hr_terms, hr_score_from_terms = self._score_terms(
-            normalized_question, self.hr_terms)
+            normalized_question, self.hr_terms
+        )
         matched_non_hr_terms, non_hr_score = self._score_terms(
-            normalized_question, self.non_hr_terms)
+            normalized_question, self.non_hr_terms
+        )
         metadata_matches, hr_score_from_metadata = self._score_metadata_matches(
-            normalized_question, metadata)
+            normalized_question, metadata
+        )
         safety_flags = self._detect_safety_flags(normalized_question)
 
         hr_score = hr_score_from_terms + hr_score_from_metadata
-        strong_hr_anchor = self._has_strong_hr_anchor(
-            matched_hr_terms, metadata_matches)
-        clear_non_hr = non_hr_score >= self.non_hr_threshold and not strong_hr_anchor and hr_score < self.hr_threshold
+        strong_hr_anchor = self._has_strong_hr_anchor(matched_hr_terms, metadata_matches)
+        clear_non_hr = (
+            non_hr_score >= self.non_hr_threshold
+            and not strong_hr_anchor
+            and hr_score < self.hr_threshold
+        )
         clearly_hr = hr_score >= self.hr_threshold and (
             strong_hr_anchor
             or hr_score >= non_hr_score
@@ -295,8 +300,7 @@ class DomainClassifier:
                 status=STATUS_OUT_OF_SCOPE,
                 domain=DOMAIN_NON_HR,
                 is_hr=False,
-                confidence=self._confidence(
-                    non_hr_score, hr_score, minimum=0.58),
+                confidence=self._confidence(non_hr_score, hr_score, minimum=0.58),
                 reason="No reliable HR concept was detected and non-HR terms were found.",
                 scores=scores,
                 matched_hr_terms=matched_hr_terms,
@@ -321,13 +325,31 @@ class DomainClassifier:
             suggested_next_step="Return OUT_OF_SCOPE response or ask a clarifying HR question in UI.",
         ).to_dict()
 
-    def run(self, question: str | None = None, *, context: Any | None = None, metadata: Any | None = None) -> JsonDict:
+    def run(
+        self,
+        question: str | None = None,
+        *,
+        context: Any | None = None,
+        metadata: Any | None = None,
+    ) -> JsonDict:
         return self.classify(question=question, context=context, metadata=metadata)
 
-    def __call__(self, question: str | None = None, *, context: Any | None = None, metadata: Any | None = None) -> JsonDict:
+    def __call__(
+        self,
+        question: str | None = None,
+        *,
+        context: Any | None = None,
+        metadata: Any | None = None,
+    ) -> JsonDict:
         return self.classify(question=question, context=context, metadata=metadata)
 
-    async def arun(self, question: str | None = None, *, context: Any | None = None, metadata: Any | None = None) -> JsonDict:
+    async def arun(
+        self,
+        question: str | None = None,
+        *,
+        context: Any | None = None,
+        metadata: Any | None = None,
+    ) -> JsonDict:
         return self.classify(question=question, context=context, metadata=metadata)
 
     # ------------------------------------------------------------------
@@ -353,12 +375,15 @@ class DomainClassifier:
         unique_matched = list(dict.fromkeys(matched))
         return unique_matched, min(score, 15.0)
 
-    def _score_metadata_matches(self, question: str, metadata: Any | None) -> tuple[list[JsonDict], float]:
+    def _score_metadata_matches(
+        self, question: str, metadata: Any | None
+    ) -> tuple[list[JsonDict], float]:
         if metadata is None or not hasattr(metadata, "find_semantic_matches"):
             return [], 0.0
         try:
             raw_matches = metadata.find_semantic_matches(
-                question, max_matches=self.max_metadata_matches)
+                question, max_matches=self.max_metadata_matches
+            )
         except Exception:
             return [], 0.0
 
@@ -373,23 +398,37 @@ class DomainClassifier:
             term = str(match.get("term") or "")
             category = str(match.get("category") or "")
 
-            matches.append({
-                "term": term,
-                "concept_id": concept_id,
-                "category": category,
-                "route": route or None,
-            })
+            matches.append(
+                {
+                    "term": term,
+                    "concept_id": concept_id,
+                    "category": category,
+                    "route": route or None,
+                }
+            )
 
             if route in {"SQL", "GAP", "REJECT"} or concept_id or category:
                 score += 1.25
             if route == "SQL":
                 score += 0.7
-            if category in {"headcount", "gender", "age", "education", "employment", "contractor", "organization", "location", "hiring"}:
+            if category in {
+                "headcount",
+                "gender",
+                "age",
+                "education",
+                "employment",
+                "contractor",
+                "organization",
+                "location",
+                "hiring",
+            }:
                 score += 0.35
 
         return matches[: self.max_metadata_matches], min(score, 7.0)
 
-    def _has_strong_hr_anchor(self, matched_hr_terms: list[str], metadata_matches: list[JsonDict]) -> bool:
+    def _has_strong_hr_anchor(
+        self, matched_hr_terms: list[str], metadata_matches: list[JsonDict]
+    ) -> bool:
         if not matched_hr_terms and not metadata_matches:
             return False
         strong_terms = {
@@ -438,7 +477,9 @@ class DomainClassifier:
         return flags
 
     @staticmethod
-    def _confidence(primary_score: float, secondary_score: float, *, minimum: float = 0.55) -> float:
+    def _confidence(
+        primary_score: float, secondary_score: float, *, minimum: float = 0.55
+    ) -> float:
         margin = primary_score - secondary_score
         # Smooth confidence; capped so a rule-based classifier does not overclaim.
         conf = minimum + (1.0 - minimum) * (1 / (1 + math.exp(-0.55 * margin)))
@@ -489,7 +530,7 @@ def _contains_term(question: str, term: str) -> bool:
     if not term:
         return False
     # For Persian multi-word phrases, substring matching is more robust.
-    if " " in term or any("\u0600" <= ch <= "\u06FF" for ch in term):
+    if " " in term or any("\u0600" <= ch <= "\u06ff" for ch in term):
         return term in question
     return re.search(rf"\b{re.escape(term)}\b", question, flags=re.IGNORECASE) is not None
 
@@ -592,10 +633,8 @@ def _build_hr_terms() -> list[WeightedTerm]:
     ]
 
     terms: list[WeightedTerm] = []
-    terms.extend(WeightedTerm(term=t, weight=2.2, category="hr_anchor")
-                 for t in strong)
-    terms.extend(WeightedTerm(term=t, weight=0.75, category="hr_context")
-                 for t in weak)
+    terms.extend(WeightedTerm(term=t, weight=2.2, category="hr_anchor") for t in strong)
+    terms.extend(WeightedTerm(term=t, weight=0.75, category="hr_context") for t in weak)
     return terms
 
 
@@ -648,12 +687,16 @@ def _build_non_hr_terms() -> list[WeightedTerm]:
 _DEFAULT_CLASSIFIER = DomainClassifier()
 
 
-def classify_domain(question: str, *, context: Any | None = None, metadata: Any | None = None) -> JsonDict:
+def classify_domain(
+    question: str, *, context: Any | None = None, metadata: Any | None = None
+) -> JsonDict:
     """Convenience function for callers that do not instantiate the class."""
     return _DEFAULT_CLASSIFIER.classify(question=question, context=context, metadata=metadata)
 
 
-async def aclassify_domain(question: str, *, context: Any | None = None, metadata: Any | None = None) -> JsonDict:
+async def aclassify_domain(
+    question: str, *, context: Any | None = None, metadata: Any | None = None
+) -> JsonDict:
     return _DEFAULT_CLASSIFIER.classify(question=question, context=context, metadata=metadata)
 
 

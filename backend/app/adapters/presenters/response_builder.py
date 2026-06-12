@@ -33,7 +33,6 @@ Design rules:
 """
 
 
-
 JsonDict = dict[str, Any]
 
 ROUTE_SQL = "SQL"
@@ -66,8 +65,7 @@ NON_DATA_STATUSES = {
     "REJECTED",
 }
 
-SAFE_SUCCESS_STATUSES = {STATUS_SUCCESS,
-                         STATUS_VALID, STATUS_SUPPORTED, "OK", "DONE"}
+SAFE_SUCCESS_STATUSES = {STATUS_SUCCESS, STATUS_VALID, STATUS_SUPPORTED, "OK", "DONE"}
 
 DEFAULT_STATUS_TEMPLATES: dict[str, JsonDict] = {
     STATUS_DATA_GAP: {
@@ -300,20 +298,23 @@ class ResponseBuilder:
         if metadata_service is not None:
             self.metadata = metadata_service
         elif get_metadata_service is not None:
-            self.metadata = get_metadata_service(
-                metadata_dir=metadata_dir, strict=False)
+            self.metadata = get_metadata_service(metadata_dir=metadata_dir, strict=False)
         else:
             self.metadata = None
 
         configured_min_group_size = min_group_size
         if configured_min_group_size is None and self.metadata is not None:
             with _suppress_exceptions():
-                configured_min_group_size = int(self.metadata.get_min_group_size(
-                    default=ResponseBuilderConfig.min_group_size_default))
+                configured_min_group_size = int(
+                    self.metadata.get_min_group_size(
+                        default=ResponseBuilderConfig.min_group_size_default
+                    )
+                )
 
         self.config = ResponseBuilderConfig(
             min_group_size_default=int(
-                configured_min_group_size or ResponseBuilderConfig.min_group_size_default),
+                configured_min_group_size or ResponseBuilderConfig.min_group_size_default
+            ),
             max_table_rows=int(max_table_rows),
             max_chart_rows=int(max_chart_rows),
             suppress_small_groups=bool(suppress_small_groups),
@@ -341,7 +342,9 @@ class ResponseBuilder:
         if query_result is not None:
             ctx.setdefault("query_result", dict(query_result))
 
-        return self._build_response(context=ctx, status_payload=status_payload_dict, metadata=md, **kwargs).to_dict()
+        return self._build_response(
+            context=ctx, status_payload=status_payload_dict, metadata=md, **kwargs
+        ).to_dict()
 
     def build_response(self, **kwargs: Any) -> JsonDict:
         return self.build(**kwargs)
@@ -359,7 +362,9 @@ class ResponseBuilder:
     # Core builder
     # ------------------------------------------------------------------
 
-    def _build_response(self, *, context: JsonDict, status_payload: JsonDict, metadata: Any | None, **_: Any) -> ResponsePayload:
+    def _build_response(
+        self, *, context: JsonDict, status_payload: JsonDict, metadata: Any | None, **_: Any
+    ) -> ResponsePayload:
         route = self._resolve_route(context, status_payload)
         status = self._resolve_status(context, status_payload)
         intent_id = self._resolve_intent_id(context, status_payload)
@@ -402,15 +407,16 @@ class ResponseBuilder:
                 generated_sql=generated_sql,
             )
 
-        sanitized_rows, privacy_warnings = self._sanitize_rows(
-            rows, metadata=metadata)
+        sanitized_rows, privacy_warnings = self._sanitize_rows(rows, metadata=metadata)
         if not sanitized_rows:
             return self._build_status_response(
                 status=STATUS_ACCESS_DENIED,
                 route=ROUTE_REJECT,
                 context=context,
                 status_payload={
-                    **status_payload, "reason": "All result columns were blocked by output privacy rules."},
+                    **status_payload,
+                    "reason": "All result columns were blocked by output privacy rules.",
+                },
                 metadata=metadata,
                 intent_id=intent_id,
                 report_id=report_id,
@@ -419,7 +425,8 @@ class ResponseBuilder:
 
         columns = list(sanitized_rows[0].keys()) if sanitized_rows else []
         dimension_columns, metric_columns = self._classify_columns(
-            columns, sanitized_rows, metadata=metadata)
+            columns, sanitized_rows, metadata=metadata
+        )
         safe_rows, suppression_warnings = self._apply_small_group_suppression(
             sanitized_rows,
             dimension_columns=dimension_columns,
@@ -439,7 +446,8 @@ class ResponseBuilder:
             )
 
         title_fa = self._resolve_title_fa(
-            intent_id=intent_id, report_id=report_id, metadata=metadata)
+            intent_id=intent_id, report_id=report_id, metadata=metadata
+        )
         visualization = self._build_visualization_plan(
             rows=safe_rows,
             dimension_columns=dimension_columns,
@@ -459,10 +467,13 @@ class ResponseBuilder:
             metric_columns=metric_columns,
         )
 
-        notes = self._build_notes(context=context, status_payload=status_payload,
-                                  visualization=visualization, metadata=metadata)
-        warnings = self._collect_warnings(
-            context, status_payload, query_result)
+        notes = self._build_notes(
+            context=context,
+            status_payload=status_payload,
+            visualization=visualization,
+            metadata=metadata,
+        )
+        warnings = self._collect_warnings(context, status_payload, query_result)
         warnings.extend(privacy_warnings)
         warnings.extend(suppression_warnings)
 
@@ -507,17 +518,14 @@ class ResponseBuilder:
         generated_sql: str | None,
     ) -> ResponsePayload:
         normalized_status = (status or STATUS_SQL_VALIDATION_FAILED).upper()
-        normalized_route = (route or _route_for_status(
-            normalized_status)).upper()
-        template = self._get_status_template(
-            normalized_status, metadata=metadata)
+        normalized_route = (route or _route_for_status(normalized_status)).upper()
+        template = self._get_status_template(normalized_status, metadata=metadata)
 
         title = self._first_non_empty(
             status_payload.get("title_fa"),
             _get_nested(context, "gap_result", "title_fa"),
             template.get("title_fa"),
-            DEFAULT_STATUS_TEMPLATES.get(
-                normalized_status, {}).get("title_fa"),
+            DEFAULT_STATUS_TEMPLATES.get(normalized_status, {}).get("title_fa"),
             "وضعیت پاسخ",
         )
         reason = self._first_non_empty(
@@ -531,8 +539,7 @@ class ResponseBuilder:
             _get_nested(context, "route_result", "reason_fa"),
             _get_nested(context, "route_result", "reason"),
             template.get("message_fa"),
-            DEFAULT_STATUS_TEMPLATES.get(
-                normalized_status, {}).get("message_fa"),
+            DEFAULT_STATUS_TEMPLATES.get(normalized_status, {}).get("message_fa"),
             "پاسخ امن تولید شد.",
         )
         recommended_action = self._first_non_empty(
@@ -540,14 +547,19 @@ class ResponseBuilder:
             _get_nested(context, "gap_result", "required_action"),
             _get_nested(context, "gap_result", "suggested_next_step"),
             template.get("recommended_action_fa"),
-            DEFAULT_STATUS_TEMPLATES.get(
-                normalized_status, {}).get("recommended_action_fa"),
+            DEFAULT_STATUS_TEMPLATES.get(normalized_status, {}).get("recommended_action_fa"),
         )
 
-        fa_template_message = DEFAULT_STATUS_TEMPLATES.get(
-            normalized_status, {}).get("message_fa", "")
+        fa_template_message = DEFAULT_STATUS_TEMPLATES.get(normalized_status, {}).get(
+            "message_fa", ""
+        )
         message = fa_template_message or str(reason)
-        if recommended_action and normalized_status in {STATUS_DATA_GAP, STATUS_ACCESS_DENIED, STATUS_OUT_OF_SCOPE, STATUS_NEEDS_CLARIFICATION}:
+        if recommended_action and normalized_status in {
+            STATUS_DATA_GAP,
+            STATUS_ACCESS_DENIED,
+            STATUS_OUT_OF_SCOPE,
+            STATUS_NEEDS_CLARIFICATION,
+        }:
             message = f"{message} {recommended_action}" if not fa_template_message else message
 
         visualization = {
@@ -557,8 +569,10 @@ class ResponseBuilder:
             "subtitle_fa": None,
             "status": normalized_status,
             "route": normalized_route,
-            "severity": template.get("severity") or DEFAULT_STATUS_TEMPLATES.get(normalized_status, {}).get("severity", "info"),
-            "message_fa": DEFAULT_STATUS_TEMPLATES.get(normalized_status, {}).get("message_fa") or str(reason),
+            "severity": template.get("severity")
+            or DEFAULT_STATUS_TEMPLATES.get(normalized_status, {}).get("severity", "info"),
+            "message_fa": DEFAULT_STATUS_TEMPLATES.get(normalized_status, {}).get("message_fa")
+            or str(reason),
             "recommended_action_fa": str(recommended_action) if recommended_action else None,
             "dimension_columns": [],
             "metric_columns": [],
@@ -567,14 +581,13 @@ class ResponseBuilder:
 
         notes = []
         if normalized_status == STATUS_DATA_GAP:
-            missing_data = _get_nested(
-                context, "gap_result", "missing_data") or status_payload.get("missing_data")
+            missing_data = _get_nested(context, "gap_result", "missing_data") or status_payload.get(
+                "missing_data"
+            )
             if isinstance(missing_data, list) and missing_data:
-                notes.append("داده/تعریف موردنیاز: " + "، ".join(str(x)
-                             for x in missing_data[:5]))
+                notes.append("داده/تعریف موردنیاز: " + "، ".join(str(x) for x in missing_data[:5]))
         if normalized_status == STATUS_ACCESS_DENIED:
-            notes.append(
-                "خروجی فردی یا شناسه‌های حساس کارکنان نمایش داده نمی‌شود.")
+            notes.append("خروجی فردی یا شناسه‌های حساس کارکنان نمایش داده نمی‌شود.")
 
         return ResponsePayload(
             route=normalized_route,
@@ -588,9 +601,11 @@ class ResponseBuilder:
             subtitle_fa=None,
             notes_fa=notes,
             warnings=self._collect_warnings(
-                context, status_payload, _as_dict(context.get("query_result"))),
+                context, status_payload, _as_dict(context.get("query_result"))
+            ),
             errors=self._collect_errors(
-                context, status_payload, _as_dict(context.get("query_result"))),
+                context, status_payload, _as_dict(context.get("query_result"))
+            ),
             metadata=self._response_metadata(
                 context=context,
                 intent_id=intent_id,
@@ -607,12 +622,17 @@ class ResponseBuilder:
         if metadata is not None:
             with _suppress_exceptions():
                 rules = metadata.get_document("visualization_rules")
-                templates = rules.get("status_message_templates", {}) if isinstance(
-                    rules, Mapping) else {}
+                templates = (
+                    rules.get("status_message_templates", {}) if isinstance(rules, Mapping) else {}
+                )
                 template = templates.get(status)
                 if isinstance(template, Mapping):
                     return dict(template)
-        return deepcopy(DEFAULT_STATUS_TEMPLATES.get(status, DEFAULT_STATUS_TEMPLATES[STATUS_SQL_VALIDATION_FAILED]))
+        return deepcopy(
+            DEFAULT_STATUS_TEMPLATES.get(
+                status, DEFAULT_STATUS_TEMPLATES[STATUS_SQL_VALIDATION_FAILED]
+            )
+        )
 
     # ------------------------------------------------------------------
     # Visualization plan
@@ -631,7 +651,8 @@ class ResponseBuilder:
         metadata: Any | None,
     ) -> JsonDict:
         metadata_visual = self._get_metadata_visualization(
-            intent_id=intent_id, report_id=report_id, metadata=metadata)
+            intent_id=intent_id, report_id=report_id, metadata=metadata
+        )
         requested_type = self._first_non_empty(
             _get_nested(context, "visualization_plan", "visualization_type"),
             _get_nested(context, "visualization_plan", "type"),
@@ -648,8 +669,11 @@ class ResponseBuilder:
             metadata_visual=metadata_visual,
         )
 
-        max_rows = self.config.max_chart_rows if visual_type not in {
-            "table", "kpi_card", "kpi_card_group"} else self.config.max_table_rows
+        max_rows = (
+            self.config.max_chart_rows
+            if visual_type not in {"table", "kpi_card", "kpi_card_group"}
+            else self.config.max_table_rows
+        )
         visible_rows = rows[:max_rows]
         truncated = len(rows) > len(visible_rows)
 
@@ -678,7 +702,10 @@ class ResponseBuilder:
             "visible_row_count": len(visible_rows),
             "truncated": truncated,
             "formatting": self._formatting_for_columns(metric_columns),
-            "labels_fa": {col: self._label_for_column(col, metadata=metadata) for col in [*dimension_columns, *metric_columns]},
+            "labels_fa": {
+                col: self._label_for_column(col, metadata=metadata)
+                for col in [*dimension_columns, *metric_columns]
+            },
             "options": {
                 "rtl": True,
                 "locale": self.config.locale,
@@ -688,7 +715,9 @@ class ResponseBuilder:
             },
         }
 
-    def _get_metadata_visualization(self, *, intent_id: str | None, report_id: str | None, metadata: Any | None) -> JsonDict:
+    def _get_metadata_visualization(
+        self, *, intent_id: str | None, report_id: str | None, metadata: Any | None
+    ) -> JsonDict:
         if metadata is None:
             return {}
         if report_id:
@@ -728,11 +757,17 @@ class ResponseBuilder:
             return "table"
 
         if requested in {"kpi_card", "kpi_card_group"} and row_count > 1:
-            requested = metadata_visual.get(
-                "fallback_visualization") or "table"
+            requested = metadata_visual.get("fallback_visualization") or "table"
             requested = _normalize_visual_type(str(requested))
 
-        if requested in {"pie_chart", "bar_chart", "horizontal_bar_chart", "line_chart", "stacked_bar_chart", "table"}:
+        if requested in {
+            "pie_chart",
+            "bar_chart",
+            "horizontal_bar_chart",
+            "line_chart",
+            "stacked_bar_chart",
+            "table",
+        }:
             if requested == "pie_chart" and (row_count > 8 or not dimension_columns):
                 return "bar_chart" if row_count <= 5 else "horizontal_bar_chart"
             if requested in {"bar_chart", "pie_chart"} and row_count >= 6:
@@ -744,7 +779,9 @@ class ResponseBuilder:
             first_dim = dimension_columns[0]
             if first_dim == "hire_year":
                 return "line_chart"
-            if row_count <= 5 and any(m in metric_columns for m in ["percentage", "share_percentage"]):
+            if row_count <= 5 and any(
+                m in metric_columns for m in ["percentage", "share_percentage"]
+            ):
                 return "pie_chart"
             if row_count >= 6:
                 return "horizontal_bar_chart"
@@ -771,10 +808,16 @@ class ResponseBuilder:
             )
         return cards
 
-    def _visualization_subtitle(self, visual_type: str, rows: list[JsonDict], dimension_columns: list[str]) -> str | None:
+    def _visualization_subtitle(
+        self, visual_type: str, rows: list[JsonDict], dimension_columns: list[str]
+    ) -> str | None:
         if visual_type == "kpi_card":
             return "محاسبه‌شده بر اساس View تحلیلی کارکنان فعال"
-        if visual_type in {"bar_chart", "horizontal_bar_chart", "pie_chart", "line_chart", "stacked_bar_chart"} and dimension_columns:
+        if (
+            visual_type
+            in {"bar_chart", "horizontal_bar_chart", "pie_chart", "line_chart", "stacked_bar_chart"}
+            and dimension_columns
+        ):
             return f"نمایش بر اساس {FA_LABELS.get(dimension_columns[0], dimension_columns[0])}"
         if visual_type == "table":
             return f"{len(rows)} ردیف قابل نمایش"
@@ -784,18 +827,20 @@ class ResponseBuilder:
     # Data shaping and privacy
     # ------------------------------------------------------------------
 
-    def _sanitize_rows(self, rows: list[JsonDict], *, metadata: Any | None) -> tuple[list[JsonDict], list[str]]:
+    def _sanitize_rows(
+        self, rows: list[JsonDict], *, metadata: Any | None
+    ) -> tuple[list[JsonDict], list[str]]:
         sensitive = set(DEFAULT_SENSITIVE_COLUMNS)
         if metadata is not None:
             with _suppress_exceptions():
-                sensitive.update(str(col)
-                                 for col in metadata.get_sensitive_columns())
+                sensitive.update(str(col) for col in metadata.get_sensitive_columns())
 
         allowed_output_columns: set[str] | None = None
         if metadata is not None:
             with _suppress_exceptions():
                 allowed_output_columns = set(
-                    str(col) for col in metadata.get_allowed_output_columns())
+                    str(col) for col in metadata.get_allowed_output_columns()
+                )
 
         warnings: list[str] = []
         sanitized: list[JsonDict] = []
@@ -813,7 +858,11 @@ class ResponseBuilder:
                     # employee_id/department_id are useful internally but should not be rendered.
                     dropped_columns.add(col)
                     continue
-                if allowed_output_columns is not None and col not in allowed_output_columns and not self._is_metric_column_name(col):
+                if (
+                    allowed_output_columns is not None
+                    and col not in allowed_output_columns
+                    and not self._is_metric_column_name(col)
+                ):
                     # Keep calculated metrics even if they are not in data_dictionary.
                     if lower_col not in DIMENSION_HINTS:
                         dropped_columns.add(col)
@@ -824,7 +873,9 @@ class ResponseBuilder:
 
         if dropped_columns:
             warnings.append(
-                "Some restricted or internal columns were removed from the response: " + ", ".join(sorted(dropped_columns)))
+                "Some restricted or internal columns were removed from the response: "
+                + ", ".join(sorted(dropped_columns))
+            )
         return sanitized, warnings
 
     def _apply_small_group_suppression(
@@ -855,8 +906,9 @@ class ResponseBuilder:
                     if metric in new_row:
                         new_row[metric] = None
                 new_row["suppressed"] = True
-                new_row[
-                    "suppression_reason_fa"] = f"تعداد این گروه کمتر از حداقل مجاز نمایش ({min_group_size}) است."
+                new_row["suppression_reason_fa"] = (
+                    f"تعداد این گروه کمتر از حداقل مجاز نمایش ({min_group_size}) است."
+                )
                 suppressed += 1
                 result.append(new_row)
             else:
@@ -865,11 +917,19 @@ class ResponseBuilder:
         warnings = []
         if suppressed:
             warnings.append(
-                f"{suppressed} row(s) suppressed because group size was below {min_group_size}.")
+                f"{suppressed} row(s) suppressed because group size was below {min_group_size}."
+            )
         return result, warnings
 
     def _find_count_column(self, metric_columns: list[str], rows: list[JsonDict]) -> str | None:
-        for preferred in ["employee_count", "actual_headcount", "contractor_count", "hire_count", "hiring_count", "count"]:
+        for preferred in [
+            "employee_count",
+            "actual_headcount",
+            "contractor_count",
+            "hire_count",
+            "hiring_count",
+            "count",
+        ]:
             if preferred in metric_columns:
                 return preferred
         for column in metric_columns:
@@ -877,7 +937,9 @@ class ResponseBuilder:
                 return column
         return None
 
-    def _classify_columns(self, columns: list[str], rows: list[JsonDict], *, metadata: Any | None) -> tuple[list[str], list[str]]:
+    def _classify_columns(
+        self, columns: list[str], rows: list[JsonDict], *, metadata: Any | None
+    ) -> tuple[list[str], list[str]]:
         dimension_columns: list[str] = []
         metric_columns: list[str] = []
 
@@ -904,9 +966,12 @@ class ResponseBuilder:
         # If all numeric columns were dimensions by hint and no metric exists, choose last numeric column as metric.
         if not metric_columns and columns:
             for col in reversed(columns):
-                values = [row.get(col)
-                          for row in rows if row.get(col) is not None]
-                if values and all(_is_number_like(v) for v in values) and col not in {"hire_year", "education_rank", "department_level"}:
+                values = [row.get(col) for row in rows if row.get(col) is not None]
+                if (
+                    values
+                    and all(_is_number_like(v) for v in values)
+                    and col not in {"hire_year", "education_rank", "department_level"}
+                ):
                     metric_columns.append(col)
                     if col in dimension_columns:
                         dimension_columns.remove(col)
@@ -918,7 +983,10 @@ class ResponseBuilder:
         lower = column.lower()
         if lower in COMMON_METRIC_NAMES:
             return True
-        return any(token in lower for token in ["count", "percentage", "avg", "average", "gap", "share", "total", "ratio"])
+        return any(
+            token in lower
+            for token in ["count", "percentage", "avg", "average", "gap", "share", "total", "ratio"]
+        )
 
     # ------------------------------------------------------------------
     # Message and metadata
@@ -940,7 +1008,8 @@ class ResponseBuilder:
             for metric in metric_columns[:3]:
                 if metric in row:
                     parts.append(
-                        f"{self._label_for_column(metric, metadata=None)}: {self._format_value(metric, row.get(metric))}")
+                        f"{self._label_for_column(metric, metadata=None)}: {self._format_value(metric, row.get(metric))}"
+                    )
             if parts:
                 return f"{title_fa} محاسبه شد؛ " + "، ".join(parts) + "."
             return f"{title_fa} محاسبه شد."
@@ -948,8 +1017,7 @@ class ResponseBuilder:
             return f"{title_fa} آماده شد و روند بر اساس داده‌های کارکنان فعال قابل مشاهده است."
         if visual_type in {"bar_chart", "horizontal_bar_chart", "pie_chart", "stacked_bar_chart"}:
             if dimension_columns:
-                dimension_label = self._label_for_column(
-                    dimension_columns[0], metadata=None)
+                dimension_label = self._label_for_column(dimension_columns[0], metadata=None)
                 if dimension_label and dimension_label in title_fa:
                     return f"{title_fa} آماده شد."
                 return f"{title_fa} به تفکیک {dimension_label} آماده شد."
@@ -958,26 +1026,31 @@ class ResponseBuilder:
             return f"{title_fa} در قالب جدول آماده شد."
         return "نتیجه بر اساس داده‌های کارکنان فعال آماده شد."
 
-    def _build_notes(self, *, context: JsonDict, status_payload: JsonDict, visualization: JsonDict, metadata: Any | None) -> list[str]:
+    def _build_notes(
+        self,
+        *,
+        context: JsonDict,
+        status_payload: JsonDict,
+        visualization: JsonDict,
+        metadata: Any | None,
+    ) -> list[str]:
         notes: list[str] = []
         default_filter_note = None
         if metadata is not None:
             with _suppress_exceptions():
                 rules = metadata.get_document("visualization_rules")
-                default_filter_note = _get_nested(
-                    rules, "global_rules", "default_filter_note_fa")
+                default_filter_note = _get_nested(rules, "global_rules", "default_filter_note_fa")
         if default_filter_note:
             notes.append(str(default_filter_note))
         else:
-            notes.append(
-                "خروجی بر اساس View تحلیلی کارکنان فعال محاسبه شده است.")
+            notes.append("خروجی بر اساس View تحلیلی کارکنان فعال محاسبه شده است.")
 
         if visualization.get("truncated"):
             notes.append(
-                f"برای خوانایی، فقط {visualization.get('visible_row_count')} ردیف اول نمایش داده شده است.")
+                f"برای خوانایی، فقط {visualization.get('visible_row_count')} ردیف اول نمایش داده شده است."
+            )
         if _get_nested(context, "query_result", "truncated"):
-            notes.append(
-                "نتیجه دیتابیس به دلیل محدودیت تعداد ردیف کوتاه شده است.")
+            notes.append("نتیجه دیتابیس به دلیل محدودیت تعداد ردیف کوتاه شده است.")
         return _dedupe(notes)
 
     def _response_metadata(
@@ -1017,8 +1090,9 @@ class ResponseBuilder:
             _get_nested(context, "validation_result", "route"),
             _get_nested(context, "query_result", "route"),
         )
-        status = str(status_payload.get("status") or _get_nested(
-            context, "query_result", "status") or "").upper()
+        status = str(
+            status_payload.get("status") or _get_nested(context, "query_result", "status") or ""
+        ).upper()
         if not route and status:
             return _route_for_status(status)
         return str(route or ROUTE_SQL).upper()
@@ -1035,8 +1109,7 @@ class ResponseBuilder:
         )
         normalized = str(status or STATUS_SUCCESS).upper()
         if normalized == STATUS_VALID:
-            query_status = str(_get_nested(
-                context, "query_result", "status") or "").upper()
+            query_status = str(_get_nested(context, "query_result", "status") or "").upper()
             if query_status == STATUS_SUCCESS:
                 return STATUS_SUCCESS
         if normalized == "FAILED":
@@ -1075,7 +1148,9 @@ class ResponseBuilder:
         )
         return str(value) if value else None
 
-    def _resolve_title_fa(self, *, intent_id: str | None, report_id: str | None, metadata: Any | None) -> str:
+    def _resolve_title_fa(
+        self, *, intent_id: str | None, report_id: str | None, metadata: Any | None
+    ) -> str:
         if metadata is not None and report_id:
             with _suppress_exceptions():
                 report = metadata.get_report(report_id)
@@ -1109,7 +1184,9 @@ class ResponseBuilder:
             return "decimal_2"
         if "gap" in lower:
             return "integer_with_sign"
-        return "integer" if any(token in lower for token in ["count", "headcount", "total"]) else "raw"
+        return (
+            "integer" if any(token in lower for token in ["count", "headcount", "total"]) else "raw"
+        )
 
     def _format_value(self, column: str, value: Any) -> str:
         if value is None:
@@ -1159,8 +1236,7 @@ class ResponseBuilder:
             if isinstance(row, Mapping):
                 output.append({str(k): _json_safe(v) for k, v in row.items()})
             elif is_dataclass(row):
-                output.append({str(k): _json_safe(v)
-                              for k, v in asdict(row).items()})
+                output.append({str(k): _json_safe(v) for k, v in asdict(row).items()})
         return output
 
     def _extract_embedded_status(self, rows: list[JsonDict]) -> str | None:
@@ -1170,7 +1246,9 @@ class ResponseBuilder:
                 return status
         return None
 
-    def _collect_warnings(self, context: JsonDict, status_payload: JsonDict, query_result: JsonDict) -> list[str]:
+    def _collect_warnings(
+        self, context: JsonDict, status_payload: JsonDict, query_result: JsonDict
+    ) -> list[str]:
         warnings: list[str] = []
         for source in [
             context.get("warnings"),
@@ -1184,7 +1262,9 @@ class ResponseBuilder:
             warnings.extend(_as_string_list(source))
         return _dedupe(warnings)
 
-    def _collect_errors(self, context: JsonDict, status_payload: JsonDict, query_result: JsonDict) -> list[str]:
+    def _collect_errors(
+        self, context: JsonDict, status_payload: JsonDict, query_result: JsonDict
+    ) -> list[str]:
         errors: list[str] = []
         for source in [
             context.get("errors"),
@@ -1218,7 +1298,12 @@ def _route_for_status(status: str) -> str:
     normalized = (status or "").upper()
     if normalized == STATUS_DATA_GAP:
         return ROUTE_GAP
-    if normalized in {STATUS_ACCESS_DENIED, STATUS_OUT_OF_SCOPE, STATUS_SQL_VALIDATION_FAILED, "REJECTED"}:
+    if normalized in {
+        STATUS_ACCESS_DENIED,
+        STATUS_OUT_OF_SCOPE,
+        STATUS_SQL_VALIDATION_FAILED,
+        "REJECTED",
+    }:
         return ROUTE_REJECT
     if normalized == STATUS_NEEDS_CLARIFICATION:
         return ROUTE_NEEDS_CLARIFICATION
@@ -1389,14 +1474,17 @@ def get_response_builder(
 # ---------------------------------------------------------------------------
 
 if __name__ == "__main__":  # pragma: no cover
-    builder = ResponseBuilder(metadata_dir=Path(
-        __file__).resolve().parent, include_debug_metadata=True)
+    builder = ResponseBuilder(
+        metadata_dir=Path(__file__).resolve().parent, include_debug_metadata=True
+    )
     context = {
         "request_id": "demo",
         "question": "تعداد زن و مرد چند نفر است؟",
         "intent_result": {"intent": "employee_count_by_gender", "route": "SQL"},
         "route_result": {"route": "SQL", "status": "VALID"},
-        "sql_plan": {"sql": "SELECT v.gender, COUNT(v.employee_id) AS employee_count FROM hr_mvp.vw_hr_employee_analytics v WHERE v.is_active = TRUE GROUP BY v.gender;"},
+        "sql_plan": {
+            "sql": "SELECT v.gender, COUNT(v.employee_id) AS employee_count FROM hr_mvp.vw_hr_employee_analytics v WHERE v.is_active = TRUE GROUP BY v.gender;"
+        },
         "query_result": {
             "status": "SUCCESS",
             "execution_status": "SUCCESS",
@@ -1408,5 +1496,10 @@ if __name__ == "__main__":  # pragma: no cover
     }
     import json
 
-    print(json.dumps(builder.build(context=context, status_payload={
-          "status": "SUCCESS", "route": "SQL"}), ensure_ascii=False, indent=2))
+    print(
+        json.dumps(
+            builder.build(context=context, status_payload={"status": "SUCCESS", "route": "SQL"}),
+            ensure_ascii=False,
+            indent=2,
+        )
+    )

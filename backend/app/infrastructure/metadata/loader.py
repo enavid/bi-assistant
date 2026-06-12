@@ -9,5 +9,6 @@ from app.core.config import settings
 @lru_cache(maxsize=1)
 def get_metadata():
     from app.infrastructure.metadata.service import get_metadata_service
+
     metadata_dir = Path(settings.metadata_dir)
     return get_metadata_service(reload=False, metadata_dir=metadata_dir, strict=True)

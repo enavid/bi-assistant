@@ -1,15 +1,16 @@
 """clean architecture
 
 Revision ID: 6e43f105de6a
-Revises: 
+Revises:
 Create Date: 2026-06-06 16:03:26.760652
 
 """
+
 from __future__ import annotations
 
 from collections.abc import Sequence
 
-revision: str = '6e43f105de6a'
+revision: str = "6e43f105de6a"
 down_revision: str | None = None
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None

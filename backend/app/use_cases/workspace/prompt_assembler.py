@@ -21,9 +21,7 @@ class PromptAssembler:
             return result.replace("{question}", question)
 
         parts = [
-            s.content
-            for s in sorted(project.sections, key=lambda s: s.order)
-            if s.content.strip()
+            s.content for s in sorted(project.sections, key=lambda s: s.order) if s.content.strip()
         ]
         parts.append(f"QUESTION:\n{question}\n\nSQL:")
         return "\n\n".join(parts)

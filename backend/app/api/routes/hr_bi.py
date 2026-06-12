@@ -19,8 +19,11 @@ router = APIRouter(prefix="/hr-bi", tags=["hr-bi"])
 async def hr_bi_health() -> dict[str, Any]:
     try:
         from app.infrastructure.metadata.loader import get_metadata
+
         metadata = get_metadata()
-        health = metadata.health_check().to_dict() if hasattr(metadata, "health_check") else {"ok": True}
+        health = (
+            metadata.health_check().to_dict() if hasattr(metadata, "health_check") else {"ok": True}
+        )
         return {
             "status": "ok" if health.get("ok", True) else "metadata_warning",
             "metadata": health,
@@ -30,7 +33,9 @@ async def hr_bi_health() -> dict[str, Any]:
         }
     except Exception as exc:
         logger.error("HR BI health check failed: %s", exc)
-        raise HTTPException(status_code=500, detail=f"Health check failed: {type(exc).__name__}: {exc}") from exc
+        raise HTTPException(
+            status_code=500, detail=f"Health check failed: {type(exc).__name__}: {exc}"
+        ) from exc
 
 
 @router.post("/chat", response_model=HRBIResponse, summary="HR analytics pipeline with execution")
@@ -41,13 +46,17 @@ async def hr_bi_chat(request: HRBIRequest) -> dict[str, Any]:
             request.question,
             user_id=request.user_id,
             user_role=request.user_role,
-            execute_sql=request.execute_sql if request.execute_sql is not None else settings.default_execute_sql,
+            execute_sql=request.execute_sql
+            if request.execute_sql is not None
+            else settings.default_execute_sql,
             runtime_params=request.runtime_params,
         )
         return response.to_dict()
     except Exception as exc:
         logger.error("HR BI chat failed: %s", exc)
-        raise HTTPException(status_code=500, detail=f"HR BI chat failed: {type(exc).__name__}: {exc}") from exc
+        raise HTTPException(
+            status_code=500, detail=f"HR BI chat failed: {type(exc).__name__}: {exc}"
+        ) from exc
 
 
 @router.post("/generate", summary="SQL generation only")
@@ -73,4 +82,6 @@ async def hr_bi_generate(request: HRBIRequest) -> dict[str, Any]:
         }
     except Exception as exc:
         logger.error("HR BI generate failed: %s", exc)
-        raise HTTPException(status_code=500, detail=f"HR BI generate failed: {type(exc).__name__}: {exc}") from exc
+        raise HTTPException(
+            status_code=500, detail=f"HR BI generate failed: {type(exc).__name__}: {exc}"
+        ) from exc

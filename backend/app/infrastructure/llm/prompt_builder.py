@@ -43,8 +43,11 @@ class PromptBuilder:
         schema = schema_context or self._build_schema_context(service)
         modular_context = self.build_safe_modular_context(context)
         prompt = self._render_sql_prompt(
-            question=question, schema_context=schema, modular_context=modular_context)
-        return SQLFallbackPrompt(prompt=prompt, modular_context=modular_context, schema_context=schema)
+            question=question, schema_context=schema, modular_context=modular_context
+        )
+        return SQLFallbackPrompt(
+            prompt=prompt, modular_context=modular_context, schema_context=schema
+        )
 
     def build_safe_modular_context(self, context: Any) -> JsonDict:
         intent = self._payload(context, "intent_result")
@@ -54,12 +57,13 @@ class PromptBuilder:
 
         group_by = intent.get("group_by") or route.get("group_by") or []
         filters = intent.get("filters") or semantic.get("filters") or []
-        required_columns = intent.get(
-            "required_columns") or route.get("required_columns") or []
+        required_columns = intent.get("required_columns") or route.get("required_columns") or []
         metrics = intent.get("metrics") or []
 
         return {
-            "detected_intent": intent.get("intent") or intent.get("intent_id") or route.get("intent"),
+            "detected_intent": intent.get("intent")
+            or intent.get("intent_id")
+            or route.get("intent"),
             "route": route.get("route") or intent.get("route") or "SQL",
             "status": route.get("status") or intent.get("status") or validation.get("status"),
             "metric": metrics[0] if metrics else self._infer_metric(intent),
@@ -79,7 +83,9 @@ class PromptBuilder:
             ],
         }
 
-    def _render_sql_prompt(self, *, question: str, schema_context: str, modular_context: JsonDict) -> str:
+    def _render_sql_prompt(
+        self, *, question: str, schema_context: str, modular_context: JsonDict
+    ) -> str:
         return f"""
 You are the SQL fallback generator for HR BI Assistant.
 
@@ -127,8 +133,7 @@ SQL OUTPUT ONLY:
 
     @staticmethod
     def _infer_metric(intent_payload: JsonDict) -> JsonDict:
-        intent = str(intent_payload.get("intent")
-                     or intent_payload.get("intent_id") or "")
+        intent = str(intent_payload.get("intent") or intent_payload.get("intent_id") or "")
         if intent == "average_age":
             return {"name": "average_age", "expression": "ROUND(AVG(v.age), 2)"}
         if intent == "average_service_years":

@@ -40,7 +40,6 @@ Important:
 """
 
 
-
 JsonDict = dict[str, Any]
 logger = logging.getLogger(__name__)
 
@@ -160,8 +159,7 @@ class QueryExecutor:
         if metadata_service is not None:
             self.metadata = metadata_service
         elif get_metadata_service is not None:
-            self.metadata = get_metadata_service(
-                metadata_dir=metadata_dir, strict=False)
+            self.metadata = get_metadata_service(metadata_dir=metadata_dir, strict=False)
         else:
             self.metadata = None
 
@@ -175,8 +173,11 @@ class QueryExecutor:
         self.connection_factory = connection_factory
         self.async_connection = async_connection
         self.async_pool = async_pool
-        self.database_url = database_url or os.getenv(
-            QueryExecutorConfig.database_url_env) or os.getenv(QueryExecutorConfig.postgres_url_env)
+        self.database_url = (
+            database_url
+            or os.getenv(QueryExecutorConfig.database_url_env)
+            or os.getenv(QueryExecutorConfig.postgres_url_env)
+        )
 
         self.config = QueryExecutorConfig(
             max_rows=int(max_rows),
@@ -245,7 +246,8 @@ class QueryExecutor:
             return status_sql
 
         guard = self._pre_execution_guard(
-            sql_text, context=context, validation_result=validation_result, metadata=metadata)
+            sql_text, context=context, validation_result=validation_result, metadata=metadata
+        )
         if not guard.get("ok", False):
             logger.warning("sql execution blocked reason=%s", guard.get("reason"))
             return self._failure(
@@ -320,7 +322,8 @@ class QueryExecutor:
             return status_sql
 
         guard = self._pre_execution_guard(
-            sql_text, context=context, validation_result=validation_result, metadata=metadata)
+            sql_text, context=context, validation_result=validation_result, metadata=metadata
+        )
         if not guard.get("ok", False):
             return self._failure(
                 status="EXECUTION_BLOCKED",
@@ -335,7 +338,9 @@ class QueryExecutor:
 
         try:
             if self.async_pool is not None or self.async_connection is not None:
-                raw = await self._execute_asyncpg_like(sql_text, params=params or {}, max_rows=limit)
+                raw = await self._execute_asyncpg_like(
+                    sql_text, params=params or {}, max_rows=limit
+                )
             else:
                 # Run sync adapter in a thread so FastAPI async routes are not blocked.
                 raw = await asyncio.to_thread(
@@ -350,8 +355,7 @@ class QueryExecutor:
                 started=started,
                 max_rows=limit,
                 warnings=warnings,
-                database={"adapter": raw.get("adapter") if isinstance(
-                    raw, dict) else "unknown"},
+                database={"adapter": raw.get("adapter") if isinstance(raw, dict) else "unknown"},
             )
         except QueryExecutorNotConfiguredError as exc:
             return self._failure(
@@ -389,17 +393,17 @@ class QueryExecutor:
             return {"ok": False, "reason": "SQL is empty.", "warnings": warnings}
 
         normalized_sql = sql.strip()
-        extracted = validation_result or self._extract_validation_from_context(
-            context)
+        extracted = validation_result or self._extract_validation_from_context(context)
 
         if self.config.require_validated_sql:
             if extracted:
-                status = str(extracted.get("status") or extracted.get(
-                    "validation_status") or "").upper()
-                is_valid = bool(extracted.get("is_valid")) or status in {
-                    "VALID", "SUCCESS"}
-                can_execute = bool(extracted.get(
-                    "can_execute_sql", extracted.get("is_executable", False)))
+                status = str(
+                    extracted.get("status") or extracted.get("validation_status") or ""
+                ).upper()
+                is_valid = bool(extracted.get("is_valid")) or status in {"VALID", "SUCCESS"}
+                can_execute = bool(
+                    extracted.get("can_execute_sql", extracted.get("is_executable", False))
+                )
                 if not (is_valid and can_execute):
                     return {
                         "ok": False,
@@ -409,10 +413,16 @@ class QueryExecutor:
                     }
             elif self.validator is not None:
                 validator_result = self._call_validator(
-                    normalized_sql, context=context, metadata=metadata)
-                status = str(validator_result.get("status") or validator_result.get(
-                    "validation_status") or "").upper()
-                if not (validator_result.get("is_valid") and validator_result.get("can_execute_sql")):
+                    normalized_sql, context=context, metadata=metadata
+                )
+                status = str(
+                    validator_result.get("status")
+                    or validator_result.get("validation_status")
+                    or ""
+                ).upper()
+                if not (
+                    validator_result.get("is_valid") and validator_result.get("can_execute_sql")
+                ):
                     return {
                         "ok": False,
                         "reason": "Internal SQL validation failed before execution.",
@@ -422,22 +432,48 @@ class QueryExecutor:
                     }
                 warnings.extend(validator_result.get("warnings", []) or [])
             else:
-                return {"ok": False, "reason": "No SQL validation result or validator is available.", "warnings": warnings}
+                return {
+                    "ok": False,
+                    "reason": "No SQL validation result or validator is available.",
+                    "warnings": warnings,
+                }
 
         # Final ultra-cheap guard. This should never replace sql_validator.py; it is an executor seatbelt.
         upper = normalized_sql.upper()
         if not (upper.startswith("SELECT") or upper.startswith("WITH")):
-            return {"ok": False, "reason": "Executor only runs SELECT/WITH SQL.", "warnings": warnings}
+            return {
+                "ok": False,
+                "reason": "Executor only runs SELECT/WITH SQL.",
+                "warnings": warnings,
+            }
         if self._has_multiple_statements(normalized_sql):
-            return {"ok": False, "reason": "Executor refuses multiple SQL statements.", "warnings": warnings}
+            return {
+                "ok": False,
+                "reason": "Executor refuses multiple SQL statements.",
+                "warnings": warnings,
+            }
         forbidden = re.search(
-            r"\b(INSERT|UPDATE|DELETE|DROP|ALTER|CREATE|TRUNCATE|MERGE|GRANT|REVOKE|COPY|CALL|DO)\b", upper)
+            r"\b(INSERT|UPDATE|DELETE|DROP|ALTER|CREATE|TRUNCATE|MERGE|GRANT|REVOKE|COPY|CALL|DO)\b",
+            upper,
+        )
         if forbidden:
-            return {"ok": False, "reason": f"Forbidden SQL keyword detected: {forbidden.group(1)}", "warnings": warnings}
+            return {
+                "ok": False,
+                "reason": f"Forbidden SQL keyword detected: {forbidden.group(1)}",
+                "warnings": warnings,
+            }
         if re.search(r"\bJOIN\b", upper):
-            return {"ok": False, "reason": "JOIN is not allowed in Controlled SQL-based MVP.", "warnings": warnings}
+            return {
+                "ok": False,
+                "reason": "JOIN is not allowed in Controlled SQL-based MVP.",
+                "warnings": warnings,
+            }
         if self.config.main_view.lower() not in normalized_sql.lower():
-            return {"ok": False, "reason": "SQL does not reference the approved analytics view.", "warnings": warnings}
+            return {
+                "ok": False,
+                "reason": "SQL does not reference the approved analytics view.",
+                "warnings": warnings,
+            }
 
         return {"ok": True, "warnings": warnings}
 
@@ -445,8 +481,11 @@ class QueryExecutor:
         if self.validator is None:
             return {}
         for method_name in ("validate", "run", "__call__"):
-            candidate = self.validator if method_name == "__call__" else getattr(
-                self.validator, method_name, None)
+            candidate = (
+                self.validator
+                if method_name == "__call__"
+                else getattr(self.validator, method_name, None)
+            )
             if callable(candidate):
                 result = candidate(sql=sql, context=context, metadata=metadata)
                 if inspect.isawaitable(result):
@@ -469,7 +508,7 @@ class QueryExecutor:
                 in_single = not in_single
             elif ch == ";" and not in_single:
                 semicolons += 1
-            escaped = (ch == "\\" and not escaped)
+            escaped = ch == "\\" and not escaped
             if ch != "\\":
                 escaped = False
         if semicolons == 0:
@@ -496,12 +535,15 @@ class QueryExecutor:
             "async_pool/async_connection, database_url, or set DATABASE_URL/POSTGRES_DSN."
         )
 
-    def _execute_sqlalchemy_engine(self, sql: str, params: Mapping[str, Any], max_rows: int) -> JsonDict:
+    def _execute_sqlalchemy_engine(
+        self, sql: str, params: Mapping[str, Any], max_rows: int
+    ) -> JsonDict:
         try:
             from sqlalchemy import text  # type: ignore
         except Exception as exc:  # pragma: no cover
             raise QueryExecutorNotConfiguredError(
-                "SQLAlchemy is not installed but an engine was provided.") from exc
+                "SQLAlchemy is not installed but an engine was provided."
+            ) from exc
 
         connectable = self.engine
         owns_connection = hasattr(connectable, "connect")
@@ -515,21 +557,33 @@ class QueryExecutor:
             if hasattr(conn, "commit"):
                 with suppress(Exception):
                     conn.commit()
-            return self._raw_result(columns, rows, column_metadata, max_rows=max_rows, adapter="sqlalchemy")
+            return self._raw_result(
+                columns, rows, column_metadata, max_rows=max_rows, adapter="sqlalchemy"
+            )
         finally:
             if owns_connection:
                 with suppress(Exception):
                     conn.close()
 
-    def _execute_dbapi_connection(self, sql: str, params: Mapping[str, Any], max_rows: int) -> JsonDict:
+    def _execute_dbapi_connection(
+        self, sql: str, params: Mapping[str, Any], max_rows: int
+    ) -> JsonDict:
         conn = self.connection
-        return self._execute_dbapi_on_connection(conn, sql, params=params, max_rows=max_rows, close_after=False)
+        return self._execute_dbapi_on_connection(
+            conn, sql, params=params, max_rows=max_rows, close_after=False
+        )
 
-    def _execute_dbapi_factory(self, sql: str, params: Mapping[str, Any], max_rows: int) -> JsonDict:
+    def _execute_dbapi_factory(
+        self, sql: str, params: Mapping[str, Any], max_rows: int
+    ) -> JsonDict:
         conn = self.connection_factory() if self.connection_factory is not None else None
-        return self._execute_dbapi_on_connection(conn, sql, params=params, max_rows=max_rows, close_after=True)
+        return self._execute_dbapi_on_connection(
+            conn, sql, params=params, max_rows=max_rows, close_after=True
+        )
 
-    def _execute_from_database_url(self, sql: str, params: Mapping[str, Any], max_rows: int) -> JsonDict:
+    def _execute_from_database_url(
+        self, sql: str, params: Mapping[str, Any], max_rows: int
+    ) -> JsonDict:
         if not self.database_url:
             raise QueryExecutorNotConfiguredError("database_url is empty.")
 
@@ -538,7 +592,8 @@ class QueryExecutor:
             from sqlalchemy import create_engine  # type: ignore
 
             engine = create_engine(
-                self.database_url, pool_pre_ping=True, connect_args=self._sqlalchemy_connect_args())
+                self.database_url, pool_pre_ping=True, connect_args=self._sqlalchemy_connect_args()
+            )
             old_engine = self.engine
             self.engine = engine
             try:
@@ -553,20 +608,22 @@ class QueryExecutor:
             try:
                 import psycopg  # type: ignore
 
-                conn = psycopg.connect(
-                    self.database_url, application_name=self.config.app_name)
+                conn = psycopg.connect(self.database_url, application_name=self.config.app_name)
             except Exception:
                 try:
                     import psycopg2  # type: ignore
 
                     conn = psycopg2.connect(
-                        self.database_url, application_name=self.config.app_name)
+                        self.database_url, application_name=self.config.app_name
+                    )
                 except Exception as exc:
                     raise QueryExecutorNotConfiguredError(
                         "Could not open database_url. Install SQLAlchemy, psycopg, or psycopg2 and verify the DSN. "
                         f"SQLAlchemy error: {sqlalchemy_exc}; driver error: {exc}"
                     ) from exc
-            return self._execute_dbapi_on_connection(conn, sql, params=params, max_rows=max_rows, close_after=True)
+            return self._execute_dbapi_on_connection(
+                conn, sql, params=params, max_rows=max_rows, close_after=True
+            )
 
     def _execute_dbapi_on_connection(
         self,
@@ -591,11 +648,12 @@ class QueryExecutor:
             rows = cursor.fetchmany(max_rows + 1)
             description = cursor.description or []
             columns = [str(item[0]) for item in description]
-            column_metadata = self._column_metadata_from_dbapi_description(
-                description)
+            column_metadata = self._column_metadata_from_dbapi_description(description)
             with suppress(Exception):
                 conn.commit()
-            return self._raw_result(columns, rows, column_metadata, max_rows=max_rows, adapter="dbapi")
+            return self._raw_result(
+                columns, rows, column_metadata, max_rows=max_rows, adapter="dbapi"
+            )
         except Exception:
             with suppress(Exception):
                 conn.rollback()
@@ -608,12 +666,15 @@ class QueryExecutor:
                 with suppress(Exception):
                     conn.close()
 
-    async def _execute_asyncpg_like(self, sql: str, *, params: Mapping[str, Any], max_rows: int) -> JsonDict:
+    async def _execute_asyncpg_like(
+        self, sql: str, *, params: Mapping[str, Any], max_rows: int
+    ) -> JsonDict:
         # asyncpg uses positional placeholders ($1, $2). Our SQL templates already render literals,
         # so params are usually empty. This method still accepts no-param SQL safely.
         if params:
             raise QueryExecutorError(
-                "Named params are not supported by asyncpg adapter in this MVP renderer.")
+                "Named params are not supported by asyncpg adapter in this MVP renderer."
+            )
 
         async def run_on_conn(conn: Any) -> JsonDict:
             await self._configure_asyncpg_connection(conn)
@@ -621,15 +682,16 @@ class QueryExecutor:
             rows = list(records[: max_rows + 1])
             columns = list(rows[0].keys()) if rows else []
             column_metadata = [{"name": name} for name in columns]
-            return self._raw_result(columns, rows, column_metadata, max_rows=max_rows, adapter="asyncpg")
+            return self._raw_result(
+                columns, rows, column_metadata, max_rows=max_rows, adapter="asyncpg"
+            )
 
         if self.async_pool is not None:
             async with self.async_pool.acquire() as conn:
                 return await run_on_conn(conn)
         if self.async_connection is not None:
             return await run_on_conn(self.async_connection)
-        raise QueryExecutorNotConfiguredError(
-            "No asyncpg connection or pool is configured.")
+        raise QueryExecutorNotConfiguredError("No asyncpg connection or pool is configured.")
 
     # ------------------------------------------------------------------
     # Connection configuration
@@ -641,11 +703,12 @@ class QueryExecutor:
             with suppress(Exception):
                 cursor.execute("SET LOCAL TRANSACTION READ ONLY")
         with suppress(Exception):
-            cursor.execute("SET LOCAL statement_timeout = %s",
-                           (self.config.statement_timeout_ms,))
+            cursor.execute("SET LOCAL statement_timeout = %s", (self.config.statement_timeout_ms,))
         with suppress(Exception):
-            cursor.execute("SET LOCAL idle_in_transaction_session_timeout = %s",
-                           (self.config.statement_timeout_ms + 2_000,))
+            cursor.execute(
+                "SET LOCAL idle_in_transaction_session_timeout = %s",
+                (self.config.statement_timeout_ms + 2_000,),
+            )
 
     def _configure_sqlalchemy_connection(self, conn: Any) -> None:
         try:
@@ -657,19 +720,27 @@ class QueryExecutor:
                 conn.execute(text("SET LOCAL TRANSACTION READ ONLY"))
         with suppress(Exception):
             conn.execute(
-                text(f"SET LOCAL statement_timeout = {int(self.config.statement_timeout_ms)}"))
+                text(f"SET LOCAL statement_timeout = {int(self.config.statement_timeout_ms)}")
+            )
         with suppress(Exception):
-            conn.execute(text(
-                f"SET LOCAL idle_in_transaction_session_timeout = {int(self.config.statement_timeout_ms + 2000)}"))
+            conn.execute(
+                text(
+                    f"SET LOCAL idle_in_transaction_session_timeout = {int(self.config.statement_timeout_ms + 2000)}"
+                )
+            )
 
     async def _configure_asyncpg_connection(self, conn: Any) -> None:
         if self.config.read_only_transaction:
             with suppress(Exception):
                 await conn.execute("SET LOCAL TRANSACTION READ ONLY")
         with suppress(Exception):
-            await conn.execute(f"SET LOCAL statement_timeout = {int(self.config.statement_timeout_ms)}")
+            await conn.execute(
+                f"SET LOCAL statement_timeout = {int(self.config.statement_timeout_ms)}"
+            )
         with suppress(Exception):
-            await conn.execute(f"SET LOCAL idle_in_transaction_session_timeout = {int(self.config.statement_timeout_ms + 2000)}")
+            await conn.execute(
+                f"SET LOCAL idle_in_transaction_session_timeout = {int(self.config.statement_timeout_ms + 2000)}"
+            )
 
     def _sqlalchemy_connect_args(self) -> JsonDict:
         # Do not force connect_args for non-PostgreSQL URLs. SQLAlchemy will ignore or reject unknown args.
@@ -692,8 +763,7 @@ class QueryExecutor:
     ) -> JsonDict:
         truncated = len(rows) > max_rows
         visible_rows = list(rows[:max_rows])
-        converted_rows = [self._row_to_dict(
-            row, columns) for row in visible_rows]
+        converted_rows = [self._row_to_dict(row, columns) for row in visible_rows]
         return {
             "adapter": adapter,
             "columns": list(columns),
@@ -719,16 +789,16 @@ class QueryExecutor:
         row_count = int(raw.get("row_count", len(rows)))
         result_warnings = list(warnings)
         if raw.get("truncated"):
-            result_warnings.append(
-                f"Result was truncated to max_rows={max_rows}.")
+            result_warnings.append(f"Result was truncated to max_rows={max_rows}.")
         return QueryExecutionResult(
             status="SUCCESS",
             execution_status="SUCCESS",
             source=self.config.source_name,
             sql=sql if self.config.include_sql_in_result else None,
             columns=list(raw.get("columns") or []),
-            column_metadata=list(raw.get("column_metadata") or [
-            ]) if self.config.include_column_metadata else [],
+            column_metadata=list(raw.get("column_metadata") or [])
+            if self.config.include_column_metadata
+            else [],
             rows=rows,
             row_count=row_count,
             truncated=bool(raw.get("truncated", False)),
@@ -849,8 +919,7 @@ class QueryExecutor:
                 for key in ("sql", "generated_sql"):
                     if context.get(key):
                         return str(context.get(key)).strip()
-                payload = context.get(
-                    "sql_plan") or context.get("sql_validation")
+                payload = context.get("sql_plan") or context.get("sql_validation")
                 if isinstance(payload, Mapping) and payload.get("sql"):
                     return str(payload.get("sql")).strip()
         return ""

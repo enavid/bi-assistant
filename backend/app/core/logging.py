@@ -31,9 +31,7 @@ def setup_logging() -> None:
     root = logging.getLogger()
 
     already_configured = any(
-        isinstance(f, _RequestIdFilter)
-        for h in root.handlers
-        for f in h.filters
+        isinstance(f, _RequestIdFilter) for h in root.handlers for f in h.filters
     )
 
     if not already_configured:

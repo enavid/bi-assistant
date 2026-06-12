@@ -35,14 +35,21 @@ class HRBIOrchestrationUseCase:
         status = str(payload.get("status") or "")
         route = str(payload.get("route") or "")
         errors = payload.get("errors") or []
-        rejected = status in {"ACCESS_DENIED", "OUT_OF_SCOPE",
-                              "DATA_GAP", "ANALYTICAL_GAP", "SQL_VALIDATION_FAILED", "METADATA_ERROR"}
+        rejected = status in {
+            "ACCESS_DENIED",
+            "OUT_OF_SCOPE",
+            "DATA_GAP",
+            "ANALYTICAL_GAP",
+            "SQL_VALIDATION_FAILED",
+            "METADATA_ERROR",
+        }
         success = bool(sql) and not rejected
 
         error = None
         if not success:
             error = payload.get("message_fa") or (
-                errors[0] if errors else status or "Phase 2 did not generate SQL.")
+                errors[0] if errors else status or "Phase 2 did not generate SQL."
+            )
 
         ctx = payload.get("context") or {}
         traces = ctx.get("traces") or []

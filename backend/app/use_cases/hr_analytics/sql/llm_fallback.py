@@ -44,18 +44,35 @@ class LLMSQLFallbackResult:
 
 
 class LLMSQLFallback:
-    def __init__(self, *, metadata_service: Any | None = None, llm_client: LLMClient | None = None, prompt_builder: PromptBuilder | None = None) -> None:
+    def __init__(
+        self,
+        *,
+        metadata_service: Any | None = None,
+        llm_client: LLMClient | None = None,
+        prompt_builder: PromptBuilder | None = None,
+    ) -> None:
         self.metadata = metadata_service
         self.llm_client = llm_client or LLMClient()
-        self.prompt_builder = prompt_builder or PromptBuilder(
-            metadata_service=metadata_service)
+        self.prompt_builder = prompt_builder or PromptBuilder(metadata_service=metadata_service)
 
-    def generate(self, *, question: str | None = None, context: Any | None = None, metadata: Any | None = None, schema_context: str | None = None, **_: Any) -> JsonDict:
+    def generate(
+        self,
+        *,
+        question: str | None = None,
+        context: Any | None = None,
+        metadata: Any | None = None,
+        schema_context: str | None = None,
+        **_: Any,
+    ) -> JsonDict:
         service = metadata or self.metadata
-        q = question or getattr(context, "normalized_question", None) or getattr(
-            context, "question", "")
-        built = self.prompt_builder.build_sql_fallback_prompt(question=str(
-            q), context=context, metadata=service, schema_context=schema_context)
+        q = (
+            question
+            or getattr(context, "normalized_question", None)
+            or getattr(context, "question", "")
+        )
+        built = self.prompt_builder.build_sql_fallback_prompt(
+            question=str(q), context=context, metadata=service, schema_context=schema_context
+        )
         if not self.llm_client.is_configured:
             return LLMSQLFallbackResult(
                 status="NEEDS_LLM_SQL_FALLBACK",
@@ -64,7 +81,8 @@ class LLMSQLFallback:
                 prompt=built.prompt,
                 modular_context=built.modular_context,
                 warnings=[
-                    "Configure LLM_PROVIDER=ollama or LLM_PROVIDER=openai_compatible to enable this fallback."],
+                    "Configure LLM_PROVIDER=ollama or LLM_PROVIDER=openai_compatible to enable this fallback."
+                ],
                 metadata={"schema_context_supplied": bool(schema_context)},
             ).to_dict()
         llm_result = self.llm_client.generate_sql(built.prompt)
@@ -78,8 +96,11 @@ class LLMSQLFallback:
                 modular_context=built.modular_context,
                 warnings=llm_result.warnings,
                 errors=llm_result.errors,
-                metadata={"provider": llm_result.provider,
-                          "model": llm_result.model, "llm_status": llm_result.status},
+                metadata={
+                    "provider": llm_result.provider,
+                    "model": llm_result.model,
+                    "llm_status": llm_result.status,
+                },
             ).to_dict()
         return LLMSQLFallbackResult(
             status=llm_result.status,
@@ -89,8 +110,7 @@ class LLMSQLFallback:
             modular_context=built.modular_context,
             warnings=llm_result.warnings,
             errors=llm_result.errors,
-            metadata={"provider": llm_result.provider,
-                      "model": llm_result.model},
+            metadata={"provider": llm_result.provider, "model": llm_result.model},
         ).to_dict()
 
     def run(self, **kwargs: Any) -> JsonDict:

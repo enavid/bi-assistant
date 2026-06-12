@@ -49,6 +49,8 @@ def test_build_experiment_returns_entry_on_success():
 def test_build_experiment_returns_none_on_failure():
     executor = _make_executor(success=False)
     uc = RunQueryUseCase(executor=executor)
-    result = QueryResult(columns=[], rows=[], row_count=0, elapsed_ms=0.0, success=False, error="db error")
+    result = QueryResult(
+        columns=[], rows=[], row_count=0, elapsed_ms=0.0, success=False, error="db error"
+    )
     entry = uc.build_experiment(question="how many?", sql="SELECT 1;", result=result)
     assert entry is None
