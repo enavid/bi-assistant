@@ -55,7 +55,7 @@ jobs:
       - uses: astral-sh/setup-uv@v6
         with: { enable-cache: true, cache-dependency-glob: "backend/uv.lock" }
       - run: uv sync --dev
-      - run: uv run pytest tests --ignore=tests/routing_eval -q
+      - run: uv run pytest tests --ignore=tests/routing_eval -m "not integration" -q
 
   # ---------------------------------------------------------------------------
   # Frontend — code quality

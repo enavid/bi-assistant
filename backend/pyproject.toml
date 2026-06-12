@@ -33,6 +33,9 @@ dev = [
 pythonpath = ["."]
 asyncio_mode = "auto"
 testpaths = ["tests"]
+markers = [
+    "integration: requires external services (Ollama, PostgreSQL) — skipped in CI",
+]
 
 [tool.ruff]
 line-length = 100

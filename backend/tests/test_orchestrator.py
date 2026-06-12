@@ -2,7 +2,11 @@ from __future__ import annotations
 
 import asyncio
 
+import pytest
+
 from app.use_cases.hr_analytics.orchestrator import LLMOrchestrator
+
+pytestmark = pytest.mark.integration
 
 
 def _run(orchestrator, question: str) -> dict:

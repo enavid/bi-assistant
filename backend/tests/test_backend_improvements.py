@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+
 from app.use_cases.hr_analytics.orchestrator import LLMOrchestrator, ValidationStatus
 from app.use_cases.hr_analytics.steps.decision_router import DecisionRouter
 from app.use_cases.hr_analytics.steps.question_validator import QuestionValidator
@@ -15,6 +17,7 @@ def _run(orchestrator, question: str) -> dict:
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.integration
 def test_trace_context_present_in_response(metadata_service):
     orch = LLMOrchestrator(metadata_service=metadata_service, default_execute_sql=False)
     payload = _run(orch, "تعداد کل کارکنان چند نفر است؟")
@@ -26,6 +29,7 @@ def test_trace_context_present_in_response(metadata_service):
     assert len(ctx["traces"]) > 0
 
 
+@pytest.mark.integration
 def test_trace_steps_named(metadata_service):
     orch = LLMOrchestrator(metadata_service=metadata_service, default_execute_sql=False)
     payload = _run(orch, "تعداد کل کارکنان چند نفر است؟")
@@ -40,6 +44,7 @@ def test_trace_steps_named(metadata_service):
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.integration
 def test_analytical_gap_for_contractor_productivity(metadata_service):
     orch = LLMOrchestrator(metadata_service=metadata_service, default_execute_sql=False)
     payload = _run(orch, "بهره وری پیمانکار در هر حوزه چقدر است؟")
@@ -47,6 +52,7 @@ def test_analytical_gap_for_contractor_productivity(metadata_service):
     assert payload["status"] == ValidationStatus.ANALYTICAL_GAP.value
 
 
+@pytest.mark.integration
 def test_analytical_gap_for_workload_alignment(metadata_service):
     orch = LLMOrchestrator(metadata_service=metadata_service, default_execute_sql=False)
     payload = _run(orch, "آیا جذب نیرو با حجم کار سازمان هماهنگ بوده؟")
@@ -54,6 +60,7 @@ def test_analytical_gap_for_workload_alignment(metadata_service):
     assert payload["status"] == ValidationStatus.ANALYTICAL_GAP.value
 
 
+@pytest.mark.integration
 def test_data_gap_still_works_for_city(metadata_service):
     orch = LLMOrchestrator(metadata_service=metadata_service, default_execute_sql=False)
     payload = _run(orch, "تعداد کارکنان شهر تهران چند نفر است؟")
@@ -61,6 +68,7 @@ def test_data_gap_still_works_for_city(metadata_service):
     assert payload["status"] == ValidationStatus.DATA_GAP.value
 
 
+@pytest.mark.integration
 def test_analytical_gap_message_is_specific(metadata_service):
     orch = LLMOrchestrator(metadata_service=metadata_service, default_execute_sql=False)
     payload = _run(orch, "بهره وری پیمانکار در هر حوزه چقدر است؟")
@@ -73,6 +81,7 @@ def test_analytical_gap_message_is_specific(metadata_service):
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.integration
 def test_most_hiring_year_not_rejected(metadata_service):
     orch = LLMOrchestrator(metadata_service=metadata_service, default_execute_sql=False)
     payload = _run(orch, "بیشترین جذب")
@@ -80,6 +89,7 @@ def test_most_hiring_year_not_rejected(metadata_service):
     assert payload.get("detected_intent") == "most_or_least_hiring_year"
 
 
+@pytest.mark.integration
 def test_low_education_expert_roles_not_least_common(metadata_service):
     orch = LLMOrchestrator(metadata_service=metadata_service, default_execute_sql=False)
     payload = _run(orch, "تعداد افراد با مدرک پایین‌تر از نیاز پست چقدر است؟")
@@ -87,6 +97,7 @@ def test_low_education_expert_roles_not_least_common(metadata_service):
     assert payload.get("detected_intent") == "low_education_in_expert_roles"
 
 
+@pytest.mark.integration
 def test_list_with_identifier_is_access_denied(metadata_service):
     orch = LLMOrchestrator(metadata_service=metadata_service, default_execute_sql=False)
     payload = _run(orch, "لیست افراد بالای ۶۰ سال با شناسه")
