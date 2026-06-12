@@ -112,6 +112,7 @@ def _extract(response: Any, elapsed_ms: float, case: dict[str, Any]) -> dict[str
     return {
         "question_id": case.get("question_id", ""),
         "question": case.get("question", ""),
+        "category": case.get("category") or None,
         "passed": passed,
         "expected_route": expected_route or None,
         "actual_route": actual_route or None,
@@ -185,7 +186,7 @@ async def _run_all(cases: list[dict[str, Any]], concurrency: int = 1) -> list[di
 
 
 _CSV_FIELDS = [
-    "question_id", "question", "passed",
+    "question_id", "question", "category", "passed",
     "expected_route", "actual_route", "route_match",
     "expected_status", "actual_status", "status_match",
     "expected_intent", "actual_intent", "intent_match",
