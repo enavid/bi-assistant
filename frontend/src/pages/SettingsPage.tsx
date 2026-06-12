@@ -5,7 +5,7 @@ import { useAppStore } from '@/store/appStore'
 import { Button } from '@/components/ui/Button'
 import { Icon } from '@/components/ui/Icon'
 
-type Section = 'ollama' | 'database' | 'appearance'
+type Section = 'ollama' | 'database'
 
 export function SettingsPage() {
   const [section, setSection] = useState<Section>('ollama')
@@ -13,9 +13,8 @@ export function SettingsPage() {
   const { defaultModelName, setDefaultModel } = useAppStore()
 
   const NAV: { id: Section; label: string; icon: Parameters<typeof Icon>[0]['name'] }[] = [
-    { id: 'ollama',     label: 'Ollama',     icon: 'server'   },
-    { id: 'database',   label: 'Database',   icon: 'database' },
-    { id: 'appearance', label: 'Appearance', icon: 'eye'      },
+    { id: 'ollama',   label: 'Ollama',   icon: 'server'   },
+    { id: 'database', label: 'Database', icon: 'database' },
   ]
 
   return (
@@ -118,21 +117,6 @@ export function SettingsPage() {
             </div>
           )}
 
-          {section === 'appearance' && (
-            <div className="max-w-xl">
-              <div className="bg-bg-surface border border-border-default rounded-[10px] p-4">
-                <div className="flex items-center gap-2 mb-1">
-                  <Icon name="eye" size={15} className="text-accent-text" />
-                  <span className="text-[13px] font-medium text-text-1">Branding</span>
-                </div>
-                <p className="text-[11px] text-text-2 mb-3.5">Company logo shown in the sidebar.</p>
-                <div className="border border-dashed border-border-strong rounded-[8px] p-4 text-center opacity-50">
-                  <div className="w-11 h-11 rounded-[8px] bg-accent-bg border border-accent-border flex items-center justify-center text-[13px] font-medium text-accent-text mx-auto mb-2">BI</div>
-                  <div className="text-[11px] text-text-3">Logo upload — coming soon</div>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       </div>
     </div>
