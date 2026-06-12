@@ -7,8 +7,10 @@ import type {
   GenerateResponse,
   OllamaHealth,
   Project,
+  QueryDatabase,
   QueryResult,
   Section,
+  TestConnectionResult,
 } from '@/types'
 
 
@@ -77,6 +79,29 @@ export const chatApi = {
 export const ollamaApi = {
   health: () =>
     apiClient.get<OllamaHealth>('/ollama/health').then((r) => r.data),
+}
+
+export const connectionApi = {
+  list: () =>
+    apiClient.get<QueryDatabase[]>('/connections/databases').then((r) => r.data),
+
+  create: (payload: { name: string; host: string; port: number; db_name: string; username: string; password: string }) =>
+    apiClient.post<QueryDatabase>('/connections/databases', payload).then((r) => r.data),
+
+  update: (id: string, payload: Partial<{ name: string; host: string; port: number; db_name: string; username: string; password: string }>) =>
+    apiClient.patch<QueryDatabase>(`/connections/databases/${id}`, payload).then((r) => r.data),
+
+  delete: (id: string) =>
+    apiClient.delete(`/connections/databases/${id}`).then((r) => r.data),
+
+  activate: (id: string) =>
+    apiClient.post<QueryDatabase>(`/connections/databases/${id}/activate`).then((r) => r.data),
+
+  deactivate: () =>
+    apiClient.post('/connections/databases/deactivate').then((r) => r.data),
+
+  test: (payload: { host: string; port: number; db_name: string; username: string; password: string }) =>
+    apiClient.post<TestConnectionResult>('/connections/databases/test', payload).then((r) => r.data),
 }
 
 export const evalApi = {

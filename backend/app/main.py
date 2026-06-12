@@ -8,6 +8,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi_offline import FastAPIOffline
 
+from app.connections.api import routes as connection_routes
 from app.core.config import settings
 from app.core.logging import setup_logging
 from app.evaluation.api import routes as eval_routes
@@ -97,6 +98,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(connection_routes.router)
 app.include_router(workspace_routes.router)
 app.include_router(chat_routes.router)
 app.include_router(hr_bi_routes.router)

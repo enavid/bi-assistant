@@ -127,6 +127,23 @@ class MessageORM(Base):
     session: Mapped[ChatSessionORM] = relationship("ChatSessionORM", back_populates="messages")
 
 
+class QueryDatabaseORM(Base):
+    __tablename__ = "query_databases"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uid)
+    name: Mapped[str] = mapped_column(String, nullable=False)
+    host: Mapped[str] = mapped_column(String, nullable=False)
+    port: Mapped[int] = mapped_column(Integer, nullable=False, default=5432)
+    db_name: Mapped[str] = mapped_column(String, nullable=False)
+    username: Mapped[str] = mapped_column(String, nullable=False)
+    password: Mapped[str] = mapped_column(String, nullable=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+
 class EvalQuestionSetORM(Base):
     __tablename__ = "eval_question_sets"
 

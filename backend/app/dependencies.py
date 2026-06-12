@@ -2,9 +2,14 @@ from __future__ import annotations
 
 from functools import lru_cache
 
+from app.connections.active import get_active_dsn
 from app.infrastructure.hr_db.executor import HRQueryExecutor
 from app.infrastructure.llm.ollama_client import OllamaClient
 from app.workspace.use_cases.run_query import RunQueryUseCase
+
+
+def _resolve_query_dsn(settings) -> str:
+    return get_active_dsn() or settings.hr_db_dsn
 
 
 @lru_cache(maxsize=1)
@@ -55,7 +60,7 @@ def get_hr_bi_orchestrator():
         query_executor=QueryExecutor(
             metadata_service=metadata,
             sql_validator=sql_validator,
-            database_url=settings.hr_db_dsn,
+            database_url=_resolve_query_dsn(settings),
         ),
         gap_service=GapService(metadata_service=metadata),
         response_builder=ResponseBuilder(metadata_service=metadata),

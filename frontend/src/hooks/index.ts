@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { chatApi, evalApi, ollamaApi, projectApi } from '@/services/api'
+import { chatApi, connectionApi, evalApi, ollamaApi, projectApi } from '@/services/api'
 import type { EvalQuestion, Project, Section } from '@/types'
 
 export function useOllamaHealth() {
@@ -114,6 +114,59 @@ export function useDeleteSession() {
     mutationFn: (id: string) => chatApi.deleteSession(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['sessions'] }),
   })
+}
+
+// ---------------------------------------------------------------------------
+// Connection hooks
+// ---------------------------------------------------------------------------
+
+export function useQueryDatabases() {
+  return useQuery({ queryKey: ['query-databases'], queryFn: connectionApi.list })
+}
+
+export function useCreateQueryDatabase() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: connectionApi.create,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['query-databases'] }),
+  })
+}
+
+export function useUpdateQueryDatabase() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, payload }: { id: string; payload: Parameters<typeof connectionApi.update>[1] }) =>
+      connectionApi.update(id, payload),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['query-databases'] }),
+  })
+}
+
+export function useDeleteQueryDatabase() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => connectionApi.delete(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['query-databases'] }),
+  })
+}
+
+export function useActivateQueryDatabase() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => connectionApi.activate(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['query-databases'] }),
+  })
+}
+
+export function useDeactivateQueryDatabases() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: connectionApi.deactivate,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['query-databases'] }),
+  })
+}
+
+export function useTestConnection() {
+  return useMutation({ mutationFn: connectionApi.test })
 }
 
 // ---------------------------------------------------------------------------

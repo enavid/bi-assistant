@@ -88,6 +88,24 @@ export interface OllamaHealth {
   message: string
 }
 
+export interface QueryDatabase {
+  id: string
+  name: string
+  host: string
+  port: number
+  db_name: string
+  username: string
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface TestConnectionResult {
+  success: boolean
+  error: string | null
+  latency_ms: number | null
+}
+
 export type Theme = 'dark' | 'light' | 'amin-rai'
 export type AppPage = 'chat' | 'builder' | 'settings' | 'eval'
 
