@@ -56,6 +56,34 @@
   --red-border:   #fecaca;
 }
 
+/* Amin Raay brand theme — exact brand teal #3DBFB9 on white */
+:root.amin-rai {
+  --bg-base:    #f0f5f5;
+  --bg-surface: #ffffff;
+  --bg-raised:  #f5fafa;
+  --border-subtle:  #d8eeec;
+  --border-default: #b8deda;
+  --border-strong:  #8ecac5;
+  --text-1: #0e1e1d;
+  --text-2: #2d5553;
+  --text-3: #6ea09d;
+  --accent:        #3dbfb9;
+  --accent-bg:     #dff5f4;
+  --accent-border: #8adbd7;
+  --accent-text:   #1a8a84;
+  --green:        #0d8f5c;
+  --green-bg:     #e6f7f0;
+  --green-border: #a0dfc2;
+  --tag-opt-bg:   #e6f7f0;
+  --tag-opt-text: #0d6b44;
+  --amber:        #c97800;
+  --amber-bg:     #fff8e6;
+  --amber-border: #f5cc6a;
+  --red:          #cc2828;
+  --red-bg:       #fef2f2;
+  --red-border:   #f9b8b8;
+}
+
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {

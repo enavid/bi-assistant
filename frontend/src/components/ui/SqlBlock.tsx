@@ -23,7 +23,7 @@ function formatSql(sql: string): string {
 
 export function SqlBlock({ code }: SqlBlockProps) {
   const { theme } = useAppStore()
-  const style = theme === 'dark' ? atomOneDark : atomOneLight
+  const style = theme === 'dark' ? atomOneDark : atomOneLight  // amin-rai uses light style
 
   return (
     <SyntaxHighlighter

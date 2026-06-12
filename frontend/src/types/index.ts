@@ -88,7 +88,7 @@ export interface OllamaHealth {
   message: string
 }
 
-export type Theme = 'dark' | 'light'
+export type Theme = 'dark' | 'light' | 'amin-rai'
 export type AppPage = 'chat' | 'builder' | 'settings' | 'eval'
 
 // ---------------------------------------------------------------------------

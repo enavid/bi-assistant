@@ -28,7 +28,9 @@ export const useAppStore = create<AppState>()(
       },
 
       toggleTheme: () => {
-        const next: Theme = get().theme === 'dark' ? 'light' : 'dark'
+        const cycle: Theme[] = ['dark', 'light', 'amin-rai']
+        const idx = cycle.indexOf(get().theme)
+        const next = cycle[(idx + 1) % cycle.length]
         get().setTheme(next)
       },
 

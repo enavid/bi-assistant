@@ -4,7 +4,14 @@ import { useAppStore } from '@/store/appStore'
 import { useOllamaHealth, useProjects, useSessions, useCreateSession, useDeleteSession } from '@/hooks'
 import { Modal } from '@/components/ui/Modal'
 import { Icon } from '@/components/ui/Icon'
-import type { AppPage } from '@/types'
+import type { AppPage, Theme } from '@/types'
+import amrLogo from '@/assets/amr-logo.png'
+
+const THEME_CYCLE: { theme: Theme; icon: 'sun' | 'moon'; label: string }[] = [
+  { theme: 'dark',     icon: 'sun',  label: 'Dark' },
+  { theme: 'light',    icon: 'moon', label: 'Light' },
+  { theme: 'amin-rai', icon: 'moon', label: 'Amin Rai' },
+]
 
 const NAV: { page: AppPage; label: string; icon: Parameters<typeof Icon>[0]['name'] }[] = [
   { page: 'chat',    label: 'Chat',           icon: 'message' },
@@ -159,12 +166,7 @@ export function Sidebar() {
           className="py-3 flex justify-center flex-shrink-0"
           style={{ borderBottom: '1px solid var(--border-subtle)' }}
         >
-          <div
-            className="w-8 h-8 rounded-[9px] flex items-center justify-center text-[11px] font-bold"
-            style={{ background: 'var(--accent-bg)', border: '1px solid var(--accent-border)', color: 'var(--accent-text)' }}
-          >
-            AR
-          </div>
+          <img src={amrLogo} alt="Amin Raay" className="w-8 h-8 object-contain" />
         </div>
 
         {/* Expand + Nav */}
@@ -227,10 +229,13 @@ export function Sidebar() {
           />
           <button
             onClick={toggleTheme}
-            className="w-8 h-8 rounded-[8px] flex items-center justify-center border transition-colors hover:opacity-80"
+            title={`Theme: ${theme} — click to switch`}
+            className="w-8 h-8 rounded-[8px] flex items-center justify-center transition-colors hover:opacity-80"
             style={{ border: '1px solid var(--border-default)', color: 'var(--text-2)' }}
           >
-            <Icon name={theme === 'dark' ? 'sun' : 'moon'} size={14} />
+            {theme === 'amin-rai'
+              ? <span style={{ width: 14, height: 14, borderRadius: '50%', background: '#3DBFB9', display: 'inline-block', flexShrink: 0 }} />
+              : <Icon name={theme === 'dark' ? 'sun' : 'moon'} size={14} />}
           </button>
         </div>
       </aside>
@@ -249,12 +254,7 @@ export function Sidebar() {
           className="px-3.5 py-3 flex items-center gap-2.5 flex-shrink-0"
           style={{ borderBottom: '1px solid var(--border-subtle)' }}
         >
-          <div
-            className="w-8 h-8 rounded-[9px] flex items-center justify-center text-[11px] font-bold flex-shrink-0"
-            style={{ background: 'var(--accent-bg)', border: '1px solid var(--accent-border)', color: 'var(--accent-text)' }}
-          >
-            AR
-          </div>
+          <img src={amrLogo} alt="Amin Raay" className="w-8 h-8 object-contain flex-shrink-0" />
           <div className="flex-1 min-w-0">
             <p className="text-[13px] font-semibold truncate" style={{ color: 'var(--text-1)' }}>AminRaay</p>
             <p className="text-[10px]" style={{ color: 'var(--text-3)' }}>BI Assistant</p>
@@ -396,10 +396,13 @@ export function Sidebar() {
 
           <button
             onClick={toggleTheme}
+            title={`Theme: ${theme} — click to switch`}
             className="w-7 h-7 rounded-[7px] flex items-center justify-center flex-shrink-0 transition-colors hover:opacity-80"
             style={{ border: '1px solid var(--border-default)', color: 'var(--text-2)' }}
           >
-            <Icon name={theme === 'dark' ? 'sun' : 'moon'} size={14} />
+            {theme === 'amin-rai'
+              ? <span style={{ width: 12, height: 12, borderRadius: '50%', background: '#3DBFB9', display: 'inline-block' }} />
+              : <Icon name={theme === 'dark' ? 'sun' : 'moon'} size={14} />}
           </button>
         </div>
       </aside>
