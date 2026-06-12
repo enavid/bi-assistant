@@ -101,7 +101,9 @@ def test_get_project_not_found(client):
 
 def test_update_project(client):
     created = client.post("/projects", json={"name": "Old Name"}).json()
-    resp = client.patch(f"/projects/{created['id']}", json={"name": "New Name", "notes": "some notes"})
+    resp = client.patch(
+        f"/projects/{created['id']}", json={"name": "New Name", "notes": "some notes"}
+    )
     assert resp.status_code == 200
     data = resp.json()
     assert data["name"] == "New Name"

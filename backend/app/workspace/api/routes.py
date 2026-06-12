@@ -8,7 +8,14 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.api.schemas import (
+from app.infrastructure.db.models import (
+    ExperimentORM,
+    ProjectORM,
+    SectionORM,
+    WorkspaceORM,
+)
+from app.infrastructure.db.session import get_db
+from app.workspace.api.schemas import (
     ExperimentCreate,
     ExperimentFeedback,
     ExperimentOut,
@@ -18,13 +25,6 @@ from app.api.schemas import (
     SectionCreate,
     SectionUpdate,
 )
-from app.infrastructure.db.models import (
-    ExperimentORM,
-    ProjectORM,
-    SectionORM,
-    WorkspaceORM,
-)
-from app.infrastructure.db.session import get_db
 
 logger = logging.getLogger(__name__)
 

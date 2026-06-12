@@ -6,7 +6,7 @@ import pandas as pd
 import psycopg2
 
 from app.core.config import settings
-from app.domain.entities import QueryResult
+from app.hr_analytics.domain.entities import QueryResult
 
 
 class HRQueryExecutor:

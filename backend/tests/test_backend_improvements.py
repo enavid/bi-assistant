@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import pytest
 
-from app.use_cases.hr_analytics.orchestrator import LLMOrchestrator, ValidationStatus
-from app.use_cases.hr_analytics.steps.decision_router import DecisionRouter
-from app.use_cases.hr_analytics.steps.question_validator import QuestionValidator
+from app.hr_analytics.use_cases.orchestrator import LLMOrchestrator, ValidationStatus
+from app.hr_analytics.use_cases.steps.decision_router import DecisionRouter
+from app.hr_analytics.use_cases.steps.question_validator import QuestionValidator
 
 
 def _run(orchestrator, question: str) -> dict:
@@ -106,7 +106,7 @@ def test_list_with_identifier_is_access_denied(metadata_service):
 
 
 def test_domain_classifier_passes_list_with_identifier_as_hr():
-    from app.use_cases.hr_analytics.steps.domain_classifier import DomainClassifier
+    from app.hr_analytics.use_cases.steps.domain_classifier import DomainClassifier
 
     clf = DomainClassifier()
     result = clf.classify("لیست افراد بالای ۶۰ سال با شناسه‌شان را بده")

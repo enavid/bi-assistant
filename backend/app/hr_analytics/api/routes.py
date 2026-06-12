@@ -5,10 +5,10 @@ from typing import Any
 
 from fastapi import APIRouter, HTTPException
 
-from app.api.dependencies import get_hr_bi_orchestrator
-from app.api.schemas import HRBIRequest, HRBIResponse
 from app.core.config import settings
-from app.use_cases.hr_analytics.orchestrate import HRBIOrchestrationUseCase
+from app.dependencies import get_hr_bi_orchestrator
+from app.hr_analytics.api.schemas import HRBIRequest, HRBIResponse
+from app.hr_analytics.use_cases.orchestrate import HRBIOrchestrationUseCase
 
 logger = logging.getLogger(__name__)
 

@@ -12,7 +12,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from sqlalchemy.orm import selectinload
 
-from app.api.schemas.eval import (
+from app.evaluation.api.schemas import (
     BulkImportResult,
     EvalQuestionIn,
     EvalQuestionOut,
@@ -44,21 +44,21 @@ _DEFAULT_SET_NAME = "Consultant Questions"
 
 
 def build_orchestrator(model_name: str | None = None) -> Any:
-    from app.adapters.presenters.response_builder import ResponseBuilder
     from app.core.config import settings
+    from app.hr_analytics.adapters.response_builder import ResponseBuilder
+    from app.hr_analytics.use_cases.orchestrator import LLMOrchestrator
+    from app.hr_analytics.use_cases.sql.generator import SQLGenerator
+    from app.hr_analytics.use_cases.sql.template_engine import SQLTemplateEngine
+    from app.hr_analytics.use_cases.sql.validator import SQLValidator
+    from app.hr_analytics.use_cases.steps.decision_router import DecisionRouter
+    from app.hr_analytics.use_cases.steps.domain_classifier import DomainClassifier
+    from app.hr_analytics.use_cases.steps.gap_service import GapService
+    from app.hr_analytics.use_cases.steps.intent_parser import IntentParser
+    from app.hr_analytics.use_cases.steps.question_validator import QuestionValidator
+    from app.hr_analytics.use_cases.steps.semantic_mapper import SemanticMapper
     from app.infrastructure.hr_db.analytics_executor import QueryExecutor
     from app.infrastructure.llm.ollama_client import OllamaClient
     from app.infrastructure.metadata.loader import get_metadata
-    from app.use_cases.hr_analytics.orchestrator import LLMOrchestrator
-    from app.use_cases.hr_analytics.sql.generator import SQLGenerator
-    from app.use_cases.hr_analytics.sql.template_engine import SQLTemplateEngine
-    from app.use_cases.hr_analytics.sql.validator import SQLValidator
-    from app.use_cases.hr_analytics.steps.decision_router import DecisionRouter
-    from app.use_cases.hr_analytics.steps.domain_classifier import DomainClassifier
-    from app.use_cases.hr_analytics.steps.gap_service import GapService
-    from app.use_cases.hr_analytics.steps.intent_parser import IntentParser
-    from app.use_cases.hr_analytics.steps.question_validator import QuestionValidator
-    from app.use_cases.hr_analytics.steps.semantic_mapper import SemanticMapper
 
     metadata = get_metadata()
     sql_validator = SQLValidator(metadata_service=metadata)

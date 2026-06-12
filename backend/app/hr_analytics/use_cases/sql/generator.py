@@ -11,8 +11,8 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
+from app.hr_analytics.use_cases.sql.llm_fallback import LLMSQLFallback
 from app.infrastructure.metadata.service import get_metadata_service
-from app.use_cases.hr_analytics.sql.llm_fallback import LLMSQLFallback
 
 """
 sql_generator.py

@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from app.use_cases.hr_analytics.sql.template_engine import SQLTemplateEngine
-from app.use_cases.hr_analytics.steps.decision_router import DecisionRouter
-from app.use_cases.hr_analytics.steps.semantic_mapper import SemanticMapper
+from app.hr_analytics.use_cases.sql.template_engine import SQLTemplateEngine
+from app.hr_analytics.use_cases.steps.decision_router import DecisionRouter
+from app.hr_analytics.use_cases.steps.semantic_mapper import SemanticMapper
 
 
 def test_semantic_mapper_maps_core_hr_terms(metadata_service):

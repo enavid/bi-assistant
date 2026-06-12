@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from app.domain.entities import ExperimentEntry, QueryResult
-from app.domain.interfaces import IQueryExecutor
+from app.hr_analytics.domain.entities import QueryResult
+from app.hr_analytics.domain.interfaces import IQueryExecutor
+from app.workspace.domain.entities import ExperimentEntry
 
 
 class RunQueryUseCase:

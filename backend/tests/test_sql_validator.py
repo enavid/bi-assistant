@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from app.use_cases.hr_analytics.sql.validator import SQLValidator
+from app.hr_analytics.use_cases.sql.validator import SQLValidator
 
 
 def validate(sql: str, metadata_service, question: str | None = None):

@@ -48,7 +48,9 @@ def test_health_returns_metadata_warning_when_not_ok(client):
 
 
 def test_health_returns_500_on_exception(client):
-    with patch("app.infrastructure.metadata.loader.get_metadata", side_effect=RuntimeError("db down")):
+    with patch(
+        "app.infrastructure.metadata.loader.get_metadata", side_effect=RuntimeError("db down")
+    ):
         resp = client.get("/hr-bi/health")
     assert resp.status_code == 500
 
@@ -74,7 +76,7 @@ def _chat_payload(**kwargs) -> dict:
 def test_chat_returns_orchestrator_response(client):
     mock_orch = AsyncMock()
     mock_orch.arun.return_value = _mock_response(_chat_payload())
-    with patch("app.api.routes.hr_bi.get_hr_bi_orchestrator", return_value=mock_orch):
+    with patch("app.hr_analytics.api.routes.get_hr_bi_orchestrator", return_value=mock_orch):
         resp = client.post("/hr-bi/chat", json={"question": "تعداد کارکنان؟"})
     assert resp.status_code == 200
     assert resp.json()["route"] == "SQL"
@@ -83,7 +85,7 @@ def test_chat_returns_orchestrator_response(client):
 def test_chat_passes_question_to_orchestrator(client):
     mock_orch = AsyncMock()
     mock_orch.arun.return_value = _mock_response(_chat_payload())
-    with patch("app.api.routes.hr_bi.get_hr_bi_orchestrator", return_value=mock_orch):
+    with patch("app.hr_analytics.api.routes.get_hr_bi_orchestrator", return_value=mock_orch):
         client.post("/hr-bi/chat", json={"question": "سوال تست", "user_role": "admin"})
     call_kwargs = mock_orch.arun.call_args
     assert call_kwargs.args[0] == "سوال تست"
@@ -93,7 +95,7 @@ def test_chat_passes_question_to_orchestrator(client):
 def test_chat_returns_500_on_exception(client):
     mock_orch = AsyncMock()
     mock_orch.arun.side_effect = RuntimeError("LLM down")
-    with patch("app.api.routes.hr_bi.get_hr_bi_orchestrator", return_value=mock_orch):
+    with patch("app.hr_analytics.api.routes.get_hr_bi_orchestrator", return_value=mock_orch):
         resp = client.post("/hr-bi/chat", json={"question": "سوال"})
     assert resp.status_code == 500
 

@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from app.use_cases.hr_analytics.steps.decision_router import DecisionRouter
-from app.use_cases.hr_analytics.steps.gap_service import GapService
-from app.use_cases.hr_analytics.steps.intent_parser import IntentParser
-from app.use_cases.hr_analytics.steps.semantic_mapper import SemanticMapper
+from app.hr_analytics.use_cases.steps.decision_router import DecisionRouter
+from app.hr_analytics.use_cases.steps.gap_service import GapService
+from app.hr_analytics.use_cases.steps.intent_parser import IntentParser
+from app.hr_analytics.use_cases.steps.semantic_mapper import SemanticMapper
 
 # ---------------------------------------------------------------------------
 # SemanticMapper

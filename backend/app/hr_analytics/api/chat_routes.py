@@ -1,15 +1,14 @@
 from __future__ import annotations
 
 import logging
-from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
-from app.api.dependencies import get_hr_bi_orchestrator, get_run_query_use_case
-from app.api.schemas import (
+from app.core.config import settings
+from app.dependencies import get_hr_bi_orchestrator, get_run_query_use_case
+from app.hr_analytics.api.schemas import (
     ChatSessionCreate,
     ChatSessionOut,
     ChatSessionUpdate,
@@ -18,79 +17,69 @@ from app.api.schemas import (
     QueryRequest,
     QueryResponse,
 )
-from app.core.config import settings
-from app.infrastructure.db.models import ChatSessionORM, ExperimentORM, MessageORM, ProjectORM
+from app.hr_analytics.repositories.chat_repository import ChatRepository
+from app.hr_analytics.use_cases.orchestrate import HRBIOrchestrationUseCase
+from app.infrastructure.db.models import ExperimentORM, ProjectORM
 from app.infrastructure.db.session import get_db
-from app.use_cases.hr_analytics.orchestrate import HRBIOrchestrationUseCase
-from app.use_cases.workspace.run_query import RunQueryUseCase
+from app.workspace.use_cases.run_query import RunQueryUseCase
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
-_SESSION_OPTS = [selectinload(ChatSessionORM.messages)]
+
+def _repo(db: AsyncSession = Depends(get_db)) -> ChatRepository:
+    return ChatRepository(db)
 
 
-async def _require_session(session_id: str, db: AsyncSession) -> ChatSessionORM:
-    result = await db.execute(
-        select(ChatSessionORM).options(*_SESSION_OPTS).where(ChatSessionORM.id == session_id)
-    )
-    session = result.scalar_one_or_none()
+async def _require_session(session_id: str, repo: ChatRepository) -> object:
+    session = await repo.get_session(session_id)
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
     return session
 
 
 @router.get("/sessions", response_model=list[ChatSessionOut], summary="List chat sessions")
-async def list_sessions(db: AsyncSession = Depends(get_db)) -> list[ChatSessionORM]:
-    result = await db.execute(
-        select(ChatSessionORM).options(*_SESSION_OPTS).order_by(ChatSessionORM.created_at.desc())
-    )
-    return list(result.scalars().all())
+async def list_sessions(repo: ChatRepository = Depends(_repo)) -> list:
+    return await repo.list_sessions()
 
 
 @router.post(
     "/sessions", response_model=ChatSessionOut, status_code=201, summary="Create chat session"
 )
-async def create_session(
-    body: ChatSessionCreate, db: AsyncSession = Depends(get_db)
-) -> ChatSessionORM:
-    session = ChatSessionORM(
+async def create_session(body: ChatSessionCreate, repo: ChatRepository = Depends(_repo)) -> object:
+    return await repo.create_session(
         title=body.title, project_id=body.project_id, model_name=body.model_name
     )
-    db.add(session)
-    await db.flush()
-    await db.refresh(session, ["messages"])
-    return session
 
 
 @router.get("/sessions/{session_id}", response_model=ChatSessionOut, summary="Get chat session")
-async def get_session(session_id: str, db: AsyncSession = Depends(get_db)) -> ChatSessionORM:
-    return await _require_session(session_id, db)
+async def get_session(session_id: str, repo: ChatRepository = Depends(_repo)) -> object:
+    return await _require_session(session_id, repo)
 
 
 @router.patch(
     "/sessions/{session_id}", response_model=ChatSessionOut, summary="Update chat session"
 )
 async def update_session(
-    session_id: str, body: ChatSessionUpdate, db: AsyncSession = Depends(get_db)
-) -> ChatSessionORM:
-    session = await _require_session(session_id, db)
-    if body.title is not None:
-        session.title = body.title
-    if body.project_id is not None:
-        session.project_id = body.project_id
-    if body.model_name is not None:
-        session.model_name = body.model_name
-    session.updated_at = datetime.now(UTC)
-    await db.flush()
+    session_id: str, body: ChatSessionUpdate, repo: ChatRepository = Depends(_repo)
+) -> object:
+    session = await repo.update_session(
+        session_id,
+        title=body.title,
+        project_id=body.project_id,
+        model_name=body.model_name,
+    )
+    if session is None:
+        raise HTTPException(status_code=404, detail="Session not found")
     return session
 
 
 @router.delete("/sessions/{session_id}", status_code=204, summary="Delete chat session")
-async def delete_session(session_id: str, db: AsyncSession = Depends(get_db)) -> None:
-    session = await _require_session(session_id, db)
-    await db.delete(session)
+async def delete_session(session_id: str, repo: ChatRepository = Depends(_repo)) -> None:
+    deleted = await repo.delete_session(session_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Session not found")
 
 
 @router.post(
@@ -98,11 +87,8 @@ async def delete_session(session_id: str, db: AsyncSession = Depends(get_db)) ->
     response_model=ChatSessionOut,
     summary="Add message to session",
 )
-async def add_message(
-    session_id: str, body: dict, db: AsyncSession = Depends(get_db)
-) -> ChatSessionORM:
-    session = await _require_session(session_id, db)
-    message = MessageORM(
+async def add_message(session_id: str, body: dict, repo: ChatRepository = Depends(_repo)) -> object:
+    session = await repo.add_message(
         session_id=session_id,
         role=body.get("role", "user"),
         content=body.get("content", ""),
@@ -110,17 +96,13 @@ async def add_message(
         error=body.get("error"),
         query_result=body.get("query_result"),
     )
-    db.add(message)
-    session.updated_at = datetime.now(UTC)
-    await db.flush()
-    await db.refresh(session, ["messages"])
+    if session is None:
+        raise HTTPException(status_code=404, detail="Session not found")
     return session
 
 
 @router.post("/generate", response_model=GenerateResponse, summary="Generate SQL from question")
-async def generate(
-    body: GenerateRequest,
-) -> GenerateResponse:
+async def generate(body: GenerateRequest) -> GenerateResponse:
     try:
         orchestrator = get_hr_bi_orchestrator()
         uc = HRBIOrchestrationUseCase(orchestrator)

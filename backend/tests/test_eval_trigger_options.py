@@ -54,7 +54,7 @@ def client(db_engine, db_session):
         yield db_session
 
     app.dependency_overrides[get_db] = _override
-    with patch("app.api.routes.eval.AsyncSessionLocal", new=factory):
+    with patch("app.evaluation.api.routes.AsyncSessionLocal", new=factory):
         with TestClient(app) as c:
             yield c
     app.dependency_overrides.clear()
@@ -76,11 +76,17 @@ def _make_set_with_questions(client) -> str:
 def test_trigger_run_with_category_filter(client):
     set_id = _make_set_with_questions(client)
     mock_orch = AsyncMock()
-    mock_orch.arun.return_value = AsyncMock(to_dict=lambda: {
-        "route": "SQL", "status": "NOT_EXECUTED", "detected_intent": "",
-        "context": {}, "errors": [], "warnings": [],
-    })
-    with patch("app.api.routes.eval.build_orchestrator", return_value=mock_orch):
+    mock_orch.arun.return_value = AsyncMock(
+        to_dict=lambda: {
+            "route": "SQL",
+            "status": "NOT_EXECUTED",
+            "detected_intent": "",
+            "context": {},
+            "errors": [],
+            "warnings": [],
+        }
+    )
+    with patch("app.evaluation.api.routes.build_orchestrator", return_value=mock_orch):
         resp = client.post(
             f"/eval/question-sets/{set_id}/run",
             json={"category": "demographics"},
@@ -93,11 +99,17 @@ def test_trigger_run_with_category_filter(client):
 def test_trigger_run_stores_model_name(client):
     set_id = _make_set_with_questions(client)
     mock_orch = AsyncMock()
-    mock_orch.arun.return_value = AsyncMock(to_dict=lambda: {
-        "route": "SQL", "status": "NOT_EXECUTED", "detected_intent": "",
-        "context": {}, "errors": [], "warnings": [],
-    })
-    with patch("app.api.routes.eval.build_orchestrator", return_value=mock_orch):
+    mock_orch.arun.return_value = AsyncMock(
+        to_dict=lambda: {
+            "route": "SQL",
+            "status": "NOT_EXECUTED",
+            "detected_intent": "",
+            "context": {},
+            "errors": [],
+            "warnings": [],
+        }
+    )
+    with patch("app.evaluation.api.routes.build_orchestrator", return_value=mock_orch):
         resp = client.post(
             f"/eval/question-sets/{set_id}/run",
             json={"model_name": "qwen2.5-coder"},
@@ -109,11 +121,17 @@ def test_trigger_run_stores_model_name(client):
 def test_trigger_run_no_body_uses_all_questions(client):
     set_id = _make_set_with_questions(client)
     mock_orch = AsyncMock()
-    mock_orch.arun.return_value = AsyncMock(to_dict=lambda: {
-        "route": "SQL", "status": "NOT_EXECUTED", "detected_intent": "",
-        "context": {}, "errors": [], "warnings": [],
-    })
-    with patch("app.api.routes.eval.build_orchestrator", return_value=mock_orch):
+    mock_orch.arun.return_value = AsyncMock(
+        to_dict=lambda: {
+            "route": "SQL",
+            "status": "NOT_EXECUTED",
+            "detected_intent": "",
+            "context": {},
+            "errors": [],
+            "warnings": [],
+        }
+    )
+    with patch("app.evaluation.api.routes.build_orchestrator", return_value=mock_orch):
         resp = client.post(f"/eval/question-sets/{set_id}/run", json={})
     assert resp.status_code == 201
     assert resp.json()["total"] == 3

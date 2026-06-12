@@ -5,7 +5,7 @@ from typing import Any
 import httpx
 
 from app.core.config import settings
-from app.domain.entities import GenerationResult
+from app.hr_analytics.domain.entities import GenerationResult
 
 
 class OllamaClient:

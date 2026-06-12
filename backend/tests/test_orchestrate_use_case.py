@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from app.use_cases.hr_analytics.orchestrate import HRBIOrchestrationUseCase, _derive_source
+from app.hr_analytics.use_cases.orchestrate import HRBIOrchestrationUseCase, _derive_source
 
 
 def _make_orchestrator(payload: dict) -> AsyncMock:
@@ -60,9 +60,7 @@ async def test_generate_passes_question_to_orchestrator():
     orch = _make_orchestrator(_base_payload())
     uc = HRBIOrchestrationUseCase(orch)
     await uc.generate("سوال تست", user_id="u1", user_role="admin", execute_sql=True)
-    orch.arun.assert_called_once_with(
-        "سوال تست", user_id="u1", user_role="admin", execute_sql=True
-    )
+    orch.arun.assert_called_once_with("سوال تست", user_id="u1", user_role="admin", execute_sql=True)
 
 
 @pytest.mark.asyncio
@@ -93,10 +91,17 @@ async def test_generate_source_from_sql_plan():
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("rej_status", [
-    "ACCESS_DENIED", "OUT_OF_SCOPE", "DATA_GAP",
-    "ANALYTICAL_GAP", "SQL_VALIDATION_FAILED", "METADATA_ERROR",
-])
+@pytest.mark.parametrize(
+    "rej_status",
+    [
+        "ACCESS_DENIED",
+        "OUT_OF_SCOPE",
+        "DATA_GAP",
+        "ANALYTICAL_GAP",
+        "SQL_VALIDATION_FAILED",
+        "METADATA_ERROR",
+    ],
+)
 @pytest.mark.asyncio
 async def test_generate_rejected_status_sets_success_false(rej_status):
     payload = _base_payload(status=rej_status, generated_sql="SELECT 1")
@@ -168,17 +173,20 @@ async def test_generate_not_executed_row_count_is_none():
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("status,route,expected", [
-    ("ACCESS_DENIED", "SQL", "reject"),
-    ("OUT_OF_SCOPE", "SQL", "reject"),
-    ("NOT_EXECUTED", "REJECT", "reject"),
-    ("DATA_GAP", "SQL", "gap"),
-    ("ANALYTICAL_GAP", "SQL", "gap"),
-    ("NOT_EXECUTED", "GAP", "gap"),
-    ("NEEDS_CLARIFICATION", "SQL", "clarification"),
-    ("NOT_EXECUTED", "NEEDS_CLARIFICATION", "clarification"),
-    ("NOT_EXECUTED", "SQL", "unknown"),
-    ("", "", "unknown"),
-])
+@pytest.mark.parametrize(
+    "status,route,expected",
+    [
+        ("ACCESS_DENIED", "SQL", "reject"),
+        ("OUT_OF_SCOPE", "SQL", "reject"),
+        ("NOT_EXECUTED", "REJECT", "reject"),
+        ("DATA_GAP", "SQL", "gap"),
+        ("ANALYTICAL_GAP", "SQL", "gap"),
+        ("NOT_EXECUTED", "GAP", "gap"),
+        ("NEEDS_CLARIFICATION", "SQL", "clarification"),
+        ("NOT_EXECUTED", "NEEDS_CLARIFICATION", "clarification"),
+        ("NOT_EXECUTED", "SQL", "unknown"),
+        ("", "", "unknown"),
+    ],
+)
 def test_derive_source(status, route, expected):
     assert _derive_source(route, status) == expected

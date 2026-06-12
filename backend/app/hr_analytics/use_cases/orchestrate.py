@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from app.domain.entities import GenerationResult
+from app.hr_analytics.domain.entities import GenerationResult
 
 
 class HRBIOrchestrationUseCase:

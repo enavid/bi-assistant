@@ -4,7 +4,7 @@ import asyncio
 
 import pytest
 
-from app.use_cases.hr_analytics.orchestrator import LLMOrchestrator
+from app.hr_analytics.use_cases.orchestrator import LLMOrchestrator
 
 pytestmark = pytest.mark.integration
 

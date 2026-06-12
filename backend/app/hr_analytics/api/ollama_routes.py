@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends
 
-from app.api.dependencies import get_llm_client
-from app.api.schemas import OllamaHealthResponse, OllamaModelOut
+from app.dependencies import get_llm_client
+from app.hr_analytics.api.schemas import OllamaHealthResponse, OllamaModelOut
 from app.infrastructure.llm.ollama_client import OllamaClient
 
 router = APIRouter(prefix="/ollama", tags=["ollama"])

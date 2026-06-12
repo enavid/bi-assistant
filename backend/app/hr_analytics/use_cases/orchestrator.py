@@ -14,7 +14,8 @@ from enum import StrEnum
 from pathlib import Path
 from typing import Any, Protocol
 
-from app.infrastructure.metadata.service import MetadataService, get_metadata_service
+from app.hr_analytics.domain.interfaces import IMetadataService
+from app.infrastructure.metadata.service import get_metadata_service
 
 """
 llm_orchestrator.py
@@ -179,7 +180,7 @@ class LLMOrchestrator:
     def __init__(
         self,
         *,
-        metadata_service: MetadataService | None = None,
+        metadata_service: IMetadataService | None = None,
         metadata_dir: str | Path | None = None,
         domain_classifier: Any | None = None,
         question_validator: Any | None = None,

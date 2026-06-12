@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from app.use_cases.hr_analytics.sql.generator import SQLGenerator
+from app.hr_analytics.use_cases.sql.generator import SQLGenerator
 
 
 def test_sql_generator_produces_select_for_total_count(metadata_service):

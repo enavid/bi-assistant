@@ -14,8 +14,8 @@ from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
+from app.hr_analytics.use_cases.sql.validator import SQLValidator
 from app.infrastructure.metadata.service import get_metadata_service
-from app.use_cases.hr_analytics.sql.validator import SQLValidator
 
 """
 query_executor.py

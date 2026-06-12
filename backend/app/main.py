@@ -8,12 +8,15 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi_offline import FastAPIOffline
 
-from app.api.middleware.request_id import RequestIDMiddleware
-from app.api.routes import chat, eval, hr_bi, ollama, workspace
 from app.core.config import settings
 from app.core.logging import setup_logging
+from app.evaluation.api import routes as eval_routes
+from app.hr_analytics.api import chat_routes, ollama_routes
+from app.hr_analytics.api import routes as hr_bi_routes
 from app.infrastructure.db.models import Base  # noqa: F401
 from app.infrastructure.db.session import engine
+from app.middleware.request_id import RequestIDMiddleware
+from app.workspace.api import routes as workspace_routes
 
 logger = logging.getLogger(__name__)
 
@@ -94,11 +97,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(workspace.router)
-app.include_router(chat.router)
-app.include_router(hr_bi.router)
-app.include_router(ollama.router)
-app.include_router(eval.router)
+app.include_router(workspace_routes.router)
+app.include_router(chat_routes.router)
+app.include_router(hr_bi_routes.router)
+app.include_router(ollama_routes.router)
+app.include_router(eval_routes.router)
 
 
 @app.get("/health", tags=["system"], summary="Health check")

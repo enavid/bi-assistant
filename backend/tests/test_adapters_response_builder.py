@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from app.adapters.presenters.response_builder import ResponseBuilder
+from app.hr_analytics.adapters.response_builder import ResponseBuilder
 
 
 def test_response_builder_builds_success_response(metadata_service):

@@ -1,12 +1,11 @@
 from __future__ import annotations
 
-from app.domain.entities import (
+from app.hr_analytics.domain.entities import GenerationResult, QueryResult
+from app.workspace.domain.entities import (
     ChatSession,
     ExperimentEntry,
-    GenerationResult,
     Message,
     Project,
-    QueryResult,
     Section,
     Workspace,
 )

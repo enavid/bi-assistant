@@ -75,7 +75,7 @@ def _seed_set_with_questions(client, n: int = 3) -> dict:
 
 def test_trigger_run_returns_201_with_pending_status(client):
     qs = _seed_set_with_questions(client)
-    with patch("app.api.routes.eval._run_evaluation_background"):
+    with patch("app.evaluation.api.routes._run_evaluation_background"):
         resp = client.post(f"/eval/question-sets/{qs['id']}/run")
     assert resp.status_code == 201
     data = resp.json()
@@ -97,7 +97,7 @@ def test_trigger_run_empty_set_returns_400(client):
 
 def test_trigger_run_appears_in_list(client):
     qs = _seed_set_with_questions(client)
-    with patch("app.api.routes.eval._run_evaluation_background"):
+    with patch("app.evaluation.api.routes._run_evaluation_background"):
         client.post(f"/eval/question-sets/{qs['id']}/run")
     runs = client.get(f"/eval/question-sets/{qs['id']}/runs").json()
     assert len(runs) == 1
@@ -118,8 +118,14 @@ def _make_mock_response(route: str = "SQL", status: str = "NOT_EXECUTED") -> Mag
         "errors": [],
         "warnings": [],
         "context": {
-            "traces": [{"step": "domain_classifier", "status": "ok", "duration_ms": 10, "details": {}}],
-            "sql_plan": {"source": "template", "template_id": "t1", "metadata": {"model": "llama3"}},
+            "traces": [
+                {"step": "domain_classifier", "status": "ok", "duration_ms": 10, "details": {}}
+            ],
+            "sql_plan": {
+                "source": "template",
+                "template_id": "t1",
+                "metadata": {"model": "llama3"},
+            },
             "query_result": {},
             "sql_validation": {},
             "visualization_plan": {},
@@ -130,7 +136,7 @@ def _make_mock_response(route: str = "SQL", status: str = "NOT_EXECUTED") -> Mag
 
 @pytest.mark.asyncio
 async def test_execute_run_sets_status_to_done(db_engine):
-    from app.api.routes.eval import _run_evaluation_background
+    from app.evaluation.api.routes import _run_evaluation_background
 
     factory = async_sessionmaker(db_engine, class_=AsyncSession, expire_on_commit=False)
 
@@ -150,10 +156,17 @@ async def test_execute_run_sets_status_to_done(db_engine):
     mock_orchestrator = AsyncMock()
     mock_orchestrator.arun.return_value = _make_mock_response()
 
-    await _run_evaluation_background(run_id=run_id, question_ids=question_ids, session_factory=factory, orchestrator=mock_orchestrator)
+    await _run_evaluation_background(
+        run_id=run_id,
+        question_ids=question_ids,
+        session_factory=factory,
+        orchestrator=mock_orchestrator,
+    )
 
     async with factory() as session:
-        updated = (await session.execute(select(EvalRunORM).where(EvalRunORM.id == run_id))).scalar_one()
+        updated = (
+            await session.execute(select(EvalRunORM).where(EvalRunORM.id == run_id))
+        ).scalar_one()
         assert updated.status == "done"
         assert updated.total == 1
         assert updated.passed == 1
@@ -162,7 +175,7 @@ async def test_execute_run_sets_status_to_done(db_engine):
 
 @pytest.mark.asyncio
 async def test_execute_run_saves_results(db_engine):
-    from app.api.routes.eval import _run_evaluation_background
+    from app.evaluation.api.routes import _run_evaluation_background
 
     factory = async_sessionmaker(db_engine, class_=AsyncSession, expire_on_commit=False)
 
@@ -171,8 +184,11 @@ async def test_execute_run_saves_results(db_engine):
         session.add(qs)
         await session.flush()
         q = EvalQuestionORM(
-            set_id=qs.id, question_id="q001", question="سوال",
-            category="demographics", expected_route="SQL",
+            set_id=qs.id,
+            question_id="q001",
+            question="سوال",
+            category="demographics",
+            expected_route="SQL",
         )
         session.add(q)
         await session.flush()
@@ -185,12 +201,23 @@ async def test_execute_run_saves_results(db_engine):
     mock_orchestrator = AsyncMock()
     mock_orchestrator.arun.return_value = _make_mock_response(route="SQL", status="NOT_EXECUTED")
 
-    await _run_evaluation_background(run_id=run_id, question_ids=question_ids, session_factory=factory, orchestrator=mock_orchestrator)
+    await _run_evaluation_background(
+        run_id=run_id,
+        question_ids=question_ids,
+        session_factory=factory,
+        orchestrator=mock_orchestrator,
+    )
 
     async with factory() as session:
         results = (
-            await session.execute(select(EvalRunResultORM).where(EvalRunResultORM.run_id == run_id))
-        ).scalars().all()
+            (
+                await session.execute(
+                    select(EvalRunResultORM).where(EvalRunResultORM.run_id == run_id)
+                )
+            )
+            .scalars()
+            .all()
+        )
         assert len(results) == 1
         r = results[0]
         assert r.actual_route == "SQL"
@@ -200,7 +227,7 @@ async def test_execute_run_saves_results(db_engine):
 
 @pytest.mark.asyncio
 async def test_execute_run_sets_failed_on_error(db_engine):
-    from app.api.routes.eval import _run_evaluation_background
+    from app.evaluation.api.routes import _run_evaluation_background
 
     factory = async_sessionmaker(db_engine, class_=AsyncSession, expire_on_commit=False)
 
@@ -220,14 +247,27 @@ async def test_execute_run_sets_failed_on_error(db_engine):
     mock_orchestrator = AsyncMock()
     mock_orchestrator.arun.side_effect = RuntimeError("LLM unavailable")
 
-    await _run_evaluation_background(run_id=run_id, question_ids=question_ids, session_factory=factory, orchestrator=mock_orchestrator)
+    await _run_evaluation_background(
+        run_id=run_id,
+        question_ids=question_ids,
+        session_factory=factory,
+        orchestrator=mock_orchestrator,
+    )
 
     async with factory() as session:
-        updated = (await session.execute(select(EvalRunORM).where(EvalRunORM.id == run_id))).scalar_one()
+        updated = (
+            await session.execute(select(EvalRunORM).where(EvalRunORM.id == run_id))
+        ).scalar_one()
         assert updated.status == "done"
         assert updated.failed == 1
         results = (
-            await session.execute(select(EvalRunResultORM).where(EvalRunResultORM.run_id == run_id))
-        ).scalars().all()
+            (
+                await session.execute(
+                    select(EvalRunResultORM).where(EvalRunResultORM.run_id == run_id)
+                )
+            )
+            .scalars()
+            .all()
+        )
         assert results[0].error == "LLM unavailable"
         assert results[0].passed is False

@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 
-from app.domain.entities import QueryResult
-from app.use_cases.workspace.run_query import RunQueryUseCase
+from app.hr_analytics.domain.entities import QueryResult
+from app.workspace.use_cases.run_query import RunQueryUseCase
 
 
 def _make_executor(success: bool = True, columns=None, rows=None, error=None):

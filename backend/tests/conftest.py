@@ -6,8 +6,8 @@ from pathlib import Path
 
 import pytest
 
+from app.hr_analytics.use_cases.orchestrator import LLMOrchestrator
 from app.infrastructure.metadata.service import get_metadata_service
-from app.use_cases.hr_analytics.orchestrator import LLMOrchestrator
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
 if str(BACKEND_DIR) not in sys.path:

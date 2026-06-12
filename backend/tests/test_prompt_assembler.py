@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from app.domain.entities.workspace import Project, Section
-from app.use_cases.workspace.prompt_assembler import PromptAssembler
+from app.workspace.domain.entities import Project, Section
+from app.workspace.use_cases.prompt_assembler import PromptAssembler
 
 
 def _section(id: str, content: str, order: int = 0) -> Section:
@@ -12,8 +12,13 @@ def _section(id: str, content: str, order: int = 0) -> Section:
 
 def _project(sections: list[Section], output_format: str = "") -> Project:
     return Project(
-        id="p1", workspace_id="ws1", name="test", description="", notes="",
-        output_format=output_format, sections=sections,
+        id="p1",
+        workspace_id="ws1",
+        name="test",
+        description="",
+        notes="",
+        output_format=output_format,
+        sections=sections,
     )
 
 

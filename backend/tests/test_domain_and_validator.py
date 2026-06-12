@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from app.use_cases.hr_analytics.steps.domain_classifier import DomainClassifier
-from app.use_cases.hr_analytics.steps.question_validator import QuestionValidator
+from app.hr_analytics.use_cases.steps.domain_classifier import DomainClassifier
+from app.hr_analytics.use_cases.steps.question_validator import QuestionValidator
 
 # ---------------------------------------------------------------------------
 # DomainClassifier

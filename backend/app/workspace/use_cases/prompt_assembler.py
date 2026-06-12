@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from app.domain.entities import Project
+from app.workspace.domain.entities import Project
 
 
 class PromptAssembler:
