@@ -36,6 +36,18 @@ jobs:
     defaults:
       run:
         working-directory: backend
+    env:
+      OLLAMA_URL: http://localhost:11434
+      OLLAMA_TAGS_URL: http://localhost:11434/api/tags
+      MODEL_NAME: llama3
+      DB_HOST: localhost
+      DB_NAME: test_db
+      DB_USER: test_user
+      DB_PASSWORD: test_pass
+      HR_DB_HOST: localhost
+      HR_DB_NAME: test_hr_db
+      HR_DB_USER: test_user
+      HR_DB_PASSWORD: test_pass
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
