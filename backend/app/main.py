@@ -32,6 +32,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         await conn.run_sync(Base.metadata.create_all)
     logger.info("Database tables ready")
     await _restore_active_connections()
+    await _reset_orphaned_eval_runs()
     await _seed_eval_defaults()
     yield
     await engine.dispose()
@@ -118,6 +119,27 @@ async def _seed_eval_defaults() -> None:
             )
         await db.commit()
         logger.info("Seeded %d default eval questions", len(questions_data))
+
+
+async def _reset_orphaned_eval_runs(
+    session_factory=None,
+) -> None:
+    from sqlalchemy import update
+
+    from app.infrastructure.db.models import EvalRunORM
+    from app.infrastructure.db.session import AsyncSessionLocal
+
+    factory = session_factory or AsyncSessionLocal
+    async with factory() as db:
+        result = await db.execute(
+            update(EvalRunORM)
+            .where(EvalRunORM.status.in_(["pending", "running"]))
+            .values(status="failed")
+        )
+        count = result.rowcount
+        await db.commit()
+    if count:
+        logger.warning("Reset %d orphaned eval run(s) to 'failed' on startup", count)
 
 
 app = FastAPIOffline(

@@ -12,6 +12,8 @@ import {
   useEvalRuns,
   useEvalSets,
   useImportEvalQuestions,
+  useOllamaConnectionModels,
+  useOllamaConnections,
   useTriggerEvalRun,
 } from '@/hooks'
 import type { EvalQuestion, EvalRun, EvalRunResult } from '@/types'
@@ -37,6 +39,7 @@ function StatusBadge({ status }: { status: EvalRun['status'] }) {
     pending:  { label: 'pending',  color: 'var(--text-3)',   bg: 'var(--bg-raised)' },
     running:  { label: 'running…', color: '#f59e0b',         bg: 'rgba(245,158,11,0.12)' },
     done:     { label: 'done',     color: '#22c55e',         bg: 'rgba(34,197,94,0.12)' },
+    failed:   { label: 'failed',   color: '#f87171',         bg: 'rgba(248,113,113,0.12)' },
   }
   const s = map[status]
   return (
@@ -402,8 +405,6 @@ function AddQuestionModal({ setId, open, onClose }: { setId: string; open: boole
 // Run options modal (category + model selection)
 // ---------------------------------------------------------------------------
 
-const KNOWN_MODELS = ['', 'llama3.2', 'qwen2.5-coder', 'mistral', 'deepseek-r1']
-
 function RunModal({
   setId,
   categories,
@@ -420,10 +421,15 @@ function RunModal({
   const trigger = useTriggerEvalRun()
   const [category, setCategory] = useState('')
   const [modelName, setModelName] = useState('')
-  const [customModel, setCustomModel] = useState('')
   const [error, setError] = useState('')
 
-  const effectiveModel = modelName === '__custom__' ? customModel.trim() : modelName
+  const { data: ollamaConns } = useOllamaConnections()
+  const activeConn = ollamaConns?.find((c) => c.is_active) ?? null
+  const { data: modelsData, isLoading: modelsLoading } = useOllamaConnectionModels(
+    activeConn?.id ?? '',
+    !!activeConn,
+  )
+  const availableModels = modelsData?.models?.map((m) => m.name) ?? []
 
   async function handleRun() {
     setError('')
@@ -431,7 +437,7 @@ function RunModal({
       const run = await trigger.mutateAsync({
         setId,
         category: category || undefined,
-        model_name: effectiveModel || undefined,
+        model_name: modelName || undefined,
       })
       onClose()
       onRun(run.id)
@@ -460,27 +466,23 @@ function RunModal({
         </div>
         <div className="flex flex-col gap-1.5">
           <label className={labelCls} style={{ color: 'var(--text-3)' }}>Model (optional)</label>
-          <select
-            value={modelName}
-            onChange={(e) => setModelName(e.target.value)}
-            className="px-3 py-2.5 rounded-[8px] text-[13px] outline-none"
-            style={inputStyle}
-          >
-            <option value="">Default model</option>
-            {KNOWN_MODELS.filter(Boolean).map((m) => (
-              <option key={m} value={m}>{m}</option>
-            ))}
-            <option value="__custom__">Custom…</option>
-          </select>
-          {modelName === '__custom__' && (
-            <input
-              autoFocus
-              value={customModel}
-              onChange={(e) => setCustomModel(e.target.value)}
-              placeholder="e.g. llama3.2:8b"
-              className={inputCls}
+          {!activeConn ? (
+            <p className="text-[12px] py-2" style={{ color: '#f87171' }}>
+              No active Ollama connection. Activate one in Settings to select a model.
+            </p>
+          ) : (
+            <select
+              value={modelName}
+              onChange={(e) => setModelName(e.target.value)}
+              disabled={modelsLoading}
+              className="px-3 py-2.5 rounded-[8px] text-[13px] outline-none"
               style={inputStyle}
-            />
+            >
+              <option value="">Default model</option>
+              {availableModels.map((m) => (
+                <option key={m} value={m}>{m}</option>
+              ))}
+            </select>
           )}
         </div>
         {error && <p className="text-[11px]" style={{ color: '#f87171' }}>{error}</p>}

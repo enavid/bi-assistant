@@ -174,7 +174,7 @@ export interface EvalQuestion {
 export interface EvalRun {
   id: string
   set_id: string
-  status: 'pending' | 'running' | 'done'
+  status: 'pending' | 'running' | 'done' | 'failed'
   model_name: string | null
   total: number
   passed: number

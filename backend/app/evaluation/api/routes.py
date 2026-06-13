@@ -331,6 +331,20 @@ async def trigger_run(
     if not qs:
         raise HTTPException(status_code=404, detail="Question set not found")
 
+    active_run = (
+        await db.execute(
+            select(EvalRunORM).where(
+                EvalRunORM.set_id == set_id,
+                EvalRunORM.status.in_(["pending", "running"]),
+            )
+        )
+    ).scalar_one_or_none()
+    if active_run:
+        raise HTTPException(
+            status_code=409,
+            detail="A run is already active for this set. Wait for it to finish before starting another.",
+        )
+
     q_query = select(EvalQuestionORM).where(EvalQuestionORM.set_id == set_id)
     if body.category:
         q_query = q_query.where(EvalQuestionORM.category == body.category)

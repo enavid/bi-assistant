@@ -104,6 +104,95 @@ def test_trigger_run_appears_in_list(client):
     assert runs[0]["status"] == "pending"
 
 
+def test_trigger_run_blocked_when_pending_run_exists(client):
+    qs = _seed_set_with_questions(client)
+    with patch("app.evaluation.api.routes._run_evaluation_background"):
+        first = client.post(f"/eval/question-sets/{qs['id']}/run")
+        assert first.status_code == 201
+        second = client.post(f"/eval/question-sets/{qs['id']}/run")
+    assert second.status_code == 409
+    assert "already" in second.json()["detail"].lower()
+
+
+def test_trigger_run_blocked_when_running_run_exists(client, db_session):
+    import asyncio
+    qs = _seed_set_with_questions(client)
+    with patch("app.evaluation.api.routes._run_evaluation_background"):
+        first = client.post(f"/eval/question-sets/{qs['id']}/run")
+    run_id = first.json()["id"]
+
+    async def _set_running():
+        from sqlalchemy import update
+        await db_session.execute(
+            update(EvalRunORM).where(EvalRunORM.id == run_id).values(status="running")
+        )
+        await db_session.commit()
+
+    asyncio.get_event_loop().run_until_complete(_set_running())
+
+    with patch("app.evaluation.api.routes._run_evaluation_background"):
+        second = client.post(f"/eval/question-sets/{qs['id']}/run")
+    assert second.status_code == 409
+
+
+def test_trigger_run_allowed_after_done(client, db_session):
+    import asyncio
+    qs = _seed_set_with_questions(client)
+    with patch("app.evaluation.api.routes._run_evaluation_background"):
+        first = client.post(f"/eval/question-sets/{qs['id']}/run")
+    run_id = first.json()["id"]
+
+    async def _set_done():
+        from sqlalchemy import update
+        await db_session.execute(
+            update(EvalRunORM).where(EvalRunORM.id == run_id).values(status="done")
+        )
+        await db_session.commit()
+
+    asyncio.get_event_loop().run_until_complete(_set_done())
+
+    with patch("app.evaluation.api.routes._run_evaluation_background"):
+        second = client.post(f"/eval/question-sets/{qs['id']}/run")
+    assert second.status_code == 201
+
+
+# ---------------------------------------------------------------------------
+# Startup orphan reset tests
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_reset_orphaned_runs_sets_failed(db_engine):
+    from app.main import _reset_orphaned_eval_runs
+
+    factory = async_sessionmaker(db_engine, class_=AsyncSession, expire_on_commit=False)
+
+    async with factory() as session:
+        qs = EvalQuestionSetORM(name="orphan test")
+        session.add(qs)
+        await session.flush()
+        pending_run = EvalRunORM(set_id=qs.id, status="pending", total=5)
+        running_run = EvalRunORM(set_id=qs.id, status="running", total=5)
+        done_run = EvalRunORM(set_id=qs.id, status="done", total=5)
+        session.add_all([pending_run, running_run, done_run])
+        await session.commit()
+        pending_id = pending_run.id
+        running_id = running_run.id
+        done_id = done_run.id
+
+    await _reset_orphaned_eval_runs(factory)
+
+    async with factory() as session:
+        rows = {
+            r.id: r.status
+            for r in (await session.execute(select(EvalRunORM))).scalars().all()
+        }
+
+    assert rows[pending_id] == "failed"
+    assert rows[running_id] == "failed"
+    assert rows[done_id] == "done"
+
+
 # ---------------------------------------------------------------------------
 # Background execution unit tests
 # ---------------------------------------------------------------------------
