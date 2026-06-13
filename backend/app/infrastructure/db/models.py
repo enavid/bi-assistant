@@ -226,6 +226,8 @@ class EvalRunORM(Base):
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    current_question_idx: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    question_ids_ordered: Mapped[list | None] = mapped_column(_JSONB, nullable=True)
 
     question_set: Mapped[EvalQuestionSetORM] = relationship(
         "EvalQuestionSetORM", back_populates="runs"

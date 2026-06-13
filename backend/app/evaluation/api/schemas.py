@@ -62,6 +62,8 @@ class EvalRunOut(BaseModel):
     started_at: datetime | None = None
     finished_at: datetime | None = None
     created_at: datetime
+    current_question_idx: int | None = None
+    question_ids_ordered: list[str] | None = None
     results: list[EvalRunResultOut] = []
     model_config = {"from_attributes": True}
 

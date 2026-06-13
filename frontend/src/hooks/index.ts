@@ -323,6 +323,11 @@ export function useEvalRuns(setId: string | null) {
     queryKey: ['eval-runs', setId],
     queryFn: () => evalApi.listRuns(setId!),
     enabled: !!setId,
+    refetchInterval: (query) => {
+      const runs = query.state.data
+      const hasActive = runs?.some((r) => r.status === 'pending' || r.status === 'running')
+      return hasActive ? 3000 : false
+    },
   })
 }
 
@@ -378,11 +383,14 @@ export function useDeleteEvalQuestion() {
   })
 }
 
-export function useEvalRun(runId: string | null, isRunning: boolean) {
+export function useEvalRun(runId: string | null) {
   return useQuery({
     queryKey: ['eval-run', runId],
     queryFn: () => evalApi.getRun(runId!),
     enabled: !!runId,
-    refetchInterval: isRunning ? 3000 : false,
+    refetchInterval: (query) => {
+      const run = query.state.data
+      return run?.status === 'running' ? 2000 : false
+    },
   })
 }

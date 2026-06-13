@@ -9,57 +9,26 @@ import {
   useDeleteEvalSet,
   useEvalQuestions,
   useEvalRun,
-  useEvalRuns,
   useEvalSets,
   useImportEvalQuestions,
   useOllamaConnectionModels,
   useOllamaConnections,
+  useSeedEvalDefaults,
   useTriggerEvalRun,
 } from '@/hooks'
 import type { EvalQuestion, EvalRun, EvalRunResult } from '@/types'
 
 // ---------------------------------------------------------------------------
-// Shared helpers
+// Helpers
 // ---------------------------------------------------------------------------
-
-function fmtDate(iso: string | null) {
-  if (!iso) return '—'
-  return new Date(iso).toLocaleString('fa-IR', {
-    month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
-  })
-}
-
-function passRate(run: EvalRun) {
-  if (!run.total) return null
-  return Math.round((run.passed / run.total) * 100)
-}
 
 function humanCategory(cat: string) {
   return cat.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
 }
 
-function StatusBadge({ status }: { status: EvalRun['status'] }) {
-  const map: Record<EvalRun['status'], { label: string; color: string; bg: string }> = {
-    pending: { label: 'pending', color: 'var(--text-3)',   bg: 'var(--bg-raised)' },
-    running: { label: 'running…',color: '#f59e0b',          bg: 'rgba(245,158,11,0.12)' },
-    done:    { label: 'done',    color: '#22c55e',          bg: 'rgba(34,197,94,0.12)' },
-    failed:  { label: 'failed',  color: '#f87171',          bg: 'rgba(248,113,113,0.12)' },
-  }
-  const s = map[status] ?? map.failed
-  return (
-    <span className="text-[10px] font-semibold px-1.5 py-[2px] rounded-[4px]" style={{ color: s.color, background: s.bg }}>
-      {s.label}
-    </span>
-  )
-}
-
-const inputCls  = 'px-3 py-2.5 rounded-[8px] text-[13px] outline-none w-full'
+const inputCls   = 'px-3 py-2.5 rounded-[8px] text-[13px] outline-none w-full'
 const inputStyle = { background: 'var(--bg-raised)', border: '1px solid var(--border-default)', color: 'var(--text-1)' }
-const labelCls  = 'text-[11px] font-semibold uppercase tracking-[0.6px]'
-
-// ---------------------------------------------------------------------------
-// Results: trace panel
-// ---------------------------------------------------------------------------
+const labelCls   = 'text-[11px] font-semibold uppercase tracking-[0.6px]'
 
 const EVAL_ROUTE_STYLE: Record<string, { bg: string; text: string; border: string }> = {
   SQL:                  { bg: 'var(--accent-bg)',  text: 'var(--accent-text)',  border: 'var(--accent-border)' },
@@ -93,6 +62,10 @@ function traceStatusColor(status: string): string {
     return 'var(--amber)'
   return 'var(--text-3)'
 }
+
+// ---------------------------------------------------------------------------
+// Trace panel
+// ---------------------------------------------------------------------------
 
 function EvalTracePanel({ steps }: { steps: NonNullable<EvalRunResult['trace_steps']> }) {
   return (
@@ -135,44 +108,40 @@ function EvalTracePanel({ steps }: { steps: NonNullable<EvalRunResult['trace_ste
 }
 
 // ---------------------------------------------------------------------------
-// Results: question row (inside accordion)
+// Inline result panel (expandable, chat-style)
 // ---------------------------------------------------------------------------
 
-function ResultQuestionRow({ r, isLatest }: { r: EvalRunResult; isLatest: boolean }) {
+function InlineResultPanel({ result, modelName }: { result: EvalRunResult; modelName: string | null }) {
   const [traceOpen, setTraceOpen] = useState(false)
-  const routeStyle = EVAL_ROUTE_STYLE[r.actual_route ?? ''] ?? EVAL_ROUTE_STYLE._default
-  const statusLabel = r.actual_status ? (EVAL_STATUS_LABEL[r.actual_status] ?? r.actual_status) : null
-  const hasTrace = (r.trace_steps?.length ?? 0) > 0
+  const routeStyle  = EVAL_ROUTE_STYLE[result.actual_route ?? ''] ?? EVAL_ROUTE_STYLE._default
+  const statusLabel = result.actual_status ? (EVAL_STATUS_LABEL[result.actual_status] ?? result.actual_status) : null
+  const hasTrace    = (result.trace_steps?.length ?? 0) > 0
+  const displayModel = result.model_called || modelName
 
   return (
-    <div className="flex flex-col gap-[3px]">
-      <div className="flex gap-3 items-start">
-        <div className="w-7 h-7 rounded-[8px] flex items-center justify-center flex-shrink-0 mt-0.5"
-          style={r.passed
+    <div className="flex flex-col gap-[3px] px-4 pb-3 pt-1"
+      style={{ background: result.passed ? 'rgba(34,197,94,0.04)' : 'rgba(248,113,113,0.04)', borderTop: '1px solid var(--border-subtle)' }}>
+
+      {/* Answer bubble — RTL like chat */}
+      <div className="flex gap-2.5 items-start">
+        <div className="w-6 h-6 rounded-[7px] flex items-center justify-center flex-shrink-0 mt-0.5"
+          style={result.passed
             ? { background: 'var(--accent-bg)', color: 'var(--accent-text)', border: '1px solid var(--accent-border)' }
             : { background: 'var(--red-bg)', color: 'var(--red)', border: '1px solid var(--red-border)' }}>
-          <Icon name={r.passed ? 'check' : 'x'} size={12} />
+          <Icon name={result.passed ? 'check' : 'x'} size={10} />
         </div>
-        <div className="flex-1 px-4 py-2 text-[13px] leading-[1.5] min-w-0"
-          style={{
-            background: 'var(--bg-raised)', border: '1px solid var(--border-default)',
-            borderRadius: '4px 18px 18px 18px', direction: 'rtl', textAlign: 'right', color: 'var(--text-1)',
-            outline: isLatest ? '2px solid var(--accent-border)' : undefined, outlineOffset: '1px',
-          }}>
-          {r.question}
+        <div className="flex-1 px-3 py-2 text-[12px] leading-[1.5] min-w-0 rounded-[4px_14px_14px_14px]"
+          style={{ background: 'var(--bg-raised)', border: '1px solid var(--border-default)', direction: 'rtl', textAlign: 'right', color: 'var(--text-1)' }}>
+          {result.question}
         </div>
       </div>
-      <div className="ml-10 flex items-center gap-1.5 flex-wrap" style={{ marginTop: '-2px' }}>
-        {isLatest && (
-          <span className="text-[9px] px-1.5 py-[2px] rounded-[4px] font-mono animate-pulse"
-            style={{ background: 'var(--accent-bg)', color: 'var(--accent-text)', border: '1px solid var(--accent-border)' }}>
-            now
-          </span>
-        )}
-        {r.actual_route && (
+
+      {/* Meta row */}
+      <div className="ml-8 flex items-center gap-1.5 flex-wrap mt-0.5">
+        {result.actual_route && (
           <span className="text-[10px] font-mono font-medium px-1.5 py-[3px] rounded-[4px]"
             style={{ background: routeStyle.bg, color: routeStyle.text, border: `1px solid ${routeStyle.border}` }}>
-            {r.actual_route}
+            {result.actual_route}
           </span>
         )}
         {statusLabel && (
@@ -183,13 +152,19 @@ function ResultQuestionRow({ r, isLatest }: { r: EvalRunResult; isLatest: boolea
         )}
         <span className="text-[10px] font-mono tabular-nums px-1.5 py-[3px] rounded-[4px]"
           style={{ background: 'var(--bg-raised)', color: 'var(--text-3)', border: '1px solid var(--border-subtle)' }}>
-          {Math.round(r.total_duration_ms)}ms
+          {Math.round(result.total_duration_ms)}ms
         </span>
-        {r.error && (
+        {displayModel && (
+          <span className="text-[9px] font-mono px-1.5 py-[3px] rounded-[4px]"
+            style={{ background: 'var(--bg-base)', color: 'var(--text-3)', border: '1px solid var(--border-subtle)' }}>
+            {displayModel}
+          </span>
+        )}
+        {result.error && (
           <span className="text-[10px] font-mono px-1.5 py-[3px] rounded-[4px]"
             style={{ background: 'var(--red-bg)', color: 'var(--red)', border: '1px solid var(--red-border)' }}
-            title={r.error}>
-            {r.error.length > 40 ? r.error.slice(0, 40) + '…' : r.error}
+            title={result.error}>
+            {result.error.length > 50 ? result.error.slice(0, 50) + '…' : result.error}
           </span>
         )}
         {hasTrace && (
@@ -204,231 +179,121 @@ function ResultQuestionRow({ r, isLatest }: { r: EvalRunResult; isLatest: boolea
           </button>
         )}
       </div>
+
       {traceOpen && hasTrace && (
-        <div className="ml-10"><EvalTracePanel steps={r.trace_steps!} /></div>
+        <div className="ml-8"><EvalTracePanel steps={result.trace_steps!} /></div>
       )}
     </div>
   )
 }
 
 // ---------------------------------------------------------------------------
-// Results: category accordion section
+// Question row with inline result
 // ---------------------------------------------------------------------------
 
-function CategoryResultSection({
-  category, results, isLastActive,
+function QuestionRow({
+  q, setId,
+  result, isCurrent, isRunning,
+  onRun,
 }: {
-  category: string; results: EvalRunResult[]; isLastActive: boolean
-}) {
-  const passed = results.filter((r) => r.passed).length
-  const total  = results.length
-  const pct    = Math.round((passed / total) * 100)
-  const hasFail = passed < total
-  const [open, setOpen] = useState(hasFail)
-
-  return (
-    <div style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-      <button onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center gap-2.5 px-4 py-2 text-left"
-        style={{ background: 'var(--bg-raised)' }}
-        onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.85')}
-        onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}>
-        <span style={{ color: 'var(--text-3)', display: 'inline-flex', flexShrink: 0, transition: 'transform 0.15s', transform: open ? 'rotate(90deg)' : 'none' }}>
-          <Icon name="arrow-right" size={10} />
-        </span>
-        <span className="flex-1 min-w-0 truncate text-[12px] font-semibold mr-2" style={{ color: 'var(--text-1)' }}>{humanCategory(category)}</span>
-        <div className="flex items-center gap-2 flex-shrink-0">
-          <span className="text-[11px] tabular-nums hidden sm:inline" style={{ color: 'var(--text-3)' }}>
-            {passed}/{total}
-          </span>
-          {hasFail
-            ? <span className="text-[10px] px-1.5 py-[1px] rounded tabular-nums font-semibold"
-                style={{ background: 'var(--red-bg)', color: 'var(--red)', border: '1px solid var(--red-border)' }}>
-                {total - passed} fail
-              </span>
-            : <span className="text-[10px] px-1.5 py-[1px] rounded font-semibold"
-                style={{ background: 'var(--accent-bg)', color: 'var(--accent-text)', border: '1px solid var(--accent-border)' }}>
-                {pct}%
-              </span>}
-        </div>
-      </button>
-      {open && (
-        <div className="flex flex-col gap-2.5 px-4 py-3">
-          {results.map((r, idx) => (
-            <ResultQuestionRow key={r.id} r={r} isLatest={isLastActive && idx === results.length - 1} />
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
-
-// ---------------------------------------------------------------------------
-// Results panel (used inside RunsTab)
-// ---------------------------------------------------------------------------
-
-function RunResults({ runId, isRunning }: { runId: string; isRunning: boolean }) {
-  const [filterPassed, setFilterPassed] = useState<'all' | 'pass' | 'fail'>('all')
-  const { data: run, isLoading } = useEvalRun(runId, isRunning)
-
-  if (isLoading) return <div className="flex justify-center p-6"><Spinner size={22} /></div>
-  if (!run) return null
-
-  const results  = run.results ?? []
-  const done     = results.length
-  const pct      = passRate(run)
-  const pctColor = pct === null ? 'var(--text-3)' : pct >= 80 ? '#22c55e' : pct >= 50 ? '#f59e0b' : '#f87171'
-
-  const categoryOrder: string[] = []
-  const byCategory: Record<string, EvalRunResult[]> = {}
-  for (const r of results) {
-    const cat = r.category ?? 'other'
-    if (!byCategory[cat]) { byCategory[cat] = []; categoryOrder.push(cat) }
-    byCategory[cat].push(r)
-  }
-
-  const sorted = [...categoryOrder].sort((a, b) => {
-    const af = byCategory[a].some((r) => !r.passed) ? 0 : 1
-    const bf = byCategory[b].some((r) => !r.passed) ? 0 : 1
-    return af !== bf ? af - bf : a.localeCompare(b)
-  })
-
-  const visible = sorted.filter((cat) => {
-    if (filterPassed === 'pass') return byCategory[cat].every((r) => r.passed)
-    if (filterPassed === 'fail') return byCategory[cat].some((r) => !r.passed)
-    return true
-  })
-
-  const lastCategory = categoryOrder[categoryOrder.length - 1] ?? null
-
-  return (
-    <div className="flex flex-col gap-3 h-full">
-      {/* Summary card */}
-      <div className="flex items-center gap-3 flex-shrink-0 px-4 py-3 rounded-[10px] flex-wrap"
-        style={{ background: 'var(--bg-raised)', border: '1px solid var(--border-default)' }}>
-        <div className="flex flex-col items-center flex-shrink-0" style={{ minWidth: 48 }}>
-          <span className="text-[22px] font-bold tabular-nums leading-none" style={{ color: pctColor }}>
-            {pct !== null ? `${pct}%` : '—'}
-          </span>
-          <span className="text-[9px] uppercase tracking-wide mt-0.5" style={{ color: 'var(--text-3)' }}>pass rate</span>
-        </div>
-        <div className="w-px self-stretch flex-shrink-0" style={{ background: 'var(--border-subtle)' }} />
-        <div className="flex flex-col gap-1 flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <StatusBadge status={run.status} />
-            {run.model_name && (
-              <span className="text-[10px] font-mono truncate" style={{ color: 'var(--text-3)' }}>{run.model_name}</span>
-            )}
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="text-[12px] tabular-nums" style={{ color: 'var(--text-2)' }}>
-              <span className="font-semibold" style={{ color: '#22c55e' }}>{run.passed}</span>
-              <span style={{ color: 'var(--text-3)' }}>/{run.total} passed</span>
-            </span>
-            {run.failed > 0 && (
-              <span className="text-[12px] tabular-nums font-semibold" style={{ color: '#f87171' }}>
-                {run.failed} failed
-              </span>
-            )}
-          </div>
-        </div>
-        {isRunning && run.total > 0 && (
-          <div className="flex items-center gap-2 flex-shrink-0 min-w-[90px]">
-            <div className="flex-1 h-[4px] rounded-full overflow-hidden" style={{ background: 'var(--border-default)' }}>
-              <div className="h-full rounded-full transition-all duration-700"
-                style={{ width: `${Math.round((done / run.total) * 100)}%`, background: 'var(--accent)' }} />
-            </div>
-            <span className="text-[10px] tabular-nums" style={{ color: 'var(--text-3)' }}>{done}/{run.total}</span>
-          </div>
-        )}
-        <div className="flex gap-1 flex-shrink-0 ml-auto">
-          {(['all', 'pass', 'fail'] as const).map((f) => (
-            <button key={f} onClick={() => setFilterPassed(f)}
-              className="px-2.5 py-1 rounded-[6px] text-[11px] font-medium"
-              style={{
-                background: filterPassed === f ? 'var(--accent-bg)' : 'var(--bg-surface)',
-                color: filterPassed === f ? 'var(--accent-text)' : 'var(--text-2)',
-                border: `1px solid ${filterPassed === f ? 'var(--accent-border)' : 'var(--border-default)'}`,
-              }}>
-              {f}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Accordion */}
-      <div className="flex-1 overflow-y-auto rounded-[8px]"
-        style={{ border: '1px solid var(--border-default)', background: 'var(--bg-surface)' }}>
-        {visible.length === 0 && (
-          <p className="text-center py-10 text-[12px]" style={{ color: 'var(--text-3)' }}>No results yet.</p>
-        )}
-        {visible.map((cat) => (
-          <CategoryResultSection
-            key={cat} category={cat} results={byCategory[cat]}
-            isLastActive={isRunning && cat === lastCategory}
-          />
-        ))}
-      </div>
-    </div>
-  )
-}
-
-// ---------------------------------------------------------------------------
-// Library: question row (CRUD view)
-// ---------------------------------------------------------------------------
-
-function QuestionLibraryRow({
-  q, setId, canRun, onRun,
-}: {
-  q: EvalQuestion; setId: string; canRun: boolean; onRun: () => void
+  q: EvalQuestion
+  setId: string
+  result: EvalRunResult | null
+  isCurrent: boolean
+  isRunning: boolean
+  onRun: () => void
 }) {
   const deleteQ = useDeleteEvalQuestion()
   const [confirmDelete, setConfirmDelete] = useState(false)
-  const routeStyle = q.expected_route
-    ? (EVAL_ROUTE_STYLE[q.expected_route] ?? EVAL_ROUTE_STYLE._default)
-    : null
+  const [resultOpen, setResultOpen]       = useState(false)
+  const routeStyle = q.expected_route ? (EVAL_ROUTE_STYLE[q.expected_route] ?? EVAL_ROUTE_STYLE._default) : null
+
+  // Auto-expand result when it arrives
+  useEffect(() => {
+    if (result) setResultOpen(true)
+  }, [!!result])
 
   return (
-    <div
-      className="group flex items-center gap-2.5 px-4 py-2"
-      style={{ borderTop: '1px solid var(--border-subtle)', background: 'var(--bg-surface)' }}
-      onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-raised)')}
-      onMouseLeave={(e) => (e.currentTarget.style.background = 'var(--bg-surface)')}
-    >
-      <span className="flex-shrink-0 opacity-30"><Icon name="list" size={12} /></span>
-      <span className="flex-1 text-[12.5px] leading-snug min-w-0"
-        style={{ color: 'var(--text-1)', direction: 'rtl', textAlign: 'right' }}>
-        {q.question}
-      </span>
-      <div className="flex items-center gap-1.5 flex-shrink-0">
-        {routeStyle && (
-          <span className="text-[10px] font-mono px-1.5 py-[2px] rounded-[4px]"
-            style={{ background: routeStyle.bg, color: routeStyle.text, border: `1px solid ${routeStyle.border}` }}>
-            {q.expected_route}
-          </span>
-        )}
-        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-          <button
-            onClick={onRun}
-            disabled={!canRun}
-            title="Run this question"
-            className="w-6 h-6 rounded-[5px] flex items-center justify-center transition-opacity disabled:opacity-30"
-            style={{ background: 'var(--accent-bg)', color: 'var(--accent-text)', border: '1px solid var(--accent-border)' }}
-          >
-            <Icon name="play" size={9} />
-          </button>
-          <button
-            onClick={() => setConfirmDelete(true)}
-            title="Delete"
-            className="w-6 h-6 rounded-[5px] flex items-center justify-center"
-            style={{ color: 'var(--text-3)' }}
-            onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--red)')}
-            onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-3)')}
-          >
-            <Icon name="trash" size={11} />
-          </button>
+    <div>
+      {/* Question row */}
+      <div
+        className="group flex items-center gap-2.5 px-4 py-2"
+        style={{ borderTop: '1px solid var(--border-subtle)', background: 'var(--bg-surface)' }}
+        onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-raised)')}
+        onMouseLeave={(e) => (e.currentTarget.style.background = result ? 'var(--bg-surface)' : 'var(--bg-surface)')}
+      >
+        {/* Status indicator */}
+        <div className="flex-shrink-0 w-5 flex items-center justify-center">
+          {isCurrent && isRunning ? (
+            <Spinner size={12} />
+          ) : result ? (
+            <div className="w-4 h-4 rounded-full flex items-center justify-center"
+              style={result.passed
+                ? { background: 'var(--accent-bg)', color: 'var(--accent-text)' }
+                : { background: 'var(--red-bg)', color: 'var(--red)' }}>
+              <Icon name={result.passed ? 'check' : 'x'} size={8} />
+            </div>
+          ) : (
+            <span className="opacity-20"><Icon name="list" size={11} /></span>
+          )}
+        </div>
+
+        {/* Question text */}
+        <span
+          className="flex-1 text-[12.5px] leading-snug min-w-0 cursor-pointer"
+          style={{ color: 'var(--text-1)', direction: 'rtl', textAlign: 'right' }}
+          onClick={() => result && setResultOpen((v) => !v)}
+        >
+          {q.question}
+        </span>
+
+        {/* Right side */}
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          {routeStyle && (
+            <span className="text-[10px] font-mono px-1.5 py-[2px] rounded-[4px]"
+              style={{ background: routeStyle.bg, color: routeStyle.text, border: `1px solid ${routeStyle.border}` }}>
+              {q.expected_route}
+            </span>
+          )}
+          {result && (
+            <button
+              onClick={() => setResultOpen((v) => !v)}
+              className="text-[10px] font-mono px-1.5 py-[2px] rounded-[4px]"
+              style={{
+                background: resultOpen ? 'var(--accent-bg)' : 'var(--bg-raised)',
+                color: resultOpen ? 'var(--accent-text)' : 'var(--text-3)',
+                border: `1px solid ${resultOpen ? 'var(--accent-border)' : 'var(--border-default)'}`,
+              }}>
+              {resultOpen ? '↑' : '↓'}
+            </button>
+          )}
+          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <button
+              onClick={onRun}
+              disabled={isRunning}
+              title="Run this question"
+              className="w-6 h-6 rounded-[5px] flex items-center justify-center transition-opacity disabled:opacity-30"
+              style={{ background: 'var(--accent-bg)', color: 'var(--accent-text)', border: '1px solid var(--accent-border)' }}>
+              <Icon name="play" size={9} />
+            </button>
+            <button
+              onClick={() => setConfirmDelete(true)}
+              title="Delete"
+              className="w-6 h-6 rounded-[5px] flex items-center justify-center"
+              style={{ color: 'var(--text-3)' }}
+              onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--red)')}
+              onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-3)')}>
+              <Icon name="trash" size={11} />
+            </button>
+          </div>
         </div>
       </div>
+
+      {/* Expandable result */}
+      {result && resultOpen && (
+        <InlineResultPanel result={result} modelName={null} />
+      )}
+
       <ConfirmDialog
         open={confirmDelete}
         title="Delete question"
@@ -442,34 +307,36 @@ function QuestionLibraryRow({
 }
 
 // ---------------------------------------------------------------------------
-// Library: category card
+// Category card
 // ---------------------------------------------------------------------------
 
-function CategoryLibraryCard({
-  category, questions, setId, canRun, onRunCategory, onRunQuestion,
+function CategoryCard({
+  category, questions, setId,
+  isRunning, resultsByQuestionId, currentQId,
+  onRunCategory, onRunQuestion,
 }: {
   category: string
   questions: EvalQuestion[]
   setId: string
-  canRun: boolean
+  isRunning: boolean
+  resultsByQuestionId: Record<string, EvalRunResult>
+  currentQId: string | null
   onRunCategory: (cat: string) => void
-  onRunQuestion: (questionId: string) => void
+  onRunQuestion: (qId: string) => void
 }) {
-  const [open, setOpen] = useState(false)
+  const [open, setOpen]     = useState(false)
   const [addOpen, setAddOpen] = useState(false)
 
+  const doneCount    = questions.filter((q) => resultsByQuestionId[q.question_id]).length
+  const passedCount  = questions.filter((q) => resultsByQuestionId[q.question_id]?.passed).length
+  const hasResults   = doneCount > 0
   const headerRadius = open ? '10px 10px 0 0' : '10px'
 
   return (
     <div>
-      {/* Header — self-contained card with its own full border */}
       <div
         className="flex items-center gap-2 px-3 py-2 cursor-pointer select-none"
-        style={{
-          background: 'var(--bg-raised)',
-          border: '1px solid var(--border-default)',
-          borderRadius: headerRadius,
-        }}
+        style={{ background: 'var(--bg-raised)', border: '1px solid var(--border-default)', borderRadius: headerRadius }}
         onClick={() => setOpen((v) => !v)}
       >
         <span style={{ color: 'var(--text-3)', transition: 'transform .15s', transform: open ? 'rotate(90deg)' : 'none', display: 'inline-flex', flexShrink: 0 }}>
@@ -478,6 +345,13 @@ function CategoryLibraryCard({
         <span className="flex-1 min-w-0 truncate text-[12px] font-semibold" style={{ color: 'var(--text-1)' }}>
           {humanCategory(category)}
         </span>
+        {/* Progress when running */}
+        {hasResults && (
+          <span className="text-[10px] tabular-nums flex-shrink-0 font-mono"
+            style={{ color: passedCount === doneCount ? 'var(--accent-text)' : 'var(--red)' }}>
+            {passedCount}/{doneCount}
+          </span>
+        )}
         <span className="text-[10px] px-1.5 py-[1px] rounded-[4px] flex-shrink-0"
           style={{ background: 'var(--bg-base)', border: '1px solid var(--border-default)', color: 'var(--text-3)' }}>
           {questions.length}
@@ -486,62 +360,59 @@ function CategoryLibraryCard({
           <button
             onClick={() => setAddOpen(true)}
             className="h-6 px-2 rounded-[5px] text-[10px] font-medium flex items-center gap-1 transition-opacity hover:opacity-75"
-            style={{ background: 'var(--bg-base)', border: '1px solid var(--border-default)', color: 'var(--text-3)' }}
-          >
+            style={{ background: 'var(--bg-base)', border: '1px solid var(--border-default)', color: 'var(--text-3)' }}>
             <Icon name="plus" size={9} />
             <span className="hidden sm:inline">Add</span>
           </button>
           <button
             onClick={() => onRunCategory(category)}
-            disabled={!canRun}
+            disabled={isRunning}
             className="h-6 px-2 rounded-[5px] text-[10px] font-semibold flex items-center gap-1 transition-opacity hover:opacity-80 disabled:opacity-30"
-            style={{ background: 'var(--accent-bg)', color: 'var(--accent-text)', border: '1px solid var(--accent-border)' }}
-          >
+            style={{ background: 'var(--accent-bg)', color: 'var(--accent-text)', border: '1px solid var(--accent-border)' }}>
             <Icon name="play" size={9} />
             Run
           </button>
         </div>
       </div>
 
-      {/* Questions body — its own border continuing from header */}
       {open && (
-        <div
-          style={{
-            background: 'var(--bg-surface)',
-            border: '1px solid var(--border-default)',
-            borderTop: 'none',
-            borderRadius: '0 0 10px 10px',
-          }}
-        >
+        <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)', borderTop: 'none', borderRadius: '0 0 10px 10px' }}>
           {questions.map((q) => (
-            <QuestionLibraryRow
-              key={q.id} q={q} setId={setId} canRun={canRun}
-              onRun={() => onRunQuestion(q.id)}
+            <QuestionRow
+              key={q.id}
+              q={q}
+              setId={setId}
+              result={resultsByQuestionId[q.question_id] ?? null}
+              isCurrent={currentQId === q.question_id}
+              isRunning={isRunning}
+              onRun={() => onRunQuestion(q.question_id)}
             />
           ))}
         </div>
       )}
 
-      <AddQuestionModal
-        setId={setId} open={addOpen} onClose={() => setAddOpen(false)}
-        defaultCategory={category}
-      />
+      <AddQuestionModal setId={setId} open={addOpen} onClose={() => setAddOpen(false)} defaultCategory={category} />
     </div>
   )
 }
 
 // ---------------------------------------------------------------------------
-// Library tab
+// Questions tab
 // ---------------------------------------------------------------------------
 
-function LibraryTab({
-  setId, questions, canRun, onRunCategory, onRunQuestion,
+function QuestionsTab({
+  setId, questions,
+  isRunning, resultsByQuestionId, currentQId,
+  onRunAll, onRunCategory, onRunQuestion,
 }: {
   setId: string
   questions: EvalQuestion[]
-  canRun: boolean
+  isRunning: boolean
+  resultsByQuestionId: Record<string, EvalRunResult>
+  currentQId: string | null
+  onRunAll: () => void
   onRunCategory: (cat: string) => void
-  onRunQuestion: (questionId: string) => void
+  onRunQuestion: (qId: string) => void
 }) {
   const [addOpen, setAddOpen] = useState(false)
 
@@ -554,12 +425,60 @@ function LibraryTab({
   }
   const sortedCats = [...categoryOrder].sort((a, b) => a.localeCompare(b))
 
+  const totalResults = Object.keys(resultsByQuestionId).length
+  const passedResults = Object.values(resultsByQuestionId).filter((r) => r.passed).length
+
   return (
     <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
+
+      {/* Run All bar */}
+      {questions.length > 0 && (
+        <div className="flex items-center gap-3 px-3 py-2 rounded-[10px] flex-shrink-0"
+          style={{ background: 'var(--bg-raised)', border: '1px solid var(--border-default)' }}>
+          {isRunning ? (
+            <>
+              <Spinner size={13} />
+              <span className="text-[12px] flex-1" style={{ color: 'var(--text-2)' }}>
+                Running… {totalResults}/{questions.length}
+              </span>
+            </>
+          ) : totalResults > 0 ? (
+            <>
+              <div className="w-4 h-4 rounded-full flex items-center justify-center"
+                style={passedResults === totalResults
+                  ? { background: 'var(--accent-bg)', color: 'var(--accent-text)' }
+                  : { background: 'var(--red-bg)', color: 'var(--red)' }}>
+                <Icon name={passedResults === totalResults ? 'check' : 'x'} size={8} />
+              </div>
+              <span className="text-[12px] flex-1 tabular-nums" style={{ color: 'var(--text-2)' }}>
+                {passedResults}/{totalResults} passed
+              </span>
+            </>
+          ) : (
+            <span className="text-[12px] flex-1" style={{ color: 'var(--text-3)' }}>
+              {questions.length} questions ready
+            </span>
+          )}
+          <button
+            onClick={onRunAll}
+            disabled={isRunning}
+            className="h-7 px-3 flex items-center gap-1.5 rounded-[7px] text-[12px] font-semibold transition-opacity hover:opacity-88 disabled:opacity-40"
+            style={{ background: 'var(--accent)', color: '#fff' }}>
+            {isRunning ? <Spinner size={11} /> : <Icon name="play" size={11} />}
+            {isRunning ? 'Running…' : 'Run All'}
+          </button>
+        </div>
+      )}
+
       {sortedCats.map((cat) => (
-        <CategoryLibraryCard
-          key={cat} category={cat} questions={byCategory[cat]}
-          setId={setId} canRun={canRun}
+        <CategoryCard
+          key={cat}
+          category={cat}
+          questions={byCategory[cat]}
+          setId={setId}
+          isRunning={isRunning}
+          resultsByQuestionId={resultsByQuestionId}
+          currentQId={currentQId}
           onRunCategory={onRunCategory}
           onRunQuestion={onRunQuestion}
         />
@@ -577,8 +496,7 @@ function LibraryTab({
         className="flex items-center justify-center gap-2 px-4 py-3 rounded-[10px] text-[12px] transition-colors"
         style={{ border: '1px dashed var(--border-default)', color: 'var(--text-3)', background: 'transparent' }}
         onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--accent-border)'; e.currentTarget.style.color = 'var(--accent-text)' }}
-        onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border-default)'; e.currentTarget.style.color = 'var(--text-3)' }}
-      >
+        onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border-default)'; e.currentTarget.style.color = 'var(--text-3)' }}>
         <Icon name="plus" size={13} />
         Add question to new category
       </button>
@@ -589,187 +507,74 @@ function LibraryTab({
 }
 
 // ---------------------------------------------------------------------------
-// Runs tab: history item
+// Run config dialog (model picker)
 // ---------------------------------------------------------------------------
 
-function RunHistoryItem({ run, selected, onClick }: { run: EvalRun; selected: boolean; onClick: () => void }) {
-  const pct = passRate(run)
-  const pctColor = pct === null ? 'var(--text-3)' : pct >= 80 ? '#22c55e' : pct >= 50 ? '#f59e0b' : '#f87171'
-
-  return (
-    <button
-      onClick={onClick}
-      className="w-full text-left px-3 py-2.5 rounded-[8px] flex flex-col gap-1 transition-colors"
-      style={{
-        background: selected ? 'var(--accent-bg)' : 'transparent',
-        border: `1px solid ${selected ? 'var(--accent-border)' : 'transparent'}`,
-      }}
-      onMouseEnter={(e) => { if (!selected) e.currentTarget.style.background = 'var(--bg-raised)' }}
-      onMouseLeave={(e) => { if (!selected) e.currentTarget.style.background = 'transparent' }}
-    >
-      <div className="flex items-center gap-2">
-        {run.status === 'running' || run.status === 'pending'
-          ? <Spinner size={11} />
-          : <span className="w-2 h-2 rounded-full flex-shrink-0"
-              style={{ background: run.status === 'failed' ? 'var(--red)' : pctColor }} />}
-        <span className="text-[13px] font-bold tabular-nums" style={{ color: run.status === 'done' ? pctColor : 'var(--text-3)' }}>
-          {run.status === 'done' && pct !== null ? `${pct}%` : run.status}
-        </span>
-        <StatusBadge status={run.status} />
-      </div>
-      <span className="text-[10px]" style={{ color: 'var(--text-3)' }}>{fmtDate(run.created_at)}</span>
-      {run.model_name && (
-        <span className="text-[9px] font-mono" style={{ color: 'var(--text-3)' }}>{run.model_name}</span>
-      )}
-    </button>
-  )
-}
-
-// ---------------------------------------------------------------------------
-// Runs tab
-// ---------------------------------------------------------------------------
-
-function RunsTab({
-  setId, questions, runs, runsLoading, selectedRunId, onSelectRun, initialScope,
+function RunConfigDialog({
+  open, onClose, onConfirm, isRunning,
 }: {
-  setId: string
-  questions: EvalQuestion[]
-  runs: EvalRun[] | undefined
-  runsLoading: boolean
-  selectedRunId: string | null
-  onSelectRun: (id: string) => void
-  initialScope: string
+  open: boolean
+  onClose: () => void
+  onConfirm: (modelName: string | null) => void
+  isRunning: boolean
 }) {
-  const [scope, setScope] = useState(initialScope)
   const [modelName, setModelName] = useState('')
-  const [runError, setRunError] = useState('')
-  const trigger = useTriggerEvalRun()
+  const { data: ollamaConns }     = useOllamaConnections()
+  const activeConn                = ollamaConns?.find((c) => c.is_active) ?? null
+  const { data: modelsData }      = useOllamaConnectionModels(activeConn?.id ?? '', !!activeConn)
+  const availableModels           = modelsData?.models?.map((m) => m.name) ?? []
 
-  const { data: ollamaConns } = useOllamaConnections()
-  const activeConn = ollamaConns?.find((c) => c.is_active) ?? null
-  const { data: modelsData } = useOllamaConnectionModels(activeConn?.id ?? '', !!activeConn)
-  const availableModels = modelsData?.models?.map((m) => m.name) ?? []
-
-  const categories = [...new Set(questions.map((q) => q.category).filter(Boolean))] as string[]
-
-  const activeRun   = runs?.find((r) => r.status === 'running' || r.status === 'pending')
-  const displayRunId = selectedRunId ?? runs?.[0]?.id ?? null
-  const displayRun   = runs?.find((r) => r.id === displayRunId) ?? null
-  const isRunning    = displayRun?.status === 'running' || displayRun?.status === 'pending'
-
-  useEffect(() => { setScope(initialScope) }, [initialScope])
-
-  async function handleRun() {
-    setRunError('')
-    try {
-      const run = await trigger.mutateAsync({
-        setId,
-        category: scope || undefined,
-        model_name: modelName || undefined,
-      })
-      onSelectRun(run.id)
-    } catch (e: unknown) {
-      const msg = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail
-      setRunError(msg ?? 'Failed to start run')
-    }
+  function handleConfirm() {
+    onConfirm(modelName || null)
+    onClose()
   }
 
   return (
-    <div className="flex flex-col sm:flex-row flex-1 overflow-hidden">
-
-      {/* ── Config + History panel ── */}
-      <div
-        className="flex-shrink-0 flex flex-col sm:w-[220px] sm:overflow-hidden border-b sm:border-b-0 sm:border-r"
-        style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-default)' }}
-      >
-        {/* Config — compact row on mobile, stacked on desktop */}
-        <div
-          className="flex sm:flex-col gap-2 sm:gap-3 p-3 flex-shrink-0 flex-wrap"
-          style={{ borderBottom: '1px solid var(--border-subtle)' }}
-        >
-          <div className="flex flex-col gap-1 flex-1 min-w-[120px]">
-            <label className={labelCls} style={{ color: 'var(--text-3)' }}>Scope</label>
-            <select value={scope} onChange={(e) => setScope(e.target.value)}
-              className="px-2 py-1.5 rounded-[7px] text-[12px] outline-none"
+    <Modal open={open} title="Run configuration" onClose={onClose}>
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-1.5">
+          <label className={labelCls} style={{ color: 'var(--text-3)' }}>Model</label>
+          {!activeConn ? (
+            <p className="text-[12px] py-1" style={{ color: '#f87171' }}>
+              No active Ollama connection — add one in Settings.
+            </p>
+          ) : (
+            <select
+              value={modelName}
+              onChange={(e) => setModelName(e.target.value)}
+              className="px-2 py-2 rounded-[7px] text-[13px] outline-none"
               style={inputStyle}>
-              <option value="">All ({questions.length})</option>
-              {categories.map((cat) => {
-                const count = questions.filter((q) => q.category === cat).length
-                return <option key={cat} value={cat}>{humanCategory(cat)} ({count})</option>
-              })}
+              <option value="">Default model</option>
+              {availableModels.map((m) => <option key={m} value={m}>{m}</option>)}
             </select>
-          </div>
-
-          <div className="flex flex-col gap-1 flex-1 min-w-[120px]">
-            <label className={labelCls} style={{ color: 'var(--text-3)' }}>Model</label>
-            {!activeConn ? (
-              <p className="text-[11px] py-1" style={{ color: '#f87171' }}>No Ollama</p>
-            ) : (
-              <select value={modelName} onChange={(e) => setModelName(e.target.value)}
-                className="px-2 py-1.5 rounded-[7px] text-[12px] outline-none"
-                style={inputStyle}>
-                <option value="">Default</option>
-                {availableModels.map((m) => <option key={m} value={m}>{m}</option>)}
-              </select>
-            )}
-          </div>
-
-          <div className="flex flex-col justify-end w-full sm:w-auto">
-            {runError && <p className="text-[10px] mb-1" style={{ color: '#f87171' }}>{runError}</p>}
-            <button
-              onClick={handleRun}
-              disabled={!!activeRun || trigger.isPending || !questions.length}
-              className="h-8 flex items-center justify-center gap-2 rounded-[8px] text-[12px] font-semibold transition-opacity hover:opacity-88 disabled:opacity-40 w-full"
-              style={{ background: 'var(--accent)', color: '#fff' }}
-            >
-              {activeRun || trigger.isPending ? <Spinner size={12} /> : <Icon name="play" size={12} />}
-              {activeRun ? 'Running…' : 'Run now'}
-            </button>
-          </div>
-        </div>
-
-        {/* History */}
-        <div className="overflow-y-auto flex-1" style={{ maxHeight: 'min(160px, 40vh)' }}>
-          <p className={`${labelCls} px-3 pt-2.5 pb-1`} style={{ color: 'var(--text-3)' }}>History</p>
-          {runsLoading && <div className="px-3"><InlineLoader /></div>}
-          {!runsLoading && !runs?.length && (
-            <p className="text-[11px] px-3 pb-3" style={{ color: 'var(--text-3)' }}>No runs yet.</p>
           )}
-          <div className="px-2 pb-2 flex flex-col gap-0.5">
-            {runs?.map((r) => (
-              <RunHistoryItem
-                key={r.id} run={r}
-                selected={r.id === displayRunId}
-                onClick={() => onSelectRun(r.id)}
-              />
-            ))}
-          </div>
+        </div>
+        <div className="flex gap-2 pt-1">
+          <button onClick={onClose}
+            className="flex-1 py-2.5 rounded-[9px] text-[13px] font-medium"
+            style={{ background: 'var(--bg-raised)', border: '1px solid var(--border-default)', color: 'var(--text-2)' }}>
+            Cancel
+          </button>
+          <button onClick={handleConfirm} disabled={isRunning}
+            className="flex-1 py-2.5 rounded-[9px] text-[13px] font-semibold transition-opacity hover:opacity-90 disabled:opacity-40"
+            style={{ background: 'var(--accent)', color: '#fff' }}>
+            {isRunning ? 'Starting…' : 'Run'}
+          </button>
         </div>
       </div>
-
-      {/* ── Results area ── */}
-      <div className="flex-1 overflow-hidden p-3 sm:p-4">
-        {displayRunId
-          ? <RunResults runId={displayRunId} isRunning={isRunning} />
-          : (
-            <div className="flex flex-col items-center justify-center h-full gap-3" style={{ color: 'var(--text-3)' }}>
-              <span className="opacity-20"><Icon name="flask" size={36} /></span>
-              <p className="text-[13px]">Configure scope and model, then click Run now.</p>
-            </div>
-          )}
-      </div>
-    </div>
+    </Modal>
   )
 }
 
 // ---------------------------------------------------------------------------
-// Modals
+// Import modal (with "Import 240" button)
 // ---------------------------------------------------------------------------
 
 function ImportModal({ setId, open, onClose }: { setId: string; open: boolean; onClose: () => void }) {
-  const importQ = useImportEvalQuestions()
-  const fileRef = useRef<HTMLInputElement>(null)
-  const [text, setText] = useState('')
+  const importQ     = useImportEvalQuestions()
+  const seedDefaults = useSeedEvalDefaults()
+  const fileRef     = useRef<HTMLInputElement>(null)
+  const [text, setText]   = useState('')
   const [error, setError] = useState('')
 
   async function handleImport() {
@@ -784,6 +589,13 @@ function ImportModal({ setId, open, onClose }: { setId: string; open: boolean; o
     } catch { setError('Import failed — check the format') }
   }
 
+  async function handleSeedDefaults() {
+    try {
+      await seedDefaults.mutateAsync()
+      onClose()
+    } catch { setError('Failed to import default questions') }
+  }
+
   function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
@@ -795,6 +607,31 @@ function ImportModal({ setId, open, onClose }: { setId: string; open: boolean; o
   return (
     <Modal open={open} title="Import questions" onClose={onClose}>
       <div className="flex flex-col gap-4">
+        {/* Import 240 shortcut */}
+        <div className="flex flex-col gap-2 p-3 rounded-[10px]"
+          style={{ background: 'var(--bg-raised)', border: '1px solid var(--border-default)' }}>
+          <p className="text-[12px] font-medium" style={{ color: 'var(--text-1)' }}>
+            240 Consultant Questions
+          </p>
+          <p className="text-[11px]" style={{ color: 'var(--text-3)' }}>
+            Import the full default evaluation set covering all HR analytics categories.
+          </p>
+          <button
+            onClick={handleSeedDefaults}
+            disabled={seedDefaults.isPending}
+            className="flex items-center justify-center gap-2 py-2 rounded-[8px] text-[12px] font-semibold transition-opacity hover:opacity-88 disabled:opacity-40"
+            style={{ background: 'var(--accent)', color: '#fff' }}>
+            {seedDefaults.isPending ? <Spinner size={12} /> : <Icon name="notes" size={13} />}
+            {seedDefaults.isPending ? 'Importing…' : 'Import 240 default questions'}
+          </button>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <div className="flex-1 h-px" style={{ background: 'var(--border-subtle)' }} />
+          <span className="text-[10px] uppercase tracking-wide" style={{ color: 'var(--text-3)' }}>or</span>
+          <div className="flex-1 h-px" style={{ background: 'var(--border-subtle)' }} />
+        </div>
+
         <p className="text-[12px]" style={{ color: 'var(--text-2)' }}>
           Paste JSON array or upload a file. Each item needs{' '}
           <code className="px-1 rounded text-[11px]" style={{ background: 'var(--bg-raised)', color: 'var(--accent-text)' }}>question_id</code>{' '}
@@ -808,7 +645,7 @@ function ImportModal({ setId, open, onClose }: { setId: string; open: boolean; o
           Choose JSON file…
         </button>
         <input ref={fileRef} type="file" accept=".json" className="hidden" onChange={handleFile} />
-        <textarea value={text} onChange={(e) => setText(e.target.value)} rows={8}
+        <textarea value={text} onChange={(e) => setText(e.target.value)} rows={6}
           placeholder='[{"question_id": "q1", "question": "...", "category": "demographics"}]'
           className="px-3 py-2.5 rounded-[8px] text-[11px] font-mono outline-none resize-none"
           style={{ background: 'var(--bg-raised)', border: '1px solid var(--border-default)', color: 'var(--text-1)' }} />
@@ -821,7 +658,7 @@ function ImportModal({ setId, open, onClose }: { setId: string; open: boolean; o
           <button onClick={handleImport} disabled={!text.trim() || importQ.isPending}
             className="flex-1 py-2.5 rounded-[9px] text-[13px] font-medium transition-opacity hover:opacity-90 disabled:opacity-40"
             style={{ background: 'var(--accent)', color: '#fff' }}>
-            {importQ.isPending ? 'Importing…' : 'Import'}
+            {importQ.isPending ? 'Importing…' : 'Import JSON'}
           </button>
         </div>
       </div>
@@ -829,16 +666,20 @@ function ImportModal({ setId, open, onClose }: { setId: string; open: boolean; o
   )
 }
 
+// ---------------------------------------------------------------------------
+// Add question modal
+// ---------------------------------------------------------------------------
+
 function AddQuestionModal({
   setId, open, onClose, defaultCategory = '',
 }: {
   setId: string; open: boolean; onClose: () => void; defaultCategory?: string
 }) {
   const addQ = useAddEvalQuestion()
-  const [question, setQuestion] = useState('')
-  const [category, setCategory] = useState(defaultCategory)
+  const [question, setQuestion]           = useState('')
+  const [category, setCategory]           = useState(defaultCategory)
   const [expectedRoute, setExpectedRoute] = useState('')
-  const [error, setError] = useState('')
+  const [error, setError]                 = useState('')
 
   useEffect(() => { if (open) setCategory(defaultCategory) }, [open, defaultCategory])
 
@@ -898,36 +739,58 @@ function AddQuestionModal({
 }
 
 // ---------------------------------------------------------------------------
-// Set detail panel (right)
+// Set detail panel
 // ---------------------------------------------------------------------------
 
 function SetDetail({ setId, onBack, onOpenSidebar }: { setId: string; onBack?: () => void; onOpenSidebar?: () => void }) {
-  const { data: sets }                          = useEvalSets()
-  const { data: questions }                     = useEvalQuestions(setId)
-  const { data: runs, isLoading: runsLoading }  = useEvalRuns(setId)
-  const trigger                                 = useTriggerEvalRun()
+  const { data: sets }      = useEvalSets()
+  const { data: questions } = useEvalQuestions(setId)
+  const trigger             = useTriggerEvalRun()
 
-  const [activeTab, setActiveTab]         = useState<'library' | 'runs'>('library')
-  const [selectedRunId, setSelectedRunId] = useState<string | null>(null)
-  const [runScope, setRunScope]           = useState('')
-  const [importOpen, setImportOpen]       = useState(false)
+  const [activeRunId, setActiveRunId]   = useState<string | null>(null)
+  const [importOpen, setImportOpen]     = useState(false)
+  const [runDialogScope, setRunDialogScope] = useState<{ type: 'all' | 'category' | 'question'; value?: string } | null>(null)
 
-  const set       = sets?.find((s) => s.id === setId)
-  const activeRun = runs?.find((r) => r.status === 'running' || r.status === 'pending')
-  const canRun    = !activeRun && !!questions?.length
+  const set        = sets?.find((s) => s.id === setId)
+  const { data: activeRun } = useEvalRun(activeRunId)
 
-  function handleRunCategory(category: string) {
-    setRunScope(category)
-    setActiveTab('runs')
+  // Build result lookup: question_id (string) → result
+  const resultsByQuestionId: Record<string, EvalRunResult> = {}
+  if (activeRun?.results) {
+    for (const r of activeRun.results) {
+      resultsByQuestionId[r.question_id] = r
+    }
   }
 
-  async function handleRunQuestion(questionId: string) {
+  // Current question being processed
+  const currentQId: string | null = (() => {
+    if (!activeRun || activeRun.status !== 'running') return null
+    const ordered = activeRun.question_ids_ordered
+    const idx     = activeRun.current_question_idx
+    if (!ordered || idx == null) return null
+    // Map internal UUID to question_id via questions list
+    const internalId = ordered[idx]
+    return questions?.find((q) => q.id === internalId)?.question_id ?? null
+  })()
+
+  async function handleRun(modelName: string | null) {
+    const scope = runDialogScope
+    if (!scope) return
     try {
-      const run = await trigger.mutateAsync({ setId, question_ids: [questionId] })
-      setSelectedRunId(run.id)
-      setActiveTab('runs')
+      let run: EvalRun
+      if (scope.type === 'all') {
+        run = await trigger.mutateAsync({ setId, model_name: modelName ?? undefined })
+      } else if (scope.type === 'category') {
+        run = await trigger.mutateAsync({ setId, category: scope.value, model_name: modelName ?? undefined })
+      } else {
+        // single question — scope.value is question_id (string), need internal id
+        const q = questions?.find((q) => q.question_id === scope.value)
+        if (!q) return
+        run = await trigger.mutateAsync({ setId, question_ids: [q.id], model_name: modelName ?? undefined })
+      }
+      setActiveRunId(run.id)
     } catch {
-      // error visible via trigger.error if needed
+      // error surfaces via trigger.error
     }
   }
 
@@ -935,7 +798,7 @@ function SetDetail({ setId, onBack, onOpenSidebar }: { setId: string; onBack?: (
     <>
       <div className="flex-1 flex flex-col h-full overflow-hidden">
 
-        {/* ── Header ── */}
+        {/* Header */}
         <div className="h-[52px] px-4 flex items-center gap-2.5 flex-shrink-0"
           style={{ borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-surface)' }}>
           {onBack && (
@@ -970,48 +833,27 @@ function SetDetail({ setId, onBack, onOpenSidebar }: { setId: string; onBack?: (
           </button>
         </div>
 
-        {/* ── Tabs ── */}
-        <div className="flex flex-shrink-0 px-4"
-          style={{ borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-surface)' }}>
-          {(['library', 'runs'] as const).map((tab) => (
-            <button key={tab} onClick={() => setActiveTab(tab)}
-              className="py-2.5 px-3 text-[12px] font-medium capitalize border-b-2 transition-colors"
-              style={{
-                marginBottom: '-1px',
-                borderBottomColor: activeTab === tab ? 'var(--accent)' : 'transparent',
-                color: activeTab === tab ? 'var(--accent-text)' : 'var(--text-3)',
-                background: 'none', border: 'none',
-                borderBottom: `2px solid ${activeTab === tab ? 'var(--accent)' : 'transparent'}`,
-              }}>
-              {tab === 'library' ? 'Library' : 'Test Runs'}
-            </button>
-          ))}
-        </div>
-
-        {/* ── Tab content ── */}
-        {activeTab === 'library' && (
-          <LibraryTab
-            setId={setId}
-            questions={questions ?? []}
-            canRun={canRun}
-            onRunCategory={handleRunCategory}
-            onRunQuestion={handleRunQuestion}
-          />
-        )}
-        {activeTab === 'runs' && (
-          <RunsTab
-            setId={setId}
-            questions={questions ?? []}
-            runs={runs}
-            runsLoading={runsLoading}
-            selectedRunId={selectedRunId}
-            onSelectRun={setSelectedRunId}
-            initialScope={runScope}
-          />
-        )}
+        {/* Questions view (no tabs) */}
+        <QuestionsTab
+          setId={setId}
+          questions={questions ?? []}
+          isRunning={activeRun?.status === 'running'}
+          resultsByQuestionId={resultsByQuestionId}
+          currentQId={currentQId}
+          onRunAll={() => setRunDialogScope({ type: 'all' })}
+          onRunCategory={(cat) => setRunDialogScope({ type: 'category', value: cat })}
+          onRunQuestion={(qId) => setRunDialogScope({ type: 'question', value: qId })}
+        />
       </div>
 
       <ImportModal setId={setId} open={importOpen} onClose={() => setImportOpen(false)} />
+
+      <RunConfigDialog
+        open={runDialogScope !== null}
+        onClose={() => setRunDialogScope(null)}
+        onConfirm={handleRun}
+        isRunning={trigger.isPending}
+      />
     </>
   )
 }
@@ -1028,10 +870,10 @@ function SetList({
   onOpenSidebar?: () => void
 }) {
   const { data: sets, isLoading } = useEvalSets()
-  const createSet  = useCreateEvalSet()
-  const deleteSet  = useDeleteEvalSet()
-  const [newOpen, setNewOpen]     = useState(false)
-  const [name, setName]           = useState('')
+  const createSet   = useCreateEvalSet()
+  const deleteSet   = useDeleteEvalSet()
+  const [newOpen, setNewOpen]         = useState(false)
+  const [name, setName]               = useState('')
   const [description, setDescription] = useState('')
   const [pendingDeleteSet, setPendingDeleteSet] = useState<{ id: string; name: string } | null>(null)
 
@@ -1128,7 +970,7 @@ function SetList({
             <button onClick={handleCreate} disabled={!name.trim() || createSet.isPending}
               className="flex-1 py-2.5 rounded-[9px] text-[13px] font-medium transition-opacity hover:opacity-90 disabled:opacity-40"
               style={{ background: 'var(--accent)', color: '#fff' }}>
-              Create
+              {createSet.isPending ? 'Creating…' : 'Create'}
             </button>
           </div>
         </div>

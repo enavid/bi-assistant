@@ -73,15 +73,16 @@ def _seed_set_with_questions(client, n: int = 3) -> dict:
 # ---------------------------------------------------------------------------
 
 
-def test_trigger_run_returns_201_with_pending_status(client):
+def test_trigger_run_returns_201_with_running_status(client):
     qs = _seed_set_with_questions(client)
     with patch("app.evaluation.api.routes._run_evaluation_background"):
         resp = client.post(f"/eval/question-sets/{qs['id']}/run")
     assert resp.status_code == 201
     data = resp.json()
-    assert data["status"] == "pending"
+    assert data["status"] == "running"
     assert data["set_id"] == qs["id"]
     assert "id" in data
+    assert data["started_at"] is not None
 
 
 def test_trigger_run_nonexistent_set(client):
@@ -101,7 +102,7 @@ def test_trigger_run_appears_in_list(client):
         client.post(f"/eval/question-sets/{qs['id']}/run")
     runs = client.get(f"/eval/question-sets/{qs['id']}/runs").json()
     assert len(runs) == 1
-    assert runs[0]["status"] == "pending"
+    assert runs[0]["status"] == "running"
 
 
 def test_trigger_run_with_question_ids_runs_only_those(client):
@@ -136,7 +137,7 @@ def test_trigger_run_with_nonexistent_question_ids_returns_400(client):
     assert resp.status_code == 400
 
 
-def test_trigger_run_blocked_when_pending_run_exists(client):
+def test_trigger_run_blocked_when_running_run_already_exists(client):
     qs = _seed_set_with_questions(client)
     with patch("app.evaluation.api.routes._run_evaluation_background"):
         first = client.post(f"/eval/question-sets/{qs['id']}/run")
@@ -256,6 +257,90 @@ def _make_mock_response(route: str = "SQL", status: str = "NOT_EXECUTED") -> Mag
 
 
 @pytest.mark.asyncio
+async def test_background_tracks_current_question_idx(db_engine):
+    """current_question_idx must update to each question's index as it is processed."""
+    from app.evaluation.api.routes import _run_evaluation_background
+
+    factory = async_sessionmaker(db_engine, class_=AsyncSession, expire_on_commit=False)
+
+    captured: list[int] = []
+
+    async with factory() as session:
+        qs = EvalQuestionSetORM(name="progress test")
+        session.add(qs)
+        await session.flush()
+        q1 = EvalQuestionORM(set_id=qs.id, question_id="q001", question="سوال اول")
+        q2 = EvalQuestionORM(set_id=qs.id, question_id="q002", question="سوال دوم")
+        q3 = EvalQuestionORM(set_id=qs.id, question_id="q003", question="سوال سوم")
+        session.add_all([q1, q2, q3])
+        await session.flush()
+        run = EvalRunORM(set_id=qs.id, status="running", total=3)
+        session.add(run)
+        await session.commit()
+        run_id = run.id
+        question_ids = [q1.id, q2.id, q3.id]
+
+    async def _spy_arun(*args, **kwargs):
+        async with factory() as s:
+            r = (await s.execute(select(EvalRunORM).where(EvalRunORM.id == run_id))).scalar_one()
+            captured.append(r.current_question_idx)
+        return _make_mock_response()
+
+    mock_orchestrator = AsyncMock()
+    mock_orchestrator.arun.side_effect = _spy_arun
+
+    await _run_evaluation_background(
+        run_id=run_id,
+        question_ids=question_ids,
+        session_factory=factory,
+        orchestrator=mock_orchestrator,
+    )
+
+    assert captured == [0, 1, 2], f"expected [0, 1, 2], got {captured}"
+
+    async with factory() as session:
+        updated = (await session.execute(select(EvalRunORM).where(EvalRunORM.id == run_id))).scalar_one()
+        assert updated.current_question_idx == 2
+
+
+@pytest.mark.asyncio
+async def test_question_ids_ordered_stored_on_run(db_engine):
+    """question_ids_ordered must be persisted on the run so the frontend can track order."""
+    from app.evaluation.api.routes import _run_evaluation_background
+
+    factory = async_sessionmaker(db_engine, class_=AsyncSession, expire_on_commit=False)
+
+    async with factory() as session:
+        qs = EvalQuestionSetORM(name="order test")
+        session.add(qs)
+        await session.flush()
+        q1 = EvalQuestionORM(set_id=qs.id, question_id="q001", question="سوال اول")
+        q2 = EvalQuestionORM(set_id=qs.id, question_id="q002", question="سوال دوم")
+        session.add_all([q1, q2])
+        await session.flush()
+        run = EvalRunORM(set_id=qs.id, status="running", total=2,
+                         question_ids_ordered=[q1.id, q2.id])
+        session.add(run)
+        await session.commit()
+        run_id = run.id
+        question_ids = [q1.id, q2.id]
+
+    mock_orchestrator = AsyncMock()
+    mock_orchestrator.arun.return_value = _make_mock_response()
+
+    await _run_evaluation_background(
+        run_id=run_id,
+        question_ids=question_ids,
+        session_factory=factory,
+        orchestrator=mock_orchestrator,
+    )
+
+    async with factory() as session:
+        updated = (await session.execute(select(EvalRunORM).where(EvalRunORM.id == run_id))).scalar_one()
+        assert updated.question_ids_ordered == question_ids
+
+
+@pytest.mark.asyncio
 async def test_execute_run_sets_status_to_done(db_engine):
     from app.evaluation.api.routes import _run_evaluation_background
 
@@ -344,6 +429,45 @@ async def test_execute_run_saves_results(db_engine):
         assert r.actual_route == "SQL"
         assert r.category == "demographics"
         assert r.source == "template"
+
+
+@pytest.mark.asyncio
+async def test_run_marked_failed_when_orchestrator_build_crashes(db_engine):
+    """If build_orchestrator raises before any questions run, the run must become 'failed'."""
+    from unittest.mock import patch
+
+    from app.evaluation.api.routes import _run_evaluation_background
+
+    factory = async_sessionmaker(db_engine, class_=AsyncSession, expire_on_commit=False)
+
+    async with factory() as session:
+        qs = EvalQuestionSetORM(name="crash-build test")
+        session.add(qs)
+        await session.flush()
+        q = EvalQuestionORM(set_id=qs.id, question_id="q001", question="سوال")
+        session.add(q)
+        await session.flush()
+        run = EvalRunORM(set_id=qs.id, status="pending", total=1)
+        session.add(run)
+        await session.commit()
+        run_id = run.id
+        question_ids = [q.id]
+
+    with patch(
+        "app.evaluation.api.routes.build_orchestrator",
+        side_effect=RuntimeError("No active DB configured"),
+    ):
+        await _run_evaluation_background(
+            run_id=run_id,
+            question_ids=question_ids,
+            session_factory=factory,
+        )
+
+    async with factory() as session:
+        updated = (
+            await session.execute(select(EvalRunORM).where(EvalRunORM.id == run_id))
+        ).scalar_one()
+        assert updated.status == "failed", f"expected 'failed', got '{updated.status}'"
 
 
 @pytest.mark.asyncio

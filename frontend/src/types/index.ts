@@ -182,6 +182,8 @@ export interface EvalRun {
   started_at: string | null
   finished_at: string | null
   created_at: string
+  current_question_idx: number | null
+  question_ids_ordered: string[] | null
   results?: EvalRunResult[]
 }
 

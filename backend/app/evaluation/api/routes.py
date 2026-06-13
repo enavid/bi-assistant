@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import time
@@ -7,7 +8,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, BackgroundTasks, Body, Depends, HTTPException, status
+from fastapi import APIRouter, Body, Depends, HTTPException, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from sqlalchemy.orm import selectinload
@@ -44,11 +45,7 @@ _DEFAULT_SET_NAME = "Consultant Questions"
 
 
 def build_orchestrator(model_name: str | None = None) -> Any:
-    from app.connections.active import (
-        get_active_dsn,
-        get_active_ollama_base_url,
-        get_all_model_configs,
-    )
+    from app.connections.active import get_active_dsn
     from app.core.config import settings
     from app.hr_analytics.adapters.response_builder import ResponseBuilder
     from app.hr_analytics.use_cases.orchestrator import LLMOrchestrator
@@ -62,7 +59,6 @@ def build_orchestrator(model_name: str | None = None) -> Any:
     from app.hr_analytics.use_cases.steps.question_validator import QuestionValidator
     from app.hr_analytics.use_cases.steps.semantic_mapper import SemanticMapper
     from app.infrastructure.hr_db.analytics_executor import QueryExecutor
-    from app.infrastructure.llm.ollama_client import OllamaClient
     from app.infrastructure.metadata.loader import get_metadata
 
     active_dsn = get_active_dsn()
@@ -74,17 +70,7 @@ def build_orchestrator(model_name: str | None = None) -> Any:
     metadata = get_metadata()
     sql_validator = SQLValidator(metadata_service=metadata)
 
-    base_url = get_active_ollama_base_url()
-    llm_client: OllamaClient | None = None
-    if base_url:
-        llm_client = OllamaClient(
-            url=base_url.rstrip("/") + "/api/generate",
-            tags_url=base_url.rstrip("/") + "/api/tags",
-            default_model=model_name,
-            model_configs=get_all_model_configs(),
-        )
-
-    kwargs: dict[str, Any] = dict(
+    return LLMOrchestrator(
         metadata_service=metadata,
         domain_classifier=DomainClassifier(),
         question_validator=QuestionValidator(),
@@ -105,10 +91,6 @@ def build_orchestrator(model_name: str | None = None) -> Any:
         current_shamsi_year=settings.current_shamsi_year,
         strict_metadata=True,
     )
-    if llm_client:
-        kwargs["llm_client"] = llm_client
-
-    return LLMOrchestrator(**kwargs)
 
 
 # ---------------------------------------------------------------------------
@@ -308,6 +290,8 @@ async def list_runs(set_id: str, db: AsyncSession = Depends(get_db)):
             started_at=r.started_at,
             finished_at=r.finished_at,
             created_at=r.created_at,
+            current_question_idx=r.current_question_idx,
+            question_ids_ordered=r.question_ids_ordered,
             results=[],
         )
         for r in rows
@@ -321,7 +305,6 @@ async def list_runs(set_id: str, db: AsyncSession = Depends(get_db)):
 )
 async def trigger_run(
     set_id: str,
-    background_tasks: BackgroundTasks,
     body: TriggerRunRequest = Body(default_factory=TriggerRunRequest),
     db: AsyncSession = Depends(get_db),
 ):
@@ -366,21 +349,31 @@ async def trigger_run(
             )
         raise HTTPException(status_code=400, detail="Question set has no questions")
 
+    question_ids = [q.id for q in questions]
+
     run = EvalRunORM(
         set_id=set_id,
-        status="pending",
+        status="running",
+        started_at=datetime.now(UTC),
         total=len(questions),
         model_name=body.model_name,
+        question_ids_ordered=question_ids,
     )
     db.add(run)
     await db.commit()
 
-    background_tasks.add_task(
-        _run_evaluation_background,
-        run_id=run.id,
-        question_ids=[q.id for q in questions],
-        session_factory=AsyncSessionLocal,
-        model_name=body.model_name,
+    task = asyncio.create_task(
+        _run_evaluation_background(
+            run_id=run.id,
+            question_ids=question_ids,
+            session_factory=AsyncSessionLocal,
+            model_name=body.model_name,
+        )
+    )
+    task.add_done_callback(
+        lambda t: logger.error("eval run %s task raised: %s", run.id, t.exception())
+        if not t.cancelled() and t.exception()
+        else None
     )
 
     return EvalRunOut(
@@ -394,6 +387,8 @@ async def trigger_run(
         started_at=run.started_at,
         finished_at=run.finished_at,
         created_at=run.created_at,
+        current_question_idx=run.current_question_idx,
+        question_ids_ordered=run.question_ids_ordered,
         results=[],
     )
 
@@ -426,73 +421,90 @@ async def _run_evaluation_background(
     orchestrator: Any = None,
     model_name: str | None = None,
 ) -> None:
-    if orchestrator is None:
-        orchestrator = build_orchestrator(model_name)
-    async with session_factory() as db:
-        run = (await db.execute(select(EvalRunORM).where(EvalRunORM.id == run_id))).scalar_one()
-        questions = (
-            (await db.execute(select(EvalQuestionORM).where(EvalQuestionORM.id.in_(question_ids))))
-            .scalars()
-            .all()
-        )
-        run.status = "running"
-        run.started_at = datetime.now(UTC)
-        await db.commit()
-
-    passed = failed = 0
-
-    for q in questions:
-        t0 = time.perf_counter()
-        error: str | None = None
-        result_row: dict = {}
-
-        try:
-            response = await orchestrator.arun(q.question, execute_sql=False)
-            elapsed = (time.perf_counter() - t0) * 1000
-            payload = response.to_dict() if hasattr(response, "to_dict") else dict(response)
-            result_row = _extract_result(payload, q, elapsed)
-        except Exception as exc:
-            elapsed = (time.perf_counter() - t0) * 1000
-            error = str(exc)
-            result_row = {
-                "question_id": q.question_id,
-                "question": q.question,
-                "category": q.category,
-                "actual_route": None,
-                "actual_status": None,
-                "actual_intent": None,
-                "source": None,
-                "model_called": None,
-                "template_id": None,
-                "sql_validator_status": None,
-                "executed": False,
-                "row_count": None,
-                "visualization": None,
-                "total_duration_ms": round(elapsed, 2),
-                "passed": False,
-                "trace_steps": [],
-                "error": error,
-                "warnings": [],
-            }
-
-        if result_row.get("passed"):
-            passed += 1
-        else:
-            failed += 1
+    try:
+        if orchestrator is None:
+            orchestrator = build_orchestrator(model_name)
 
         async with session_factory() as db:
-            db.add(EvalRunResultORM(run_id=run_id, **result_row))
+            questions = (
+                (await db.execute(select(EvalQuestionORM).where(EvalQuestionORM.id.in_(question_ids))))
+                .scalars()
+                .all()
+            )
+
+        passed = failed = 0
+
+        for idx, q in enumerate(questions):
+            async with session_factory() as db:
+                run_row = (await db.execute(select(EvalRunORM).where(EvalRunORM.id == run_id))).scalar_one()
+                run_row.current_question_idx = idx
+                await db.commit()
+
+            t0 = time.perf_counter()
+            error: str | None = None
+            result_row: dict = {}
+
+            try:
+                response = await orchestrator.arun(q.question, execute_sql=False)
+                elapsed = (time.perf_counter() - t0) * 1000
+                payload = response.to_dict() if hasattr(response, "to_dict") else dict(response)
+                result_row = _extract_result(payload, q, elapsed)
+            except Exception as exc:
+                elapsed = (time.perf_counter() - t0) * 1000
+                error = str(exc)
+                result_row = {
+                    "question_id": q.question_id,
+                    "question": q.question,
+                    "category": q.category,
+                    "actual_route": None,
+                    "actual_status": None,
+                    "actual_intent": None,
+                    "source": None,
+                    "model_called": None,
+                    "template_id": None,
+                    "sql_validator_status": None,
+                    "executed": False,
+                    "row_count": None,
+                    "visualization": None,
+                    "total_duration_ms": round(elapsed, 2),
+                    "passed": False,
+                    "trace_steps": [],
+                    "error": error,
+                    "warnings": [],
+                }
+
+            if result_row.get("passed"):
+                passed += 1
+            else:
+                failed += 1
+
+            async with session_factory() as db:
+                db.add(EvalRunResultORM(run_id=run_id, **result_row))
+                await db.commit()
+
+        async with session_factory() as db:
+            run = (await db.execute(select(EvalRunORM).where(EvalRunORM.id == run_id))).scalar_one()
+            run.status = "done"
+            run.passed = passed
+            run.failed = failed
+            run.finished_at = datetime.now(UTC)
             await db.commit()
 
-    async with session_factory() as db:
-        run = (await db.execute(select(EvalRunORM).where(EvalRunORM.id == run_id))).scalar_one()
-        run.status = "done"
-        run.passed = passed
-        run.failed = failed
-        run.finished_at = datetime.now(UTC)
-        await db.commit()
+        logger.info("eval run %s done: passed=%d failed=%d", run_id, passed, failed)
 
-    logger.info("eval run %s done: passed=%d failed=%d", run_id, passed, failed)
+    except Exception:
+        logger.exception("eval run %s crashed before completion — marking as failed", run_id)
+        try:
+            async with session_factory() as db:
+                run = (
+                    await db.execute(select(EvalRunORM).where(EvalRunORM.id == run_id))
+                ).scalar_one_or_none()
+                if run and run.status not in ("done",):
+                    run.status = "failed"
+                    run.finished_at = datetime.now(UTC)
+                    await db.commit()
+        except Exception:
+            logger.exception("failed to mark eval run %s as failed", run_id)
 
 
 def _extract_result(payload: dict, q: EvalQuestionORM, elapsed_ms: float) -> dict:
