@@ -68,9 +68,21 @@ function BackendOfflineDialog() {
   )
 }
 
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768)
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 767px)')
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches)
+    mq.addEventListener('change', handler)
+    return () => mq.removeEventListener('change', handler)
+  }, [])
+  return isMobile
+}
+
 function AppShell() {
   const { theme, activePage, activeSessionId, setActiveSession, setActivePage } = useAppStore()
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
+  const isMobile = useIsMobile()
   const { data: sessions } = useSessions()
 
   useEffect(() => {
@@ -151,7 +163,7 @@ function AppShell() {
         ].join(' ')}
         style={{ flexShrink: 0 }}
       >
-        <Sidebar onClose={closeSidebar} />
+        <Sidebar onClose={isMobile ? closeSidebar : undefined} />
       </div>
 
       {/* Main content */}
