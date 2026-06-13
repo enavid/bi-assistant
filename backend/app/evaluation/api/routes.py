@@ -341,7 +341,9 @@ async def trigger_run(
 
     if not questions:
         if body.question_ids is not None:
-            raise HTTPException(status_code=400, detail="No matching questions found for the given question_ids")
+            raise HTTPException(
+                status_code=400, detail="No matching questions found for the given question_ids"
+            )
         if body.category:
             raise HTTPException(
                 status_code=400,
@@ -371,9 +373,11 @@ async def trigger_run(
         )
     )
     task.add_done_callback(
-        lambda t: logger.error("eval run %s task raised: %s", run.id, t.exception())
-        if not t.cancelled() and t.exception()
-        else None
+        lambda t: (
+            logger.error("eval run %s task raised: %s", run.id, t.exception())
+            if not t.cancelled() and t.exception()
+            else None
+        )
     )
 
     return EvalRunOut(
@@ -427,7 +431,11 @@ async def _run_evaluation_background(
 
         async with session_factory() as db:
             questions = (
-                (await db.execute(select(EvalQuestionORM).where(EvalQuestionORM.id.in_(question_ids))))
+                (
+                    await db.execute(
+                        select(EvalQuestionORM).where(EvalQuestionORM.id.in_(question_ids))
+                    )
+                )
                 .scalars()
                 .all()
             )
@@ -436,7 +444,9 @@ async def _run_evaluation_background(
 
         for idx, q in enumerate(questions):
             async with session_factory() as db:
-                run_row = (await db.execute(select(EvalRunORM).where(EvalRunORM.id == run_id))).scalar_one()
+                run_row = (
+                    await db.execute(select(EvalRunORM).where(EvalRunORM.id == run_id))
+                ).scalar_one()
                 run_row.current_question_idx = idx
                 await db.commit()
 

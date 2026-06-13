@@ -335,7 +335,7 @@ function CategoryCard({
   return (
     <div>
       <div
-        className="flex items-center gap-2 px-3 py-2 cursor-pointer select-none"
+        className="group/card flex items-center gap-2 px-3 py-1.5 cursor-pointer select-none"
         style={{ background: 'var(--bg-raised)', border: '1px solid var(--border-default)', borderRadius: headerRadius }}
         onClick={() => setOpen((v) => !v)}
       >
@@ -345,24 +345,24 @@ function CategoryCard({
         <span className="flex-1 min-w-0 truncate text-[12px] font-semibold" style={{ color: 'var(--text-1)' }}>
           {humanCategory(category)}
         </span>
-        {/* Progress when running */}
         {hasResults && (
           <span className="text-[10px] tabular-nums flex-shrink-0 font-mono"
             style={{ color: passedCount === doneCount ? 'var(--accent-text)' : 'var(--red)' }}>
             {passedCount}/{doneCount}
           </span>
         )}
-        <span className="text-[10px] px-1.5 py-[1px] rounded-[4px] flex-shrink-0"
+        <span className="text-[10px] px-1.5 py-[1px] rounded-[4px] flex-shrink-0 tabular-nums"
           style={{ background: 'var(--bg-base)', border: '1px solid var(--border-default)', color: 'var(--text-3)' }}>
           {questions.length}
         </span>
-        <div className="flex gap-1.5 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+        <div className="flex gap-1 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+          {/* Add — icon only, visible on hover */}
           <button
             onClick={() => setAddOpen(true)}
-            className="h-6 px-2 rounded-[5px] text-[10px] font-medium flex items-center gap-1 transition-opacity hover:opacity-75"
+            title="Add question"
+            className="w-6 h-6 rounded-[5px] flex items-center justify-center opacity-0 group-hover/card:opacity-100 transition-opacity hover:opacity-75"
             style={{ background: 'var(--bg-base)', border: '1px solid var(--border-default)', color: 'var(--text-3)' }}>
-            <Icon name="plus" size={9} />
-            <span className="hidden sm:inline">Add</span>
+            <Icon name="plus" size={10} />
           </button>
           <button
             onClick={() => onRunCategory(category)}
@@ -429,42 +429,42 @@ function QuestionsTab({
   const passedResults = Object.values(resultsByQuestionId).filter((r) => r.passed).length
 
   return (
-    <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
+    <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-1.5">
 
       {/* Run All bar */}
       {questions.length > 0 && (
-        <div className="flex items-center gap-3 px-3 py-2 rounded-[10px] flex-shrink-0"
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-[8px] flex-shrink-0 mb-1"
           style={{ background: 'var(--bg-raised)', border: '1px solid var(--border-default)' }}>
           {isRunning ? (
             <>
-              <Spinner size={13} />
-              <span className="text-[12px] flex-1" style={{ color: 'var(--text-2)' }}>
-                Running… {totalResults}/{questions.length}
+              <Spinner size={12} />
+              <span className="text-[11px] flex-1" style={{ color: 'var(--text-2)' }}>
+                Running… <span className="tabular-nums font-medium">{totalResults}/{questions.length}</span>
               </span>
             </>
           ) : totalResults > 0 ? (
             <>
-              <div className="w-4 h-4 rounded-full flex items-center justify-center"
+              <div className="w-3.5 h-3.5 rounded-full flex items-center justify-center flex-shrink-0"
                 style={passedResults === totalResults
                   ? { background: 'var(--accent-bg)', color: 'var(--accent-text)' }
                   : { background: 'var(--red-bg)', color: 'var(--red)' }}>
-                <Icon name={passedResults === totalResults ? 'check' : 'x'} size={8} />
+                <Icon name={passedResults === totalResults ? 'check' : 'x'} size={7} />
               </div>
-              <span className="text-[12px] flex-1 tabular-nums" style={{ color: 'var(--text-2)' }}>
-                {passedResults}/{totalResults} passed
+              <span className="text-[11px] flex-1 tabular-nums" style={{ color: 'var(--text-2)' }}>
+                <span className="font-semibold">{passedResults}</span>/{totalResults} passed
               </span>
             </>
           ) : (
-            <span className="text-[12px] flex-1" style={{ color: 'var(--text-3)' }}>
-              {questions.length} questions ready
+            <span className="text-[11px] flex-1" style={{ color: 'var(--text-3)' }}>
+              {questions.length} questions
             </span>
           )}
           <button
             onClick={onRunAll}
             disabled={isRunning}
-            className="h-7 px-3 flex items-center gap-1.5 rounded-[7px] text-[12px] font-semibold transition-opacity hover:opacity-88 disabled:opacity-40"
+            className="h-6 px-2.5 flex items-center gap-1.5 rounded-[6px] text-[11px] font-semibold transition-opacity hover:opacity-88 disabled:opacity-40"
             style={{ background: 'var(--accent)', color: '#fff' }}>
-            {isRunning ? <Spinner size={11} /> : <Icon name="play" size={11} />}
+            {isRunning ? <Spinner size={10} /> : <Icon name="play" size={10} />}
             {isRunning ? 'Running…' : 'Run All'}
           </button>
         </div>
@@ -493,12 +493,12 @@ function QuestionsTab({
 
       <button
         onClick={() => setAddOpen(true)}
-        className="flex items-center justify-center gap-2 px-4 py-3 rounded-[10px] text-[12px] transition-colors"
+        className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-[8px] text-[11px] transition-colors mt-1"
         style={{ border: '1px dashed var(--border-default)', color: 'var(--text-3)', background: 'transparent' }}
         onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--accent-border)'; e.currentTarget.style.color = 'var(--accent-text)' }}
         onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border-default)'; e.currentTarget.style.color = 'var(--text-3)' }}>
-        <Icon name="plus" size={13} />
-        Add question to new category
+        <Icon name="plus" size={11} />
+        New category
       </button>
 
       <AddQuestionModal setId={setId} open={addOpen} onClose={() => setAddOpen(false)} />
