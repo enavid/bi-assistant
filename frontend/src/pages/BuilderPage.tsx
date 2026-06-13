@@ -7,7 +7,7 @@ import {
 } from '@/hooks'
 import { chatApi } from '@/services/api'
 import { useAppStore } from '@/store/appStore'
-import { Modal } from '@/components/ui/Modal'
+import { Modal, ConfirmDialog } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Icon } from '@/components/ui/Icon'
 import type { Project } from '@/types'
@@ -51,6 +51,7 @@ export function BuilderPage() {
   const [testResult, setTestResult] = useState<{ sql: string; route?: string; intent?: string } | null>(null)
   const [testLoading, setTestLoading] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -266,7 +267,7 @@ export function BuilderPage() {
             {menuOpen && (
               <div className="absolute right-0 top-9 w-44 rounded-[8px] py-1 z-50 overflow-hidden" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)', boxShadow: '0 4px 16px rgba(0,0,0,0.15)' }}>
                 <button
-                  onClick={async () => { setMenuOpen(false); if (selected) { await deleteProject.mutateAsync(selected.id); backToGallery() } }}
+                  onClick={() => { setMenuOpen(false); setConfirmDeleteOpen(true) }}
                   className="w-full flex items-center gap-2 px-3 py-2 text-xs transition-colors hover:bg-bg-raised"
                   style={{ color: '#f87171' }}
                 >
@@ -607,6 +608,15 @@ export function BuilderPage() {
           </div>
         </div>
       </Modal>
+
+      <ConfirmDialog
+        open={confirmDeleteOpen}
+        title="Delete project"
+        message={`"${selected?.name}" and all its sections will be permanently deleted.`}
+        confirmLabel="Delete"
+        onConfirm={async () => { if (selected) { await deleteProject.mutateAsync(selected.id); backToGallery() } }}
+        onClose={() => setConfirmDeleteOpen(false)}
+      />
     </>
   )
 }

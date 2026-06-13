@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react'
 import { Icon } from '@/components/ui/Icon'
-import { Modal } from '@/components/ui/Modal'
+import { Modal, ConfirmDialog } from '@/components/ui/Modal'
 import {
   useAddEvalQuestion,
   useCreateEvalSet,
@@ -69,6 +69,7 @@ function SetList({
   const [newOpen, setNewOpen] = useState(false)
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
+  const [pendingDeleteSet, setPendingDeleteSet] = useState<{ id: string; name: string } | null>(null)
 
   async function handleCreate() {
     if (!name.trim()) return
@@ -137,7 +138,7 @@ function SetList({
                   </p>
                 </div>
                 <button
-                  onClick={(e) => { e.stopPropagation(); deleteSet.mutate(s.id) }}
+                  onClick={(e) => { e.stopPropagation(); setPendingDeleteSet({ id: s.id, name: s.name }) }}
                   className="opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
                   style={{ color: 'var(--text-3)' }}
                   onMouseEnter={(e) => (e.currentTarget.style.color = '#f87171')}
@@ -194,6 +195,15 @@ function SetList({
           </div>
         </div>
       </Modal>
+
+      <ConfirmDialog
+        open={pendingDeleteSet !== null}
+        title="Delete question set"
+        message={`"${pendingDeleteSet?.name}" and all its questions will be permanently deleted.`}
+        confirmLabel="Delete"
+        onConfirm={() => { if (pendingDeleteSet) deleteSet.mutate(pendingDeleteSet.id) }}
+        onClose={() => setPendingDeleteSet(null)}
+      />
     </>
   )
 }
@@ -857,6 +867,7 @@ function RunResults({ runId, isRunning }: { runId: string; isRunning: boolean })
 
 function QuestionList({ questions, setId }: { questions: EvalQuestion[]; setId: string }) {
   const deleteQ = useDeleteEvalQuestion()
+  const [pendingDeleteQ, setPendingDeleteQ] = useState<{ questionId: string; label: string } | null>(null)
 
   const byCat: Record<string, EvalQuestion[]> = {}
   for (const q of questions) {
@@ -914,7 +925,7 @@ function QuestionList({ questions, setId }: { questions: EvalQuestion[]; setId: 
                   </span>
                 )}
                 <button
-                  onClick={() => deleteQ.mutate({ setId, questionId: q.question_id })}
+                  onClick={() => setPendingDeleteQ({ questionId: q.question_id, label: q.question_id })}
                   className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-[5px]"
                   style={{ color: 'var(--text-3)' }}
                   onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--red)')}
@@ -928,6 +939,15 @@ function QuestionList({ questions, setId }: { questions: EvalQuestion[]; setId: 
           ))}
         </div>
       ))}
+
+      <ConfirmDialog
+        open={pendingDeleteQ !== null}
+        title="Delete question"
+        message={`Question "${pendingDeleteQ?.label}" will be permanently deleted.`}
+        confirmLabel="Delete"
+        onConfirm={() => { if (pendingDeleteQ) deleteQ.mutate({ setId, questionId: pendingDeleteQ.questionId }) }}
+        onClose={() => setPendingDeleteQ(null)}
+      />
     </div>
   )
 }
