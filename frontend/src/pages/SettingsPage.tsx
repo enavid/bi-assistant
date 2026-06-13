@@ -24,6 +24,7 @@ import {
 } from '@/hooks'
 import { useAppStore } from '@/store/appStore'
 import { Button } from '@/components/ui/Button'
+import { ConfirmDialog } from '@/components/ui/Modal'
 import { Icon } from '@/components/ui/Icon'
 import type { OllamaConnection, QueryDatabase, TestConnectionResult } from '@/types'
 
@@ -209,6 +210,8 @@ function DbCard({
   isDeactivating: boolean
   isDeleting: boolean
 }) {
+  const [confirming, setConfirming] = useState(false)
+
   return (
     <div className={clsx(
       'flex items-center gap-3 px-3.5 py-3 rounded-[9px] border transition-colors',
@@ -263,12 +266,21 @@ function DbCard({
         <button
           className="p-1.5 rounded-[6px] text-text-3 hover:text-red-400 hover:bg-red-900/20 transition-colors disabled:opacity-40"
           title="Delete"
-          onClick={onDelete}
+          onClick={() => setConfirming(true)}
           disabled={isDeleting}
         >
           <Icon name="trash" size={13} />
         </button>
       </div>
+
+      <ConfirmDialog
+        open={confirming}
+        title="Delete database connection"
+        message={`"${db.name}" will be permanently removed.`}
+        confirmLabel="Delete"
+        onConfirm={onDelete}
+        onClose={() => setConfirming(false)}
+      />
     </div>
   )
 }
@@ -397,6 +409,7 @@ function OllamaConnectionPanel({
   isDeleting: boolean
 }) {
   const [open, setOpen] = useState(false)
+  const [confirming, setConfirming] = useState(false)
   const { data: modelsData, isLoading: modelsLoading, isError: modelsError } = useOllamaConnectionModels(conn.id, open)
   const models = modelsData?.models ?? []
 
@@ -450,12 +463,21 @@ function OllamaConnectionPanel({
           )}
           <button
             className="p-1.5 rounded-[6px] text-text-3 hover:text-red-400 hover:bg-red-900/20 transition-colors disabled:opacity-40"
-            title="Delete" onClick={onDelete} disabled={isDeleting}
+            title="Delete" onClick={() => setConfirming(true)} disabled={isDeleting}
           >
             <Icon name="trash" size={13} />
           </button>
         </div>
       </div>
+
+      <ConfirmDialog
+        open={confirming}
+        title="Delete Ollama connection"
+        message={`"${conn.name}" will be permanently removed.`}
+        confirmLabel="Delete"
+        onConfirm={onDelete}
+        onClose={() => setConfirming(false)}
+      />
 
       {/* Expandable models list */}
       {open && (

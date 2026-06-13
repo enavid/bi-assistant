@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { clsx } from 'clsx'
 import { useAppStore } from '@/store/appStore'
 import { useOllamaHealth, useProjects, useSessions, useCreateSession, useDeleteSession } from '@/hooks'
-import { Modal } from '@/components/ui/Modal'
+import { Modal, ConfirmDialog } from '@/components/ui/Modal'
 import { Icon } from '@/components/ui/Icon'
 import type { AppPage } from '@/types'
 import amrLogo from '@/assets/amr-logo.png'
@@ -127,6 +127,7 @@ export function Sidebar() {
   const [newChatOpen, setNewChatOpen] = useState(false)
   const [selectedProjectId, setSelectedProjectId] = useState('')
   const [selectedModel, setSelectedModel] = useState(defaultModelName)
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
 
   const grouped = groupByDate((sessions ?? []) as Session[])
   const isOnline = health?.online ?? false
@@ -326,11 +327,7 @@ export function Sidebar() {
                       </div>
                     </div>
                     <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        deleteSession.mutate(s.id)
-                        if (activeSessionId === s.id) setActiveSession(null)
-                      }}
+                      onClick={(e) => { e.stopPropagation(); setPendingDeleteId(s.id) }}
                       className="opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
                       style={{ color: 'var(--text-3)' }}
                       onMouseEnter={(e) => (e.currentTarget.style.color = '#f87171')}
@@ -458,6 +455,19 @@ export function Sidebar() {
           </div>
         </div>
       </Modal>
+
+      <ConfirmDialog
+        open={pendingDeleteId !== null}
+        title="Delete chat"
+        message="This chat and all its messages will be permanently deleted."
+        confirmLabel="Delete"
+        onConfirm={() => {
+          if (!pendingDeleteId) return
+          deleteSession.mutate(pendingDeleteId)
+          if (activeSessionId === pendingDeleteId) setActiveSession(null)
+        }}
+        onClose={() => setPendingDeleteId(null)}
+      />
     </>
   )
 }
