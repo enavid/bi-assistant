@@ -27,7 +27,7 @@ function getAvatarColor(id: string) {
   return AVATAR_COLORS[id.charCodeAt(0) % AVATAR_COLORS.length]
 }
 
-export function BuilderPage() {
+export function BuilderPage({ onOpenSidebar }: { onOpenSidebar?: () => void }) {
   const qc = useQueryClient()
   const { defaultModelName } = useAppStore()
   const { data: projects } = useProjects()
@@ -41,6 +41,7 @@ export function BuilderPage() {
   const [view, setView] = useState<View>('gallery')
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [tab, setTab] = useState<Tab>('sections')
+  const [mobilePanel, setMobilePanel] = useState<'sections' | 'editor' | 'preview'>('editor')
   const [activeSectionId, setActiveSectionId] = useState<string | null>(null)
   const [newProjectOpen, setNewProjectOpen] = useState(false)
   const [newProjectName, setNewProjectName] = useState('')
@@ -184,13 +185,20 @@ export function BuilderPage() {
     return (
       <>
         <div className="flex flex-col flex-1 overflow-hidden">
-          <div className="h-[46px] border-b border-border-default flex items-center px-5 flex-shrink-0 bg-bg-surface">
+          <div className="h-[46px] border-b border-border-default flex items-center px-3 sm:px-5 gap-2 flex-shrink-0 bg-bg-surface">
+            <button
+              onClick={onOpenSidebar}
+              className="md:hidden w-8 h-8 flex items-center justify-center rounded-[8px] flex-shrink-0"
+              style={{ color: 'var(--text-2)' }}
+            >
+              <Icon name="menu" size={16} />
+            </button>
             <span className="text-[13px] font-medium text-text-1 flex-1">Prompt Builder</span>
             <Button variant="secondary" size="sm" onClick={() => setNewProjectOpen(true)}>
               <Icon name="plus" size={13} /> New project
             </Button>
           </div>
-          <div className="flex-1 overflow-y-auto p-7">
+          <div className="flex-1 overflow-y-auto p-4 sm:p-7">
             <div className="mb-6">
               <h1 className="text-xl font-medium text-text-1 mb-1">Projects</h1>
               <p className="text-sm text-text-2">Each project contains sections, output format, and experiments.</p>
@@ -249,8 +257,15 @@ export function BuilderPage() {
   return (
     <>
       <div className="flex flex-col flex-1 overflow-hidden">
-        <div className="h-[46px] border-b border-border-default flex items-center px-5 gap-3 flex-shrink-0 bg-bg-surface">
-          <button onClick={backToGallery} className="flex items-center gap-1.5 text-xs text-text-2 hover:text-text-1 transition-colors">
+        <div className="h-[46px] border-b border-border-default flex items-center px-3 sm:px-5 gap-2 sm:gap-3 flex-shrink-0 bg-bg-surface">
+          <button
+            onClick={onOpenSidebar}
+            className="md:hidden w-8 h-8 flex items-center justify-center rounded-[8px] flex-shrink-0"
+            style={{ color: 'var(--text-2)' }}
+          >
+            <Icon name="menu" size={16} />
+          </button>
+          <button onClick={backToGallery} className="flex items-center gap-1.5 text-xs text-text-2 hover:text-text-1 transition-colors flex-shrink-0">
             <Icon name="arrow-left" size={14} /> Projects
           </button>
           <div className="w-px h-4 bg-border-default" />
@@ -278,9 +293,38 @@ export function BuilderPage() {
           </div>
         </div>
 
-        <div className="flex flex-1 overflow-hidden">
+        <div className="flex flex-col flex-1 overflow-hidden">
+          {/* Mobile panel selector — hidden on lg+ */}
+          <div
+            className="lg:hidden flex items-center gap-1 px-2 flex-shrink-0"
+            style={{ background: 'var(--bg-surface)', borderBottom: '1px solid var(--border-default)', height: '38px' }}
+          >
+            {([
+              { id: 'sections', label: 'Sections', icon: 'list' },
+              { id: 'editor',   label: 'Edit',     icon: 'notes' },
+              { id: 'preview',  label: 'Preview',  icon: 'eye'   },
+            ] as const).map(({ id, label, icon }) => (
+              <button
+                key={id}
+                onClick={() => setMobilePanel(id)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-[6px] text-[12px] transition-colors"
+                style={{
+                  background: mobilePanel === id ? 'var(--accent-bg)' : 'transparent',
+                  color: mobilePanel === id ? 'var(--accent-text)' : 'var(--text-3)',
+                }}
+              >
+                <Icon name={icon} size={13} />
+                {label}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex flex-1 overflow-hidden">
           {/* Section list with ↑ ↓ buttons */}
-          <div className="w-[180px] min-w-[180px] border-r-2 border-border-default flex flex-col bg-bg-raised">
+          <div className={clsx(
+            'border-r-2 border-border-default flex-col bg-bg-raised',
+            mobilePanel === 'sections' ? 'flex w-full lg:w-[180px] lg:min-w-[180px]' : 'hidden lg:flex lg:w-[180px] lg:min-w-[180px]'
+          )}>
             <div className="h-9 border-b border-border-subtle flex items-center px-3 flex-shrink-0">
               <span className="text-[10px] font-medium text-text-3 uppercase tracking-[.7px]">Sections</span>
             </div>
@@ -350,7 +394,10 @@ export function BuilderPage() {
           </div>
 
           {/* Editor */}
-          <div className="flex flex-col flex-1 overflow-hidden">
+          <div className={clsx(
+            'flex-col flex-1 overflow-hidden',
+            mobilePanel !== 'editor' ? 'hidden lg:flex' : 'flex'
+          )}>
             <div className="flex border-b-2 border-border-default flex-shrink-0 px-3 bg-bg-raised">
               {(['sections', 'output', 'notes', 'experiments'] as Tab[]).map((t, i) => {
                 const icons: Parameters<typeof Icon>[0]['name'][] = ['list', 'code', 'notes', 'flask']
@@ -565,8 +612,11 @@ export function BuilderPage() {
             )}
           </div>
 
-          {/* Preview panel — always expanded */}
-          <div className="w-[420px] min-w-[420px] border-l-2 border-border-default flex flex-col bg-bg-raised">
+          {/* Preview panel */}
+          <div className={clsx(
+            'border-l-2 border-border-default flex-col bg-bg-raised',
+            mobilePanel === 'preview' ? 'flex w-full lg:w-[420px] lg:min-w-[420px]' : 'hidden lg:flex lg:w-[420px] lg:min-w-[420px]'
+          )}>
             <div className="h-9 border-b border-border-subtle flex items-center px-3 flex-shrink-0 gap-2">
               <span className="text-[10px] font-medium text-text-3 uppercase tracking-[.7px] flex-1">Assembled prompt</span>
               {preview && (
@@ -592,6 +642,7 @@ export function BuilderPage() {
                 <p className="text-[12px]" style={{ color: 'var(--text-3)' }}>Add sections to see preview</p>
               )}
             </div>
+          </div>
           </div>
         </div>
       </div>

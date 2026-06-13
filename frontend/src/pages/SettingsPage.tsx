@@ -959,7 +959,7 @@ function DatabaseSection() {
   )
 }
 
-export function SettingsPage() {
+export function SettingsPage({ onOpenSidebar }: { onOpenSidebar?: () => void }) {
   const [section, setSection] = useState<Section>('ollama')
 
   const NAV: { id: Section; label: string; icon: Parameters<typeof Icon>[0]['name'] }[] = [
@@ -969,17 +969,27 @@ export function SettingsPage() {
 
   return (
     <div className="flex flex-col flex-1 overflow-hidden">
-      <div className="h-[46px] border-b border-border-default flex items-center px-5 flex-shrink-0 bg-bg-surface">
+      {/* Header */}
+      <div className="h-[46px] border-b border-border-default flex items-center px-3 sm:px-5 gap-2 flex-shrink-0 bg-bg-surface">
+        <button
+          onClick={onOpenSidebar}
+          className="md:hidden w-8 h-8 flex items-center justify-center rounded-[8px] flex-shrink-0"
+          style={{ color: 'var(--text-2)' }}
+        >
+          <Icon name="menu" size={16} />
+        </button>
         <span className="text-[13px] font-medium text-text-1">Settings</span>
       </div>
-      <div className="flex flex-1 overflow-hidden">
-        <div className="w-[154px] border-r border-border-default p-2 bg-bg-surface flex-shrink-0">
+
+      <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
+        {/* Nav — horizontal scrollable tabs on mobile, vertical panel on desktop */}
+        <div className="flex md:flex-col md:w-[154px] border-b md:border-b-0 md:border-r border-border-default p-2 bg-bg-surface flex-shrink-0 overflow-x-auto gap-0.5 md:gap-0">
           {NAV.map((item) => (
             <button
               key={item.id}
               onClick={() => setSection(item.id)}
               className={clsx(
-                'w-full flex items-center gap-2 px-2.5 py-1.5 rounded-[7px] text-xs mb-0.5 transition-colors',
+                'flex items-center gap-2 px-3 md:px-2.5 py-2 md:py-1.5 rounded-[7px] text-xs whitespace-nowrap md:w-full md:mb-0.5 transition-colors flex-shrink-0',
                 section === item.id ? 'bg-accent-bg text-accent-text' : 'text-text-2 hover:bg-bg-raised hover:text-text-1'
               )}
             >
@@ -989,7 +999,7 @@ export function SettingsPage() {
           ))}
         </div>
 
-        <div className="flex-1 overflow-y-auto p-6">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6">
           {section === 'ollama' && <OllamaSection />}
           {section === 'database' && <DatabaseSection />}
         </div>

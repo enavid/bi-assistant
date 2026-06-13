@@ -159,7 +159,7 @@ export function QueryResultView({ result }: { result: QueryResult }) {
             <button
               key={tab.id}
               onClick={() => setView(tab.id)}
-              className="flex items-center gap-1 px-2 py-1 rounded-[6px] text-[11px] border transition-all"
+              className="flex items-center gap-1 px-1.5 sm:px-2 py-1 rounded-[6px] text-[11px] border transition-all"
               style={
                 view === tab.id
                   ? { background: 'var(--accent-bg)', color: 'var(--accent-text)', borderColor: 'var(--accent-border)' }
@@ -167,7 +167,7 @@ export function QueryResultView({ result }: { result: QueryResult }) {
               }
             >
               <Icon name={tab.icon} size={11} />
-              {tab.label}
+              <span className="hidden sm:inline">{tab.label}</span>
             </button>
           ))}
         </div>
@@ -265,17 +265,17 @@ export function QueryResultView({ result }: { result: QueryResult }) {
 
       {/* ── DONUT ── */}
       {view === 'donut' && cols && (
-        <div className="flex items-center" style={{ height: CHART_H }}>
+        <div className="flex flex-col sm:flex-row sm:items-center">
           {/* Chart + center label */}
-          <div style={{ width: 280, flexShrink: 0, position: 'relative' }}>
-            <ResponsiveContainer width="100%" height={CHART_H}>
+          <div className="w-full sm:w-[280px] sm:flex-shrink-0 relative" style={{ height: 260 }}>
+            <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
                   data={donutData}
                   cx="50%"
                   cy="50%"
-                  innerRadius={80}
-                  outerRadius={120}
+                  innerRadius={72}
+                  outerRadius={108}
                   dataKey="value"
                   paddingAngle={2}
                   startAngle={90}
@@ -301,7 +301,7 @@ export function QueryResultView({ result }: { result: QueryResult }) {
           </div>
 
           {/* Legend */}
-          <div className="flex-1 overflow-y-auto py-3 pr-4 pl-1" style={{ maxHeight: CHART_H }}>
+          <div className="flex-1 overflow-y-auto py-3 px-3 sm:pr-4 sm:pl-1" style={{ maxHeight: CHART_H }}>
             {donutData.map((d, i) => {
               const pct = total > 0 ? ((d.value / total) * 100).toFixed(1) : '0'
               return (

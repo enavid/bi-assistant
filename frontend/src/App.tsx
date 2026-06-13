@@ -56,11 +56,7 @@ function BackendOfflineDialog() {
             onClick={retry}
             disabled={retrying}
             className="w-full flex items-center justify-center gap-2 text-[12px] py-2 rounded-xl font-medium transition-opacity"
-            style={{
-              background: 'var(--accent)',
-              color: '#fff',
-              opacity: retrying ? 0.65 : 1,
-            }}
+            style={{ background: 'var(--accent)', color: '#fff', opacity: retrying ? 0.65 : 1 }}
           >
             {retrying && <Icon name="refresh" size={12} className="animate-spin" />}
             {retrying ? 'Connecting...' : 'Retry'}
@@ -73,6 +69,7 @@ function BackendOfflineDialog() {
 
 function AppShell() {
   const { theme, activePage } = useAppStore()
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
 
   useEffect(() => {
     document.documentElement.className = theme
@@ -92,15 +89,41 @@ function AppShell() {
     return () => clearInterval(id)
   }, [])
 
+  const openSidebar = () => setMobileSidebarOpen(true)
+  const closeSidebar = () => setMobileSidebarOpen(false)
+
   return (
     <div className="flex h-screen overflow-hidden" style={{ background: 'var(--bg-base)' }}>
-      <Sidebar />
+      {/* Mobile overlay */}
+      {mobileSidebarOpen && (
+        <div
+          className="fixed inset-0 z-40 md:hidden"
+          style={{ background: 'rgba(0,0,0,0.5)' }}
+          onClick={closeSidebar}
+        />
+      )}
+
+      {/* Sidebar — fixed drawer on mobile, static on md+ */}
+      <div
+        className={[
+          'fixed inset-y-0 left-0 z-50',
+          'md:relative md:z-auto md:translate-x-0',
+          'transition-transform duration-200 ease-in-out',
+          mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full',
+        ].join(' ')}
+        style={{ flexShrink: 0 }}
+      >
+        <Sidebar onClose={closeSidebar} />
+      </div>
+
+      {/* Main content */}
       <main className="flex flex-1 overflow-hidden min-w-0" style={{ background: 'var(--bg-base)' }}>
-        {activePage === 'chat'     && <ChatPage />}
-        {activePage === 'builder'  && <BuilderPage />}
-        {activePage === 'eval'     && <EvalPage />}
-        {activePage === 'settings' && <SettingsPage />}
+        {activePage === 'chat'     && <ChatPage onOpenSidebar={openSidebar} />}
+        {activePage === 'builder'  && <BuilderPage onOpenSidebar={openSidebar} />}
+        {activePage === 'eval'     && <EvalPage onOpenSidebar={openSidebar} />}
+        {activePage === 'settings' && <SettingsPage onOpenSidebar={openSidebar} />}
       </main>
+
       <BackendOfflineDialog />
     </div>
   )

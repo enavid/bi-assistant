@@ -31,10 +31,46 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     logger.info("Database tables ready")
+    await _restore_active_connections()
     await _seed_eval_defaults()
     yield
     await engine.dispose()
     logger.info("Shutdown complete")
+
+
+async def _restore_active_connections() -> None:
+    from urllib.parse import quote_plus
+
+    from app.connections.active import set_active_dsn, set_active_ollama_base_url, set_model_config
+    from app.connections.repositories.database_repository import QueryDatabaseRepository
+    from app.connections.repositories.model_config_repository import ModelConfigRepository
+    from app.connections.repositories.ollama_repository import OllamaConnectionRepository
+    from app.infrastructure.db.session import AsyncSessionLocal
+
+    async with AsyncSessionLocal() as db:
+        db_repo = QueryDatabaseRepository(db)
+        active_db = await db_repo.get_active()
+        if active_db:
+            dsn = (
+                f"postgresql+asyncpg://{quote_plus(active_db.username)}"
+                f":{quote_plus(active_db.password)}"
+                f"@{active_db.host}:{active_db.port}/{active_db.db_name}"
+            )
+            set_active_dsn(dsn)
+            logger.info("Restored active query database: %s", active_db.name)
+
+        ollama_repo = OllamaConnectionRepository(db)
+        active_ollama = await ollama_repo.get_active()
+        if active_ollama:
+            set_active_ollama_base_url(active_ollama.base_url)
+            logger.info("Restored active Ollama connection: %s", active_ollama.name)
+
+        config_repo = ModelConfigRepository(db)
+        configs = await config_repo.list_all()
+        for cfg in configs:
+            set_model_config(cfg.model_name, cfg.config_json)
+        if configs:
+            logger.info("Restored %d model config(s)", len(configs))
 
 
 async def _seed_eval_defaults() -> None:

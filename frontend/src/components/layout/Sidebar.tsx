@@ -114,7 +114,7 @@ function sameDay(a: Date, b: Date) {
   )
 }
 
-export function Sidebar() {
+export function Sidebar({ onClose }: { onClose?: () => void }) {
   const { theme, toggleTheme, activePage, setActivePage, activeSessionId, setActiveSession, defaultModelName } =
     useAppStore()
   const { data: health } = useOllamaHealth()
@@ -147,13 +147,14 @@ export function Sidebar() {
     setActiveSession(session.id)
     setActivePage('chat')
     setNewChatOpen(false)
+    onClose?.()
   }
 
-  // ── COLLAPSED ──────────────────────────────────────────────────────────────
-  if (collapsed) {
+  // ── COLLAPSED (desktop only — drawer mode always shows expanded) ───────────
+  if (collapsed && !onClose) {
     return (
       <aside
-        className="w-[56px] min-w-[56px] flex flex-col"
+        className="w-[56px] min-w-[56px] flex flex-col h-full"
         style={{ background: 'var(--bg-surface)', borderRight: '1px solid var(--border-default)' }}
       >
         {/* Brand mark */}
@@ -241,7 +242,7 @@ export function Sidebar() {
   return (
     <>
       <aside
-        className="w-[224px] min-w-[224px] flex flex-col"
+        className="w-[224px] min-w-[224px] flex flex-col h-full"
         style={{ background: 'var(--bg-surface)', borderRight: '1px solid var(--border-default)' }}
       >
         {/* ── Brand header ── */}
@@ -254,14 +255,25 @@ export function Sidebar() {
             <p className="text-[13px] font-semibold truncate" style={{ color: 'var(--text-1)' }}>AminRaay</p>
             <p className="text-[10px]" style={{ color: 'var(--text-3)' }}>BI Assistant</p>
           </div>
-          <button
-            onClick={() => setCollapsed(true)}
-            className="w-6 h-6 rounded-[6px] flex items-center justify-center flex-shrink-0 transition-opacity hover:opacity-70"
-            style={{ color: 'var(--text-3)' }}
-            title="Collapse"
-          >
-            <Icon name="arrow-left" size={13} />
-          </button>
+          {onClose ? (
+            <button
+              onClick={onClose}
+              className="w-6 h-6 rounded-[6px] flex items-center justify-center flex-shrink-0 transition-opacity hover:opacity-70"
+              style={{ color: 'var(--text-3)' }}
+              title="Close"
+            >
+              <Icon name="arrow-left" size={13} />
+            </button>
+          ) : (
+            <button
+              onClick={() => setCollapsed(true)}
+              className="w-6 h-6 rounded-[6px] flex items-center justify-center flex-shrink-0 transition-opacity hover:opacity-70"
+              style={{ color: 'var(--text-3)' }}
+              title="Collapse"
+            >
+              <Icon name="arrow-left" size={13} />
+            </button>
+          )}
         </div>
 
         {/* ── Nav (Chat + Builder only) ── */}
@@ -269,7 +281,7 @@ export function Sidebar() {
           {NAV.map((item) => (
             <button
               key={item.page}
-              onClick={() => setActivePage(item.page)}
+              onClick={() => { setActivePage(item.page); onClose?.() }}
               className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-[8px] text-[12.5px] mb-0.5 transition-colors text-left"
               style={{
                 background: activePage === item.page ? 'var(--accent-bg)' : 'transparent',
@@ -299,7 +311,7 @@ export function Sidebar() {
                 return (
                   <div
                     key={s.id}
-                    onClick={() => { setActiveSession(s.id); setActivePage('chat') }}
+                    onClick={() => { setActiveSession(s.id); setActivePage('chat'); onClose?.() }}
                     className="group flex items-center gap-2 px-2.5 py-2 rounded-[8px] mb-0.5 cursor-pointer transition-colors"
                     style={{ background: isActive ? 'var(--accent-bg)' : 'transparent' }}
                     onMouseEnter={(e) => { if (!isActive) e.currentTarget.style.background = 'var(--bg-raised)' }}
@@ -363,7 +375,7 @@ export function Sidebar() {
           style={{ borderTop: '1px solid var(--border-default)' }}
         >
           <button
-            onClick={() => setActivePage('settings')}
+            onClick={() => { setActivePage('settings'); onClose?.() }}
             className={clsx(
               'flex items-center gap-1.5 text-[11px] transition-opacity hover:opacity-80 flex-shrink-0',
             )}

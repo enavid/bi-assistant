@@ -59,9 +59,11 @@ const labelCls = 'text-[11px] font-semibold uppercase tracking-[0.6px]'
 function SetList({
   selectedId,
   onSelect,
+  onOpenSidebar,
 }: {
   selectedId: string | null
   onSelect: (id: string) => void
+  onOpenSidebar?: () => void
 }) {
   const { data: sets, isLoading } = useEvalSets()
   const createSet = useCreateEvalSet()
@@ -83,14 +85,23 @@ function SetList({
   return (
     <>
       <div
-        className="w-[220px] min-w-[220px] flex flex-col h-full"
+        className="w-full md:w-[220px] md:min-w-[220px] flex flex-col h-full"
         style={{ borderRight: '1px solid var(--border-default)', background: 'var(--bg-surface)' }}
       >
         <div
-          className="px-3 py-3 flex items-center justify-between flex-shrink-0"
+          className="px-3 py-3 flex items-center gap-2 flex-shrink-0"
           style={{ borderBottom: '1px solid var(--border-subtle)' }}
         >
-          <span className={`${labelCls}`} style={{ color: 'var(--text-3)' }}>
+          {onOpenSidebar && (
+            <button
+              onClick={onOpenSidebar}
+              className="md:hidden w-7 h-7 flex items-center justify-center rounded-[7px] flex-shrink-0"
+              style={{ color: 'var(--text-2)' }}
+            >
+              <Icon name="menu" size={15} />
+            </button>
+          )}
+          <span className={`${labelCls} flex-1`} style={{ color: 'var(--text-3)' }}>
             Question Sets
           </span>
           <button
@@ -956,7 +967,7 @@ function QuestionList({ questions, setId }: { questions: EvalQuestion[]; setId: 
 // Set detail panel (right)
 // ---------------------------------------------------------------------------
 
-function SetDetail({ setId }: { setId: string }) {
+function SetDetail({ setId, onBack, onOpenSidebar }: { setId: string; onBack?: () => void; onOpenSidebar?: () => void }) {
   const { data: sets } = useEvalSets()
   const { data: questions } = useEvalQuestions(setId)
   const { data: runs, isLoading: runsLoading } = useEvalRuns(setId)
@@ -978,19 +989,42 @@ function SetDetail({ setId }: { setId: string }) {
 
   return (
     <>
-      <div className="flex-1 flex flex-col h-full overflow-hidden p-5 gap-5">
+      <div className="flex-1 flex flex-col h-full overflow-hidden p-4 sm:p-5 gap-4 sm:gap-5">
         {/* Header */}
-        <div className="flex items-start gap-3 flex-shrink-0">
-          <div className="flex-1 min-w-0">
-            <h2 className="text-[15px] font-semibold truncate" style={{ color: 'var(--text-1)' }}>
-              {set?.name ?? '…'}
-            </h2>
-            <p className="text-[12px] mt-0.5" style={{ color: 'var(--text-3)' }}>
-              {questions?.length ?? 0} questions
-              {set?.description ? ` · ${set.description}` : ''}
-            </p>
+        <div className="flex flex-col gap-2 flex-shrink-0">
+          {/* Top row: nav buttons + title */}
+          <div className="flex items-center gap-2">
+            {onBack && (
+              <button
+                onClick={onBack}
+                className="md:hidden w-8 h-8 flex items-center justify-center rounded-[8px] flex-shrink-0 transition-colors"
+                style={{ color: 'var(--text-2)', border: '1px solid var(--border-default)', background: 'var(--bg-raised)' }}
+                title="Back"
+              >
+                <Icon name="arrow-left" size={14} />
+              </button>
+            )}
+            {onOpenSidebar && (
+              <button
+                onClick={onOpenSidebar}
+                className="md:hidden w-8 h-8 flex items-center justify-center rounded-[8px] flex-shrink-0 transition-colors"
+                style={{ color: 'var(--text-2)' }}
+              >
+                <Icon name="menu" size={16} />
+              </button>
+            )}
+            <div className="flex-1 min-w-0">
+              <h2 className="text-[15px] font-semibold truncate" style={{ color: 'var(--text-1)' }}>
+                {set?.name ?? '…'}
+              </h2>
+              <p className="text-[12px] truncate" style={{ color: 'var(--text-3)' }}>
+                {questions?.length ?? 0} questions
+                {set?.description ? ` · ${set.description}` : ''}
+              </p>
+            </div>
           </div>
-          <div className="flex gap-2 flex-shrink-0 flex-wrap justify-end">
+          {/* Action buttons row — wraps cleanly on mobile */}
+          <div className="flex gap-2 flex-wrap">
             <button
               onClick={() => setAddOpen(true)}
               className="flex items-center gap-1.5 px-3 py-2 rounded-[8px] text-[12px] font-medium transition-opacity hover:opacity-80"
@@ -1098,21 +1132,39 @@ function SetDetail({ setId }: { setId: string }) {
 // Page root
 // ---------------------------------------------------------------------------
 
-export function EvalPage() {
+export function EvalPage({ onOpenSidebar }: { onOpenSidebar?: () => void }) {
   const [selectedSetId, setSelectedSetId] = useState<string | null>(null)
+  const [mobileView, setMobileView] = useState<'list' | 'detail'>('list')
   const { data: sets } = useEvalSets()
 
   const activeSetId = selectedSetId ?? (sets?.find((s) => s.is_default) ?? sets?.[0])?.id ?? null
 
+  function handleSelectSet(id: string) {
+    setSelectedSetId(id)
+    setMobileView('detail')
+  }
+
   return (
     <div className="flex h-full w-full overflow-hidden">
-      <SetList selectedId={activeSetId} onSelect={setSelectedSetId} />
+      {/* SetList — full screen on mobile when mobileView=list, side panel on desktop */}
+      <div className={mobileView === 'list' ? 'flex w-full md:w-auto md:flex-shrink-0' : 'hidden md:flex md:flex-shrink-0'}>
+        <SetList selectedId={activeSetId} onSelect={handleSelectSet} onOpenSidebar={onOpenSidebar} />
+      </div>
 
-      <div className="flex-1 overflow-hidden" style={{ background: 'var(--bg-base)' }}>
+      {/* SetDetail — full screen on mobile when mobileView=detail, flex-1 on desktop */}
+      <div
+        className={mobileView === 'detail' ? 'flex flex-1 overflow-hidden' : 'hidden md:flex flex-1 overflow-hidden'}
+        style={{ background: 'var(--bg-base)' }}
+      >
         {activeSetId
-          ? <SetDetail key={activeSetId} setId={activeSetId} />
+          ? <SetDetail
+              key={activeSetId}
+              setId={activeSetId}
+              onBack={() => setMobileView('list')}
+              onOpenSidebar={onOpenSidebar}
+            />
           : (
-            <div className="flex items-center justify-center h-full" style={{ color: 'var(--text-3)' }}>
+            <div className="flex items-center justify-center h-full w-full" style={{ color: 'var(--text-3)' }}>
               <div className="text-center">
                 <span className="block mb-4 opacity-20"><Icon name="flask" size={40} /></span>
                 <p className="text-[13px]">Select a question set to get started.</p>

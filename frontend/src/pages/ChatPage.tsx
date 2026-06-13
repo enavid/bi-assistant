@@ -144,10 +144,10 @@ function TracePanel({ traces }: { traces: TraceStep[] }) {
 
   return (
     <div
-      className="mt-1.5 rounded-[6px] overflow-hidden text-[10px] font-mono"
+      className="mt-1.5 rounded-[6px] overflow-hidden text-[10px] font-mono overflow-x-auto"
       style={{ border: '1px solid var(--border-subtle)', background: 'var(--bg-raised)' }}
     >
-      <div className="grid" style={{ gridTemplateColumns: 'minmax(130px, 1.8fr) minmax(90px, 1fr) 52px 96px', gap: 0 }}>
+      <div className="grid" style={{ gridTemplateColumns: 'minmax(110px, 1.8fr) minmax(80px, 1fr) 44px 88px', gap: 0, minWidth: 320 }}>
         {/* header */}
         {(['step', 'status', 'ms', 'decision'] as const).map((h) => (
           <div key={h} className="px-2.5 py-1.5 font-semibold uppercase tracking-wide text-[9px]"
@@ -215,7 +215,7 @@ function PipelineBadges({ info }: { info: GenerateResponse }) {
   const hasTraces = traces.length > 0
 
   return (
-    <div className="ml-10" style={{ marginTop: '-2px' }}>
+    <div className="ml-8 sm:ml-10" style={{ marginTop: '-2px' }}>
       <div className="flex items-center gap-1.5 flex-wrap">
         <span
           className="text-[10px] font-mono font-medium px-1.5 py-[3px] rounded-[4px]"
@@ -229,7 +229,7 @@ function PipelineBadges({ info }: { info: GenerateResponse }) {
         {modelLabel && <MetaChip label={modelLabel} />}
         {templateId && (
           <span
-            className="text-[10px] font-mono truncate max-w-[200px] px-1.5 py-[3px] rounded-[4px]"
+            className="text-[10px] font-mono truncate max-w-[120px] sm:max-w-[200px] px-1.5 py-[3px] rounded-[4px]"
             style={{ background: 'var(--bg-base)', color: 'var(--text-2)', border: '1px dashed var(--border-default)', fontStyle: 'italic' }}
             title={templateId}
           >
@@ -272,7 +272,7 @@ function KpiCard({ columns, rows }: { columns: string[]; rows: unknown[][] }) {
   )
 }
 
-export function ChatPage() {
+export function ChatPage({ onOpenSidebar }: { onOpenSidebar?: () => void }) {
   const { activeSessionId, setActivePage } = useAppStore()
   const { data: session, isLoading } = useSession(activeSessionId)
   const { data: projects } = useProjects()
@@ -323,7 +323,19 @@ export function ChatPage() {
         qc.setQueryData(['session', session.id], { ...updated, messages: userSession.messages })
       }
 
-      const result = await chatApi.generate(q, session.project_id, session.model_name)
+      let result: GenerateResponse
+      try {
+        result = await chatApi.generate(q, session.project_id, session.model_name)
+      } catch (err) {
+        const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail
+        const errSession = await chatApi.addMessage(session.id, {
+          role: 'assistant', content: '', sql: null,
+          error: detail ?? 'Could not generate a response.',
+        })
+        qc.setQueryData(['session', session.id], errSession)
+        return
+      }
+
       const isBlocked = !result.success && !!STATUS_FA[result.status ?? '']
 
       const aiSession = await chatApi.addMessage(session.id, {
@@ -354,11 +366,19 @@ export function ChatPage() {
     if (!msg.sql || !session) return
     const userQuestion = [...(session.messages ?? [])].reverse()
       .find((m) => m.role === 'user' && new Date(m.created_at) < new Date(msg.created_at))?.content
-    const result = await chatApi.runQuery(msg.sql, { session_id: session.id, question: userQuestion, project_id: session.project_id })
-    setQueryResults((prev) => ({ ...prev, [msg.id]: result }))
-    setTimeout(() => {
-      document.getElementById(`result-${msg.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
-    }, 50)
+    try {
+      const result = await chatApi.runQuery(msg.sql, { session_id: session.id, question: userQuestion, project_id: session.project_id })
+      setQueryResults((prev) => ({ ...prev, [msg.id]: result }))
+      setTimeout(() => {
+        document.getElementById(`result-${msg.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+      }, 50)
+    } catch (err) {
+      const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail
+      setQueryResults((prev) => ({
+        ...prev,
+        [msg.id]: { columns: [], rows: [], row_count: 0, elapsed_ms: 0, success: false, error: detail ?? 'Failed to execute query.' },
+      }))
+    }
   }
 
   async function handleFeedback(msgId: string, correct: boolean) {
@@ -374,20 +394,44 @@ export function ChatPage() {
 
   if (!activeSessionId) {
     return (
-      <div className="flex flex-col flex-1 items-center justify-center gap-4" style={{ color: 'var(--text-3)' }}>
-        <div className="w-16 h-16 rounded-2xl flex items-center justify-center" style={{ background: 'var(--bg-raised)', border: '1px solid var(--border-default)' }}>
-          <Icon name="message" size={28} />
+      <div className="flex flex-col flex-1 overflow-hidden">
+        <div className="h-[52px] flex items-center px-3 flex-shrink-0 md:hidden" style={{ borderBottom: '1px solid var(--border-default)', background: 'var(--bg-surface)' }}>
+          <button
+            onClick={onOpenSidebar}
+            className="w-8 h-8 flex items-center justify-center rounded-[8px]"
+            style={{ color: 'var(--text-2)' }}
+          >
+            <Icon name="menu" size={16} />
+          </button>
         </div>
-        <div className="text-center">
-          <p className="text-sm font-medium" style={{ color: 'var(--text-2)' }}>No chat selected</p>
-          <p className="text-xs mt-1">Create a new chat from the sidebar</p>
+        <div className="flex flex-col flex-1 items-center justify-center gap-4" style={{ color: 'var(--text-3)' }}>
+          <div className="w-16 h-16 rounded-2xl flex items-center justify-center" style={{ background: 'var(--bg-raised)', border: '1px solid var(--border-default)' }}>
+            <Icon name="message" size={28} />
+          </div>
+          <div className="text-center">
+            <p className="text-sm font-medium" style={{ color: 'var(--text-2)' }}>No chat selected</p>
+            <p className="text-xs mt-1">Create a new chat from the sidebar</p>
+          </div>
         </div>
       </div>
     )
   }
 
   if (isLoading) {
-    return <div className="flex flex-1 items-center justify-center text-sm" style={{ color: 'var(--text-3)' }}>Loading…</div>
+    return (
+      <div className="flex flex-col flex-1 overflow-hidden">
+        <div className="h-[52px] flex items-center px-3 flex-shrink-0 md:hidden" style={{ borderBottom: '1px solid var(--border-default)', background: 'var(--bg-surface)' }}>
+          <button
+            onClick={onOpenSidebar}
+            className="w-8 h-8 flex items-center justify-center rounded-[8px]"
+            style={{ color: 'var(--text-2)' }}
+          >
+            <Icon name="menu" size={16} />
+          </button>
+        </div>
+        <div className="flex flex-1 items-center justify-center text-sm" style={{ color: 'var(--text-3)' }}>Loading…</div>
+      </div>
+    )
   }
 
   const messages = session?.messages ?? []
@@ -395,12 +439,19 @@ export function ChatPage() {
   return (
     <div className="flex flex-col flex-1 overflow-hidden">
       {/* Header */}
-      <div className="h-[52px] flex items-center px-6 gap-3 flex-shrink-0" style={{ borderBottom: '1px solid var(--border-default)', background: 'var(--bg-surface)' }}>
+      <div className="h-[52px] flex items-center px-3 sm:px-6 gap-2 sm:gap-3 flex-shrink-0" style={{ borderBottom: '1px solid var(--border-default)', background: 'var(--bg-surface)' }}>
+        <button
+          onClick={onOpenSidebar}
+          className="md:hidden w-8 h-8 flex items-center justify-center rounded-[8px] flex-shrink-0 transition-colors"
+          style={{ color: 'var(--text-2)' }}
+        >
+          <Icon name="menu" size={16} />
+        </button>
         <div className="flex-1 min-w-0">
           <p className="text-[13px] font-medium truncate" style={{ color: 'var(--text-1)' }}>{session?.title ?? 'Chat'}</p>
         </div>
         {project && (
-          <span className="text-[11px] px-2.5 py-1 rounded-full font-medium flex-shrink-0" style={{ background: 'var(--accent-bg)', color: 'var(--accent-text)', border: '1px solid var(--accent-border)' }}>
+          <span className="text-[11px] px-2.5 py-1 rounded-full font-medium flex-shrink-0 hidden sm:inline-block" style={{ background: 'var(--accent-bg)', color: 'var(--accent-text)', border: '1px solid var(--accent-border)' }}>
             {project.name}
           </span>
         )}
@@ -408,13 +459,13 @@ export function ChatPage() {
       </div>
 
       {/* Messages */}
-      <div ref={bodyRef} className="flex-1 overflow-y-auto px-6 py-6 flex flex-col gap-3">
+      <div ref={bodyRef} className="flex-1 overflow-y-auto px-3 py-4 sm:px-6 sm:py-6 flex flex-col gap-3">
         {messages.map((msg) => {
           if (msg.role === 'user') {
             return (
               <div key={msg.id} className="flex justify-end">
                 <div
-                  className="max-w-[65%] px-4 py-2.5 rounded-[18px_18px_4px_18px] text-[13px] leading-[1.6]"
+                  className="max-w-[85%] sm:max-w-[65%] px-4 py-2.5 rounded-[18px_18px_4px_18px] text-[13px] leading-[1.6]"
                   style={{ background: 'var(--accent)', color: '#fff', direction: 'rtl', textAlign: 'right' }}
                 >
                   {msg.content}
@@ -437,7 +488,7 @@ export function ChatPage() {
 
                 {blockedText ? (
                   <div
-                    className="px-4 py-2.5 rounded-[4px_18px_18px_18px] text-[13px] leading-[1.6] max-w-[65%]"
+                    className="px-4 py-2.5 rounded-[4px_18px_18px_18px] text-[13px] leading-[1.6] max-w-[85%] sm:max-w-[65%]"
                     style={{ background: 'var(--bg-raised)', color: 'var(--text-2)', border: '1px solid var(--border-default)', direction: 'rtl', textAlign: 'right' }}
                   >
                     {blockedText}
@@ -488,7 +539,7 @@ export function ChatPage() {
 
               {/* Query results */}
               {queryResults[msg.id] && (
-                <div id={`result-${msg.id}`} className="ml-10 flex flex-col gap-2">
+                <div id={`result-${msg.id}`} className="ml-8 sm:ml-10 flex flex-col gap-2">
                   {queryResults[msg.id].success && (
                     <KpiCard columns={queryResults[msg.id].columns} rows={queryResults[msg.id].rows} />
                   )}
