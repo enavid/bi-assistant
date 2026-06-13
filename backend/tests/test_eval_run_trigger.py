@@ -104,6 +104,38 @@ def test_trigger_run_appears_in_list(client):
     assert runs[0]["status"] == "pending"
 
 
+def test_trigger_run_with_question_ids_runs_only_those(client):
+    qs = _seed_set_with_questions(client, n=5)
+    questions = client.get(f"/eval/question-sets/{qs['id']}/questions").json()
+    first_id = questions[0]['id']
+
+    with patch("app.evaluation.api.routes._run_evaluation_background"):
+        resp = client.post(
+            f"/eval/question-sets/{qs['id']}/run",
+            json={"question_ids": [first_id]},
+        )
+    assert resp.status_code == 201
+    assert resp.json()["total"] == 1
+
+
+def test_trigger_run_with_empty_question_ids_returns_400(client):
+    qs = _seed_set_with_questions(client)
+    resp = client.post(
+        f"/eval/question-sets/{qs['id']}/run",
+        json={"question_ids": []},
+    )
+    assert resp.status_code == 400
+
+
+def test_trigger_run_with_nonexistent_question_ids_returns_400(client):
+    qs = _seed_set_with_questions(client)
+    resp = client.post(
+        f"/eval/question-sets/{qs['id']}/run",
+        json={"question_ids": ["00000000-0000-0000-0000-000000000000"]},
+    )
+    assert resp.status_code == 400
+
+
 def test_trigger_run_blocked_when_pending_run_exists(client):
     qs = _seed_set_with_questions(client)
     with patch("app.evaluation.api.routes._run_evaluation_background"):

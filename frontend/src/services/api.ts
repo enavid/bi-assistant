@@ -179,7 +179,7 @@ export const evalApi = {
   seedDefaults: () =>
     apiClient.post<EvalQuestionSet>('/eval/seed-defaults').then((r) => r.data),
 
-  triggerRun: (setId: string, opts?: { category?: string; model_name?: string }) =>
+  triggerRun: (setId: string, opts?: { category?: string; model_name?: string; question_ids?: string[] }) =>
     apiClient.post<EvalRun>(`/eval/question-sets/${setId}/run`, opts ?? {}).then((r) => r.data),
 
   getRun: (runId: string) =>

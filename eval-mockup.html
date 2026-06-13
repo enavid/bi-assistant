@@ -1,0 +1,849 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Eval Page — Mockup</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg-base:       #0f1117;
+    --bg-surface:    #161b27;
+    --bg-raised:     #1e2536;
+    --border:        #2a3347;
+    --border-subtle: #1e2536;
+    --text-1:        #e8ecf4;
+    --text-2:        #8b9ab5;
+    --text-3:        #4e5f7a;
+    --accent:        #3b7afc;
+    --accent-bg:     rgba(59,122,252,0.12);
+    --accent-border: rgba(59,122,252,0.3);
+    --accent-text:   #6b9fff;
+    --green:         #22c55e;
+    --green-bg:      rgba(34,197,94,0.1);
+    --green-border:  rgba(34,197,94,0.25);
+    --amber:         #f59e0b;
+    --amber-bg:      rgba(245,158,11,0.1);
+    --amber-border:  rgba(245,158,11,0.25);
+    --red:           #f87171;
+    --red-bg:        rgba(248,113,113,0.1);
+    --red-border:    rgba(248,113,113,0.25);
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg-base);
+    color: var(--text-1);
+    height: 100vh;
+    display: flex;
+    overflow: hidden;
+    font-size: 13px;
+  }
+
+  /* ── Fake App Shell ── */
+  .shell { display: flex; width: 100%; height: 100vh; }
+
+  /* ── Fake Sidebar ── */
+  .app-sidebar {
+    width: 56px; min-width: 56px;
+    background: var(--bg-surface);
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction: column; align-items: center;
+    padding: 12px 0; gap: 8px;
+  }
+  .app-sidebar .logo {
+    width: 32px; height: 32px; border-radius: 8px;
+    background: var(--accent); display: flex; align-items: center;
+    justify-content: center; font-weight: 700; color: #fff; font-size: 14px;
+    margin-bottom: 8px;
+  }
+  .nav-icon {
+    width: 36px; height: 36px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--text-3); cursor: pointer; transition: all .15s;
+  }
+  .nav-icon:hover { background: var(--bg-raised); color: var(--text-2); }
+  .nav-icon.active { background: var(--accent-bg); color: var(--accent-text); }
+  .nav-icon svg { width: 16px; height: 16px; }
+
+  /* ── Set List Panel ── */
+  .set-list {
+    width: 220px; min-width: 220px;
+    background: var(--bg-surface);
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction: column;
+  }
+  .panel-header {
+    height: 52px; padding: 0 14px;
+    display: flex; align-items: center; justify-content: space-between;
+    border-bottom: 1px solid var(--border-subtle);
+    flex-shrink: 0;
+  }
+  .panel-header-title {
+    font-size: 10px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .7px;
+    color: var(--text-3);
+  }
+  .icon-btn {
+    width: 26px; height: 26px; border-radius: 6px; border: none;
+    background: var(--bg-raised); color: var(--text-2); cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: opacity .15s;
+  }
+  .icon-btn:hover { opacity: .75; }
+  .icon-btn svg { width: 13px; height: 13px; }
+
+  .set-list-body { flex: 1; overflow-y: auto; padding: 8px; }
+  .set-item {
+    padding: 8px 10px; border-radius: 8px; cursor: pointer;
+    transition: background .1s; display: flex; flex-direction: column; gap: 2px;
+  }
+  .set-item:hover { background: var(--bg-raised); }
+  .set-item.selected { background: var(--accent-bg); }
+  .set-item-name { font-size: 12.5px; font-weight: 500; color: var(--text-1); }
+  .set-item.selected .set-item-name { color: var(--accent-text); }
+  .set-item-meta { font-size: 10px; color: var(--text-3); }
+
+  /* ── Set Detail Panel ── */
+  .set-detail {
+    flex: 1; display: flex; flex-direction: column;
+    background: var(--bg-base); overflow: hidden;
+  }
+
+  /* Header */
+  .detail-header {
+    height: 52px; padding: 0 16px;
+    display: flex; align-items: center; gap: 10px;
+    border-bottom: 1px solid var(--border-subtle);
+    background: var(--bg-surface);
+    flex-shrink: 0;
+  }
+  .detail-title { font-size: 14px; font-weight: 600; color: var(--text-1); }
+  .detail-subtitle { font-size: 11px; color: var(--text-3); margin-left: 6px; }
+  .header-actions { margin-left: auto; display: flex; gap: 6px; align-items: center; }
+  .btn {
+    height: 28px; padding: 0 10px; border-radius: 7px; border: none;
+    font-size: 12px; font-weight: 500; cursor: pointer;
+    display: flex; align-items: center; gap: 5px; transition: opacity .15s;
+  }
+  .btn:hover { opacity: .8; }
+  .btn-ghost {
+    background: var(--bg-raised);
+    border: 1px solid var(--border);
+    color: var(--text-2);
+  }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:disabled { opacity: .4; cursor: default; }
+  .btn svg { width: 12px; height: 12px; }
+
+  /* Tabs */
+  .tabs {
+    display: flex; border-bottom: 1px solid var(--border-subtle);
+    background: var(--bg-surface); flex-shrink: 0;
+    padding: 0 16px;
+  }
+  .tab {
+    padding: 10px 14px; font-size: 12px; font-weight: 500;
+    color: var(--text-3); cursor: pointer; border: none; background: none;
+    border-bottom: 2px solid transparent; margin-bottom: -1px;
+    transition: color .15s;
+  }
+  .tab:hover { color: var(--text-2); }
+  .tab.active { color: var(--accent-text); border-bottom-color: var(--accent); }
+
+  /* ── TAB 1: Library ── */
+  .tab-content { flex: 1; overflow: hidden; display: none; }
+  .tab-content.active { display: flex; flex-direction: column; }
+
+  .library-body { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+
+  .category-card {
+    border: 1px solid var(--border);
+    border-radius: 10px; overflow: hidden;
+    background: var(--bg-surface);
+  }
+  .category-header {
+    display: flex; align-items: center; gap: 8px;
+    padding: 9px 12px; cursor: pointer;
+    background: var(--bg-raised);
+    border-bottom: 1px solid var(--border-subtle);
+    user-select: none;
+  }
+  .category-header:hover { opacity: .9; }
+  .cat-chevron {
+    color: var(--text-3); transition: transform .15s; flex-shrink: 0;
+  }
+  .cat-chevron svg { width: 10px; height: 10px; display: block; }
+  .category-card.open .cat-chevron { transform: rotate(90deg); }
+  .cat-name { font-size: 12px; font-weight: 600; color: var(--text-1); flex: 1; }
+  .cat-count {
+    font-size: 10px; color: var(--text-3);
+    background: var(--bg-base); border: 1px solid var(--border);
+    padding: 1px 6px; border-radius: 4px;
+  }
+  .cat-actions { display: flex; gap: 4px; }
+  .cat-run-btn {
+    height: 22px; padding: 0 8px; border-radius: 5px; border: none;
+    background: var(--accent-bg); color: var(--accent-text);
+    border: 1px solid var(--accent-border);
+    font-size: 10px; font-weight: 600; cursor: pointer;
+    display: flex; align-items: center; gap: 3px; transition: opacity .15s;
+  }
+  .cat-run-btn:hover { opacity: .8; }
+  .cat-run-btn svg { width: 9px; height: 9px; }
+  .cat-add-btn {
+    height: 22px; padding: 0 8px; border-radius: 5px; border: none;
+    background: transparent; color: var(--text-3);
+    border: 1px solid var(--border);
+    font-size: 10px; cursor: pointer;
+    display: flex; align-items: center; gap: 3px; transition: opacity .15s;
+  }
+  .cat-add-btn:hover { opacity: .75; }
+
+  .question-list { display: none; flex-direction: column; }
+  .category-card.open .question-list { display: flex; }
+
+  .question-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 7px 12px;
+    border-bottom: 1px solid var(--border-subtle);
+    transition: background .1s;
+  }
+  .question-row:last-child { border-bottom: none; }
+  .question-row:hover { background: var(--bg-raised); }
+  .question-row:hover .q-actions { opacity: 1; }
+  .q-text {
+    flex: 1; font-size: 12px; color: var(--text-2);
+    direction: rtl; text-align: right; line-height: 1.4;
+  }
+  .q-badge {
+    font-size: 9px; font-family: monospace; padding: 2px 5px;
+    border-radius: 4px; flex-shrink: 0;
+    background: var(--accent-bg); color: var(--accent-text);
+    border: 1px solid var(--accent-border);
+  }
+  .q-actions { display: flex; gap: 4px; opacity: 0; transition: opacity .15s; flex-shrink: 0; }
+  .q-run-btn {
+    width: 22px; height: 22px; border-radius: 5px; border: none;
+    background: var(--accent-bg); color: var(--accent-text);
+    border: 1px solid var(--accent-border);
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    transition: opacity .15s;
+  }
+  .q-run-btn:hover { opacity: .75; }
+  .q-run-btn svg { width: 9px; height: 9px; }
+  .q-del-btn {
+    width: 22px; height: 22px; border-radius: 5px; border: none;
+    background: transparent; color: var(--text-3);
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    transition: color .15s;
+  }
+  .q-del-btn:hover { color: var(--red); }
+  .q-del-btn svg { width: 10px; height: 10px; }
+
+  .add-category-row {
+    display: flex; align-items: center; gap: 8px; padding: 4px 0;
+  }
+  .add-category-btn {
+    display: flex; align-items: center; gap: 6px; padding: 7px 12px;
+    border-radius: 8px; border: 1px dashed var(--border);
+    background: transparent; color: var(--text-3);
+    font-size: 12px; cursor: pointer; width: 100%;
+    transition: border-color .15s, color .15s;
+  }
+  .add-category-btn:hover { border-color: var(--accent-border); color: var(--accent-text); }
+  .add-category-btn svg { width: 13px; height: 13px; }
+
+  /* ── TAB 2: Runs ── */
+  .runs-layout { flex: 1; display: flex; overflow: hidden; }
+
+  /* Run config + history sidebar */
+  .runs-sidebar {
+    width: 220px; min-width: 220px;
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    background: var(--bg-surface);
+  }
+  .runs-config {
+    padding: 12px; display: flex; flex-direction: column; gap: 8px;
+    border-bottom: 1px solid var(--border); flex-shrink: 0;
+  }
+  .config-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; color: var(--text-3); margin-bottom: 2px; }
+  .config-select {
+    width: 100%; height: 30px; border-radius: 7px; border: 1px solid var(--border);
+    background: var(--bg-raised); color: var(--text-1);
+    font-size: 12px; padding: 0 8px; outline: none; cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%234e5f7a' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+    padding-right: 24px;
+  }
+  .run-now-btn {
+    height: 32px; border-radius: 8px; border: none;
+    background: var(--accent); color: #fff;
+    font-size: 12px; font-weight: 600; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+    transition: opacity .15s;
+  }
+  .run-now-btn:hover { opacity: .88; }
+  .run-now-btn svg { width: 12px; height: 12px; }
+
+  .history-label {
+    padding: 10px 12px 6px;
+    font-size: 10px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .6px; color: var(--text-3); flex-shrink: 0;
+  }
+  .history-list { flex: 1; overflow-y: auto; padding: 0 8px 8px; display: flex; flex-direction: column; gap: 3px; }
+  .history-item {
+    padding: 8px 10px; border-radius: 8px; cursor: pointer;
+    border: 1px solid transparent; transition: all .1s;
+    display: flex; flex-direction: column; gap: 3px;
+  }
+  .history-item:hover { background: var(--bg-raised); border-color: var(--border); }
+  .history-item.selected { background: var(--accent-bg); border-color: var(--accent-border); }
+  .history-item-top { display: flex; align-items: center; gap: 6px; }
+  .history-pct {
+    font-size: 13px; font-weight: 700; tabular-nums: all;
+  }
+  .history-status {
+    font-size: 9px; font-weight: 600; padding: 2px 5px; border-radius: 4px;
+  }
+  .history-item-bottom { font-size: 10px; color: var(--text-3); }
+  .history-model { font-family: monospace; font-size: 9px; color: var(--text-3); }
+
+  /* Run results panel */
+  .runs-results {
+    flex: 1; display: flex; flex-direction: column;
+    overflow: hidden; padding: 16px; gap: 12px;
+  }
+
+  /* Summary card */
+  .summary-card {
+    background: var(--bg-raised); border: 1px solid var(--border);
+    border-radius: 10px; padding: 12px 16px;
+    display: flex; align-items: center; gap: 16px;
+    flex-shrink: 0;
+  }
+  .summary-pct { text-align: center; flex-shrink: 0; }
+  .summary-pct-num { font-size: 26px; font-weight: 800; tabular-nums: all; line-height: 1; }
+  .summary-pct-label { font-size: 9px; text-transform: uppercase; letter-spacing: .6px; color: var(--text-3); margin-top: 2px; }
+  .summary-divider { width: 1px; align-self: stretch; background: var(--border); flex-shrink: 0; }
+  .summary-stats { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 0; }
+  .summary-stats-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .badge {
+    font-size: 10px; font-weight: 600; padding: 2px 6px; border-radius: 4px;
+  }
+  .badge-green { background: var(--green-bg); color: var(--green); border: 1px solid var(--green-border); }
+  .badge-amber { background: var(--amber-bg); color: var(--amber); border: 1px solid var(--amber-border); }
+  .badge-gray { background: var(--bg-raised); color: var(--text-3); border: 1px solid var(--border); }
+  .badge-red { background: var(--red-bg); color: var(--red); border: 1px solid var(--red-border); }
+  .summary-count { font-size: 12px; color: var(--text-2); }
+  .summary-count em { font-style: normal; color: var(--green); font-weight: 600; }
+  .summary-count .fail { color: var(--red); font-weight: 600; }
+  .summary-filters { margin-left: auto; display: flex; gap: 4px; }
+  .filter-btn {
+    height: 26px; padding: 0 8px; border-radius: 6px; border: none;
+    font-size: 11px; font-weight: 500; cursor: pointer; transition: all .1s;
+    background: var(--bg-surface); color: var(--text-2); border: 1px solid var(--border);
+  }
+  .filter-btn.active { background: var(--accent-bg); color: var(--accent-text); border-color: var(--accent-border); }
+
+  /* Category accordion in results */
+  .results-accordion { flex: 1; overflow-y: auto; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-surface); }
+  .acc-cat {
+    border-bottom: 1px solid var(--border-subtle);
+  }
+  .acc-cat:last-child { border-bottom: none; }
+  .acc-cat-header {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 12px; cursor: pointer;
+    background: var(--bg-raised); user-select: none;
+    transition: opacity .1s;
+  }
+  .acc-cat-header:hover { opacity: .85; }
+  .acc-chevron { color: var(--text-3); transition: transform .15s; flex-shrink: 0; }
+  .acc-chevron svg { width: 9px; height: 9px; display: block; }
+  .acc-cat.open .acc-chevron { transform: rotate(90deg); }
+  .acc-cat-name { flex: 1; font-size: 12px; font-weight: 600; color: var(--text-1); }
+  .acc-progress { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+  .progress-bar { width: 60px; height: 3px; border-radius: 99px; background: var(--border); overflow: hidden; }
+  .progress-fill { height: 100%; border-radius: 99px; }
+  .acc-score { font-size: 10px; color: var(--text-3); min-width: 32px; text-align: right; tabular-nums: all; }
+  .acc-badge {
+    font-size: 10px; font-weight: 600; padding: 1px 6px; border-radius: 4px;
+    min-width: 44px; text-align: center;
+  }
+  .acc-rows { display: none; flex-direction: column; gap: 8px; padding: 10px 12px; }
+  .acc-cat.open .acc-rows { display: flex; }
+
+  .result-row { display: flex; gap: 8px; align-items: flex-start; }
+  .result-icon {
+    width: 22px; height: 22px; border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; margin-top: 1px;
+  }
+  .result-icon.pass { background: var(--green-bg); color: var(--green); border: 1px solid var(--green-border); }
+  .result-icon.fail { background: var(--red-bg); color: var(--red); border: 1px solid var(--red-border); }
+  .result-icon svg { width: 10px; height: 10px; }
+  .result-bubble {
+    flex: 1; background: var(--bg-raised); border: 1px solid var(--border);
+    border-radius: 3px 12px 12px 12px; padding: 6px 10px;
+    font-size: 12px; color: var(--text-1); direction: rtl; text-align: right; line-height: 1.5;
+  }
+  .result-chips { margin-left: 30px; display: flex; gap: 5px; flex-wrap: wrap; margin-top: 3px; }
+  .chip {
+    font-size: 9px; font-family: monospace; padding: 2px 5px; border-radius: 4px;
+    background: var(--bg-raised); color: var(--text-3); border: 1px solid var(--border);
+  }
+  .chip.sql { background: var(--accent-bg); color: var(--accent-text); border-color: var(--accent-border); }
+
+  /* Empty state */
+  .empty-state {
+    flex: 1; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 10px;
+    color: var(--text-3); text-align: center; padding: 32px;
+  }
+  .empty-state svg { opacity: .2; }
+  .empty-state p { font-size: 13px; }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 99px; }
+</style>
+</head>
+<body>
+
+<div class="shell">
+
+  <!-- Fake App Sidebar -->
+  <aside class="app-sidebar">
+    <div class="logo">A</div>
+    <div class="nav-icon" title="Chat">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+    </div>
+    <div class="nav-icon" title="Builder">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6M9 12h6M9 15h4"/></svg>
+    </div>
+    <div class="nav-icon active" title="Eval">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2V9M9 21H5a2 2 0 0 1-2-2V9m0 0h18"/></svg>
+    </div>
+    <div class="nav-icon" title="Settings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    </div>
+  </aside>
+
+  <!-- Set List -->
+  <div class="set-list">
+    <div class="panel-header">
+      <span class="panel-header-title">Question Sets</span>
+      <button class="icon-btn" title="New set">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </button>
+    </div>
+    <div class="set-list-body">
+      <div class="set-item selected" onclick="selectSet(this)">
+        <div class="set-item-name">Consultant Questions</div>
+        <div class="set-item-meta">240 questions · 14 categories</div>
+      </div>
+      <div class="set-item" onclick="selectSet(this)">
+        <div class="set-item-name">Sales Queries</div>
+        <div class="set-item-meta">48 questions · 5 categories</div>
+      </div>
+      <div class="set-item" onclick="selectSet(this)">
+        <div class="set-item-name">Rejection Cases</div>
+        <div class="set-item-meta">22 questions · 3 categories</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Set Detail -->
+  <div class="set-detail">
+
+    <!-- Header -->
+    <div class="detail-header">
+      <span class="detail-title">Consultant Questions</span>
+      <span class="detail-subtitle">240 questions</span>
+      <div class="header-actions">
+        <button class="btn btn-ghost">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Add
+        </button>
+        <button class="btn btn-ghost">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+          Import
+        </button>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('library', this)">Library</button>
+      <button class="tab" onclick="switchTab('runs', this)">Test Runs</button>
+    </div>
+
+    <!-- ── TAB: Library ── -->
+    <div id="tab-library" class="tab-content active">
+      <div class="library-body">
+
+        <!-- Category: Demographics -->
+        <div class="category-card open">
+          <div class="category-header" onclick="toggleCat(this)">
+            <span class="cat-chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></span>
+            <span class="cat-name">Demographics</span>
+            <span class="cat-count">26</span>
+            <div class="cat-actions">
+              <button class="cat-add-btn" onclick="event.stopPropagation()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                Add
+              </button>
+              <button class="cat-run-btn" onclick="event.stopPropagation(); runCategory('Demographics')">
+                <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                Run
+              </button>
+            </div>
+          </div>
+          <div class="question-list">
+            <div class="question-row">
+              <span class="q-text">تعداد کل کارکنان چقدر است؟</span>
+              <span class="q-badge">SQL</span>
+              <div class="q-actions">
+                <button class="q-run-btn" title="Run this question">
+                  <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                </button>
+                <button class="q-del-btn" title="Delete">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+                </button>
+              </div>
+            </div>
+            <div class="question-row">
+              <span class="q-text">توزیع کارکنان بر اساس جنسیت چگونه است؟</span>
+              <span class="q-badge">SQL</span>
+              <div class="q-actions">
+                <button class="q-run-btn" title="Run this question">
+                  <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                </button>
+                <button class="q-del-btn" title="Delete">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+                </button>
+              </div>
+            </div>
+            <div class="question-row">
+              <span class="q-text">میانگین سن کارکنان در هر بخش چقدر است؟</span>
+              <span class="q-badge">SQL</span>
+              <div class="q-actions">
+                <button class="q-run-btn" title="Run this question">
+                  <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                </button>
+                <button class="q-del-btn" title="Delete">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Category: Recruitment -->
+        <div class="category-card open">
+          <div class="category-header" onclick="toggleCat(this)">
+            <span class="cat-chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></span>
+            <span class="cat-name">Recruitment</span>
+            <span class="cat-count">19</span>
+            <div class="cat-actions">
+              <button class="cat-add-btn" onclick="event.stopPropagation()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                Add
+              </button>
+              <button class="cat-run-btn" onclick="event.stopPropagation(); runCategory('Recruitment')">
+                <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                Run
+              </button>
+            </div>
+          </div>
+          <div class="question-list">
+            <div class="question-row">
+              <span class="q-text">روند جذب نیرو در ۵ سال گذشته چگونه بوده؟</span>
+              <span class="q-badge">SQL</span>
+              <div class="q-actions">
+                <button class="q-run-btn" title="Run this question">
+                  <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                </button>
+                <button class="q-del-btn" title="Delete">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+                </button>
+              </div>
+            </div>
+            <div class="question-row">
+              <span class="q-text">بیشترین جذب در کدام واحد بوده؟</span>
+              <span class="q-badge">SQL</span>
+              <div class="q-actions">
+                <button class="q-run-btn" title="Run this question">
+                  <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                </button>
+                <button class="q-del-btn" title="Delete">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Category: Access Control (collapsed) -->
+        <div class="category-card">
+          <div class="category-header" onclick="toggleCat(this)">
+            <span class="cat-chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></span>
+            <span class="cat-name">Access Control</span>
+            <span class="cat-count">12</span>
+            <div class="cat-actions">
+              <button class="cat-add-btn" onclick="event.stopPropagation()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                Add
+              </button>
+              <button class="cat-run-btn" onclick="event.stopPropagation()">
+                <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                Run
+              </button>
+            </div>
+          </div>
+          <div class="question-list"></div>
+        </div>
+
+        <!-- Category: Org Structure (collapsed) -->
+        <div class="category-card">
+          <div class="category-header" onclick="toggleCat(this)">
+            <span class="cat-chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></span>
+            <span class="cat-name">Org Structure</span>
+            <span class="cat-count">30</span>
+            <div class="cat-actions">
+              <button class="cat-add-btn" onclick="event.stopPropagation()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                Add
+              </button>
+              <button class="cat-run-btn" onclick="event.stopPropagation()">
+                <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                Run
+              </button>
+            </div>
+          </div>
+          <div class="question-list"></div>
+        </div>
+
+        <!-- Add new category -->
+        <button class="add-category-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Add category
+        </button>
+
+      </div>
+    </div>
+
+    <!-- ── TAB: Test Runs ── -->
+    <div id="tab-runs" class="tab-content">
+      <div class="runs-layout">
+
+        <!-- Left: Config + History -->
+        <div class="runs-sidebar">
+          <div class="runs-config">
+            <div>
+              <div class="config-label">Scope</div>
+              <select class="config-select">
+                <option>All questions (240)</option>
+                <option>Demographics (26)</option>
+                <option>Recruitment (19)</option>
+                <option>Access Control (12)</option>
+                <option>Org Structure (30)</option>
+              </select>
+            </div>
+            <div>
+              <div class="config-label">Model</div>
+              <select class="config-select">
+                <option>Default model</option>
+                <option>llama3.2</option>
+                <option>qwen2.5-coder</option>
+                <option>deepseek-r1</option>
+              </select>
+            </div>
+            <button class="run-now-btn" onclick="selectRun(document.querySelectorAll('.history-item')[0])">
+              <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+              Run now
+            </button>
+          </div>
+
+          <div class="history-label">History</div>
+          <div class="history-list">
+            <div class="history-item selected" onclick="selectRun(this)">
+              <div class="history-item-top">
+                <span class="history-pct" style="color: var(--green)">100%</span>
+                <span class="history-status badge badge-green">done</span>
+              </div>
+              <div class="history-item-bottom">Jun 13, 10:47 · all</div>
+              <div class="history-model">llama3.2</div>
+            </div>
+            <div class="history-item" onclick="selectRun(this)">
+              <div class="history-item-top">
+                <span class="history-pct" style="color: var(--amber)">72%</span>
+                <span class="history-status badge badge-green">done</span>
+              </div>
+              <div class="history-item-bottom">Jun 12, 14:20 · all</div>
+              <div class="history-model">qwen2.5-coder</div>
+            </div>
+            <div class="history-item" onclick="selectRun(this)">
+              <div class="history-item-top">
+                <span class="history-pct" style="color: var(--red)">48%</span>
+                <span class="history-status badge badge-green">done</span>
+              </div>
+              <div class="history-item-bottom">Jun 11, 09:00 · Demographics</div>
+              <div class="history-model">deepseek-r1</div>
+            </div>
+            <div class="history-item" onclick="selectRun(this)">
+              <div class="history-item-top">
+                <span class="history-pct" style="color: var(--text-3)">—</span>
+                <span class="history-status badge badge-red">failed</span>
+              </div>
+              <div class="history-item-bottom">Jun 10, 22:15 · all</div>
+              <div class="history-model">llama3.2</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Results -->
+        <div class="runs-results">
+          <!-- Summary card -->
+          <div class="summary-card">
+            <div class="summary-pct">
+              <div class="summary-pct-num" style="color: var(--green)">100%</div>
+              <div class="summary-pct-label">pass rate</div>
+            </div>
+            <div class="summary-divider"></div>
+            <div class="summary-stats">
+              <div class="summary-stats-row">
+                <span class="badge badge-green">done</span>
+                <span class="badge badge-gray" style="font-family: monospace;">llama3.2</span>
+              </div>
+              <div class="summary-stats-row">
+                <span class="summary-count"><em>240</em>/240 passed</span>
+              </div>
+            </div>
+            <div class="summary-filters">
+              <button class="filter-btn active" onclick="setFilter(this)">all</button>
+              <button class="filter-btn" onclick="setFilter(this)">pass</button>
+              <button class="filter-btn" onclick="setFilter(this)">fail</button>
+            </div>
+          </div>
+
+          <!-- Results accordion -->
+          <div class="results-accordion">
+            <div class="acc-cat open">
+              <div class="acc-cat-header" onclick="toggleAcc(this)">
+                <span class="acc-chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></span>
+                <span class="acc-cat-name">Demographics</span>
+                <div class="acc-progress">
+                  <div class="progress-bar"><div class="progress-fill" style="width:100%; background: var(--green)"></div></div>
+                  <span class="acc-score">26/26</span>
+                  <span class="acc-badge" style="background:var(--green-bg);color:var(--green);border:1px solid var(--green-border)">100%</span>
+                </div>
+              </div>
+              <div class="acc-rows">
+                <div class="result-row">
+                  <div class="result-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></div>
+                  <div class="result-bubble">تعداد کل کارکنان چقدر است؟</div>
+                </div>
+                <div class="result-chips"><span class="chip sql">SQL</span><span class="chip">NOT_EXECUTED</span><span class="chip">34ms</span></div>
+                <div class="result-row">
+                  <div class="result-icon pass"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></div>
+                  <div class="result-bubble">توزیع کارکنان بر اساس جنسیت چگونه است؟</div>
+                </div>
+                <div class="result-chips"><span class="chip sql">SQL</span><span class="chip">NOT_EXECUTED</span><span class="chip">41ms</span></div>
+              </div>
+            </div>
+
+            <div class="acc-cat">
+              <div class="acc-cat-header" onclick="toggleAcc(this)">
+                <span class="acc-chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></span>
+                <span class="acc-cat-name">Recruitment</span>
+                <div class="acc-progress">
+                  <div class="progress-bar"><div class="progress-fill" style="width:100%; background: var(--green)"></div></div>
+                  <span class="acc-score">19/19</span>
+                  <span class="acc-badge" style="background:var(--green-bg);color:var(--green);border:1px solid var(--green-border)">100%</span>
+                </div>
+              </div>
+              <div class="acc-rows"></div>
+            </div>
+
+            <div class="acc-cat">
+              <div class="acc-cat-header" onclick="toggleAcc(this)">
+                <span class="acc-chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></span>
+                <span class="acc-cat-name">Access Control</span>
+                <div class="acc-progress">
+                  <div class="progress-bar"><div class="progress-fill" style="width:100%; background: var(--green)"></div></div>
+                  <span class="acc-score">12/12</span>
+                  <span class="acc-badge" style="background:var(--green-bg);color:var(--green);border:1px solid var(--green-border)">100%</span>
+                </div>
+              </div>
+              <div class="acc-rows"></div>
+            </div>
+
+            <div class="acc-cat">
+              <div class="acc-cat-header" onclick="toggleAcc(this)">
+                <span class="acc-chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></span>
+                <span class="acc-cat-name">Org Structure</span>
+                <div class="acc-progress">
+                  <div class="progress-bar"><div class="progress-fill" style="width:100%; background: var(--green)"></div></div>
+                  <span class="acc-score">30/30</span>
+                  <span class="acc-badge" style="background:var(--green-bg);color:var(--green);border:1px solid var(--green-border)">100%</span>
+                </div>
+              </div>
+              <div class="acc-rows"></div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /set-detail -->
+</div><!-- /shell -->
+
+<script>
+  function switchTab(name, btn) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'))
+    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'))
+    btn.classList.add('active')
+    document.getElementById('tab-' + name).classList.add('active')
+  }
+
+  function toggleCat(header) {
+    header.closest('.category-card').classList.toggle('open')
+  }
+
+  function toggleAcc(header) {
+    header.closest('.acc-cat').classList.toggle('open')
+  }
+
+  function selectSet(el) {
+    document.querySelectorAll('.set-item').forEach(s => s.classList.remove('selected'))
+    el.classList.add('selected')
+  }
+
+  function selectRun(el) {
+    document.querySelectorAll('.history-item').forEach(h => h.classList.remove('selected'))
+    el.classList.add('selected')
+  }
+
+  function setFilter(btn) {
+    btn.closest('.summary-filters').querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'))
+    btn.classList.add('active')
+  }
+
+  function runCategory(name) {
+    switchTab('runs', document.querySelectorAll('.tab')[1])
+    const scope = document.querySelector('.config-select')
+    for (const opt of scope.options) {
+      if (opt.text.startsWith(name)) { scope.value = opt.value; break }
+    }
+  }
+</script>
+</body>
+</html>

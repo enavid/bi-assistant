@@ -23,6 +23,7 @@ class EvalQuestionSetOut(BaseModel):
 class TriggerRunRequest(BaseModel):
     category: str | None = None
     model_name: str | None = None
+    question_ids: list[str] | None = None
 
 
 class EvalQuestionIn(BaseModel):

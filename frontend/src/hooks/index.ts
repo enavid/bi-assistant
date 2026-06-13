@@ -337,8 +337,8 @@ export function useSeedEvalDefaults() {
 export function useTriggerEvalRun() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: ({ setId, category, model_name }: { setId: string; category?: string; model_name?: string }) =>
-      evalApi.triggerRun(setId, { category, model_name }),
+    mutationFn: ({ setId, category, model_name, question_ids }: { setId: string; category?: string; model_name?: string; question_ids?: string[] }) =>
+      evalApi.triggerRun(setId, { category, model_name, question_ids }),
     onSuccess: (_, { setId }) => qc.invalidateQueries({ queryKey: ['eval-runs', setId] }),
   })
 }

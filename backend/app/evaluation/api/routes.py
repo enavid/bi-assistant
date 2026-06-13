@@ -345,13 +345,20 @@ async def trigger_run(
             detail="A run is already active for this set. Wait for it to finish before starting another.",
         )
 
+    if body.question_ids is not None and len(body.question_ids) == 0:
+        raise HTTPException(status_code=400, detail="question_ids must not be empty")
+
     q_query = select(EvalQuestionORM).where(EvalQuestionORM.set_id == set_id)
-    if body.category:
+    if body.question_ids is not None:
+        q_query = q_query.where(EvalQuestionORM.id.in_(body.question_ids))
+    elif body.category:
         q_query = q_query.where(EvalQuestionORM.category == body.category)
 
     questions = (await db.execute(q_query)).scalars().all()
 
     if not questions:
+        if body.question_ids is not None:
+            raise HTTPException(status_code=400, detail="No matching questions found for the given question_ids")
         if body.category:
             raise HTTPException(
                 status_code=400,
