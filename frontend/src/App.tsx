@@ -6,6 +6,7 @@ import { BuilderPage } from '@/pages/BuilderPage'
 import { EvalPage } from '@/pages/EvalPage'
 import { SettingsPage } from '@/pages/SettingsPage'
 import { useAppStore } from '@/store/appStore'
+import { useSessions } from '@/hooks'
 import { Icon } from '@/components/ui/Icon'
 import apiClient from '@/services/apiClient'
 
@@ -68,8 +69,16 @@ function BackendOfflineDialog() {
 }
 
 function AppShell() {
-  const { theme, activePage } = useAppStore()
+  const { theme, activePage, activeSessionId, setActiveSession, setActivePage } = useAppStore()
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
+  const { data: sessions } = useSessions()
+
+  useEffect(() => {
+    if (!activeSessionId && sessions && sessions.length > 0) {
+      setActiveSession(sessions[0].id)
+      setActivePage('chat')
+    }
+  }, [sessions, activeSessionId, setActiveSession, setActivePage])
 
   useEffect(() => {
     document.documentElement.className = theme
