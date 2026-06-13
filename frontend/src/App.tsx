@@ -85,17 +85,46 @@ function AppShell() {
   }, [theme])
 
   useEffect(() => {
+    const { setBackendOffline } = useAppStore.getState()
+
     const ping = async () => {
+      if (!navigator.onLine) { setBackendOffline(true); return }
       try {
-        await apiClient.get('/health')
-        useAppStore.getState().setBackendOffline(false)
+        await apiClient.get('/health', { timeout: 4_000 })
+        setBackendOffline(false)
       } catch {
-        useAppStore.getState().setBackendOffline(true)
+        setBackendOffline(true)
       }
     }
-    ping()
-    const id = setInterval(ping, 10_000)
-    return () => clearInterval(id)
+
+    let intervalId: ReturnType<typeof setInterval> | null = null
+
+    const startPolling = () => {
+      ping()
+      intervalId = setInterval(ping, 30_000)
+    }
+
+    const stopPolling = () => {
+      if (intervalId !== null) { clearInterval(intervalId); intervalId = null }
+    }
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') startPolling()
+      else stopPolling()
+    }
+
+    document.addEventListener('visibilitychange', onVisibilityChange)
+    window.addEventListener('online', ping)
+    window.addEventListener('offline', () => setBackendOffline(true))
+
+    startPolling()
+
+    return () => {
+      stopPolling()
+      document.removeEventListener('visibilitychange', onVisibilityChange)
+      window.removeEventListener('online', ping)
+      window.removeEventListener('offline', () => setBackendOffline(true))
+    }
   }, [])
 
   const openSidebar = () => setMobileSidebarOpen(true)
