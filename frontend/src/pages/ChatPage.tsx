@@ -272,7 +272,7 @@ function KpiCard({ columns, rows }: { columns: string[]; rows: unknown[][] }) {
 }
 
 export function ChatPage() {
-  const { activeSessionId } = useAppStore()
+  const { activeSessionId, setActivePage } = useAppStore()
   const { data: session, isLoading } = useSession(activeSessionId)
   const { data: projects } = useProjects()
   const { data: ollamaConns } = useOllamaConnections()
@@ -307,7 +307,7 @@ export function ChatPage() {
 
   async function handleSend() {
     const q = question.trim()
-    if (!q || sending || !session) return
+    if (!q || sending || !session || hasWarning) return
     setQuestion('')
     if (textareaRef.current) textareaRef.current.style.height = 'auto'
     setSending(true)
@@ -405,26 +405,6 @@ export function ChatPage() {
         )}
         <span className="text-[11px] hidden sm:block flex-shrink-0" style={{ color: 'var(--text-3)' }}>{session?.model_name?.split(':')[0]}</span>
       </div>
-
-      {/* Connection warnings */}
-      {hasWarning && (
-        <div className="flex flex-col gap-1 px-4 pt-2 pb-1 flex-shrink-0">
-          {!ollamaActive && (
-            <div className="flex items-center gap-2 px-3 py-2 rounded-[8px] text-[11px]"
-              style={{ background: 'var(--amber-bg)', border: '1px solid var(--amber-border)', color: 'var(--amber)' }}>
-              <Icon name="zap" size={13} />
-              Ollama not connected — go to Settings → Ollama to add and activate a connection.
-            </div>
-          )}
-          {!dbActive && (
-            <div className="flex items-center gap-2 px-3 py-2 rounded-[8px] text-[11px]"
-              style={{ background: 'var(--amber-bg)', border: '1px solid var(--amber-border)', color: 'var(--amber)' }}>
-              <Icon name="database" size={13} />
-              No query database active — go to Settings → Database to add and activate a connection.
-            </div>
-          )}
-        </div>
-      )}
 
       {/* Messages */}
       <div ref={bodyRef} className="flex-1 overflow-y-auto px-6 py-6 flex flex-col gap-3">
@@ -561,6 +541,26 @@ export function ChatPage() {
         className="px-4 pb-4 pt-3 flex-shrink-0"
         style={{ borderTop: '1px solid var(--border-default)', background: 'var(--bg-surface)' }}
       >
+        {hasWarning && (
+          <div className="flex items-center gap-2 mb-2.5 px-1" style={{ color: 'var(--text-3)' }}>
+            <span className="flex-shrink-0" style={{ color: 'var(--amber)', display: 'flex' }}><Icon name="zap" size={11} /></span>
+            <span className="text-[11px]">
+              {!ollamaActive && !dbActive
+                ? 'Ollama and database not connected.'
+                : !ollamaActive
+                ? 'Ollama not connected.'
+                : 'No database connected.'}
+            </span>
+            <button
+              onClick={() => setActivePage('settings')}
+              className="ml-auto text-[11px] flex-shrink-0 hover:underline"
+              style={{ color: 'var(--accent-text)' }}
+            >
+              Settings →
+            </button>
+          </div>
+        )}
+
         <div
           className="rounded-[16px] transition-all duration-150 overflow-hidden"
           style={{
@@ -633,13 +633,13 @@ export function ChatPage() {
             )}
             <button
               onClick={handleSend}
-              disabled={sending || !question.trim()}
+              disabled={sending || !question.trim() || hasWarning}
               className="ml-auto w-7 h-7 rounded-[9px] flex items-center justify-center transition-all"
               style={{
-                background: !sending && question.trim() ? 'var(--accent)' : 'transparent',
-                color: !sending && question.trim() ? '#fff' : 'var(--text-3)',
-                border: !sending && question.trim() ? 'none' : '1px solid var(--border-default)',
-                transform: !sending && question.trim() ? 'scale(1.05)' : 'scale(1)',
+                background: !sending && question.trim() && !hasWarning ? 'var(--accent)' : 'transparent',
+                color: !sending && question.trim() && !hasWarning ? '#fff' : 'var(--text-3)',
+                border: !sending && question.trim() && !hasWarning ? 'none' : '1px solid var(--border-default)',
+                transform: !sending && question.trim() && !hasWarning ? 'scale(1.05)' : 'scale(1)',
               }}
             >
               {sending
