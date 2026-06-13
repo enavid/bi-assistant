@@ -7,6 +7,7 @@ import { Icon } from '@/components/ui/Icon'
 import { SqlBlock } from '@/components/ui/SqlBlock'
 import { QueryResultView } from '@/components/chat/QueryResult'
 import type { GenerateResponse, Message, QueryResult } from '@/types'
+import amrLogo from '@/assets/amr-logo.png'
 
 const STATUS_FA: Record<string, string> = {
   DATA_GAP:              'این اطلاعات در سیستم موجود نیست یا هنوز تعریف نشده.',
@@ -429,9 +430,9 @@ export function ChatPage() {
             <div key={msg.id} className="flex flex-col gap-2">
               <div className="flex gap-3 items-start">
                 {/* AI avatar */}
-                <div className="w-7 h-7 rounded-[8px] flex items-center justify-center text-[10px] font-semibold flex-shrink-0 mt-0.5"
-                  style={{ background: 'var(--accent-bg)', color: 'var(--accent-text)', border: '1px solid var(--accent-border)' }}>
-                  AI
+                <div className="w-7 h-7 rounded-[9px] flex items-center justify-center flex-shrink-0 mt-0.5 overflow-hidden"
+                  style={{ background: 'var(--bg-raised)', border: '1px solid var(--border-default)' }}>
+                  <img src={amrLogo} alt="AI" className="w-[18px] h-[18px] object-contain" />
                 </div>
 
                 {blockedText ? (
@@ -523,9 +524,12 @@ export function ChatPage() {
         {/* Sending indicator */}
         {sending && (
           <div className="flex gap-3 items-center">
-            <div className="w-7 h-7 rounded-[8px] flex items-center justify-center text-[10px] font-semibold flex-shrink-0"
-              style={{ background: 'var(--accent-bg)', color: 'var(--accent-text)', border: '1px solid var(--accent-border)' }}>
-              AI
+            <div className="relative w-7 h-7 flex-shrink-0">
+              <div className="absolute inset-0 rounded-[9px] animate-pulse" style={{ background: 'var(--accent)', opacity: 0.18 }} />
+              <div className="w-7 h-7 rounded-[9px] flex items-center justify-center overflow-hidden relative"
+                style={{ background: 'var(--bg-raised)', border: '1px solid var(--accent-border)' }}>
+                <img src={amrLogo} alt="AI" className="w-[18px] h-[18px] object-contain" />
+              </div>
             </div>
             <div className="flex gap-1 py-2">
               {[0, 1, 2].map((i) => (
