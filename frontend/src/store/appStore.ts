@@ -7,11 +7,13 @@ interface AppState {
   activePage: AppPage
   activeSessionId: string | null
   defaultModelName: string
+  backendOffline: boolean
   setTheme: (t: Theme) => void
   toggleTheme: () => void
   setActivePage: (p: AppPage) => void
   setActiveSession: (id: string | null) => void
   setDefaultModel: (name: string) => void
+  setBackendOffline: (offline: boolean) => void
 }
 
 export const useAppStore = create<AppState>()(
@@ -21,6 +23,7 @@ export const useAppStore = create<AppState>()(
       activePage: 'chat',
       activeSessionId: null,
       defaultModelName: 'llama3-sqlcoder',
+      backendOffline: false,
 
       setTheme: (theme) => {
         set({ theme })
@@ -37,6 +40,7 @@ export const useAppStore = create<AppState>()(
       setActivePage: (activePage) => set({ activePage }),
       setActiveSession: (activeSessionId) => set({ activeSessionId }),
       setDefaultModel: (defaultModelName) => set({ defaultModelName }),
+      setBackendOffline: (backendOffline) => set({ backendOffline }),
     }),
     {
       name: 'bi-assistant-app',
