@@ -593,7 +593,7 @@ export function ChatPage({ onOpenSidebar }: { onOpenSidebar?: () => void }) {
 
       {/* Input */}
       <div
-        className="px-4 pb-4 pt-3 flex-shrink-0"
+        className="px-3 sm:px-4 pb-3 sm:pb-4 pt-2 sm:pt-3 flex-shrink-0"
         style={{ borderTop: '1px solid var(--border-default)', background: 'var(--bg-surface)' }}
       >
         {hasWarning && (
@@ -705,8 +705,8 @@ export function ChatPage({ onOpenSidebar }: { onOpenSidebar?: () => void }) {
           </div>
         </div>
 
-        {/* Keyboard hint */}
-        <p className="text-center text-[10px] mt-2 select-none" style={{ color: 'var(--text-3)' }}>
+        {/* Keyboard hint — desktop only */}
+        <p className="hidden sm:block text-center text-[10px] mt-2 select-none" style={{ color: 'var(--text-3)' }}>
           <span className="font-mono opacity-70">↵</span> ارسال
           <span className="mx-1.5 opacity-40">·</span>
           <span className="font-mono opacity-70">⇧↵</span> خط جدید

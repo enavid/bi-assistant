@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { Icon } from './Icon'
 
 interface ModalProps {
@@ -27,9 +28,9 @@ export function ConfirmDialog({ open, title, message, confirmLabel = 'Delete', o
 
   if (!open) return null
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+      className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50"
       onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
     >
       <div className="w-full max-w-xs mx-4 rounded-[14px] shadow-2xl" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)' }}>
@@ -54,7 +55,8 @@ export function ConfirmDialog({ open, title, message, confirmLabel = 'Delete', o
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
 
@@ -68,9 +70,9 @@ export function Modal({ open, title, onClose, children }: ModalProps) {
 
   if (!open) return null
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+      className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50"
       onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
     >
       <div className="w-full max-w-sm mx-4 rounded-[14px] shadow-2xl" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)' }}>
@@ -82,6 +84,7 @@ export function Modal({ open, title, onClose, children }: ModalProps) {
         </div>
         <div className="p-5">{children}</div>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
