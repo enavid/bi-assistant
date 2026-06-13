@@ -2,7 +2,7 @@ import { useRef, useEffect, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { chatApi, projectApi } from '@/services/api'
 import { useAppStore } from '@/store/appStore'
-import { useSession, useProjects } from '@/hooks'
+import { useSession, useProjects, useOllamaConnections, useQueryDatabases } from '@/hooks'
 import { Icon } from '@/components/ui/Icon'
 import { SqlBlock } from '@/components/ui/SqlBlock'
 import { QueryResultView } from '@/components/chat/QueryResult'
@@ -275,7 +275,13 @@ export function ChatPage() {
   const { activeSessionId } = useAppStore()
   const { data: session, isLoading } = useSession(activeSessionId)
   const { data: projects } = useProjects()
+  const { data: ollamaConns } = useOllamaConnections()
+  const { data: queryDbs } = useQueryDatabases()
   const qc = useQueryClient()
+
+  const ollamaActive = ollamaConns?.some((c) => c.is_active) ?? true
+  const dbActive = queryDbs?.some((d) => d.is_active) ?? true
+  const hasWarning = !ollamaActive || !dbActive
 
   const project = projects?.find((p) => p.id === session?.project_id)
   const [question, setQuestion] = useState('')
@@ -399,6 +405,26 @@ export function ChatPage() {
         )}
         <span className="text-[11px] hidden sm:block flex-shrink-0" style={{ color: 'var(--text-3)' }}>{session?.model_name?.split(':')[0]}</span>
       </div>
+
+      {/* Connection warnings */}
+      {hasWarning && (
+        <div className="flex flex-col gap-1 px-4 pt-2 pb-1 flex-shrink-0">
+          {!ollamaActive && (
+            <div className="flex items-center gap-2 px-3 py-2 rounded-[8px] text-[11px]"
+              style={{ background: 'var(--amber-bg)', border: '1px solid var(--amber-border)', color: 'var(--amber)' }}>
+              <Icon name="zap" size={13} />
+              Ollama not connected — go to Settings → Ollama to add and activate a connection.
+            </div>
+          )}
+          {!dbActive && (
+            <div className="flex items-center gap-2 px-3 py-2 rounded-[8px] text-[11px]"
+              style={{ background: 'var(--amber-bg)', border: '1px solid var(--amber-border)', color: 'var(--amber)' }}>
+              <Icon name="database" size={13} />
+              No query database active — go to Settings → Database to add and activate a connection.
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Messages */}
       <div ref={bodyRef} className="flex-1 overflow-y-auto px-6 py-6 flex flex-col gap-3">

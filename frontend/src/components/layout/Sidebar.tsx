@@ -4,14 +4,8 @@ import { useAppStore } from '@/store/appStore'
 import { useOllamaHealth, useProjects, useSessions, useCreateSession, useDeleteSession } from '@/hooks'
 import { Modal } from '@/components/ui/Modal'
 import { Icon } from '@/components/ui/Icon'
-import type { AppPage, Theme } from '@/types'
+import type { AppPage } from '@/types'
 import amrLogo from '@/assets/amr-logo.png'
-
-const THEME_CYCLE: { theme: Theme; icon: 'sun' | 'moon'; label: string }[] = [
-  { theme: 'dark',     icon: 'sun',  label: 'Dark' },
-  { theme: 'light',    icon: 'moon', label: 'Light' },
-  { theme: 'amin-rai', icon: 'moon', label: 'Amin Rai' },
-]
 
 const NAV: { page: AppPage; label: string; icon: Parameters<typeof Icon>[0]['name'] }[] = [
   { page: 'chat',    label: 'Chat',           icon: 'message' },

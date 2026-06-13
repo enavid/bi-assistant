@@ -52,6 +52,14 @@ def _create_conn(client, **kwargs):
     return client.post("/connections/databases", json=payload)
 
 
+def test_system_databases_returns_app_db_only(client):
+    resp = client.get("/connections/system-databases")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "app_db" in data
+    assert "hr_db" not in data
+
+
 def test_list_databases_empty(client):
     resp = client.get("/connections/databases")
     assert resp.status_code == 200

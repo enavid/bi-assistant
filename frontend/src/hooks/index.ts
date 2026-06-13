@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { chatApi, connectionApi, evalApi, ollamaApi, projectApi } from '@/services/api'
+import { chatApi, connectionApi, evalApi, modelConfigApi, ollamaApi, ollamaConnectionApi, projectApi } from '@/services/api'
 import type { EvalQuestion, Project, Section } from '@/types'
 
 export function useOllamaHealth() {
@@ -171,6 +171,106 @@ export function useDeactivateQueryDatabases() {
 
 export function useTestConnection() {
   return useMutation({ mutationFn: connectionApi.test })
+}
+
+// ---------------------------------------------------------------------------
+// Ollama connection hooks
+// ---------------------------------------------------------------------------
+
+export function useOllamaConnections() {
+  return useQuery({ queryKey: ['ollama-connections'], queryFn: ollamaConnectionApi.list })
+}
+
+export function useCreateOllamaConnection() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ollamaConnectionApi.create,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['ollama-connections'] }),
+  })
+}
+
+export function useUpdateOllamaConnection() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, payload }: { id: string; payload: Partial<{ name: string; base_url: string }> }) =>
+      ollamaConnectionApi.update(id, payload),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['ollama-connections'] }),
+  })
+}
+
+export function useDeleteOllamaConnection() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => ollamaConnectionApi.delete(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['ollama-connections'] }),
+  })
+}
+
+export function useActivateOllamaConnection() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => ollamaConnectionApi.activate(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['ollama-connections'] })
+      qc.invalidateQueries({ queryKey: ['ollama-health'] })
+    },
+  })
+}
+
+export function useDeactivateOllamaConnections() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ollamaConnectionApi.deactivate,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['ollama-connections'] })
+      qc.invalidateQueries({ queryKey: ['ollama-health'] })
+    },
+  })
+}
+
+export function useTestOllamaConnection() {
+  return useMutation({ mutationFn: ollamaConnectionApi.test })
+}
+
+export function useOllamaConnectionModels(id: string, enabled: boolean) {
+  return useQuery({
+    queryKey: ['ollama-connection-models', id],
+    queryFn: () => ollamaConnectionApi.models(id),
+    enabled,
+    staleTime: 30_000,
+    retry: false,
+  })
+}
+
+export function useModelConfigs() {
+  return useQuery({ queryKey: ['model-configs'], queryFn: modelConfigApi.list })
+}
+
+export function useModelInfo(modelName: string | null, connectionId: string) {
+  return useQuery({
+    queryKey: ['model-info', connectionId, modelName],
+    queryFn: () => modelConfigApi.getInfo(modelName!, connectionId),
+    enabled: !!modelName && !!connectionId,
+    staleTime: 60_000,
+    retry: false,
+  })
+}
+
+export function useSaveModelConfig() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ modelName, config_json }: { modelName: string; config_json: Record<string, unknown> }) =>
+      modelConfigApi.save(modelName, config_json),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['model-configs'] }),
+  })
+}
+
+export function useDeleteModelConfig() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (modelName: string) => modelConfigApi.delete(modelName),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['model-configs'] }),
+  })
 }
 
 // ---------------------------------------------------------------------------

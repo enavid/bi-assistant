@@ -2,24 +2,36 @@ from __future__ import annotations
 
 from functools import lru_cache
 
-from app.connections.active import get_active_dsn
+from app.connections.active import get_active_dsn, get_active_ollama_base_url, get_all_model_configs
 from app.infrastructure.hr_db.executor import HRQueryExecutor
 from app.infrastructure.llm.ollama_client import OllamaClient
 from app.workspace.use_cases.run_query import RunQueryUseCase
 
 
-def _resolve_query_dsn(settings) -> str:
-    return get_active_dsn() or settings.hr_db_dsn
+def _resolve_query_dsn() -> str:
+    dsn = get_active_dsn()
+    if not dsn:
+        raise RuntimeError(
+            "No active query database configured. Add and activate one in Settings → Database."
+        )
+    return dsn
 
 
 @lru_cache(maxsize=1)
 def get_llm_client() -> OllamaClient:
-    return OllamaClient()
+    base_url = get_active_ollama_base_url()
+    if not base_url:
+        raise RuntimeError(
+            "No active Ollama connection configured. Add and activate one in Settings → Ollama."
+        )
+    url = base_url.rstrip("/") + "/api/generate"
+    tags_url = base_url.rstrip("/") + "/api/tags"
+    return OllamaClient(url=url, tags_url=tags_url, model_configs=get_all_model_configs())
 
 
 @lru_cache(maxsize=1)
 def get_query_executor() -> HRQueryExecutor:
-    return HRQueryExecutor()
+    return HRQueryExecutor(dsn=_resolve_query_dsn())
 
 
 @lru_cache(maxsize=1)
@@ -60,7 +72,7 @@ def get_hr_bi_orchestrator():
         query_executor=QueryExecutor(
             metadata_service=metadata,
             sql_validator=sql_validator,
-            database_url=_resolve_query_dsn(settings),
+            database_url=_resolve_query_dsn(),
         ),
         gap_service=GapService(metadata_service=metadata),
         response_builder=ResponseBuilder(metadata_service=metadata),

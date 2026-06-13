@@ -38,12 +38,6 @@ async def get_system_databases() -> dict:
             "db_name": settings.db_name,
             "username": settings.db_user,
         },
-        "hr_db": {
-            "host": settings.hr_db_host,
-            "port": settings.hr_db_port,
-            "db_name": settings.hr_db_name,
-            "username": settings.hr_db_user,
-        },
     }
 
 
@@ -141,8 +135,14 @@ async def activate_database(id: str, repo: QueryDatabaseRepository = Depends(_re
 
 def _clear_orchestrator_cache() -> None:
     try:
-        from app.dependencies import get_hr_bi_orchestrator
+        from app.dependencies import (
+            get_hr_bi_orchestrator,
+            get_query_executor,
+            get_run_query_use_case,
+        )
 
         get_hr_bi_orchestrator.cache_clear()
+        get_query_executor.cache_clear()
+        get_run_query_use_case.cache_clear()
     except Exception:
         pass

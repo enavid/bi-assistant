@@ -5,41 +5,22 @@ import time
 import pandas as pd
 import psycopg2
 
-from app.core.config import settings
 from app.hr_analytics.domain.entities import QueryResult
 
 
 class HRQueryExecutor:
     """
-    Implements IQueryExecutor for the HR PostgreSQL database.
-    Uses psycopg2 sync driver — intentionally separate from the app DB.
+    Executes raw SQL against the active query database using psycopg2.
+    Accepts a full postgresql+asyncpg:// DSN and strips the driver prefix.
     """
 
-    def __init__(
-        self,
-        host: str | None = None,
-        port: int | None = None,
-        dbname: str | None = None,
-        user: str | None = None,
-        password: str | None = None,
-    ) -> None:
-        self._host = host or settings.hr_db_host
-        self._port = port or settings.hr_db_port
-        self._dbname = dbname or settings.hr_db_name
-        self._user = user or settings.hr_db_user
-        self._password = password or settings.hr_db_password
+    def __init__(self, dsn: str) -> None:
+        self._dsn = dsn.replace("postgresql+asyncpg://", "postgresql://", 1)
 
     def run(self, sql: str) -> QueryResult:
         start = time.perf_counter()
         try:
-            conn = psycopg2.connect(
-                host=self._host,
-                port=self._port,
-                dbname=self._dbname,
-                user=self._user,
-                password=self._password,
-                connect_timeout=10,
-            )
+            conn = psycopg2.connect(self._dsn, connect_timeout=10)
             df: pd.DataFrame = pd.read_sql_query(sql, conn)
             conn.close()
             elapsed_ms = round((time.perf_counter() - start) * 1000, 1)

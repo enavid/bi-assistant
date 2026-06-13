@@ -44,6 +44,11 @@ _DEFAULT_SET_NAME = "Consultant Questions"
 
 
 def build_orchestrator(model_name: str | None = None) -> Any:
+    from app.connections.active import (
+        get_active_dsn,
+        get_active_ollama_base_url,
+        get_all_model_configs,
+    )
     from app.core.config import settings
     from app.hr_analytics.adapters.response_builder import ResponseBuilder
     from app.hr_analytics.use_cases.orchestrator import LLMOrchestrator
@@ -60,9 +65,24 @@ def build_orchestrator(model_name: str | None = None) -> Any:
     from app.infrastructure.llm.ollama_client import OllamaClient
     from app.infrastructure.metadata.loader import get_metadata
 
+    active_dsn = get_active_dsn()
+    if not active_dsn:
+        raise RuntimeError(
+            "No active query database configured. Add and activate one in Settings → Database."
+        )
+
     metadata = get_metadata()
     sql_validator = SQLValidator(metadata_service=metadata)
-    llm_client = OllamaClient(default_model=model_name) if model_name else None
+
+    base_url = get_active_ollama_base_url()
+    llm_client: OllamaClient | None = None
+    if base_url:
+        llm_client = OllamaClient(
+            url=base_url.rstrip("/") + "/api/generate",
+            tags_url=base_url.rstrip("/") + "/api/tags",
+            default_model=model_name,
+            model_configs=get_all_model_configs(),
+        )
 
     kwargs: dict[str, Any] = dict(
         metadata_service=metadata,
@@ -77,7 +97,7 @@ def build_orchestrator(model_name: str | None = None) -> Any:
         query_executor=QueryExecutor(
             metadata_service=metadata,
             sql_validator=sql_validator,
-            database_url=settings.hr_db_dsn,
+            database_url=active_dsn,
         ),
         gap_service=GapService(metadata_service=metadata),
         response_builder=ResponseBuilder(metadata_service=metadata),
@@ -339,7 +359,7 @@ async def trigger_run(
         run_id=run.id,
         question_ids=[q.id for q in questions],
         session_factory=AsyncSessionLocal,
-        orchestrator=build_orchestrator(body.model_name),
+        model_name=body.model_name,
     )
 
     return EvalRunOut(
@@ -382,8 +402,11 @@ async def _run_evaluation_background(
     run_id: str,
     question_ids: list[str],
     session_factory: async_sessionmaker,
-    orchestrator: Any,
+    orchestrator: Any = None,
+    model_name: str | None = None,
 ) -> None:
+    if orchestrator is None:
+        orchestrator = build_orchestrator(model_name)
     async with session_factory() as db:
         run = (await db.execute(select(EvalRunORM).where(EvalRunORM.id == run_id))).scalar_one()
         questions = (

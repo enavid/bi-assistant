@@ -14,27 +14,12 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    # Ollama
-    ollama_url: str
-    ollama_tags_url: str
-    model_name: str
-    model_temperature: float = 0.4
-    model_top_p: float = 0.5
-    model_timeout: int = 120
-
-    # App database
+    # App database (only DB configured via env)
     db_host: str
     db_port: int = 5432
     db_name: str
     db_user: str
     db_password: str
-
-    # HR database
-    hr_db_host: str
-    hr_db_port: int = 5432
-    hr_db_name: str
-    hr_db_user: str
-    hr_db_password: str
 
     # CORS
     cors_origins: list[str] = ["http://localhost:5173"]
@@ -71,14 +56,6 @@ class Settings(BaseSettings):
         return (
             f"postgresql://{self.db_user}:{quote_plus(self.db_password)}"
             f"@{self.db_host}:{self.db_port}/{self.db_name}"
-        )
-
-    @property
-    def hr_db_dsn(self) -> str:
-        return (
-            f"host={self.hr_db_host} port={self.hr_db_port} "
-            f"dbname={self.hr_db_name} user={self.hr_db_user} "
-            f"password={self.hr_db_password}"
         )
 
 

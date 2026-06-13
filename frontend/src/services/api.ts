@@ -5,7 +5,12 @@ import type {
   EvalQuestionSet,
   EvalRun,
   GenerateResponse,
+  ModelConfig,
+  ModelInfo,
+  OllamaConnection,
   OllamaHealth,
+  OllamaModel,
+  OllamaTestResult,
   Project,
   QueryDatabase,
   QueryResult,
@@ -106,6 +111,50 @@ export const connectionApi = {
 
   test: (payload: { host: string; port: number; db_name: string; username: string; password: string }) =>
     apiClient.post<TestConnectionResult>('/connections/databases/test', payload).then((r) => r.data),
+}
+
+export const ollamaConnectionApi = {
+  list: () =>
+    apiClient.get<OllamaConnection[]>('/connections/ollama').then((r) => r.data),
+
+  create: (payload: { name: string; base_url: string }) =>
+    apiClient.post<OllamaConnection>('/connections/ollama', payload).then((r) => r.data),
+
+  update: (id: string, payload: Partial<{ name: string; base_url: string }>) =>
+    apiClient.patch<OllamaConnection>(`/connections/ollama/${id}`, payload).then((r) => r.data),
+
+  delete: (id: string) =>
+    apiClient.delete(`/connections/ollama/${id}`).then((r) => r.data),
+
+  activate: (id: string) =>
+    apiClient.post<OllamaConnection>(`/connections/ollama/${id}/activate`).then((r) => r.data),
+
+  deactivate: () =>
+    apiClient.post('/connections/ollama/deactivate').then((r) => r.data),
+
+  test: (payload: { base_url: string }) =>
+    apiClient.post<OllamaTestResult>('/connections/ollama/test', payload).then((r) => r.data),
+
+  models: (id: string) =>
+    apiClient.get<{ models: OllamaModel[] }>(`/connections/ollama/${id}/models`).then((r) => r.data),
+}
+
+export const modelConfigApi = {
+  list: () =>
+    apiClient.get<ModelConfig[]>('/connections/model-configs').then((r) => r.data),
+
+  getInfo: (modelName: string, connectionId: string) =>
+    apiClient
+      .get<ModelInfo>(`/connections/ollama/${connectionId}/model-info/${encodeURIComponent(modelName)}`)
+      .then((r) => r.data),
+
+  save: (modelName: string, config_json: Record<string, unknown>) =>
+    apiClient
+      .put<ModelConfig>(`/connections/model-configs/${encodeURIComponent(modelName)}`, { config_json })
+      .then((r) => r.data),
+
+  delete: (modelName: string) =>
+    apiClient.delete(`/connections/model-configs/${encodeURIComponent(modelName)}`).then((r) => r.data),
 }
 
 export const evalApi = {

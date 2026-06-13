@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useRef, useState } from 'react'
 import { Icon } from '@/components/ui/Icon'
 import { Modal } from '@/components/ui/Modal'
 import {
@@ -51,99 +51,6 @@ function StatusBadge({ status }: { status: EvalRun['status'] }) {
 const inputCls = 'px-3 py-2.5 rounded-[8px] text-[13px] outline-none w-full'
 const inputStyle = { background: 'var(--bg-raised)', border: '1px solid var(--border-default)', color: 'var(--text-1)' }
 const labelCls = 'text-[11px] font-semibold uppercase tracking-[0.6px]'
-
-// ---------------------------------------------------------------------------
-// Trace detail modal
-// ---------------------------------------------------------------------------
-
-function TraceModal({ result, onClose }: { result: EvalRunResult; onClose: () => void }) {
-  const steps: Array<{ step?: string; status?: string; duration_ms?: number; decision_by?: string }> =
-    result.trace_steps ?? []
-
-  return (
-    <Modal open title={`Trace — ${result.question_id}`} onClose={onClose}>
-      <div className="flex flex-col gap-4" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
-        <div className="grid grid-cols-2 gap-3 text-[12px]">
-          <div>
-            <span style={{ color: 'var(--text-3)' }}>Route: </span>
-            <span className="font-mono" style={{ color: 'var(--text-1)' }}>{result.actual_route ?? '—'}</span>
-          </div>
-          <div>
-            <span style={{ color: 'var(--text-3)' }}>Status: </span>
-            <span className="font-mono" style={{ color: 'var(--text-1)' }}>{result.actual_status ?? '—'}</span>
-          </div>
-          <div>
-            <span style={{ color: 'var(--text-3)' }}>Source: </span>
-            <span className="font-mono" style={{ color: 'var(--text-1)' }}>{result.source ?? '—'}</span>
-          </div>
-          <div>
-            <span style={{ color: 'var(--text-3)' }}>Model: </span>
-            <span className="font-mono" style={{ color: 'var(--text-1)' }}>{result.model_called ?? '—'}</span>
-          </div>
-          <div>
-            <span style={{ color: 'var(--text-3)' }}>Template: </span>
-            <span className="font-mono" style={{ color: 'var(--text-1)' }}>{result.template_id ?? '—'}</span>
-          </div>
-          <div>
-            <span style={{ color: 'var(--text-3)' }}>Duration: </span>
-            <span className="font-mono" style={{ color: 'var(--text-1)' }}>{Math.round(result.total_duration_ms)} ms</span>
-          </div>
-        </div>
-
-        {result.error && (
-          <div className="px-3 py-2 rounded-[8px] text-[11px]" style={{ background: 'rgba(248,113,113,0.1)', color: '#f87171' }}>
-            {result.error}
-          </div>
-        )}
-
-        {steps.length > 0 && (
-          <div>
-            <p className={`${labelCls} mb-2`} style={{ color: 'var(--text-3)' }}>Steps</p>
-            <div className="flex flex-col gap-1">
-              {steps.map((s, i) => (
-                <div
-                  key={i}
-                  className="flex items-center gap-3 px-3 py-2 rounded-[6px] text-[11px]"
-                  style={{ background: 'var(--bg-raised)', border: '1px solid var(--border-subtle)' }}
-                >
-                  <span className="font-mono font-semibold" style={{ color: 'var(--accent-text)', minWidth: 160 }}>
-                    {s.step}
-                  </span>
-                  <span
-                    className="px-1.5 py-[1px] rounded-[4px] text-[10px]"
-                    style={{
-                      background: s.status === 'ok' ? 'rgba(34,197,94,0.15)' : 'rgba(248,113,113,0.15)',
-                      color: s.status === 'ok' ? '#22c55e' : '#f87171',
-                    }}
-                  >
-                    {s.status}
-                  </span>
-                  {s.decision_by && (
-                    <span style={{ color: 'var(--text-3)' }}>via {s.decision_by}</span>
-                  )}
-                  {s.duration_ms != null && (
-                    <span className="ml-auto" style={{ color: 'var(--text-3)' }}>{Math.round(s.duration_ms)} ms</span>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {(result.warnings ?? []).length > 0 && (
-          <div>
-            <p className={`${labelCls} mb-2`} style={{ color: 'var(--text-3)' }}>Warnings</p>
-            <ul className="flex flex-col gap-1">
-              {result.warnings!.map((w, i) => (
-                <li key={i} className="text-[11px]" style={{ color: '#f59e0b' }}>• {String(w)}</li>
-              ))}
-            </ul>
-          </div>
-        )}
-      </div>
-    </Modal>
-  )
-}
 
 // ---------------------------------------------------------------------------
 // Set list panel (left)
@@ -617,7 +524,6 @@ function traceStatusColor(status: string): string {
 }
 
 function EvalTracePanel({ steps }: { steps: NonNullable<EvalRunResult['trace_steps']> }) {
-  const [expandedRow, setExpandedRow] = useState<number | null>(null)
   return (
     <div
       className="mt-1 rounded-[6px] overflow-hidden text-[10px] font-mono"
@@ -632,12 +538,11 @@ function EvalTracePanel({ steps }: { steps: NonNullable<EvalRunResult['trace_ste
         ))}
         {steps.map((t, i) => {
           const isLast = i === steps.length - 1
-          const isExpanded = expandedRow === i
           const decision = t.decision_by ?? '—'
           const ds = DECISION_STYLE[decision]
           const status = t.status ?? ''
           const statusColor = traceStatusColor(status)
-          const rowBorder = (!isLast || isExpanded) ? '1px solid var(--border-subtle)' : undefined
+          const rowBorder = !isLast ? '1px solid var(--border-subtle)' : undefined
           return (
             <React.Fragment key={i}>
               <div className="px-2.5 py-[5px]" style={{ color: 'var(--text-2)', borderBottom: rowBorder }}>
@@ -1177,19 +1082,15 @@ export function EvalPage() {
   const [selectedSetId, setSelectedSetId] = useState<string | null>(null)
   const { data: sets } = useEvalSets()
 
-  useEffect(() => {
-    if (selectedSetId || !sets?.length) return
-    const defaultSet = sets.find((s) => s.is_default) ?? sets[0]
-    if (defaultSet) setSelectedSetId(defaultSet.id)
-  }, [sets, selectedSetId])
+  const activeSetId = selectedSetId ?? (sets?.find((s) => s.is_default) ?? sets?.[0])?.id ?? null
 
   return (
     <div className="flex h-full w-full overflow-hidden">
-      <SetList selectedId={selectedSetId} onSelect={setSelectedSetId} />
+      <SetList selectedId={activeSetId} onSelect={setSelectedSetId} />
 
       <div className="flex-1 overflow-hidden" style={{ background: 'var(--bg-base)' }}>
-        {selectedSetId
-          ? <SetDetail key={selectedSetId} setId={selectedSetId} />
+        {activeSetId
+          ? <SetDetail key={activeSetId} setId={activeSetId} />
           : (
             <div className="flex items-center justify-center h-full" style={{ color: 'var(--text-3)' }}>
               <div className="text-center">

@@ -127,6 +127,31 @@ class MessageORM(Base):
     session: Mapped[ChatSessionORM] = relationship("ChatSessionORM", back_populates="messages")
 
 
+class OllamaConnectionORM(Base):
+    __tablename__ = "ollama_connections"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uid)
+    name: Mapped[str] = mapped_column(String, nullable=False)
+    base_url: Mapped[str] = mapped_column(String, nullable=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+
+class ModelConfigORM(Base):
+    __tablename__ = "model_configs"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uid)
+    model_name: Mapped[str] = mapped_column(String, nullable=False, unique=True)
+    config_json: Mapped[dict] = mapped_column(_JSONB, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+
 class QueryDatabaseORM(Base):
     __tablename__ = "query_databases"
 

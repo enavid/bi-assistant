@@ -97,7 +97,6 @@ export interface SystemDbInfo {
 
 export interface SystemDatabases {
   app_db: SystemDbInfo
-  hr_db: SystemDbInfo
 }
 
 export interface QueryDatabase {
@@ -116,6 +115,32 @@ export interface TestConnectionResult {
   success: boolean
   error: string | null
   latency_ms: number | null
+}
+
+export interface OllamaConnection {
+  id: string
+  name: string
+  base_url: string
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface OllamaTestResult {
+  success: boolean
+  error: string | null
+  models: string[]
+}
+
+export interface ModelConfig {
+  model_name: string
+  config_json: Record<string, unknown>
+  updated_at: string
+}
+
+export interface ModelInfo {
+  parameters: Record<string, unknown>
+  details: Record<string, unknown>
 }
 
 export type Theme = 'dark' | 'light' | 'amin-rai'

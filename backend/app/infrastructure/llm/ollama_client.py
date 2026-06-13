@@ -4,16 +4,14 @@ from typing import Any
 
 import httpx
 
-from app.core.config import settings
 from app.hr_analytics.domain.entities import GenerationResult
+
+_DEFAULT_TEMPERATURE = 0.4
+_DEFAULT_TOP_P = 0.5
+_DEFAULT_TIMEOUT = 120
 
 
 class OllamaClient:
-    """
-    Implements ILLMClient using Ollama HTTP API.
-    All configuration comes from settings — no hardcoded values.
-    """
-
     def __init__(
         self,
         url: str | None = None,
@@ -22,23 +20,37 @@ class OllamaClient:
         temperature: float | None = None,
         top_p: float | None = None,
         timeout: int | None = None,
+        model_configs: dict[str, dict] | None = None,
     ) -> None:
-        self._url = url or settings.ollama_url
-        self._tags_url = tags_url or settings.ollama_tags_url
-        self._model = default_model or settings.model_name
-        self._temperature = temperature if temperature is not None else settings.model_temperature
-        self._top_p = top_p if top_p is not None else settings.model_top_p
-        self._timeout = timeout or settings.model_timeout
+        self._url = url or ""
+        self._tags_url = tags_url or ""
+        self._model = default_model or ""
+        self._temperature = temperature if temperature is not None else _DEFAULT_TEMPERATURE
+        self._top_p = top_p if top_p is not None else _DEFAULT_TOP_P
+        self._timeout = timeout or _DEFAULT_TIMEOUT
+        self._model_configs: dict[str, dict] = model_configs or {}
 
     async def generate(self, prompt: str, model: str | None = None) -> GenerationResult:
+        target_model = model or self._model
+        model_cfg = self._model_configs.get(target_model, {})
+
+        options: dict = {
+            "temperature": model_cfg.get("temperature", self._temperature),
+            "top_p": model_cfg.get("top_p", self._top_p),
+        }
+        if "num_ctx" in model_cfg:
+            options["num_ctx"] = model_cfg["num_ctx"]
+        if "think" in model_cfg:
+            options["think"] = model_cfg["think"]
+        for key, val in model_cfg.items():
+            if key not in ("temperature", "top_p", "num_ctx", "think"):
+                options[key] = val
+
         payload = {
-            "model": model or self._model,
+            "model": target_model,
             "prompt": prompt,
             "stream": False,
-            "options": {
-                "temperature": self._temperature,
-                "top_p": self._top_p,
-            },
+            "options": options,
         }
         try:
             async with httpx.AsyncClient(timeout=self._timeout) as client:
