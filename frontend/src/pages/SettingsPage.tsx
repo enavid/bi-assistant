@@ -961,7 +961,7 @@ export function SettingsPage({ onOpenSidebar }: { onOpenSidebar?: () => void }) 
   return (
     <div className="flex flex-col flex-1 overflow-hidden">
       {/* Header */}
-      <div className="h-[46px] border-b border-border-default flex items-center px-3 sm:px-5 gap-2 flex-shrink-0 bg-bg-surface">
+      <div className="h-[52px] border-b border-border-default flex items-center px-3 sm:px-5 gap-2 flex-shrink-0 bg-bg-surface">
         <button
           onClick={onOpenSidebar}
           className="md:hidden w-8 h-8 flex items-center justify-center rounded-[8px] flex-shrink-0"

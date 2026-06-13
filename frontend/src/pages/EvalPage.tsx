@@ -93,7 +93,7 @@ function SetList({
         style={{ borderRight: '1px solid var(--border-default)', background: 'var(--bg-surface)' }}
       >
         <div
-          className="px-3 py-3 flex items-center gap-2 flex-shrink-0"
+          className="h-[52px] px-3 flex items-center gap-2 flex-shrink-0"
           style={{ borderBottom: '1px solid var(--border-subtle)' }}
         >
           {onOpenSidebar && (

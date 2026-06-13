@@ -159,7 +159,7 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
       >
         {/* Brand mark */}
         <div
-          className="py-3 flex justify-center flex-shrink-0"
+          className="h-[52px] flex justify-center items-center flex-shrink-0"
           style={{ borderBottom: '1px solid var(--border-subtle)' }}
         >
           <img src={amrLogo} alt="Amin Raay" className="w-8 h-8 object-contain" />
@@ -247,7 +247,7 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
       >
         {/* ── Brand header ── */}
         <div
-          className="px-3.5 py-3 flex items-center gap-2.5 flex-shrink-0"
+          className="h-[52px] px-3.5 flex items-center gap-2.5 flex-shrink-0"
           style={{ borderBottom: '1px solid var(--border-subtle)' }}
         >
           <img src={amrLogo} alt="Amin Raay" className="w-8 h-8 object-contain flex-shrink-0" />
