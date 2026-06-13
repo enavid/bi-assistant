@@ -1,6 +1,7 @@
 import React, { useRef, useState } from 'react'
 import { Icon } from '@/components/ui/Icon'
 import { Modal, ConfirmDialog } from '@/components/ui/Modal'
+import { InlineLoader, Spinner } from '@/components/ui/Spinner'
 import {
   useAddEvalQuestion,
   useCreateEvalSet,
@@ -115,9 +116,7 @@ function SetList({
         </div>
 
         <div className="flex-1 overflow-y-auto p-2">
-          {isLoading && (
-            <p className="text-[11px] px-2 py-3" style={{ color: 'var(--text-3)' }}>Loading…</p>
-          )}
+          {isLoading && <InlineLoader />}
           {!isLoading && !sets?.length && (
             <p className="text-[11px] px-2 py-3 text-center" style={{ color: 'var(--text-3)' }}>No sets yet.</p>
           )}
@@ -764,7 +763,7 @@ function RunResults({ runId, isRunning }: { runId: string; isRunning: boolean })
 
   const { data: run, isLoading } = useEvalRun(runId, isRunning)
 
-  if (isLoading) return <p className="text-[12px] p-4" style={{ color: 'var(--text-3)' }}>Loading…</p>
+  if (isLoading) return <div className="flex justify-center p-6"><Spinner size={22} /></div>
   if (!run) return null
 
   const results = run.results ?? []

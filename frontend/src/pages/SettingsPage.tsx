@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { clsx } from 'clsx'
+import { InlineLoader, Spinner } from '@/components/ui/Spinner'
 import {
   useActivateOllamaConnection,
   useActivateQueryDatabase,
@@ -482,12 +483,7 @@ function OllamaConnectionPanel({
       {/* Expandable models list */}
       {open && (
         <div className="border-t border-border-default bg-bg-raised px-3 py-3">
-          {modelsLoading && (
-            <div className="text-[11px] text-text-3 flex items-center gap-1.5 py-1">
-              <Icon name="refresh" size={11} className="animate-spin" />
-              Loading models…
-            </div>
-          )}
+          {modelsLoading && <InlineLoader label="Loading models…" />}
           {modelsError && (
             <div className="text-[11px] text-amber-400 py-1">Could not reach Ollama server.</div>
           )}
@@ -568,12 +564,7 @@ function ModelConfigEditor({
 
   return (
     <div className="mt-2 flex flex-col gap-2">
-      {isLoading && (
-        <div className="text-[11px] text-text-3 py-1 flex items-center gap-1.5">
-          <Icon name="refresh" size={11} className="animate-spin" />
-          Loading Ollama defaults…
-        </div>
-      )}
+      {isLoading && <InlineLoader label="Loading Ollama defaults…" />}
       {!isLoading && isError && (
         <div className="text-[11px] text-amber-400 flex items-center gap-1.5">
           <Icon name="x" size={11} />
@@ -762,7 +753,7 @@ function OllamaSection() {
         )}
 
         {connsLoading ? (
-          <div className="text-[11px] text-text-3 py-4 text-center">Loading…</div>
+          <div className="flex justify-center py-4"><Spinner size={20} /></div>
         ) : conns.length === 0 ? (
           <div className="text-[11px] text-text-3 py-6 text-center border border-dashed border-border-default rounded-[8px]">
             No connections yet. Click "Add connection" to get started.
@@ -932,7 +923,7 @@ function DatabaseSection() {
         )}
 
         {isLoading ? (
-          <div className="text-[11px] text-text-3 py-4 text-center">Loading…</div>
+          <div className="flex justify-center py-4"><Spinner size={20} /></div>
         ) : databases.length === 0 ? (
           <div className="text-[11px] text-text-3 py-6 text-center border border-dashed border-border-default rounded-[8px]">
             No connections yet. Click "Add connection" to get started.

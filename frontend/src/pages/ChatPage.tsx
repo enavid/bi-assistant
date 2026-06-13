@@ -8,6 +8,7 @@ import { SqlBlock } from '@/components/ui/SqlBlock'
 import { QueryResultView } from '@/components/chat/QueryResult'
 import type { GenerateResponse, Message, QueryResult } from '@/types'
 import amrLogo from '@/assets/amr-logo.png'
+import { PageLoader } from '@/components/ui/Spinner'
 
 const STATUS_FA: Record<string, string> = {
   DATA_GAP:              'این اطلاعات در سیستم موجود نیست یا هنوز تعریف نشده.',
@@ -429,7 +430,7 @@ export function ChatPage({ onOpenSidebar }: { onOpenSidebar?: () => void }) {
             <Icon name="menu" size={16} />
           </button>
         </div>
-        <div className="flex flex-1 items-center justify-center text-sm" style={{ color: 'var(--text-3)' }}>Loading…</div>
+        <PageLoader />
       </div>
     )
   }
