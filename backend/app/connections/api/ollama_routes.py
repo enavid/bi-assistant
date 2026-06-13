@@ -160,34 +160,6 @@ async def activate_ollama(id: str, repo: OllamaConnectionRepository = Depends(_o
 
 
 # ---------------------------------------------------------------------------
-# Model info (fetch defaults from active Ollama)
-# ---------------------------------------------------------------------------
-
-
-@router.get("/model-info/{model_name}")
-async def get_model_info(model_name: str) -> dict:
-    from app.connections.active import get_active_ollama_base_url
-
-    base_url = get_active_ollama_base_url()
-    if not base_url:
-        raise HTTPException(status_code=503, detail="No active Ollama connection configured.")
-    show_url = base_url.rstrip("/") + "/api/show"
-    try:
-        async with httpx.AsyncClient(timeout=10) as client:
-            resp = await client.post(show_url, json={"name": model_name})
-            resp.raise_for_status()
-            data = resp.json()
-            return {
-                "parameters": _parse_parameters(data.get("parameters", "")),
-                "details": data.get("details", {}),
-            }
-    except HTTPException:
-        raise
-    except Exception as exc:
-        raise HTTPException(status_code=502, detail=f"Cannot reach Ollama: {exc}") from exc
-
-
-# ---------------------------------------------------------------------------
 # Model configs
 # ---------------------------------------------------------------------------
 
@@ -269,14 +241,6 @@ def _coerce(value: str):
     except ValueError:
         pass
     return value.strip('"').strip("'")
-
-
-def _base_from_generate_url(generate_url: str) -> str:
-    """Extract base URL from generate endpoint URL."""
-    for suffix in ["/api/generate", "/api/chat"]:
-        if generate_url.endswith(suffix):
-            return generate_url[: -len(suffix)]
-    return generate_url
 
 
 def _fmt_size(size_bytes: int) -> str:

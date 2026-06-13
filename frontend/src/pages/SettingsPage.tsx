@@ -893,7 +893,7 @@ function DatabaseSection() {
           )}
         </div>
         <p className="text-[11px] text-text-2 mb-3">
-          Define query databases here. Activate one to use it instead of HR_DB env settings.
+          Define query databases here. Activate one to use it for HR data queries.
         </p>
 
         {showForm && (
