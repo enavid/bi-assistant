@@ -59,6 +59,12 @@ def get_hr_bi_orchestrator():
     metadata = get_metadata()
     sql_validator = SQLValidator(metadata_service=metadata)
 
+    ollama_client = None
+    try:
+        ollama_client = get_llm_client()
+    except RuntimeError:
+        pass
+
     return LLMOrchestrator(
         metadata_service=metadata,
         domain_classifier=DomainClassifier(),
@@ -76,6 +82,7 @@ def get_hr_bi_orchestrator():
         ),
         gap_service=GapService(metadata_service=metadata),
         response_builder=ResponseBuilder(metadata_service=metadata),
+        ollama_client=ollama_client,
         default_execute_sql=settings.default_execute_sql,
         current_shamsi_year=settings.current_shamsi_year,
         strict_metadata=True,

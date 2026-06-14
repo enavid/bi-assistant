@@ -60,7 +60,32 @@ async def test_generate_passes_question_to_orchestrator():
     orch = _make_orchestrator(_base_payload())
     uc = HRBIOrchestrationUseCase(orch)
     await uc.generate("سوال تست", user_id="u1", user_role="admin", execute_sql=True)
-    orch.arun.assert_called_once_with("سوال تست", user_id="u1", user_role="admin", execute_sql=True)
+    orch.arun.assert_called_once_with(
+        "سوال تست", user_id="u1", user_role="admin", execute_sql=True, runtime_params=None
+    )
+
+
+@pytest.mark.asyncio
+async def test_generate_passes_model_in_runtime_params():
+    orch = _make_orchestrator(_base_payload())
+    uc = HRBIOrchestrationUseCase(orch)
+    await uc.generate("سوال تست", model="llama3.1:8b")
+    orch.arun.assert_called_once_with(
+        "سوال تست",
+        user_id=None,
+        user_role="demo_user",
+        execute_sql=False,
+        runtime_params={"model": "llama3.1:8b"},
+    )
+
+
+@pytest.mark.asyncio
+async def test_generate_passes_none_runtime_params_when_no_model():
+    orch = _make_orchestrator(_base_payload())
+    uc = HRBIOrchestrationUseCase(orch)
+    await uc.generate("سوال تست")
+    call_kwargs = orch.arun.call_args.kwargs
+    assert call_kwargs.get("runtime_params") is None
 
 
 @pytest.mark.asyncio

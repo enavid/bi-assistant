@@ -28,6 +28,7 @@ class HRBIOrchestrationUseCase:
             user_id=user_id,
             user_role=user_role,
             execute_sql=execute_sql,
+            runtime_params={"model": model} if model else None,
         )
         payload = response.to_dict() if hasattr(response, "to_dict") else dict(response)
 

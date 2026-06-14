@@ -193,6 +193,7 @@ class LLMOrchestrator:
         query_executor: Any | None = None,
         gap_service: Any | None = None,
         response_builder: Any | None = None,
+        ollama_client: Any | None = None,
         default_user_role: str = "demo_user",
         default_execute_sql: bool = True,
         current_shamsi_year: int = 1404,
@@ -216,6 +217,7 @@ class LLMOrchestrator:
         self.query_executor = query_executor
         self.gap_service = gap_service
         self.response_builder = response_builder
+        self.ollama_client = ollama_client
 
         self.default_user_role = default_user_role
         self.default_execute_sql = default_execute_sql
@@ -562,11 +564,12 @@ class LLMOrchestrator:
         if should_generate and self.sql_generator is not None:
             generated = await call_component(
                 self.sql_generator,
-                ["generate", "run", "arun", "__call__"],
+                ["arun", "generate", "run", "__call__"],
                 question=context.normalized_question,
                 schema_context=self.metadata.build_schema_context_for_prompt(),
                 context=context,
                 metadata=self.metadata,
+                ollama_client=self.ollama_client,
             )
             generated_plan = normalize_result(generated)
             if generated_plan.get("sql"):

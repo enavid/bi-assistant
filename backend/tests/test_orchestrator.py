@@ -91,3 +91,53 @@ def test_orchestrator_arun_is_consistent_with_run(metadata_service):
     async_payload = async_result.to_dict() if hasattr(async_result, "to_dict") else async_result
     assert sync_payload["route"] == async_payload["route"]
     assert sync_payload["status"] == async_payload["status"]
+
+
+# ---------------------------------------------------------------------------
+# BUG-002 — LLMOrchestrator must accept and store ollama_client
+# ---------------------------------------------------------------------------
+
+
+def test_orchestrator_accepts_ollama_client_param(metadata_service):
+    from unittest.mock import MagicMock
+
+    mock_client = MagicMock()
+    orchestrator = LLMOrchestrator(
+        metadata_service=metadata_service,
+        default_execute_sql=False,
+        ollama_client=mock_client,
+    )
+    assert orchestrator.ollama_client is mock_client
+
+
+def test_orchestrator_ollama_client_defaults_to_none(metadata_service):
+    orchestrator = LLMOrchestrator(metadata_service=metadata_service, default_execute_sql=False)
+    assert orchestrator.ollama_client is None
+
+
+@pytest.mark.asyncio
+async def test_orchestrator_passes_ollama_client_to_sql_generator(metadata_service):
+    """When ollama_client is set, it must be passed to sql_generator via arun."""
+    from unittest.mock import AsyncMock, MagicMock
+
+    mock_client = MagicMock()
+    mock_generator = AsyncMock()
+    mock_generator.arun.return_value = {
+        "status": "OK",
+        "route": "SQL",
+        "sql": "SELECT COUNT(v.employee_id) FROM hr_mvp.vw_hr_employee_analytics v",
+        "can_execute_sql": False,
+        "source": "llm_sql_fallback",
+    }
+
+    orchestrator = LLMOrchestrator(
+        metadata_service=metadata_service,
+        default_execute_sql=False,
+        sql_generator=mock_generator,
+        ollama_client=mock_client,
+    )
+    await orchestrator.arun("تعداد کارکنان؟", runtime_params={"model": "llama3.1:8b"})
+
+    mock_generator.arun.assert_called_once()
+    call_kwargs = mock_generator.arun.call_args.kwargs
+    assert call_kwargs.get("ollama_client") is mock_client

@@ -478,8 +478,76 @@ class SQLGenerator:
     def run(self, **kwargs: Any) -> JsonDict:
         return self.generate(**kwargs)
 
-    async def arun(self, **kwargs: Any) -> JsonDict:
-        return await asyncio.to_thread(self.generate, **kwargs)
+    async def arun(
+        self,
+        *,
+        context: Any = None,
+        ollama_client: Any = None,
+        **kwargs: Any,
+    ) -> JsonDict:
+        result = await asyncio.to_thread(self.generate, context=context, **kwargs)
+
+        if result.get("status") == "NEEDS_LLM_SQL_FALLBACK" and ollama_client is not None:
+            model: str | None = None
+            if context is not None and hasattr(context, "runtime_params"):
+                model = context.runtime_params.get("model")
+            if model:
+                return await self._call_ollama_async(
+                    ollama_client=ollama_client,
+                    model=model,
+                    context=context,
+                    schema_context=kwargs.get("schema_context"),
+                    metadata=kwargs.get("metadata"),
+                )
+
+        return result
+
+    async def _call_ollama_async(
+        self,
+        *,
+        ollama_client: Any,
+        model: str,
+        context: Any,
+        schema_context: str | None,
+        metadata: Any,
+    ) -> JsonDict:
+        from app.infrastructure.llm.analytics_client import LLMClient
+        from app.infrastructure.llm.prompt_builder import PromptBuilder
+
+        service = metadata or self.metadata
+        builder = PromptBuilder(metadata_service=service)
+        question = (
+            getattr(context, "normalized_question", None) or getattr(context, "question", "") or ""
+        )
+        built = builder.build_sql_fallback_prompt(
+            question=str(question),
+            context=context,
+            metadata=service,
+            schema_context=schema_context,
+        )
+        gen_result = await ollama_client.generate(built.prompt, model=model)
+        raw_text = gen_result.sql or ""
+        sql = LLMClient.extract_sql(raw_text)
+        if sql:
+            return {
+                "status": "OK",
+                "route": "SQL",
+                "source": "llm_sql_fallback",
+                "sql": sql,
+                "can_execute_sql": True,
+                "generation_mode": "llm_fallback",
+                "metadata": {"model": model},
+            }
+        return {
+            "status": "NEEDS_LLM_SQL_FALLBACK",
+            "route": "SQL",
+            "source": "llm_sql_fallback",
+            "sql": None,
+            "can_execute_sql": False,
+            "generation_mode": "llm_fallback",
+            "errors": [gen_result.error or "OllamaClient returned no extractable SQL"],
+            "metadata": {"model": model},
+        }
 
     def __call__(self, **kwargs: Any) -> JsonDict:
         return self.generate(**kwargs)
