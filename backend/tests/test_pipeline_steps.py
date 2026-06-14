@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from app.hr_analytics.use_cases.orchestrator import LLMOrchestrator
 from app.hr_analytics.use_cases.steps.decision_router import DecisionRouter
 from app.hr_analytics.use_cases.steps.gap_service import GapService
 from app.hr_analytics.use_cases.steps.intent_parser import IntentParser
@@ -293,3 +294,34 @@ def test_service_years_between_5_and_15_routes_to_count_intent(metadata_service)
     assert f is not None, "Expected service_years filter"
     assert f.get("operator") == "BETWEEN"
     assert f.get("value") == [5, 15], f"Expected [5,15], got {f.get('value')!r}"
+
+
+# ---------------------------------------------------------------------------
+# BUG-001 — education_title for doctorate must match the actual DB value
+# ---------------------------------------------------------------------------
+
+_DB_DOCTORATE_VALUE = "دکترای تخصصی PHD / دکترای حرفه ای"
+
+
+def test_doctorate_question_produces_correct_education_title_filter(metadata_service):
+    orch = LLMOrchestrator(metadata_service=metadata_service)
+    result = orch._extract_template_params(
+        "میانگین سن کارمندان دکترا چقدر است؟", intent={}
+    )
+    filters = result.get("filters") or []
+    ed_filter = next((f for f in filters if f.get("column") == "education_title"), None)
+    assert ed_filter is not None, "Expected education_title filter in result"
+    assert ed_filter.get("value") == _DB_DOCTORATE_VALUE, (
+        f"Expected {_DB_DOCTORATE_VALUE!r}, got {ed_filter.get('value')!r}"
+    )
+
+
+def test_doctorate_params_produce_correct_education_title(metadata_service):
+    orch = LLMOrchestrator(metadata_service=metadata_service)
+    result = orch._extract_template_params(
+        "تعداد کارمندان دکترا چند نفرند؟", intent={}
+    )
+    params = result.get("params") or {}
+    assert params.get("education_title") == _DB_DOCTORATE_VALUE, (
+        f"Expected education_title param={_DB_DOCTORATE_VALUE!r}, got {params.get('education_title')!r}"
+    )
