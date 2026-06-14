@@ -15,7 +15,6 @@ sys.path.insert(0, str(_EVAL_DIR))
 
 from test_routing_eval import _mismatches  # noqa: E402
 
-
 # ---------------------------------------------------------------------------
 # Existing checks — must not regress
 # ---------------------------------------------------------------------------
