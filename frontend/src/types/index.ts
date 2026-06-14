@@ -209,7 +209,7 @@ export interface EvalRunResult {
     step?: string
     status?: string
     duration_ms?: number
-    decision_by?: string
+    details?: Record<string, unknown>
   }> | null
   error: string | null
   warnings: unknown[] | null

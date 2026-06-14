@@ -553,7 +553,7 @@ def _extract_result(payload: dict, q: EvalQuestionORM, elapsed_ms: float) -> dic
             "step": t.get("step"),
             "status": t.get("status"),
             "duration_ms": t.get("duration_ms"),
-            "decision_by": (t.get("details") or {}).get("decision_by"),
+            "details": t.get("details") or {},
         }
         for t in traces_raw
     ]

@@ -108,7 +108,7 @@ def test_trigger_run_appears_in_list(client):
 def test_trigger_run_with_question_ids_runs_only_those(client):
     qs = _seed_set_with_questions(client, n=5)
     questions = client.get(f"/eval/question-sets/{qs['id']}/questions").json()
-    first_id = questions[0]['id']
+    first_id = questions[0]["id"]
 
     with patch("app.evaluation.api.routes._run_evaluation_background"):
         resp = client.post(
@@ -149,6 +149,7 @@ def test_trigger_run_blocked_when_running_run_already_exists(client):
 
 def test_trigger_run_blocked_when_running_run_exists(client, db_session):
     import asyncio
+
     qs = _seed_set_with_questions(client)
     with patch("app.evaluation.api.routes._run_evaluation_background"):
         first = client.post(f"/eval/question-sets/{qs['id']}/run")
@@ -156,6 +157,7 @@ def test_trigger_run_blocked_when_running_run_exists(client, db_session):
 
     async def _set_running():
         from sqlalchemy import update
+
         await db_session.execute(
             update(EvalRunORM).where(EvalRunORM.id == run_id).values(status="running")
         )
@@ -170,6 +172,7 @@ def test_trigger_run_blocked_when_running_run_exists(client, db_session):
 
 def test_trigger_run_allowed_after_done(client, db_session):
     import asyncio
+
     qs = _seed_set_with_questions(client)
     with patch("app.evaluation.api.routes._run_evaluation_background"):
         first = client.post(f"/eval/question-sets/{qs['id']}/run")
@@ -177,6 +180,7 @@ def test_trigger_run_allowed_after_done(client, db_session):
 
     async def _set_done():
         from sqlalchemy import update
+
         await db_session.execute(
             update(EvalRunORM).where(EvalRunORM.id == run_id).values(status="done")
         )
@@ -216,10 +220,7 @@ async def test_reset_orphaned_runs_sets_failed(db_engine):
     await _reset_orphaned_eval_runs(factory)
 
     async with factory() as session:
-        rows = {
-            r.id: r.status
-            for r in (await session.execute(select(EvalRunORM))).scalars().all()
-        }
+        rows = {r.id: r.status for r in (await session.execute(select(EvalRunORM))).scalars().all()}
 
     assert rows[pending_id] == "failed"
     assert rows[running_id] == "failed"
@@ -299,7 +300,9 @@ async def test_background_tracks_current_question_idx(db_engine):
     assert captured == [0, 1, 2], f"expected [0, 1, 2], got {captured}"
 
     async with factory() as session:
-        updated = (await session.execute(select(EvalRunORM).where(EvalRunORM.id == run_id))).scalar_one()
+        updated = (
+            await session.execute(select(EvalRunORM).where(EvalRunORM.id == run_id))
+        ).scalar_one()
         assert updated.current_question_idx == 2
 
 
@@ -318,8 +321,9 @@ async def test_question_ids_ordered_stored_on_run(db_engine):
         q2 = EvalQuestionORM(set_id=qs.id, question_id="q002", question="سوال دوم")
         session.add_all([q1, q2])
         await session.flush()
-        run = EvalRunORM(set_id=qs.id, status="running", total=2,
-                         question_ids_ordered=[q1.id, q2.id])
+        run = EvalRunORM(
+            set_id=qs.id, status="running", total=2, question_ids_ordered=[q1.id, q2.id]
+        )
         session.add(run)
         await session.commit()
         run_id = run.id
@@ -336,7 +340,9 @@ async def test_question_ids_ordered_stored_on_run(db_engine):
     )
 
     async with factory() as session:
-        updated = (await session.execute(select(EvalRunORM).where(EvalRunORM.id == run_id))).scalar_one()
+        updated = (
+            await session.execute(select(EvalRunORM).where(EvalRunORM.id == run_id))
+        ).scalar_one()
         assert updated.question_ids_ordered == question_ids
 
 
