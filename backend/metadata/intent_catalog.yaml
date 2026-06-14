@@ -278,6 +278,89 @@ intents:
     WHERE v.is_active = TRUE;
 
     '
+- intent_id: max_age
+  title_fa: بیشترین سن کارکنان
+  description_fa: حداکثر سن در بین کارکنان فعال
+  route: SQL
+  status: supported
+  question_type: statistical
+  priority: high
+  supported_in_phase2: true
+  demo_ready: true
+  user_examples:
+  - بیشترین سن کارمندان چقدر است؟
+  - حداکثر سن کارکنان چند است؟
+  - مسن‌ترین کارمند چند سال دارد؟
+  trigger_terms_fa:
+  - بیشترین سن
+  - حداکثر سن
+  - مسن‌ترین
+  - بالاترین سن
+  metrics:
+  - name: max_age
+    title_fa: بیشترین سن
+    expression: MAX(v.age)
+  required_columns:
+  - age
+  - is_active
+  output_type: kpi_card
+  recommended_visualization: kpi_card
+  sql_template_id: TPL_MAX_AGE
+- intent_id: min_age
+  title_fa: کمترین سن کارکنان
+  description_fa: حداقل سن در بین کارکنان فعال
+  route: SQL
+  status: supported
+  question_type: statistical
+  priority: high
+  supported_in_phase2: true
+  demo_ready: true
+  user_examples:
+  - کمترین سن کارمندان چقدر است؟
+  - حداقل سن کارکنان چند است؟
+  - جوان‌ترین کارمند چند سال دارد؟
+  trigger_terms_fa:
+  - کمترین سن
+  - حداقل سن
+  - جوان‌ترین
+  - پایین‌ترین سن
+  metrics:
+  - name: min_age
+    title_fa: کمترین سن
+    expression: MIN(v.age)
+  required_columns:
+  - age
+  - is_active
+  output_type: kpi_card
+  recommended_visualization: kpi_card
+  sql_template_id: TPL_MIN_AGE
+- intent_id: stddev_age
+  title_fa: انحراف معیار سن کارکنان
+  description_fa: پراکندگی سنی کارکنان فعال
+  route: SQL
+  status: supported
+  question_type: statistical
+  priority: high
+  supported_in_phase2: true
+  demo_ready: true
+  user_examples:
+  - انحراف معیار سن کارمندان چقدر است؟
+  - پراکندگی سنی کارکنان چند است؟
+  - واریانس سن کارکنان چقدر است؟
+  trigger_terms_fa:
+  - انحراف معیار سن
+  - واریانس سن
+  - پراکندگی سن
+  metrics:
+  - name: stddev_age
+    title_fa: انحراف معیار سن
+    expression: ROUND(STDDEV(v.age)::numeric, 2)
+  required_columns:
+  - age
+  - is_active
+  output_type: kpi_card
+  recommended_visualization: kpi_card
+  sql_template_id: TPL_STDDEV_AGE
 - intent_id: employee_count_by_age_filter
   title_fa: تعداد کارکنان در بازه یا شرط سنی
   description_fa: تعداد کارکنان در بازه یا شرط سنی

@@ -210,3 +210,32 @@ def test_left_service_question_routes_to_gap(metadata_service):
         "چند نفر از کارمندان ترک خدمت کرده‌اند؟"
     )
     assert result.get("route") == "GAP", f"Expected GAP, got {result.get('route')}"
+
+
+# ---------------------------------------------------------------------------
+# BUG-008 — MAX/MIN/STDDEV age questions must not map to COUNT template
+# ---------------------------------------------------------------------------
+
+
+def test_max_age_intent_is_recognized(metadata_service):
+    result = IntentParser(metadata_service=metadata_service).parse(
+        "بیشترین سن کارمندان چقدر است؟"
+    )
+    intent = result.get("intent_id") or result.get("intent")
+    assert intent == "max_age", f"Expected max_age intent, got {intent!r}"
+
+
+def test_min_age_intent_is_recognized(metadata_service):
+    result = IntentParser(metadata_service=metadata_service).parse(
+        "کمترین سن کارمندان چقدر است؟"
+    )
+    intent = result.get("intent_id") or result.get("intent")
+    assert intent == "min_age", f"Expected min_age intent, got {intent!r}"
+
+
+def test_stddev_age_intent_is_recognized(metadata_service):
+    result = IntentParser(metadata_service=metadata_service).parse(
+        "انحراف معیار سن کارمندان چقدر است؟"
+    )
+    intent = result.get("intent_id") or result.get("intent")
+    assert intent == "stddev_age", f"Expected stddev_age intent, got {intent!r}"

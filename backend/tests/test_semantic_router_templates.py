@@ -63,6 +63,50 @@ def test_sql_template_engine_renders_total_count(metadata_service):
 # ---------------------------------------------------------------------------
 
 
+# ---------------------------------------------------------------------------
+# BUG-008 — TPL_MAX_AGE / TPL_MIN_AGE / TPL_STDDEV_AGE must render correct SQL
+# ---------------------------------------------------------------------------
+
+
+def test_max_age_template_renders_max_sql(metadata_service):
+    context = {
+        "route_result": {"route": "SQL", "template_id": "TPL_MAX_AGE"},
+        "intent_result": {"intent_id": "max_age", "template_id": "TPL_MAX_AGE"},
+    }
+    result = SQLTemplateEngine(metadata_service=metadata_service).build(
+        question="بیشترین سن کارمندان چقدر است؟", context=context, metadata=metadata_service
+    )
+    sql = result.get("sql") or ""
+    assert result["route"] == "SQL", f"Unexpected route: {result}"
+    assert "MAX(v.age)" in sql, f"Expected MAX(v.age) in SQL, got:\n{sql}"
+
+
+def test_min_age_template_renders_min_sql(metadata_service):
+    context = {
+        "route_result": {"route": "SQL", "template_id": "TPL_MIN_AGE"},
+        "intent_result": {"intent_id": "min_age", "template_id": "TPL_MIN_AGE"},
+    }
+    result = SQLTemplateEngine(metadata_service=metadata_service).build(
+        question="کمترین سن کارمندان چقدر است؟", context=context, metadata=metadata_service
+    )
+    sql = result.get("sql") or ""
+    assert result["route"] == "SQL"
+    assert "MIN(v.age)" in sql, f"Expected MIN(v.age) in SQL, got:\n{sql}"
+
+
+def test_stddev_age_template_renders_stddev_sql(metadata_service):
+    context = {
+        "route_result": {"route": "SQL", "template_id": "TPL_STDDEV_AGE"},
+        "intent_result": {"intent_id": "stddev_age", "template_id": "TPL_STDDEV_AGE"},
+    }
+    result = SQLTemplateEngine(metadata_service=metadata_service).build(
+        question="انحراف معیار سن کارمندان چقدر است؟", context=context, metadata=metadata_service
+    )
+    sql = result.get("sql") or ""
+    assert result["route"] == "SQL"
+    assert "STDDEV" in sql, f"Expected STDDEV in SQL, got:\n{sql}"
+
+
 def test_average_age_template_applies_contractor_filter(metadata_service):
     context = {
         "route_result": {"route": "SQL", "template_id": "TPL_AVERAGE_AGE"},

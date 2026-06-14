@@ -721,6 +721,7 @@ class IntentParser:
                     question, ["درصد", "سهم", "نسبت", "چه مقدار", "چند درصد"]
                 ),
                 "asks_average": self._has_any(question, ["میانگین", "متوسط", "اختلاف میانگین"]),
+                "asks_stddev": self._has_any(question, ["انحراف معیار", "واریانس", "پراکندگی"]),
                 "asks_distribution": self._has_any(
                     question, ["تفکیک", "بر اساس", "به تفکیک", "توزیع", "سهم هر", "در هر"]
                 ),
@@ -917,6 +918,12 @@ class IntentParser:
 
         if f.get("asks_average") and f.get("explicit_age"):
             add(("average_age", 70, "average_age"))
+        if f.get("asks_most") and f.get("explicit_age") and not f.get("age_filter"):
+            add(("max_age", 75, "max_age"))
+        if f.get("asks_least") and f.get("explicit_age") and not f.get("age_filter"):
+            add(("min_age", 75, "min_age"))
+        if f.get("asks_stddev") and f.get("explicit_age"):
+            add(("stddev_age", 80, "stddev_age"))
         if f.get("explicit_age") and f.get("age_filter"):
             add(("employee_count_by_age_filter", 60, "age_filter"))
         if f.get("explicit_age") and self._has_any(
@@ -1181,6 +1188,9 @@ class IntentParser:
                 )
                 required_columns.append("education_title")
             required_columns.extend(["age", "employee_id", "is_active", *group_by])
+
+        elif best_intent_id in {"max_age", "min_age", "stddev_age"}:
+            required_columns.extend(["age", "employee_id", "is_active"])
 
         elif best_intent_id == "employee_count_by_education":
             if education_value:
@@ -1580,6 +1590,18 @@ class IntentParser:
                     "title_fa": "میانگین سن",
                 }
             ]
+        if intent_id == "max_age":
+            return [{"name": "max_age", "expression": "MAX(v.age)", "title_fa": "بیشترین سن"}]
+        if intent_id == "min_age":
+            return [{"name": "min_age", "expression": "MIN(v.age)", "title_fa": "کمترین سن"}]
+        if intent_id == "stddev_age":
+            return [
+                {
+                    "name": "stddev_age",
+                    "expression": "ROUND(STDDEV(v.age)::numeric, 2)",
+                    "title_fa": "انحراف معیار سن",
+                }
+            ]
         if intent_id == "average_service_years":
             return [
                 {
@@ -1627,6 +1649,9 @@ class IntentParser:
                 "gender_percentage",
                 "employee_count_by_age_filter",
                 "average_age",
+                "max_age",
+                "min_age",
+                "stddev_age",
                 "average_service_years",
                 "employee_count_without_service_years",
             }

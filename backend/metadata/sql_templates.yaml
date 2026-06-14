@@ -348,6 +348,48 @@ templates:
   sql: "SELECT\n    v.age_group_title,\n    COUNT(v.employee_id) AS employee_count,\n    ROUND(\n        COUNT(v.employee_id)\
     \ * 100.0\n        / NULLIF(SUM(COUNT(v.employee_id)) OVER (), 0),\n        2\n    ) AS percentage\nFROM hr_mvp.vw_hr_employee_analytics\
     \ v\nWHERE v.is_active = TRUE\nGROUP BY v.age_group_title\nORDER BY MIN(v.age) ASC;\n"
+- template_id: TPL_MAX_AGE
+  intent: max_age
+  title_fa: بیشترین سن کارکنان
+  route: SQL
+  status: ready_for_demo
+  output_type: kpi_card
+  required_columns:
+  - age
+  - is_active
+  result_columns:
+  - name: max_age
+    type: integer
+    title_fa: بیشترین سن
+  sql: "SELECT MAX(v.age) AS max_age\nFROM hr_mvp.vw_hr_employee_analytics v\nWHERE v.is_active = TRUE;\n"
+- template_id: TPL_MIN_AGE
+  intent: min_age
+  title_fa: کمترین سن کارکنان
+  route: SQL
+  status: ready_for_demo
+  output_type: kpi_card
+  required_columns:
+  - age
+  - is_active
+  result_columns:
+  - name: min_age
+    type: integer
+    title_fa: کمترین سن
+  sql: "SELECT MIN(v.age) AS min_age\nFROM hr_mvp.vw_hr_employee_analytics v\nWHERE v.is_active = TRUE;\n"
+- template_id: TPL_STDDEV_AGE
+  intent: stddev_age
+  title_fa: انحراف معیار سن کارکنان
+  route: SQL
+  status: ready_for_demo
+  output_type: kpi_card
+  required_columns:
+  - age
+  - is_active
+  result_columns:
+  - name: stddev_age
+    type: numeric
+    title_fa: انحراف معیار سن
+  sql: "SELECT ROUND(STDDEV(v.age)::numeric, 2) AS stddev_age\nFROM hr_mvp.vw_hr_employee_analytics v\nWHERE v.is_active = TRUE;\n"
 - template_id: TPL_EMPLOYEE_COUNT_BY_AGE_FILTER
   report_id: RPT_HR_017
   intent: employee_count_by_age_filter
