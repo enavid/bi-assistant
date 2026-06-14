@@ -364,3 +364,34 @@ def test_hire_year_1402_is_extracted(metadata_service):
     f = _hy_filter(result)
     assert f is not None, "Expected hire_year filter"
     assert f.get("value") == 1402, f"Expected value=1402, got {f.get('value')!r}"
+
+
+# ---------------------------------------------------------------------------
+# BUG-006 — superlative questions must set result_limit=1
+# ---------------------------------------------------------------------------
+
+
+def test_most_employees_in_department_sets_limit_1(metadata_service):
+    result = IntentParser(metadata_service=metadata_service).parse(
+        "کدام دپارتمان بیشترین کارمند را دارد؟"
+    )
+    intent = result.get("intent_id") or result.get("intent")
+    assert intent == "employee_count_by_department", (
+        f"Expected employee_count_by_department, got {intent!r}"
+    )
+    assert result.get("params", {}).get("result_limit") == 1, (
+        f"Expected result_limit=1 in params, got {result.get('params')}"
+    )
+
+
+def test_least_employees_in_province_sets_limit_1(metadata_service):
+    result = IntentParser(metadata_service=metadata_service).parse(
+        "کدام استان کمترین کارمند را دارد؟"
+    )
+    intent = result.get("intent_id") or result.get("intent")
+    assert intent == "employee_count_by_province", (
+        f"Expected employee_count_by_province, got {intent!r}"
+    )
+    assert result.get("params", {}).get("result_limit") == 1, (
+        f"Expected result_limit=1 in params, got {result.get('params')}"
+    )

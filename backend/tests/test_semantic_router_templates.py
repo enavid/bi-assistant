@@ -229,3 +229,31 @@ def test_hire_year_template_renders_correct_sql(metadata_service):
     assert result["route"] == "SQL", f"Unexpected: {result}"
     assert "hire_year" in sql, f"Expected hire_year in SQL:\n{sql}"
     assert "1400" in sql, f"Expected 1400 in SQL:\n{sql}"
+
+
+# ---------------------------------------------------------------------------
+# BUG-006 — result_limit=1 must produce LIMIT 1 in SQL
+# ---------------------------------------------------------------------------
+
+
+def test_department_template_with_result_limit_1_adds_limit_clause(metadata_service):
+    context = {
+        "route_result": {
+            "route": "SQL",
+            "template_id": "TPL_EMPLOYEE_COUNT_BY_DEPARTMENT",
+        },
+        "intent_result": {
+            "intent_id": "employee_count_by_department",
+            "template_id": "TPL_EMPLOYEE_COUNT_BY_DEPARTMENT",
+            "params": {"result_limit": 1},
+        },
+    }
+    result = SQLTemplateEngine(metadata_service=metadata_service).build(
+        question="کدام دپارتمان بیشترین کارمند را دارد؟",
+        context=context,
+        metadata=metadata_service,
+    )
+    sql = result.get("sql") or ""
+    assert result["route"] == "SQL", f"Unexpected: {result}"
+    assert "LIMIT" in sql.upper(), f"Expected LIMIT in SQL:\n{sql}"
+    assert "1" in sql, f"Expected 1 in SQL:\n{sql}"

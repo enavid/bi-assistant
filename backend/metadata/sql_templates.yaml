@@ -581,9 +581,14 @@ templates:
   - employment_type
   - is_active
   business_rules_fa: نوع استخدام با employment_type سنجیده می‌شود و نباید با contract_type اشتباه شود.
+  parameters:
+  - name: result_limit
+    type: integer_or_NULL
+    required: false
+    default: 'NULL'
   sql: "SELECT\n    v.employment_type,\n    COUNT(v.employee_id) AS employee_count,\n    ROUND(\n        COUNT(v.employee_id)\
     \ * 100.0\n        / NULLIF(SUM(COUNT(v.employee_id)) OVER (), 0),\n        2\n    ) AS percentage\nFROM hr_mvp.vw_hr_employee_analytics\
-    \ v\nWHERE v.is_active = TRUE\nGROUP BY v.employment_type\nORDER BY employee_count DESC;\n"
+    \ v\nWHERE v.is_active = TRUE\nGROUP BY v.employment_type\nORDER BY employee_count DESC\nLIMIT {result_limit};\n"
 - template_id: TPL_EMPLOYEE_COUNT_BY_EMPLOYMENT_TYPE_VALUE
   intent: employee_count_by_employment_type
   title_fa: تعداد کارکنان با نوع استخدام مشخص
@@ -615,9 +620,14 @@ templates:
   - contract_type
   - is_active
   business_rules_fa: نوع قرارداد با contract_type سنجیده می‌شود و نباید با employment_type اشتباه شود.
+  parameters:
+  - name: result_limit
+    type: integer_or_NULL
+    required: false
+    default: 'NULL'
   sql: "SELECT\n    v.contract_type,\n    COUNT(v.employee_id) AS employee_count,\n    ROUND(\n        COUNT(v.employee_id)\
     \ * 100.0\n        / NULLIF(SUM(COUNT(v.employee_id)) OVER (), 0),\n        2\n    ) AS percentage\nFROM hr_mvp.vw_hr_employee_analytics\
-    \ v\nWHERE v.is_active = TRUE\nGROUP BY v.contract_type\nORDER BY employee_count DESC;\n"
+    \ v\nWHERE v.is_active = TRUE\nGROUP BY v.contract_type\nORDER BY employee_count DESC\nLIMIT {result_limit};\n"
 - template_id: TPL_EMPLOYEE_COUNT_BY_CONTRACT_TYPE_VALUE
   intent: employee_count_by_contract_type
   title_fa: تعداد کارکنان با نوع قرارداد مشخص
@@ -696,9 +706,14 @@ templates:
   - employee_id
   - service_domain
   - is_active
+  parameters:
+  - name: result_limit
+    type: integer_or_NULL
+    required: false
+    default: 'NULL'
   sql: "SELECT\n    v.service_domain,\n    COUNT(v.employee_id) AS employee_count,\n    ROUND(\n        COUNT(v.employee_id)\
     \ * 100.0\n        / NULLIF(SUM(COUNT(v.employee_id)) OVER (), 0),\n        2\n    ) AS percentage\nFROM hr_mvp.vw_hr_employee_analytics\
-    \ v\nWHERE v.is_active = TRUE\nGROUP BY v.service_domain\nORDER BY employee_count DESC;\n"
+    \ v\nWHERE v.is_active = TRUE\nGROUP BY v.service_domain\nORDER BY employee_count DESC\nLIMIT {result_limit};\n"
 - template_id: TPL_EMPLOYEE_COUNT_BY_DEPARTMENT
   report_id: RPT_HR_022
   intent: employee_count_by_department
@@ -711,9 +726,14 @@ templates:
   - department_name
   - is_active
   business_rules_fa: عبارت‌های بخش، واحد، اداره و دپارتمان در MVP به department_name نگاشت می‌شوند.
+  parameters:
+  - name: result_limit
+    type: integer_or_NULL
+    required: false
+    default: 'NULL'
   sql: "SELECT\n    v.department_name,\n    COUNT(v.employee_id) AS employee_count,\n    ROUND(\n        COUNT(v.employee_id)\
     \ * 100.0\n        / NULLIF(SUM(COUNT(v.employee_id)) OVER (), 0),\n        2\n    ) AS percentage\nFROM hr_mvp.vw_hr_employee_analytics\
-    \ v\nWHERE v.is_active = TRUE\nGROUP BY v.department_name\nORDER BY employee_count DESC;\n"
+    \ v\nWHERE v.is_active = TRUE\nGROUP BY v.department_name\nORDER BY employee_count DESC\nLIMIT {result_limit};\n"
 - template_id: TPL_HEADCOUNT_GAP_BY_DEPARTMENT
   report_id: RPT_HR_012
   intent: headcount_gap_by_department
@@ -766,9 +786,14 @@ templates:
   - employee_id
   - province
   - is_active
+  parameters:
+  - name: result_limit
+    type: integer_or_NULL
+    required: false
+    default: 'NULL'
   sql: "SELECT\n    v.province,\n    COUNT(v.employee_id) AS employee_count,\n    ROUND(\n        COUNT(v.employee_id) * 100.0\n\
     \        / NULLIF(SUM(COUNT(v.employee_id)) OVER (), 0),\n        2\n    ) AS percentage\nFROM hr_mvp.vw_hr_employee_analytics\
-    \ v\nWHERE v.is_active = TRUE\nGROUP BY v.province\nORDER BY employee_count DESC;\n"
+    \ v\nWHERE v.is_active = TRUE\nGROUP BY v.province\nORDER BY employee_count DESC\nLIMIT {result_limit};\n"
 - template_id: TPL_EMPLOYEE_COUNT_BY_WORK_LOCATION
   report_id: RPT_HR_023
   intent: employee_count_by_work_location

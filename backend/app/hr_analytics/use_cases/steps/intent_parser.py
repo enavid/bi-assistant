@@ -1397,6 +1397,20 @@ class IntentParser:
             group_by = self._ensure_group_by(group_by, "marital_status")
             required_columns.extend(["marital_status", "employee_id", "is_active"])
 
+        # Superlative queries ("بیشترین"/"کمترین") on grouped distributions → top-1 only.
+        _SUPERLATIVE_SORTABLE_INTENTS = {
+            "employee_count_by_department",
+            "employee_count_by_service_domain",
+            "employee_count_by_province",
+            "employee_count_by_contract_type",
+            "employee_count_by_employment_type",
+            "employee_count_by_work_location",
+        }
+        if best_intent_id in _SUPERLATIVE_SORTABLE_INTENTS and (
+            query_features.get("asks_most") or query_features.get("asks_least")
+        ):
+            params["result_limit"] = 1
+
         # Always include default active filter as a logical signal. SQL templates
         # already include it, so downstream engines should avoid duplicating it.
         if not any(item.get("column") == "is_active" for item in filters if isinstance(item, dict)):
