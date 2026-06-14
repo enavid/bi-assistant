@@ -33,6 +33,17 @@ JsonDict = dict[str, Any]
 _PLACEHOLDER_RE = re.compile(r"\{([A-Za-z_][A-Za-z0-9_]*)\}")
 _SAFE_PARAM_NAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
+_CRITICAL_FILTER_PARAMS: frozenset[str] = frozenset({
+    "gender_value",
+    "education_title",
+    "service_years_min",
+    "service_years_max_inclusive",
+    "service_years_max_exclusive",
+    "hire_year",
+    "employment_type",
+    "contract_type",
+})
+
 
 class SQLTemplateEngineError(RuntimeError):
     """Base exception for SQL template planning/rendering errors."""
@@ -665,11 +676,15 @@ class SQLTemplateEngine:
             if allowed_values is not None and str(value) not in {str(v) for v in allowed_values}:
                 errors.append(f"Parameter '{name}' value {value!r} is not in allowed values.")
 
-        unknown_params = sorted(
-            set(params) - placeholders - set(specs_by_name) - {"current_shamsi_year"}
-        )
-        if unknown_params:
-            warnings.append("Unused normalized parameter(s): " + ", ".join(unknown_params))
+        unknown_params = set(params) - placeholders - set(specs_by_name) - {"current_shamsi_year"}
+        critical_unused = sorted(unknown_params & _CRITICAL_FILTER_PARAMS)
+        non_critical_unused = sorted(unknown_params - _CRITICAL_FILTER_PARAMS)
+        if critical_unused:
+            errors.append(
+                f"Template cannot apply critical filter(s): {critical_unused}"
+            )
+        if non_critical_unused:
+            warnings.append("Unused normalized parameter(s): " + ", ".join(non_critical_unused))
 
         return errors, warnings
 
