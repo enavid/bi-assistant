@@ -500,8 +500,10 @@ class SQLTemplateEngine:
             if isinstance(payload, Mapping):
                 params.update({str(k): v for k, v in payload.items()})
 
-        # Convert normalized filters into known template parameters when parser did
-        # not already provide them explicitly.
+        # Convert normalized filters into known template parameters.
+        # intent_payload filters are processed first; intent-specific values are
+        # appended at the END of intent_payload.filters, so last-wins assignment
+        # in _merge_filter_params ensures intent additions override semantic base values.
         filters = []
         for payload in (semantic_payload, intent_payload):
             value = payload.get("filters")
@@ -532,6 +534,9 @@ class SQLTemplateEngine:
             operator = str(item.get("operator") or "")
             value = item.get("value")
 
+            if column == "is_contractor" and value is not None:
+                params["contractor_only"] = value
+
             if (
                 column in {"gender", "education_title", "employment_type", "contract_type"}
                 and value is not None
@@ -542,7 +547,7 @@ class SQLTemplateEngine:
                     "employment_type": "employment_type",
                     "contract_type": "contract_type",
                 }
-                params.setdefault(key_by_column[column], value)
+                params[key_by_column[column]] = value
 
             if column == "age":
                 if operator in {">=", ">"} and value is not None:

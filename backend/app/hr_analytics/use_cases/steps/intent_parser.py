@@ -1166,6 +1166,20 @@ class IntentParser:
                 group_by = self._ensure_group_by(group_by, "gender")
             elif "هر حوزه" in question or "به تفکیک حوزه" in question:
                 group_by = self._ensure_group_by(group_by, "service_domain")
+            elif self._has_any(question, ["هر دپارتمان", "هر بخش", "هر واحد", "هر اداره"]):
+                group_by = self._ensure_group_by(group_by, "department_name")
+            # Secondary WHERE filters — kept separate from group_by dimensions
+            if query_features.get("explicit_contractor") and "gender" not in group_by:
+                filters.append({"column": "is_contractor", "operator": "=", "value": True})
+                required_columns.append("is_contractor")
+            if gender_value and "gender" not in group_by:
+                filters.append({"column": "gender", "operator": "=", "value": gender_value})
+                required_columns.append("gender")
+            if education_value:
+                filters.append(
+                    {"column": "education_title", "operator": "=", "value": education_value}
+                )
+                required_columns.append("education_title")
             required_columns.extend(["age", "employee_id", "is_active", *group_by])
 
         elif best_intent_id == "employee_count_by_education":

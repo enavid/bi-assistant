@@ -264,11 +264,27 @@ templates:
   required_columns:
   - age
   - is_active
+  parameters:
+  - name: contractor_only
+    type: boolean_or_NULL
+    required: false
+    default: 'NULL'
+  - name: gender_value
+    type: text_or_NULL
+    required: false
+    default: 'NULL'
+  - name: education_title
+    type: text_or_NULL
+    required: false
+    default: 'NULL'
   result_columns:
   - name: average_age
     type: numeric
     title_fa: میانگین سن
-  sql: "SELECT\n    ROUND(AVG(v.age), 2) AS average_age\nFROM hr_mvp.vw_hr_employee_analytics v\nWHERE v.is_active = TRUE;\n"
+  sql: "SELECT\n    ROUND(AVG(v.age), 2) AS average_age\nFROM hr_mvp.vw_hr_employee_analytics\
+    \ v\nWHERE v.is_active = TRUE\n  AND ({contractor_only} IS NULL OR v.is_contractor\
+    \ = {contractor_only})\n  AND ({gender_value} IS NULL OR v.gender = {gender_value})\n\
+    \  AND ({education_title} IS NULL OR v.education_title = {education_title});\n"
 - template_id: TPL_AVERAGE_AGE_BY_GENDER
   intent: average_age
   title_fa: میانگین سن به تفکیک جنسیت

@@ -142,6 +142,50 @@ def test_gap_service_result_has_required_fields(metadata_service):
 
 
 # ---------------------------------------------------------------------------
+# BUG-005 — secondary dimension filters must not be dropped for average_age
+# ---------------------------------------------------------------------------
+
+
+def _filters_for(result: dict) -> list[dict]:
+    return result.get("filters") or []
+
+
+def _has_filter(result: dict, column: str, value: object = None) -> bool:
+    for f in _filters_for(result):
+        if f.get("column") == column and f.get("scope") != "numerator":
+            if value is None or f.get("value") == value:
+                return True
+    return False
+
+
+def test_average_age_contractor_includes_contractor_filter(metadata_service):
+    result = IntentParser(metadata_service=metadata_service).parse(
+        "میانگین سن کارمندان پیمانکار چقدر است؟"
+    )
+    assert result.get("intent_id") == "average_age" or result.get("intent") == "average_age", (
+        f"Expected average_age intent, got {result.get('intent_id') or result.get('intent')}"
+    )
+    assert _has_filter(result, "is_contractor", True), (
+        f"Expected is_contractor=True filter in WHERE, got filters: {_filters_for(result)}"
+    )
+
+
+def test_average_age_female_with_masters_includes_both_filters(metadata_service):
+    result = IntentParser(metadata_service=metadata_service).parse(
+        "میانگین سن کارمندان زن با مدرک کارشناسی ارشد چقدر است؟"
+    )
+    assert result.get("intent_id") == "average_age" or result.get("intent") == "average_age", (
+        f"Expected average_age intent, got {result.get('intent_id') or result.get('intent')}"
+    )
+    assert _has_filter(result, "gender", "زن"), (
+        f"Expected gender=زن filter, got filters: {_filters_for(result)}"
+    )
+    assert _has_filter(result, "education_title"), (
+        f"Expected education_title filter, got filters: {_filters_for(result)}"
+    )
+
+
+# ---------------------------------------------------------------------------
 # BUG-011 — terminated/fired employee questions must route to DATA_GAP
 # ---------------------------------------------------------------------------
 

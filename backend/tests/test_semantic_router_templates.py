@@ -56,3 +56,81 @@ def test_sql_template_engine_renders_total_count(metadata_service):
     assert result["route"] == "SQL"
     assert "hr_mvp.vw_hr_employee_analytics" in sql
     assert "COUNT(v.employee_id)" in sql
+
+
+# ---------------------------------------------------------------------------
+# BUG-005 — TPL_AVERAGE_AGE must apply secondary filters (contractor, gender, education)
+# ---------------------------------------------------------------------------
+
+
+def test_average_age_template_applies_contractor_filter(metadata_service):
+    context = {
+        "route_result": {"route": "SQL", "template_id": "TPL_AVERAGE_AGE"},
+        "intent_result": {
+            "intent_id": "average_age",
+            "template_id": "TPL_AVERAGE_AGE",
+            "filters": [
+                {"column": "is_active", "operator": "=", "value": True},
+                {"column": "is_contractor", "operator": "=", "value": True},
+            ],
+        },
+    }
+    result = SQLTemplateEngine(metadata_service=metadata_service).build(
+        question="میانگین سن کارمندان پیمانکار چقدر است؟",
+        context=context,
+        metadata=metadata_service,
+    )
+    sql = result.get("sql") or ""
+    assert result["route"] == "SQL", f"Expected SQL route, got: {result}"
+    assert "is_contractor = TRUE" in sql, (
+        f"Expected is_contractor = TRUE in SQL, got:\n{sql}"
+    )
+
+
+def test_average_age_template_applies_gender_and_education_filters(metadata_service):
+    context = {
+        "route_result": {"route": "SQL", "template_id": "TPL_AVERAGE_AGE"},
+        "intent_result": {
+            "intent_id": "average_age",
+            "template_id": "TPL_AVERAGE_AGE",
+            "filters": [
+                {"column": "is_active", "operator": "=", "value": True},
+                {"column": "gender", "operator": "=", "value": "زن"},
+                {"column": "education_title", "operator": "=", "value": "کارشناسی ارشد"},
+            ],
+        },
+    }
+    result = SQLTemplateEngine(metadata_service=metadata_service).build(
+        question="میانگین سن کارمندان زن با مدرک کارشناسی ارشد چقدر است؟",
+        context=context,
+        metadata=metadata_service,
+    )
+    sql = result.get("sql") or ""
+    assert result["route"] == "SQL", f"Expected SQL route, got: {result}"
+    assert "gender = 'زن'" in sql, f"Expected gender filter in SQL, got:\n{sql}"
+    assert "education_title = 'کارشناسی ارشد'" in sql, (
+        f"Expected education_title filter in SQL, got:\n{sql}"
+    )
+
+
+def test_average_age_template_without_secondary_filters_has_null_conditions(metadata_service):
+    context = {
+        "route_result": {"route": "SQL", "template_id": "TPL_AVERAGE_AGE"},
+        "intent_result": {
+            "intent_id": "average_age",
+            "template_id": "TPL_AVERAGE_AGE",
+            "filters": [{"column": "is_active", "operator": "=", "value": True}],
+        },
+    }
+    result = SQLTemplateEngine(metadata_service=metadata_service).build(
+        question="میانگین سن کارکنان چقدر است؟",
+        context=context,
+        metadata=metadata_service,
+    )
+    sql = result.get("sql") or ""
+    assert result["route"] == "SQL", f"Expected SQL route, got: {result}"
+    assert "AVG(v.age)" in sql
+    # Optional conditions render with NULL params (always true — no actual filtering)
+    assert "NULL IS NULL" in sql
+    assert "is_contractor = TRUE" not in sql
+    assert "gender = 'زن'" not in sql
