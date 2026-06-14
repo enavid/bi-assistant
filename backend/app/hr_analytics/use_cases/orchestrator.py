@@ -546,40 +546,49 @@ class LLMOrchestrator:
                 "metadata": {"original_template_plan": redact_sql_for_trace(original_plan)},
             }
 
-        should_generate = (
-            not plan.get("sql")
-            or str(plan.get("status") or "").upper()
-            in {
-                "NO_TEMPLATE",
-                "TEMPLATE_INCOMPLETE",
-                "TEMPLATE_RENDER_FAILED",
-                "PARAMETER_VALIDATION_FAILED",
-            }
-            or (
-                not bool(plan.get("can_execute_sql", False))
-                and str(plan.get("route") or "").upper() == Route.SQL.value
-            )
-        )
-
-        if should_generate and self.sql_generator is not None:
-            generated = await call_component(
-                self.sql_generator,
-                ["arun", "generate", "run", "__call__"],
-                question=context.normalized_question,
-                schema_context=self.metadata.build_schema_context_for_prompt(),
+        model = context.runtime_params.get("model")
+        if model and self.ollama_client is not None:
+            suggested_sql = plan.get("sql") if plan.get("sql") else None
+            plan = await self._call_llm_primary(
                 context=context,
-                metadata=self.metadata,
-                ollama_client=self.ollama_client,
+                model=model,
+                suggested_sql=suggested_sql,
             )
-            generated_plan = normalize_result(generated)
-            if generated_plan.get("sql"):
-                generated_plan.setdefault("previous_plan_status", plan.get("status"))
-                generated_plan.setdefault("previous_plan_reason", plan.get("reason"))
-                plan = generated_plan
-            else:
-                generated_plan.setdefault("previous_plan", plan)
-                plan = generated_plan
-            plan.setdefault("source", "sql_generator")
+        else:
+            should_generate = (
+                not plan.get("sql")
+                or str(plan.get("status") or "").upper()
+                in {
+                    "NO_TEMPLATE",
+                    "TEMPLATE_INCOMPLETE",
+                    "TEMPLATE_RENDER_FAILED",
+                    "PARAMETER_VALIDATION_FAILED",
+                }
+                or (
+                    not bool(plan.get("can_execute_sql", False))
+                    and str(plan.get("route") or "").upper() == Route.SQL.value
+                )
+            )
+
+            if should_generate and self.sql_generator is not None:
+                generated = await call_component(
+                    self.sql_generator,
+                    ["arun", "generate", "run", "__call__"],
+                    question=context.normalized_question,
+                    schema_context=self.metadata.build_schema_context_for_prompt(),
+                    context=context,
+                    metadata=self.metadata,
+                    ollama_client=self.ollama_client,
+                )
+                generated_plan = normalize_result(generated)
+                if generated_plan.get("sql"):
+                    generated_plan.setdefault("previous_plan_status", plan.get("status"))
+                    generated_plan.setdefault("previous_plan_reason", plan.get("reason"))
+                    plan = generated_plan
+                else:
+                    generated_plan.setdefault("previous_plan", plan)
+                    plan = generated_plan
+                plan.setdefault("source", "sql_generator")
 
         context.sql_plan = plan
         _plan_source = str(plan.get("source") or "").lower()
@@ -596,6 +605,51 @@ class LLMOrchestrator:
             started,
             {**redact_sql_for_trace(plan), "decision_by": _sql_decision},
         )
+
+    async def _call_llm_primary(
+        self,
+        *,
+        context: RequestContext,
+        model: str,
+        suggested_sql: str | None,
+    ) -> JsonDict:
+        from app.infrastructure.llm.analytics_client import LLMClient
+        from app.infrastructure.llm.prompt_builder import PromptBuilder
+
+        builder = PromptBuilder(metadata_service=self.metadata)
+        schema_context = self.metadata.build_schema_context_for_prompt()
+        question = context.normalized_question or context.question
+
+        built = builder.build_sql_fallback_prompt(
+            question=str(question),
+            context=context,
+            schema_context=schema_context,
+            suggested_sql=suggested_sql,
+        )
+        gen_result = await self.ollama_client.generate(built.prompt, model=model)
+        raw_text = gen_result.sql or ""
+        sql = LLMClient.extract_sql(raw_text)
+
+        if sql:
+            return {
+                "status": "OK",
+                "route": Route.SQL.value,
+                "source": "llm_primary",
+                "sql": sql,
+                "can_execute_sql": True,
+                "generation_mode": "llm_primary",
+                "metadata": {"model": model},
+            }
+        return {
+            "status": "NEEDS_LLM_SQL_FALLBACK",
+            "route": Route.SQL.value,
+            "source": "llm_primary",
+            "sql": None,
+            "can_execute_sql": False,
+            "generation_mode": "llm_primary",
+            "errors": [gen_result.error or "LLM returned no extractable SQL"],
+            "metadata": {"model": model},
+        }
 
     def _template_plan_is_incomplete(self, context: RequestContext, plan: JsonDict) -> bool:
         sql = str(plan.get("sql") or "")

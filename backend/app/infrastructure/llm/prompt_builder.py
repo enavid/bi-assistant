@@ -38,12 +38,16 @@ class PromptBuilder:
         context: Any,
         metadata: Any | None = None,
         schema_context: str | None = None,
+        suggested_sql: str | None = None,
     ) -> SQLFallbackPrompt:
         service = metadata or self.metadata
         schema = schema_context or self._build_schema_context(service)
         modular_context = self.build_safe_modular_context(context)
         prompt = self._render_sql_prompt(
-            question=question, schema_context=schema, modular_context=modular_context
+            question=question,
+            schema_context=schema,
+            modular_context=modular_context,
+            suggested_sql=suggested_sql,
         )
         return SQLFallbackPrompt(
             prompt=prompt, modular_context=modular_context, schema_context=schema
@@ -84,10 +88,20 @@ class PromptBuilder:
         }
 
     def _render_sql_prompt(
-        self, *, question: str, schema_context: str, modular_context: JsonDict
+        self,
+        *,
+        question: str,
+        schema_context: str,
+        modular_context: JsonDict,
+        suggested_sql: str | None = None,
     ) -> str:
+        suggested_section = (
+            f"\nSUGGESTED SQL (pipeline pre-computed — verify and use if correct):\n{suggested_sql}\n"
+            if suggested_sql
+            else ""
+        )
         return f"""
-You are the SQL fallback generator for HR BI Assistant.
+You are the SQL generator for HR BI Assistant.
 
 Generate ONLY one PostgreSQL SQL statement.
 No markdown, no explanation, no comments.
@@ -111,9 +125,9 @@ AVAILABLE VIEW COLUMNS AND RULES:
 USER QUESTION:
 {question}
 
-SAFE MODULAR CONTEXT FROM PHASE-2 PIPELINE:
+PIPELINE CONTEXT (intent, filters, group_by extracted from question):
 {self._format_modular_context(modular_context)}
-
+{suggested_section}
 SQL OUTPUT ONLY:
 """.strip()
 

@@ -51,3 +51,38 @@ def test_prompt_builder_without_metadata():
     )
     result = builder.build_sql_fallback_prompt(question="count", context=ctx)
     assert isinstance(result, SQLFallbackPrompt)
+
+
+# ---------------------------------------------------------------------------
+# BUG-002 — suggested_sql must appear in prompt when provided
+# ---------------------------------------------------------------------------
+
+
+def test_prompt_builder_includes_suggested_sql_in_prompt(metadata_service):
+    builder = PromptBuilder(metadata_service=metadata_service)
+    ctx = _make_context(
+        intent_result={"intent": "total_employee_count", "route": "SQL"},
+        semantic_result={},
+        route_result={"route": "SQL"},
+        validation_result={},
+    )
+    suggested = "SELECT COUNT(v.employee_id) FROM hr_mvp.vw_hr_employee_analytics v WHERE v.is_active = TRUE"
+    result = builder.build_sql_fallback_prompt(
+        question="تعداد کارکنان؟",
+        context=ctx,
+        suggested_sql=suggested,
+    )
+    assert "SELECT COUNT" in result.prompt
+
+
+def test_prompt_builder_without_suggested_sql_still_works(metadata_service):
+    builder = PromptBuilder(metadata_service=metadata_service)
+    ctx = _make_context(
+        intent_result={"intent": "total_employee_count", "route": "SQL"},
+        semantic_result={},
+        route_result={"route": "SQL"},
+        validation_result={},
+    )
+    result = builder.build_sql_fallback_prompt(question="تعداد کارکنان؟", context=ctx)
+    assert isinstance(result, SQLFallbackPrompt)
+    assert "hr_mvp.vw_hr_employee_analytics" in result.prompt

@@ -116,28 +116,125 @@ def test_orchestrator_ollama_client_defaults_to_none(metadata_service):
 
 
 @pytest.mark.asyncio
-async def test_orchestrator_passes_ollama_client_to_sql_generator(metadata_service):
-    """When ollama_client is set, it must be passed to sql_generator via arun."""
+async def test_orchestrator_calls_ollama_when_model_in_runtime_params(metadata_service):
+    """When model is set in runtime_params, OllamaClient must be called for valid SQL questions."""
     from unittest.mock import AsyncMock, MagicMock
 
-    mock_client = MagicMock()
+    mock_ollama = AsyncMock()
+    gen_result = MagicMock()
+    gen_result.sql = (
+        "SELECT COUNT(v.employee_id) AS employee_count"
+        " FROM hr_mvp.vw_hr_employee_analytics v WHERE v.is_active = TRUE"
+    )
+    gen_result.success = True
+    gen_result.error = None
+    mock_ollama.generate.return_value = gen_result
+
+    orchestrator = LLMOrchestrator(
+        metadata_service=metadata_service,
+        default_execute_sql=False,
+        ollama_client=mock_ollama,
+    )
+    response = await orchestrator.arun(
+        "تعداد کارکنان چند نفر است؟",
+        runtime_params={"model": "llama3.1:8b"},
+    )
+    payload = response.to_dict()
+
+    mock_ollama.generate.assert_called_once()
+    call_kwargs = mock_ollama.generate.call_args.kwargs
+    assert call_kwargs.get("model") == "llama3.1:8b"
+    assert payload["route"] == "SQL"
+    assert "employee_count" in (payload.get("generated_sql") or "").lower()
+
+
+@pytest.mark.asyncio
+async def test_orchestrator_does_not_call_ollama_when_no_model(metadata_service):
+    """Without model in runtime_params, OllamaClient must not be called."""
+    from unittest.mock import AsyncMock
+
+    mock_ollama = AsyncMock()
+    orchestrator = LLMOrchestrator(
+        metadata_service=metadata_service,
+        default_execute_sql=False,
+        ollama_client=mock_ollama,
+    )
+    await orchestrator.arun("تعداد کارکنان چند نفر است؟")
+
+    mock_ollama.generate.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_orchestrator_ollama_not_called_for_rejected_question(metadata_service):
+    """Rejected questions (ACCESS_DENIED, OUT_OF_SCOPE) must never reach OllamaClient."""
+    from unittest.mock import AsyncMock
+
+    mock_ollama = AsyncMock()
+    orchestrator = LLMOrchestrator(
+        metadata_service=metadata_service,
+        default_execute_sql=False,
+        ollama_client=mock_ollama,
+    )
+    await orchestrator.arun(
+        "نام و کد ملی کارکنان را بده",
+        runtime_params={"model": "llama3.1:8b"},
+    )
+
+    mock_ollama.generate.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_orchestrator_model_called_appears_in_response(metadata_service):
+    """model_called field in sql_plan metadata must reflect the selected model."""
+    from unittest.mock import AsyncMock, MagicMock
+
+    mock_ollama = AsyncMock()
+    gen_result = MagicMock()
+    gen_result.sql = (
+        "SELECT COUNT(v.employee_id) FROM hr_mvp.vw_hr_employee_analytics v WHERE v.is_active = TRUE"
+    )
+    gen_result.success = True
+    gen_result.error = None
+    mock_ollama.generate.return_value = gen_result
+
+    orchestrator = LLMOrchestrator(
+        metadata_service=metadata_service,
+        default_execute_sql=False,
+        ollama_client=mock_ollama,
+    )
+    response = await orchestrator.arun(
+        "تعداد کارکنان چند نفر است؟",
+        runtime_params={"model": "llama3.1:8b"},
+    )
+    payload = response.to_dict()
+    sql_plan = (payload.get("context") or {}).get("sql_plan") or {}
+    model_in_meta = (sql_plan.get("metadata") or {}).get("model")
+    assert model_in_meta == "llama3.1:8b"
+
+
+@pytest.mark.asyncio
+async def test_orchestrator_skips_sql_generator_when_model_set(metadata_service):
+    """When model is set, sql_generator must NOT be called — LLM primary path handles it."""
+    from unittest.mock import AsyncMock, MagicMock
+
+    mock_ollama = AsyncMock()
+    gen_result = MagicMock()
+    gen_result.sql = (
+        "SELECT COUNT(v.employee_id) FROM hr_mvp.vw_hr_employee_analytics v WHERE v.is_active = TRUE"
+    )
+    gen_result.success = True
+    gen_result.error = None
+    mock_ollama.generate.return_value = gen_result
+
     mock_generator = AsyncMock()
-    mock_generator.arun.return_value = {
-        "status": "OK",
-        "route": "SQL",
-        "sql": "SELECT COUNT(v.employee_id) FROM hr_mvp.vw_hr_employee_analytics v",
-        "can_execute_sql": False,
-        "source": "llm_sql_fallback",
-    }
 
     orchestrator = LLMOrchestrator(
         metadata_service=metadata_service,
         default_execute_sql=False,
         sql_generator=mock_generator,
-        ollama_client=mock_client,
+        ollama_client=mock_ollama,
     )
     await orchestrator.arun("تعداد کارکنان؟", runtime_params={"model": "llama3.1:8b"})
 
-    mock_generator.arun.assert_called_once()
-    call_kwargs = mock_generator.arun.call_args.kwargs
-    assert call_kwargs.get("ollama_client") is mock_client
+    mock_generator.arun.assert_not_called()
+    mock_ollama.generate.assert_called_once()
