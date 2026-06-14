@@ -1577,8 +1577,21 @@ class LLMOrchestrator:
             intent_id == "employee_count_by_age_filter"
             and ("زیر" in q or "بالای" in q or "به بالا" in q)
             and "سال" in q
+            and "سابقه" not in q
         ):
             bonus += 7
+        if (
+            intent_id == "employee_count_by_service_years_filter"
+            and "سابقه" in q
+            and any(t in q for t in ["بیش از", "بالای", "کمتر از", "زیر", "بین", "تا", "سال"])
+        ):
+            bonus += 11
+        if (
+            intent_id == "employee_count_by_hire_year"
+            and any(t in q for t in ["استخدام", "جذب"])
+            and bool(re.search(r"1[34]\d{2}", _ascii_digits(q)))
+        ):
+            bonus += 11
         if intent_id == "employee_count_by_education" and any(
             t in q for t in ["مدرک", "تحصیل", "کارشناسی", "دیپلم", "کاردانی", "دکترا"]
         ):
@@ -1737,6 +1750,40 @@ class LLMOrchestrator:
                     filters.append({"column": "contract_type", "operator": "=", "value": value})
                     break
 
+        if intent_id == "employee_count_by_service_years_filter":
+            sy = self._extract_service_years_params(question)
+            params.update(sy)
+            if sy.get("service_years_min") is not None:
+                filters.append(
+                    {"column": "service_years", "operator": ">=", "value": sy["service_years_min"]}
+                )
+            elif sy.get("service_years_max_exclusive") is not None:
+                filters.append(
+                    {
+                        "column": "service_years",
+                        "operator": "<",
+                        "value": sy["service_years_max_exclusive"],
+                    }
+                )
+            elif sy.get("service_years_max_inclusive") is not None:
+                filters.append(
+                    {
+                        "column": "service_years",
+                        "operator": "<=",
+                        "value": sy["service_years_max_inclusive"],
+                    }
+                )
+
+        if intent_id == "employee_count_by_hire_year":
+            _q_ascii = _ascii_digits(question)
+            m = re.search(r"سال\s+(1[34]\d{2})", _q_ascii)
+            if not m:
+                m = re.search(r"(1[34]\d{2})\s*(?:استخدام|جذب)", _q_ascii)
+            if m:
+                year = int(m.group(1))
+                params["hire_year"] = year
+                filters.append({"column": "hire_year", "operator": "=", "value": year})
+
         _SUPERLATIVE_SORTABLE_INTENTS = {
             "employee_count_by_department",
             "employee_count_by_service_domain",
@@ -1754,6 +1801,33 @@ class LLMOrchestrator:
             params["result_limit"] = 1
 
         return {"params": params, "filters": filters}
+
+    def _extract_service_years_params(self, question: str) -> dict[str, int]:
+        """Extract service_years range params from question text (mirrors IntentParser logic)."""
+        m = re.search(
+            r"(?:بیش از|بالای|بالاتر از|بیشتر از)\s*(\d{1,3})\s*سال\s*سابقه", question
+        )
+        if m:
+            return {"service_years_min": int(m.group(1))}
+        m = re.search(r"(\d{1,3})\s*سال\s*سابقه\s*(?:به بالا|و بالاتر|بیشتر)", question)
+        if m:
+            return {"service_years_min": int(m.group(1))}
+        m = re.search(
+            r"(?:کمتر از|زیر|پایین‌تر از|پایین تر از)\s*(\d{1,3})\s*سال\s*سابقه", question
+        )
+        if m:
+            return {"service_years_max_exclusive": int(m.group(1))}
+        m = re.search(r"سابقه\s+بین\s+(\d{1,3})\s+(?:تا|الی)\s+(\d{1,3})", question)
+        if m:
+            a, b = int(m.group(1)), int(m.group(2))
+            return {"service_years_min": min(a, b), "service_years_max_inclusive": max(a, b)}
+        m = re.search(
+            r"(?:با\s+)?سابقه\s+(?:بین\s+)?(\d{1,3})\s+(?:تا|الی)\s+(\d{1,3})\s*سال", question
+        )
+        if m:
+            a, b = int(m.group(1)), int(m.group(2))
+            return {"service_years_min": min(a, b), "service_years_max_inclusive": max(a, b)}
+        return {}
 
     def _render_sql_template_text(self, template_sql: str, params: Mapping[str, Any]) -> str:
         """
@@ -1983,8 +2057,9 @@ def token_overlap(a: str, b: str) -> float:
     return len(tokens_a & tokens_b) / max(1, min(len(tokens_a), len(tokens_b)))
 
 
-def extract_first_int(text: str) -> int | None:
-    normalized = (
+def _ascii_digits(text: str) -> str:
+    """Replace Persian/Arabic-Indic digits with ASCII equivalents."""
+    return (
         text.replace("۰", "0")
         .replace("۱", "1")
         .replace("۲", "2")
@@ -1996,7 +2071,10 @@ def extract_first_int(text: str) -> int | None:
         .replace("۸", "8")
         .replace("۹", "9")
     )
-    match = re.search(r"\d+", normalized)
+
+
+def extract_first_int(text: str) -> int | None:
+    match = re.search(r"\d+", _ascii_digits(text))
     return int(match.group(0)) if match else None
 
 

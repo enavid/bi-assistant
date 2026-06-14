@@ -532,3 +532,37 @@ cases:
         - "LIMIT 1"
         - "province"
         - "ORDER BY"
+
+  - id: sql-service-years-above-10
+    question: "تعداد کارکنان با بیش از ۱۰ سال سابقه چند نفر است؟"
+    category: sql
+    description: Service years >= 10 filter — SQL must reference service_years and the number 10
+    expect:
+      route: SQL
+      intent: employee_count_by_service_years_filter
+      must_include_sql:
+        - "service_years"
+        - "10"
+
+  - id: sql-service-years-between
+    question: "تعداد کارکنان با سابقه بین ۵ تا ۱۵ سال چند نفر است؟"
+    category: sql
+    description: Service years BETWEEN 5 and 15 — SQL must reference service_years and both numbers
+    expect:
+      route: SQL
+      intent: employee_count_by_service_years_filter
+      must_include_sql:
+        - "service_years"
+        - "5"
+        - "15"
+
+  - id: sql-hire-year-1400
+    question: "چند نفر از کارکنان در سال ۱۴۰۰ استخدام شده‌اند؟"
+    category: sql
+    description: Exact hire_year filter — SQL must contain hire_year and the value 1400
+    expect:
+      route: SQL
+      intent: employee_count_by_hire_year
+      must_include_sql:
+        - "hire_year"
+        - "1400"

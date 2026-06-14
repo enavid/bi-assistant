@@ -781,3 +781,78 @@ def test_fallback_pipeline_superlative_dept_produces_limit_1_sql(metadata_servic
     sql = (d.get("generated_sql") or "").upper()
     assert "LIMIT" in sql, f"Expected LIMIT in SQL: {sql[:200]}"
     assert "LIMIT 1" in sql or "LIMIT\n1" in sql, f"Expected LIMIT 1 in SQL: {sql[:200]}"
+
+
+# ---------------------------------------------------------------------------
+# Phase 3.6 / 3.4: service_years and hire_year param extraction in fallback
+# ---------------------------------------------------------------------------
+
+
+def test_extract_template_params_service_years_min(metadata_service):
+    """_extract_template_params must set service_years_min for 'بیش از N سال سابقه'."""
+    orch = LLMOrchestrator(metadata_service=metadata_service, default_execute_sql=False)
+    intent = {"intent_id": "employee_count_by_service_years_filter"}
+    result = orch._extract_template_params(
+        "تعداد کارکنان با بیش از ۱۰ سال سابقه چند نفر است؟", intent
+    )
+    assert result["params"].get("service_years_min") == 10, (
+        f"Expected service_years_min=10, got: {result['params']}"
+    )
+
+
+def test_extract_template_params_service_years_max_exclusive(metadata_service):
+    """_extract_template_params must set service_years_max_exclusive for 'کمتر از N سال سابقه'."""
+    orch = LLMOrchestrator(metadata_service=metadata_service, default_execute_sql=False)
+    intent = {"intent_id": "employee_count_by_service_years_filter"}
+    result = orch._extract_template_params(
+        "کارکنان با کمتر از ۵ سال سابقه چند نفرند؟", intent
+    )
+    assert result["params"].get("service_years_max_exclusive") == 5, (
+        f"Expected service_years_max_exclusive=5, got: {result['params']}"
+    )
+
+
+def test_extract_template_params_service_years_between(metadata_service):
+    """_extract_template_params must set min and max_inclusive for 'سابقه بین N تا M سال'."""
+    orch = LLMOrchestrator(metadata_service=metadata_service, default_execute_sql=False)
+    intent = {"intent_id": "employee_count_by_service_years_filter"}
+    result = orch._extract_template_params("سابقه بین ۵ تا ۱۵ سال", intent)
+    p = result["params"]
+    assert p.get("service_years_min") == 5, f"Expected min=5, got: {p}"
+    assert p.get("service_years_max_inclusive") == 15, f"Expected max_inclusive=15, got: {p}"
+
+
+def test_extract_template_params_hire_year(metadata_service):
+    """_extract_template_params must extract hire_year from questions like 'سال ۱۴۰۰ استخدام'."""
+    orch = LLMOrchestrator(metadata_service=metadata_service, default_execute_sql=False)
+    intent = {"intent_id": "employee_count_by_hire_year"}
+    result = orch._extract_template_params(
+        "چند نفر از کارکنان در سال ۱۴۰۰ استخدام شده‌اند؟", intent
+    )
+    assert result["params"].get("hire_year") == 1400, (
+        f"Expected hire_year=1400, got: {result['params']}"
+    )
+
+
+def test_fallback_pipeline_service_years_min_produces_correct_sql(metadata_service):
+    """End-to-end: service_years >=10 question must produce SQL with 10 in the WHERE clause."""
+    orch = LLMOrchestrator(metadata_service=metadata_service, default_execute_sql=False)
+    d = _run(orch, "تعداد کارکنان با بیش از ۱۰ سال سابقه چند نفر است؟")
+    assert d.get("detected_intent") == "employee_count_by_service_years_filter", (
+        f"Wrong intent: {d.get('detected_intent')}"
+    )
+    sql = (d.get("generated_sql") or "").upper()
+    assert "SERVICE_YEARS" in sql, f"Expected SERVICE_YEARS in SQL: {sql[:200]}"
+    assert "10" in sql, f"Expected 10 in SQL: {sql[:200]}"
+
+
+def test_fallback_pipeline_hire_year_produces_correct_sql(metadata_service):
+    """End-to-end: hire_year question must produce SQL with the year in the WHERE clause."""
+    orch = LLMOrchestrator(metadata_service=metadata_service, default_execute_sql=False)
+    d = _run(orch, "چند نفر از کارکنان در سال ۱۴۰۰ استخدام شده‌اند؟")
+    assert d.get("detected_intent") == "employee_count_by_hire_year", (
+        f"Wrong intent: {d.get('detected_intent')}"
+    )
+    sql = (d.get("generated_sql") or "").upper()
+    assert "HIRE_YEAR" in sql, f"Expected HIRE_YEAR in SQL: {sql[:200]}"
+    assert "1400" in sql, f"Expected 1400 in SQL: {sql[:200]}"
