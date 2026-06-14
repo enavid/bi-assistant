@@ -1698,7 +1698,10 @@ class LLMOrchestrator:
             filters.append({"column": "gender", "operator": "=", "value": "مرد"})
 
         age_number = extract_first_int(question)
-        if intent_id in {"employee_count_by_age_filter", "employee_count_by_age_filter_by_department"}:
+        if intent_id in {
+            "employee_count_by_age_filter",
+            "employee_count_by_age_filter_by_department",
+        }:
             if "زیر" in question or "کمتر از" in question:
                 params.update(
                     {
@@ -1823,8 +1826,7 @@ class LLMOrchestrator:
         _ASKS_MOST = ["بیشترین", "بالاترین", "حداکثر"]
         _ASKS_LEAST = ["کمترین", "پایین‌ترین", "پایین ترین", "حداقل"]
         if intent_id in _SUPERLATIVE_SORTABLE_INTENTS and (
-            any(t in question for t in _ASKS_MOST)
-            or any(t in question for t in _ASKS_LEAST)
+            any(t in question for t in _ASKS_MOST) or any(t in question for t in _ASKS_LEAST)
         ):
             params["result_limit"] = 1
 
@@ -1832,17 +1834,13 @@ class LLMOrchestrator:
 
     def _extract_service_years_params(self, question: str) -> dict[str, int]:
         """Extract service_years range params from question text (mirrors IntentParser logic)."""
-        m = re.search(
-            r"(?:بیش از|بالای|بالاتر از|بیشتر از)\s*(\d{1,3})\s*سال\s*سابقه", question
-        )
+        m = re.search(r"(?:بیش از|بالای|بالاتر از|بیشتر از)\s*(\d{1,3})\s*سال\s*سابقه", question)
         if m:
             return {"service_years_min": int(m.group(1))}
         m = re.search(r"(\d{1,3})\s*سال\s*سابقه\s*(?:به بالا|و بالاتر|بیشتر)", question)
         if m:
             return {"service_years_min": int(m.group(1))}
-        m = re.search(
-            r"(?:کمتر از|زیر|پایین‌تر از|پایین تر از)\s*(\d{1,3})\s*سال\s*سابقه", question
-        )
+        m = re.search(r"(?:کمتر از|زیر|پایین‌تر از|پایین تر از)\s*(\d{1,3})\s*سال\s*سابقه", question)
         if m:
             return {"service_years_max_exclusive": int(m.group(1))}
         m = re.search(r"سابقه\s+بین\s+(\d{1,3})\s+(?:تا|الی)\s+(\d{1,3})", question)

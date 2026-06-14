@@ -33,16 +33,18 @@ JsonDict = dict[str, Any]
 _PLACEHOLDER_RE = re.compile(r"\{([A-Za-z_][A-Za-z0-9_]*)\}")
 _SAFE_PARAM_NAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
-_CRITICAL_FILTER_PARAMS: frozenset[str] = frozenset({
-    "gender_value",
-    "education_title",
-    "service_years_min",
-    "service_years_max_inclusive",
-    "service_years_max_exclusive",
-    "hire_year",
-    "employment_type",
-    "contract_type",
-})
+_CRITICAL_FILTER_PARAMS: frozenset[str] = frozenset(
+    {
+        "gender_value",
+        "education_title",
+        "service_years_min",
+        "service_years_max_inclusive",
+        "service_years_max_exclusive",
+        "hire_year",
+        "employment_type",
+        "contract_type",
+    }
+)
 
 
 class SQLTemplateEngineError(RuntimeError):
@@ -680,9 +682,7 @@ class SQLTemplateEngine:
         critical_unused = sorted(unknown_params & _CRITICAL_FILTER_PARAMS)
         non_critical_unused = sorted(unknown_params - _CRITICAL_FILTER_PARAMS)
         if critical_unused:
-            errors.append(
-                f"Template cannot apply critical filter(s): {critical_unused}"
-            )
+            errors.append(f"Template cannot apply critical filter(s): {critical_unused}")
         if non_critical_unused:
             warnings.append("Unused normalized parameter(s): " + ", ".join(non_critical_unused))
 
