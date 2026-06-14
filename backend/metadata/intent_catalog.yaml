@@ -1296,6 +1296,37 @@ intents:
   recommended_visualization: kpi_card
   sql_hint: "SELECT COUNT(v.employee_id) AS employee_count\nFROM hr_mvp.vw_hr_employee_analytics v\nWHERE v.is_active = TRUE\n\
     \  AND v.service_years = 0;\n"
+- intent_id: employee_count_by_service_years_filter
+  title_fa: تعداد کارکنان بر اساس بازه سابقه
+  description_fa: تعداد کارکنان با سابقه کاری در یک بازه مشخص
+  route: SQL
+  status: supported
+  question_type: statistical
+  priority: high
+  supported_in_phase2: true
+  demo_ready: true
+  user_examples:
+  - تعداد کارمندانی که بیش از ۱۰ سال سابقه دارند چقدر است؟
+  - چند نفر کمتر از ۱ سال سابقه دارند؟
+  - تعداد کارمندانی با سابقه بین ۵ تا ۱۵ سال
+  - کارمندانی با سابقه بالای ۲۰ سال چند نفرند؟
+  trigger_terms_fa:
+  - بیش از.*سال سابقه
+  - کمتر از.*سال سابقه
+  - سابقه بین
+  - سابقه بالای
+  metrics: *id001
+  required_columns:
+  - employee_id
+  - service_years
+  - is_active
+  output_type: kpi_card
+  recommended_visualization: kpi_card
+  sql_template_id: TPL_EMPLOYEE_COUNT_BY_SERVICE_YEARS_FILTER
+  sql_hint: "SELECT COUNT(v.employee_id) AS employee_count\nFROM hr_mvp.vw_hr_employee_analytics\
+    \ v\nWHERE v.is_active = TRUE\n  AND (service_years_min IS NULL OR v.service_years\
+    \ >= service_years_min)\n  AND (service_years_max_exclusive IS NULL OR v.service_years\
+    \ < service_years_max_exclusive);\n"
 - intent_id: employee_count_by_marital_status
   title_fa: تعداد کارکنان به تفکیک وضعیت تأهل
   description_fa: تعداد کارکنان به تفکیک وضعیت تأهل

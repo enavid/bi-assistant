@@ -900,6 +900,34 @@ templates:
   business_rules_fa: بدون سابقه در MVP یعنی service_years = 0. مقدار NULL نباید خودکار به بدون سابقه تفسیر شود.
   sql: "SELECT\n    COUNT(v.employee_id) AS employee_count\nFROM hr_mvp.vw_hr_employee_analytics v\nWHERE v.is_active = TRUE\n\
     \  AND v.service_years = 0;\n"
+- template_id: TPL_EMPLOYEE_COUNT_BY_SERVICE_YEARS_FILTER
+  intent: employee_count_by_service_years_filter
+  title_fa: تعداد کارکنان بر اساس بازه سابقه
+  route: SQL
+  status: ready_for_demo
+  output_type: kpi_card
+  required_columns:
+  - employee_id
+  - service_years
+  - is_active
+  parameters:
+  - name: service_years_min
+    type: integer_or_NULL
+    required: false
+    default: 'NULL'
+  - name: service_years_max_exclusive
+    type: integer_or_NULL
+    required: false
+    default: 'NULL'
+  - name: service_years_max_inclusive
+    type: integer_or_NULL
+    required: false
+    default: 'NULL'
+  sql: "SELECT\n    COUNT(v.employee_id) AS employee_count\nFROM hr_mvp.vw_hr_employee_analytics\
+    \ v\nWHERE v.is_active = TRUE\n  AND ({service_years_min} IS NULL OR v.service_years\
+    \ >= {service_years_min})\n  AND ({service_years_max_exclusive} IS NULL OR v.service_years\
+    \ < {service_years_max_exclusive})\n  AND ({service_years_max_inclusive} IS NULL\
+    \ OR v.service_years <= {service_years_max_inclusive});\n"
 - template_id: TPL_EMPLOYEE_COUNT_BY_MARITAL_STATUS
   report_id: RPT_HR_029
   intent: employee_count_by_marital_status

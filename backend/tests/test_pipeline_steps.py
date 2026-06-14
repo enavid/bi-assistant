@@ -239,3 +239,57 @@ def test_stddev_age_intent_is_recognized(metadata_service):
     )
     intent = result.get("intent_id") or result.get("intent")
     assert intent == "stddev_age", f"Expected stddev_age intent, got {intent!r}"
+
+
+# ---------------------------------------------------------------------------
+# BUG-009 — service_years range filter must produce correct intent and SQL filter
+# ---------------------------------------------------------------------------
+
+
+def _sy_filter(result: dict) -> dict | None:
+    for f in result.get("filters") or []:
+        if f.get("column") == "service_years":
+            return f
+    return None
+
+
+def test_service_years_above_10_routes_to_count_intent(metadata_service):
+    result = IntentParser(metadata_service=metadata_service).parse(
+        "تعداد کارمندانی که بیش از ۱۰ سال سابقه دارند چقدر است؟"
+    )
+    intent = result.get("intent_id") or result.get("intent")
+    assert intent == "employee_count_by_service_years_filter", (
+        f"Expected employee_count_by_service_years_filter, got {intent!r}"
+    )
+    f = _sy_filter(result)
+    assert f is not None, "Expected service_years filter in result"
+    assert f.get("operator") in {">", ">="}, f"Expected > or >= operator, got {f.get('operator')!r}"
+    assert f.get("value") == 10, f"Expected value=10, got {f.get('value')!r}"
+
+
+def test_service_years_below_1_routes_to_count_intent(metadata_service):
+    result = IntentParser(metadata_service=metadata_service).parse(
+        "چند نفر کمتر از ۱ سال سابقه دارند؟"
+    )
+    intent = result.get("intent_id") or result.get("intent")
+    assert intent == "employee_count_by_service_years_filter", (
+        f"Expected employee_count_by_service_years_filter, got {intent!r}"
+    )
+    f = _sy_filter(result)
+    assert f is not None, "Expected service_years filter"
+    assert f.get("operator") == "<", f"Expected < operator, got {f.get('operator')!r}"
+    assert f.get("value") == 1, f"Expected value=1, got {f.get('value')!r}"
+
+
+def test_service_years_between_5_and_15_routes_to_count_intent(metadata_service):
+    result = IntentParser(metadata_service=metadata_service).parse(
+        "تعداد کارمندانی با سابقه بین ۵ تا ۱۵ سال"
+    )
+    intent = result.get("intent_id") or result.get("intent")
+    assert intent == "employee_count_by_service_years_filter", (
+        f"Expected employee_count_by_service_years_filter, got {intent!r}"
+    )
+    f = _sy_filter(result)
+    assert f is not None, "Expected service_years filter"
+    assert f.get("operator") == "BETWEEN"
+    assert f.get("value") == [5, 15], f"Expected [5,15], got {f.get('value')!r}"

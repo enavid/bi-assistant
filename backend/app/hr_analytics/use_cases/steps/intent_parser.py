@@ -115,6 +115,7 @@ DEFAULT_TEMPLATE_BY_INTENT: dict[str, str] = {
     "hiring_by_contract_type_recent_year": "TPL_HIRING_BY_CONTRACT_TYPE_RECENT_YEAR",
     "average_service_years": "TPL_AVERAGE_SERVICE_YEARS",
     "employee_count_without_service_years": "TPL_EMPLOYEE_COUNT_WITHOUT_SERVICE_YEARS",
+    "employee_count_by_service_years_filter": "TPL_EMPLOYEE_COUNT_BY_SERVICE_YEARS_FILTER",
     "employee_count_by_marital_status": "TPL_EMPLOYEE_COUNT_BY_MARITAL_STATUS",
 }
 
@@ -797,6 +798,7 @@ class IntentParser:
             }
         )
         features["age_filter"] = self._extract_age_filter(question)
+        features["service_years_filter"] = self._extract_service_years_filter(question)
         features["comparison_dimension"] = self._infer_comparison_dimension(question, features)
         return features
 
@@ -1001,7 +1003,9 @@ class IntentParser:
                 add(("hiring_trend_annual", 70, "annual_hiring_trend"))
 
         if f.get("explicit_service_years"):
-            if f.get("asks_zero_service"):
+            if f.get("service_years_filter"):
+                add(("employee_count_by_service_years_filter", 80, "service_years_range_filter"))
+            elif f.get("asks_zero_service"):
                 add(("employee_count_without_service_years", 65, "without_service_years"))
             elif f.get("asks_average"):
                 add(("average_service_years", 65, "average_service_years"))
@@ -1358,6 +1362,23 @@ class IntentParser:
             filters.append({"column": "service_years", "operator": "=", "value": 0})
             required_columns.extend(["service_years", "employee_id", "is_active"])
 
+        elif best_intent_id == "employee_count_by_service_years_filter":
+            sy_filter = query_features.get("service_years_filter") or self._extract_service_years_filter(question)
+            if sy_filter:
+                filters.append(sy_filter)
+                op = sy_filter.get("operator", "")
+                value = sy_filter.get("value")
+                if op in {">=", ">"}:
+                    params["service_years_min"] = int(value)
+                elif op == "<":
+                    params["service_years_max_exclusive"] = int(value)
+                elif op == "<=":
+                    params["service_years_max_inclusive"] = int(value)
+                elif op == "BETWEEN" and isinstance(value, list) and len(value) == 2:
+                    params["service_years_min"] = int(value[0])
+                    params["service_years_max_inclusive"] = int(value[1])
+            required_columns.extend(["service_years", "employee_id", "is_active"])
+
         elif best_intent_id == "employee_count_by_marital_status":
             group_by = self._ensure_group_by(group_by, "marital_status")
             required_columns.extend(["marital_status", "employee_id", "is_active"])
@@ -1519,6 +1540,26 @@ class IntentParser:
             return {"column": "age", "operator": "BETWEEN", "value": [min(a, b), max(a, b)]}
         return None
 
+    def _extract_service_years_filter(self, question: str) -> JsonDict | None:
+        m = re.search(r"(?:بیش از|بالای|بالاتر از|بیشتر از)\s*(\d{1,3})\s*سال\s*سابقه", question)
+        if m:
+            return {"column": "service_years", "operator": ">=", "value": int(m.group(1))}
+        m = re.search(r"(\d{1,3})\s*سال\s*سابقه\s*(?:به بالا|و بالاتر|بیشتر)", question)
+        if m:
+            return {"column": "service_years", "operator": ">=", "value": int(m.group(1))}
+        m = re.search(r"(?:کمتر از|زیر|پایین‌تر از|پایین تر از)\s*(\d{1,3})\s*سال\s*سابقه", question)
+        if m:
+            return {"column": "service_years", "operator": "<", "value": int(m.group(1))}
+        m = re.search(r"سابقه\s+بین\s+(\d{1,3})\s+(?:تا|الی)\s+(\d{1,3})", question)
+        if m:
+            a, b = int(m.group(1)), int(m.group(2))
+            return {"column": "service_years", "operator": "BETWEEN", "value": [min(a, b), max(a, b)]}
+        m = re.search(r"(?:با\s+)?سابقه\s+(?:بین\s+)?(\d{1,3})\s+(?:تا|الی)\s+(\d{1,3})\s*سال", question)
+        if m:
+            a, b = int(m.group(1)), int(m.group(2))
+            return {"column": "service_years", "operator": "BETWEEN", "value": [min(a, b), max(a, b)]}
+        return None
+
     @staticmethod
     def _age_filter_to_params(age_filter: JsonDict | None) -> JsonDict:
         params: JsonDict = {"age_min": None, "age_max_exclusive": None, "age_max_inclusive": None}
@@ -1654,6 +1695,7 @@ class IntentParser:
                 "stddev_age",
                 "average_service_years",
                 "employee_count_without_service_years",
+                "employee_count_by_service_years_filter",
             }
             and not group_by
         ):

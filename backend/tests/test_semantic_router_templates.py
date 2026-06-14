@@ -107,6 +107,29 @@ def test_stddev_age_template_renders_stddev_sql(metadata_service):
     assert "STDDEV" in sql, f"Expected STDDEV in SQL, got:\n{sql}"
 
 
+def test_service_years_filter_template_applies_min_filter(metadata_service):
+    context = {
+        "route_result": {
+            "route": "SQL",
+            "template_id": "TPL_EMPLOYEE_COUNT_BY_SERVICE_YEARS_FILTER",
+        },
+        "intent_result": {
+            "intent_id": "employee_count_by_service_years_filter",
+            "template_id": "TPL_EMPLOYEE_COUNT_BY_SERVICE_YEARS_FILTER",
+            "params": {"service_years_min": 10},
+        },
+    }
+    result = SQLTemplateEngine(metadata_service=metadata_service).build(
+        question="تعداد کارمندانی که بیش از ۱۰ سال سابقه دارند",
+        context=context,
+        metadata=metadata_service,
+    )
+    sql = result.get("sql") or ""
+    assert result["route"] == "SQL", f"Unexpected: {result}"
+    assert "service_years" in sql, f"Expected service_years in SQL:\n{sql}"
+    assert "10" in sql, f"Expected 10 in SQL:\n{sql}"
+
+
 def test_average_age_template_applies_contractor_filter(metadata_service):
     context = {
         "route_result": {"route": "SQL", "template_id": "TPL_AVERAGE_AGE"},

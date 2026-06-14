@@ -577,6 +577,34 @@ class SQLTemplateEngine:
                     except Exception:
                         continue
 
+            if column == "service_years":
+                if operator in {">=", ">"} and value is not None:
+                    try:
+                        numeric = int(value)
+                    except Exception:
+                        continue
+                    params["service_years_min"] = numeric if operator == ">=" else numeric
+                elif operator == "<" and value is not None:
+                    try:
+                        params["service_years_max_exclusive"] = int(value)
+                    except Exception:
+                        continue
+                elif operator == "<=" and value is not None:
+                    try:
+                        params["service_years_max_inclusive"] = int(value)
+                    except Exception:
+                        continue
+                elif (
+                    operator.upper() == "BETWEEN"
+                    and isinstance(value, (list, tuple))
+                    and len(value) == 2
+                ):
+                    try:
+                        params["service_years_min"] = int(value[0])
+                        params["service_years_max_inclusive"] = int(value[1])
+                    except Exception:
+                        continue
+
     @staticmethod
     def _normalize_default_value(value: Any) -> Any:
         if isinstance(value, str) and value.upper() == "NULL":
