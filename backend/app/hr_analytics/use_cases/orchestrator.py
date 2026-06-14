@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Any, Protocol
 
 from app.hr_analytics.domain.interfaces import IMetadataService
+from app.hr_analytics.use_cases.steps.sql_coverage_validator import validate_coverage
 from app.infrastructure.metadata.service import get_metadata_service
 
 """
@@ -106,6 +107,7 @@ class RequestContext:
     intent_result: JsonDict = field(default_factory=dict)
     route_result: JsonDict = field(default_factory=dict)
     sql_plan: JsonDict = field(default_factory=dict)
+    coverage_result: JsonDict = field(default_factory=dict)
     sql_validation: JsonDict = field(default_factory=dict)
     query_result: JsonDict = field(default_factory=dict)
     visualization_plan: JsonDict = field(default_factory=dict)
@@ -528,10 +530,34 @@ class LLMOrchestrator:
 
         plan = normalize_result(result)
 
-        # Phase-2 quality gate: a template can be found but still not satisfy
-        # the full shape requested by the user. Example: user asked by
-        # province + gender, but the template groups only by gender. In that
-        # case we bypass the partial template and force dynamic generation.
+        # Coverage check: verify that the generated SQL satisfies every
+        # filter, group_by column, metric function, and superlative constraint
+        # extracted from the question. Only runs when the template produced SQL.
+        _template_sources = {"sql_template", "sql_template_engine"}
+        _plan_sql_text = str(plan.get("sql") or "")
+        _plan_src = str(plan.get("source") or "").lower()
+        if _plan_sql_text and _plan_src in _template_sources:
+            _cov = validate_coverage(context.intent_result, _plan_sql_text)
+            context.coverage_result = {
+                "status": _cov.status,
+                "missing": _cov.missing,
+                "is_complete": _cov.is_complete,
+            }
+            if not _cov.is_complete:
+                original_plan = deepcopy(plan)
+                context.warnings.append(
+                    f"Template SQL coverage incomplete — missing: {_cov.missing}"
+                )
+                plan = {
+                    "status": "COVERAGE_INCOMPLETE",
+                    "route": Route.SQL.value,
+                    "source": "coverage_validator",
+                    "can_execute_sql": False,
+                    "reason": f"SQL does not cover all required fields: {_cov.missing}",
+                    "missing_filters": _cov.missing,
+                    "metadata": {"original_plan": redact_sql_for_trace(original_plan)},
+                }
+
         if self._template_plan_is_incomplete(context, plan):
             original_plan = deepcopy(plan)
             bypass_msg = "Template was bypassed because it did not match the full semantic request."

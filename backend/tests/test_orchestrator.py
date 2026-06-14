@@ -218,7 +218,7 @@ async def test_orchestrator_model_called_appears_in_response(metadata_service):
 @pytest.mark.asyncio
 async def test_orchestrator_trace_includes_prompt_tokens(metadata_service):
     """When LLM is called, sql_plan.metadata must include prompt_tokens from OllamaClient."""
-    from unittest.mock import AsyncMock, MagicMock
+    from unittest.mock import AsyncMock
 
     from app.hr_analytics.domain.entities import GenerationResult
 
@@ -328,6 +328,192 @@ async def test_template_incomplete_warning_not_present_for_simple_query(metadata
     assert not any("bypassed" in w.lower() for w in warnings), (
         f"Unexpected bypass warning for simple query: {warnings}"
     )
+
+
+# ---------------------------------------------------------------------------
+# Coverage Validator integration
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_coverage_check_marks_plan_incomplete_when_filter_missing(metadata_service):
+    """When the template SQL is missing a user-requested filter column, the plan
+    must be marked COVERAGE_INCOMPLETE and can_execute_sql must be False."""
+    import uuid
+    from unittest.mock import patch
+
+    from app.hr_analytics.use_cases.orchestrator import RequestContext
+
+    orchestrator = LLMOrchestrator(metadata_service=metadata_service, default_execute_sql=False)
+
+    context = RequestContext(request_id=str(uuid.uuid4()), question="تعداد کارکنان زن")
+    context.intent_result = {
+        "filters": [
+            {"column": "is_active", "operator": "=", "value": True, "source": "default_rule"},
+            {"column": "gender", "operator": "=", "value": "زن"},
+        ],
+        "group_by": [],
+        "metrics": [],
+        "params": {},
+    }
+
+    # Template returns SQL without the gender filter
+    template_result = {
+        "status": "OK",
+        "route": "SQL",
+        "source": "sql_template_engine",
+        "sql": "SELECT COUNT(v.employee_id) FROM hr_mvp.vw_hr_employee_analytics v WHERE v.is_active = TRUE",
+        "can_execute_sql": True,
+    }
+
+    with patch.object(orchestrator, "_fallback_sql_template_engine", return_value=template_result):
+        await orchestrator._plan_sql(context)
+
+    assert context.sql_plan.get("status") == "COVERAGE_INCOMPLETE"
+    assert context.sql_plan.get("can_execute_sql") is False
+
+
+@pytest.mark.asyncio
+async def test_coverage_check_does_not_mark_complete_plan_incomplete(metadata_service):
+    """When the template SQL contains all required filter columns, status must stay OK."""
+    import uuid
+    from unittest.mock import patch
+
+    from app.hr_analytics.use_cases.orchestrator import RequestContext
+
+    orchestrator = LLMOrchestrator(metadata_service=metadata_service, default_execute_sql=False)
+
+    context = RequestContext(request_id=str(uuid.uuid4()), question="تعداد کارکنان زن")
+    context.intent_result = {
+        "filters": [
+            {"column": "is_active", "operator": "=", "value": True, "source": "default_rule"},
+            {"column": "gender", "operator": "=", "value": "زن"},
+        ],
+        "group_by": [],
+        "metrics": [],
+        "params": {},
+    }
+
+    template_result = {
+        "status": "OK",
+        "route": "SQL",
+        "source": "sql_template_engine",
+        "sql": "SELECT COUNT(v.employee_id) FROM hr_mvp.vw_hr_employee_analytics v WHERE v.is_active = TRUE AND v.gender = 'زن'",
+        "can_execute_sql": True,
+    }
+
+    with patch.object(orchestrator, "_fallback_sql_template_engine", return_value=template_result):
+        await orchestrator._plan_sql(context)
+
+    assert context.sql_plan.get("status") == "OK"
+    assert context.sql_plan.get("can_execute_sql") is True
+
+
+@pytest.mark.asyncio
+async def test_coverage_result_stored_in_context(metadata_service):
+    """coverage_result must be populated on context after _plan_sql runs."""
+    import uuid
+    from unittest.mock import patch
+
+    from app.hr_analytics.use_cases.orchestrator import RequestContext
+
+    orchestrator = LLMOrchestrator(metadata_service=metadata_service, default_execute_sql=False)
+
+    context = RequestContext(request_id=str(uuid.uuid4()), question="تعداد کارکنان زن")
+    context.intent_result = {
+        "filters": [
+            {"column": "is_active", "operator": "=", "value": True, "source": "default_rule"},
+            {"column": "gender", "operator": "=", "value": "زن"},
+        ],
+        "group_by": [],
+        "metrics": [],
+        "params": {},
+    }
+
+    template_result = {
+        "status": "OK",
+        "route": "SQL",
+        "source": "sql_template_engine",
+        "sql": "SELECT COUNT(v.employee_id) FROM hr_mvp.vw_hr_employee_analytics v WHERE v.is_active = TRUE",
+        "can_execute_sql": True,
+    }
+
+    with patch.object(orchestrator, "_fallback_sql_template_engine", return_value=template_result):
+        await orchestrator._plan_sql(context)
+
+    assert context.coverage_result != {}
+    assert context.coverage_result.get("status") == "COVERAGE_INCOMPLETE"
+    missing = context.coverage_result.get("missing", [])
+    assert any("gender" in m for m in missing)
+
+
+@pytest.mark.asyncio
+async def test_coverage_check_missing_group_by_marks_incomplete(metadata_service):
+    """Missing group_by column must also trigger COVERAGE_INCOMPLETE."""
+    import uuid
+    from unittest.mock import patch
+
+    from app.hr_analytics.use_cases.orchestrator import RequestContext
+
+    orchestrator = LLMOrchestrator(metadata_service=metadata_service, default_execute_sql=False)
+
+    context = RequestContext(request_id=str(uuid.uuid4()), question="تعداد کارکنان در هر دپارتمان")
+    context.intent_result = {
+        "filters": [
+            {"column": "is_active", "operator": "=", "value": True, "source": "default_rule"},
+        ],
+        "group_by": ["department_name"],
+        "metrics": [],
+        "params": {},
+    }
+
+    # Template returns SQL without GROUP BY department_name
+    template_result = {
+        "status": "OK",
+        "route": "SQL",
+        "source": "sql_template_engine",
+        "sql": "SELECT COUNT(v.employee_id) FROM hr_mvp.vw_hr_employee_analytics v WHERE v.is_active = TRUE",
+        "can_execute_sql": True,
+    }
+
+    with patch.object(orchestrator, "_fallback_sql_template_engine", return_value=template_result):
+        await orchestrator._plan_sql(context)
+
+    assert context.sql_plan.get("status") == "COVERAGE_INCOMPLETE"
+
+
+@pytest.mark.asyncio
+async def test_coverage_check_skipped_when_no_sql_in_plan(metadata_service):
+    """Coverage check must not run when the template produced no SQL at all."""
+    import uuid
+    from unittest.mock import patch
+
+    from app.hr_analytics.use_cases.orchestrator import RequestContext
+
+    orchestrator = LLMOrchestrator(metadata_service=metadata_service, default_execute_sql=False)
+
+    context = RequestContext(request_id=str(uuid.uuid4()), question="تعداد کارکنان")
+    context.intent_result = {
+        "filters": [{"column": "gender", "operator": "=", "value": "زن"}],
+        "group_by": [],
+        "metrics": [],
+        "params": {},
+    }
+
+    # Template returns no SQL
+    template_result = {
+        "status": "NO_TEMPLATE",
+        "route": "SQL",
+        "source": "sql_template_engine",
+        "sql": None,
+        "can_execute_sql": False,
+    }
+
+    with patch.object(orchestrator, "_fallback_sql_template_engine", return_value=template_result):
+        await orchestrator._plan_sql(context)
+
+    # Status must remain NO_TEMPLATE — coverage check must not overwrite it
+    assert context.sql_plan.get("status") != "COVERAGE_INCOMPLETE"
 
 
 @pytest.mark.asyncio
