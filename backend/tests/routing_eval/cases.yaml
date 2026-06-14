@@ -429,6 +429,42 @@ cases:
   # SQL Coverage Validator (Phase 2) is in place.
   # ---------------------------------------------------------------------------
 
+  - id: sql-max-age
+    question: "بیشترین سن کارمندان چقدر است؟"
+    category: sql
+    description: Max employee age — must route to max_age intent and produce MAX(age) SQL
+    expect:
+      route: SQL
+      intent: max_age
+      must_include_sql:
+        - "MAX"
+        - "age"
+        - "is_active"
+
+  - id: sql-min-age
+    question: "کمترین سن کارمندان چقدر است؟"
+    category: sql
+    description: Min employee age — must route to min_age intent and produce MIN(age) SQL
+    expect:
+      route: SQL
+      intent: min_age
+      must_include_sql:
+        - "MIN"
+        - "age"
+        - "is_active"
+
+  - id: sql-stddev-age
+    question: "انحراف معیار سن کارمندان چقدر است؟"
+    category: sql
+    description: Stddev of employee age — must route to stddev_age intent and produce STDDEV SQL
+    expect:
+      route: SQL
+      intent: stddev_age
+      must_include_sql:
+        - "STDDEV"
+        - "age"
+        - "is_active"
+
   - id: sql-avg-age-by-department
     question: "میانگین سن کارکنان در هر دپارتمان چقدر است؟"
     category: sql

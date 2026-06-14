@@ -672,3 +672,58 @@ async def test_sql_generator_called_when_no_template(metadata_service):
         await orchestrator._plan_sql(context)
 
     mock_generator.arun.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# BUG-008 — max_age / min_age / stddev_age routing in fallback intent parser
+# ---------------------------------------------------------------------------
+
+
+def test_fallback_intent_parser_routes_max_age(metadata_service):
+    """'بیشترین سن' must select max_age intent, not employee_count_by_age_filter."""
+    orchestrator = LLMOrchestrator(metadata_service=metadata_service, default_execute_sql=False)
+    result = orchestrator.run("بیشترین سن کارمندان چقدر است؟")
+    d = result.to_dict() if hasattr(result, "to_dict") else result
+    assert d.get("detected_intent") == "max_age", (
+        f"Expected detected_intent=max_age but got {d.get('detected_intent')!r}"
+    )
+    sql = d.get("generated_sql") or ""
+    assert "MAX" in sql.upper(), f"Expected MAX in SQL but got: {sql[:120]}"
+    assert "age" in sql.lower(), "Expected 'age' in SQL"
+
+
+def test_fallback_intent_parser_routes_min_age(metadata_service):
+    """'کمترین سن' must select min_age intent."""
+    orchestrator = LLMOrchestrator(metadata_service=metadata_service, default_execute_sql=False)
+    result = orchestrator.run("کمترین سن کارمندان چقدر است؟")
+    d = result.to_dict() if hasattr(result, "to_dict") else result
+    assert d.get("detected_intent") == "min_age", (
+        f"Expected detected_intent=min_age but got {d.get('detected_intent')!r}"
+    )
+    sql = d.get("generated_sql") or ""
+    assert "MIN" in sql.upper(), f"Expected MIN in SQL but got: {sql[:120]}"
+
+
+def test_fallback_intent_parser_routes_stddev_age(metadata_service):
+    """'انحراف معیار سن' must select stddev_age intent."""
+    orchestrator = LLMOrchestrator(metadata_service=metadata_service, default_execute_sql=False)
+    result = orchestrator.run("انحراف معیار سن کارمندان چقدر است؟")
+    d = result.to_dict() if hasattr(result, "to_dict") else result
+    assert d.get("detected_intent") == "stddev_age", (
+        f"Expected detected_intent=stddev_age but got {d.get('detected_intent')!r}"
+    )
+    sql = d.get("generated_sql") or ""
+    assert "STDDEV" in sql.upper(), f"Expected STDDEV in SQL but got: {sql[:120]}"
+
+
+def test_fallback_sql_template_engine_renders_default_params(metadata_service):
+    """_fallback_sql_template_engine must fill template parameter defaults so
+    no '{placeholder}' strings remain in the rendered SQL."""
+    orchestrator = LLMOrchestrator(metadata_service=metadata_service, default_execute_sql=False)
+    result = orchestrator.run("میانگین سن کارکنان چقدر است؟")
+    d = result.to_dict() if hasattr(result, "to_dict") else result
+    sql = d.get("generated_sql") or ""
+    assert "{" not in sql, (
+        f"Unrendered placeholder found in SQL: {sql[:200]}"
+    )
+    assert "AVG" in sql.upper(), f"Expected AVG in SQL: {sql[:120]}"

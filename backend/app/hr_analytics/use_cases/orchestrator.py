@@ -1327,13 +1327,20 @@ class LLMOrchestrator:
                 "reason": "No SQL template was found for the detected intent.",
             }
 
-        params = {
+        params: JsonDict = {
             "current_shamsi_year": context.runtime_params.get(
                 "current_shamsi_year", self.current_shamsi_year
             ),
-            **(context.intent_result.get("params", {}) or {}),
-            **context.runtime_params,
         }
+        for spec in template.get("parameters", []) or []:
+            if not isinstance(spec, dict):
+                continue
+            name = str(spec.get("name") or "")
+            if name and "default" in spec:
+                default = spec["default"]
+                params[name] = None if str(default).upper() == "NULL" else default
+        params.update(context.intent_result.get("params", {}) or {})
+        params.update(context.runtime_params)
         sql = self._render_sql_template_text(str(template.get("sql", "")), params)
         return {
             "status": "OK",
@@ -1548,6 +1555,24 @@ class LLMOrchestrator:
             bonus += 5
         if intent_id == "average_age" and "میانگین" in q and "سن" in q:
             bonus += 6
+        if (
+            intent_id == "max_age"
+            and "سن" in q
+            and any(t in q for t in ["بیشترین", "حداکثر", "مسن"])
+        ):
+            bonus += 9
+        if (
+            intent_id == "min_age"
+            and "سن" in q
+            and any(t in q for t in ["کمترین", "حداقل", "جوان"])
+        ):
+            bonus += 9
+        if (
+            intent_id == "stddev_age"
+            and "سن" in q
+            and any(t in q for t in ["انحراف معیار", "واریانس", "پراکندگی"])
+        ):
+            bonus += 10
         if (
             intent_id == "employee_count_by_age_filter"
             and ("زیر" in q or "بالای" in q or "به بالا" in q)
