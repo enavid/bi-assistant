@@ -117,6 +117,8 @@ DEFAULT_TEMPLATE_BY_INTENT: dict[str, str] = {
     "employee_count_without_service_years": "TPL_EMPLOYEE_COUNT_WITHOUT_SERVICE_YEARS",
     "employee_count_by_service_years_filter": "TPL_EMPLOYEE_COUNT_BY_SERVICE_YEARS_FILTER",
     "employee_count_by_hire_year": "TPL_EMPLOYEE_COUNT_BY_HIRE_YEAR",
+    "employee_count_by_department_education": "TPL_EMPLOYEE_COUNT_BY_DEPARTMENT_AND_EDUCATION",
+    "employee_count_by_department_gender": "TPL_EMPLOYEE_COUNT_BY_DEPARTMENT_AND_GENDER",
     "employee_count_by_marital_status": "TPL_EMPLOYEE_COUNT_BY_MARITAL_STATUS",
 }
 
@@ -769,7 +771,8 @@ class IntentParser:
                     question, ["سن", "سنی", "سال به بالا", "زیر", "بالای"]
                 ),
                 "explicit_education": self._has_any(
-                    question, ["مدرک", "تحصیلات", "دیپلم", "کاردانی", "کارشناسی", "ارشد", "دکترا"]
+                    question,
+                    ["مدرک", "تحصیلات", "تحصیلی", "دیپلم", "کاردانی", "کارشناسی", "ارشد", "دکترا"],
                 ),
                 "explicit_hiring": self._has_any(question, ["جذب", "استخدام سال", "سال جذب"]),
                 "explicit_service_years": self._has_any(question, ["سابقه", "سنوات", "بدون سابقه"]),
@@ -911,7 +914,9 @@ class IntentParser:
             add(("total_employee_count", 60, "total_headcount_phrase"))
 
         if f.get("explicit_gender"):
-            if f.get("asks_percentage") and not self._has_any(
+            if f.get("explicit_department"):
+                add(("employee_count_by_department_gender", 88, "department_gender_2d"))
+            elif f.get("asks_percentage") and not self._has_any(
                 question, ["زن و مرد", "تفکیک جنسیت"]
             ):
                 add(("gender_percentage", 65, "gender_percentage_phrase"))
@@ -936,7 +941,9 @@ class IntentParser:
             add(("employee_count_by_age_group", 60, "age_group"))
 
         if f.get("explicit_education"):
-            if f.get("explicit_service_domain"):
+            if f.get("explicit_department"):
+                add(("employee_count_by_department_education", 88, "department_education_2d"))
+            elif f.get("explicit_service_domain"):
                 add(("education_distribution_by_service_domain", 82, "education_by_service_domain"))
             elif f.get("asks_most"):
                 add(("most_common_education", 70, "most_common_education"))
@@ -1292,6 +1299,16 @@ class IntentParser:
         elif best_intent_id == "employee_count_by_department":
             group_by = self._ensure_group_by(group_by, "department_name")
             required_columns.extend(["department_name", "employee_id", "is_active"])
+
+        elif best_intent_id == "employee_count_by_department_education":
+            group_by = ["department_name", "education_title"]
+            required_columns.extend(
+                ["department_name", "education_title", "employee_id", "is_active"]
+            )
+
+        elif best_intent_id == "employee_count_by_department_gender":
+            group_by = ["department_name", "gender"]
+            required_columns.extend(["department_name", "gender", "employee_id", "is_active"])
 
         elif best_intent_id == "headcount_gap_by_department":
             group_by = ["department_id", "department_name"]

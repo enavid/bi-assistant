@@ -1352,6 +1352,54 @@ intents:
   output_type: kpi_card
   recommended_visualization: kpi_card
   sql_template_id: TPL_EMPLOYEE_COUNT_BY_HIRE_YEAR
+- intent_id: employee_count_by_department_education
+  title_fa: توزیع تحصیلی کارمندان در هر دپارتمان
+  description_fa: تعداد کارمندان به تفکیک دپارتمان و مدرک تحصیلی همزمان
+  route: SQL
+  status: supported
+  question_type: statistical
+  priority: high
+  supported_in_phase2: true
+  demo_ready: true
+  user_examples:
+  - توزیع تحصیلی کارمندان در هر دپارتمان
+  - مدرک تحصیلی کارمندان هر بخش چگونه است؟
+  - تحصیلات کارمندان در هر واحد سازمانی
+  trigger_terms_fa:
+  - توزیع تحصیلی.*دپارتمان
+  - تحصیلات.*واحد
+  required_columns:
+  - employee_id
+  - department_name
+  - education_title
+  - is_active
+  output_type: table
+  recommended_visualization: table
+  sql_template_id: TPL_EMPLOYEE_COUNT_BY_DEPARTMENT_AND_EDUCATION
+- intent_id: employee_count_by_department_gender
+  title_fa: توزیع جنسیتی کارمندان در هر دپارتمان
+  description_fa: تعداد کارمندان به تفکیک دپارتمان و جنسیت همزمان
+  route: SQL
+  status: supported
+  question_type: statistical
+  priority: high
+  supported_in_phase2: true
+  demo_ready: true
+  user_examples:
+  - توزیع جنسیتی کارمندان در هر دپارتمان
+  - نسبت زن و مرد در هر بخش
+  - ترکیب جنسیتی هر واحد سازمانی
+  trigger_terms_fa:
+  - توزیع جنسیتی.*دپارتمان
+  - جنسیت.*واحد
+  required_columns:
+  - employee_id
+  - department_name
+  - gender
+  - is_active
+  output_type: table
+  recommended_visualization: table
+  sql_template_id: TPL_EMPLOYEE_COUNT_BY_DEPARTMENT_AND_GENDER
 - intent_id: employee_count_by_marital_status
   title_fa: تعداد کارکنان به تفکیک وضعیت تأهل
   description_fa: تعداد کارکنان به تفکیک وضعیت تأهل

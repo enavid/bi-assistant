@@ -395,3 +395,34 @@ def test_least_employees_in_province_sets_limit_1(metadata_service):
     assert result.get("params", {}).get("result_limit") == 1, (
         f"Expected result_limit=1 in params, got {result.get('params')}"
     )
+
+
+# ---------------------------------------------------------------------------
+# BUG-007 — two-dimension GROUP BY must not drop one axis
+# ---------------------------------------------------------------------------
+
+
+def test_department_education_routes_to_2d_intent(metadata_service):
+    result = IntentParser(metadata_service=metadata_service).parse(
+        "توزیع تحصیلی کارمندان در هر دپارتمان"
+    )
+    intent = result.get("intent_id") or result.get("intent")
+    assert intent == "employee_count_by_department_education", (
+        f"Expected employee_count_by_department_education, got {intent!r}"
+    )
+    group_by = result.get("group_by") or []
+    assert "department_name" in group_by, f"Expected department_name in group_by: {group_by}"
+    assert "education_title" in group_by, f"Expected education_title in group_by: {group_by}"
+
+
+def test_department_gender_routes_to_2d_intent(metadata_service):
+    result = IntentParser(metadata_service=metadata_service).parse(
+        "توزیع جنسیتی کارمندان در هر دپارتمان"
+    )
+    intent = result.get("intent_id") or result.get("intent")
+    assert intent == "employee_count_by_department_gender", (
+        f"Expected employee_count_by_department_gender, got {intent!r}"
+    )
+    group_by = result.get("group_by") or []
+    assert "department_name" in group_by, f"Expected department_name in group_by: {group_by}"
+    assert "gender" in group_by, f"Expected gender in group_by: {group_by}"

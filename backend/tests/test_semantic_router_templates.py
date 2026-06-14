@@ -257,3 +257,31 @@ def test_department_template_with_result_limit_1_adds_limit_clause(metadata_serv
     assert result["route"] == "SQL", f"Unexpected: {result}"
     assert "LIMIT" in sql.upper(), f"Expected LIMIT in SQL:\n{sql}"
     assert "1" in sql, f"Expected 1 in SQL:\n{sql}"
+
+
+# ---------------------------------------------------------------------------
+# BUG-007 — two-dimension templates must GROUP BY both axes
+# ---------------------------------------------------------------------------
+
+
+def test_department_education_template_groups_by_both_axes(metadata_service):
+    context = {
+        "route_result": {
+            "route": "SQL",
+            "template_id": "TPL_EMPLOYEE_COUNT_BY_DEPARTMENT_AND_EDUCATION",
+        },
+        "intent_result": {
+            "intent_id": "employee_count_by_department_education",
+            "template_id": "TPL_EMPLOYEE_COUNT_BY_DEPARTMENT_AND_EDUCATION",
+        },
+    }
+    result = SQLTemplateEngine(metadata_service=metadata_service).build(
+        question="توزیع تحصیلی کارمندان در هر دپارتمان",
+        context=context,
+        metadata=metadata_service,
+    )
+    sql = result.get("sql") or ""
+    assert result["route"] == "SQL", f"Unexpected: {result}"
+    assert "department_name" in sql, f"Expected department_name in SQL:\n{sql}"
+    assert "education_title" in sql, f"Expected education_title in SQL:\n{sql}"
+    assert "GROUP BY" in sql.upper(), f"Expected GROUP BY in SQL:\n{sql}"
