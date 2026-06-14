@@ -1737,6 +1737,22 @@ class LLMOrchestrator:
                     filters.append({"column": "contract_type", "operator": "=", "value": value})
                     break
 
+        _SUPERLATIVE_SORTABLE_INTENTS = {
+            "employee_count_by_department",
+            "employee_count_by_service_domain",
+            "employee_count_by_province",
+            "employee_count_by_contract_type",
+            "employee_count_by_employment_type",
+            "employee_count_by_work_location",
+        }
+        _ASKS_MOST = ["بیشترین", "بالاترین", "حداکثر"]
+        _ASKS_LEAST = ["کمترین", "پایین‌ترین", "پایین ترین", "حداقل"]
+        if intent_id in _SUPERLATIVE_SORTABLE_INTENTS and (
+            any(t in question for t in _ASKS_MOST)
+            or any(t in question for t in _ASKS_LEAST)
+        ):
+            params["result_limit"] = 1
+
         return {"params": params, "filters": filters}
 
     def _render_sql_template_text(self, template_sql: str, params: Mapping[str, Any]) -> str:

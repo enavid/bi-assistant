@@ -508,3 +508,27 @@ cases:
         - "employment_type"
         - "department_name"
         - "GROUP BY"
+
+  - id: sql-top-dept-by-headcount
+    question: "کدام دپارتمان بیشترین تعداد کارکنان را دارد؟"
+    category: sql
+    description: Top department by headcount — must produce LIMIT 1 in SQL
+    expect:
+      route: SQL
+      intent: employee_count_by_department
+      must_include_sql:
+        - "LIMIT 1"
+        - "department_name"
+        - "ORDER BY"
+
+  - id: sql-least-province-by-headcount
+    question: "کدام استان کمترین تعداد کارمند را دارد؟"
+    category: sql
+    description: Province with fewest employees — must produce LIMIT 1 in SQL
+    expect:
+      route: SQL
+      intent: employee_count_by_province
+      must_include_sql:
+        - "LIMIT 1"
+        - "province"
+        - "ORDER BY"

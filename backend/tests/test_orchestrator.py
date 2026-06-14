@@ -727,3 +727,57 @@ def test_fallback_sql_template_engine_renders_default_params(metadata_service):
         f"Unrendered placeholder found in SQL: {sql[:200]}"
     )
     assert "AVG" in sql.upper(), f"Expected AVG in SQL: {sql[:120]}"
+
+
+# ---------------------------------------------------------------------------
+# Phase 3.3 / BUG-006: superlative questions → result_limit=1 in fallback
+# ---------------------------------------------------------------------------
+
+
+def test_extract_template_params_sets_result_limit_for_most(metadata_service):
+    """_extract_template_params must set result_limit=1 when the question
+    asks for the group with the most members (بیشترین) and the intent is
+    a sortable GROUP BY intent."""
+    orchestrator = LLMOrchestrator(metadata_service=metadata_service, default_execute_sql=False)
+    intent = {"intent_id": "employee_count_by_department"}
+    result = orchestrator._extract_template_params(
+        "کدام دپارتمان بیشترین تعداد کارکنان را دارد؟", intent
+    )
+    assert result["params"].get("result_limit") == 1, (
+        f"Expected result_limit=1 for superlative question, got: {result['params']}"
+    )
+
+
+def test_extract_template_params_sets_result_limit_for_least(metadata_service):
+    """_extract_template_params must set result_limit=1 when the question
+    asks for the group with the fewest members (کمترین)."""
+    orchestrator = LLMOrchestrator(metadata_service=metadata_service, default_execute_sql=False)
+    intent = {"intent_id": "employee_count_by_province"}
+    result = orchestrator._extract_template_params(
+        "کدام استان کمترین تعداد کارمند را دارد؟", intent
+    )
+    assert result["params"].get("result_limit") == 1, (
+        f"Expected result_limit=1 for 'least' superlative, got: {result['params']}"
+    )
+
+
+def test_extract_template_params_no_result_limit_for_non_superlative(metadata_service):
+    """_extract_template_params must NOT set result_limit=1 for plain
+    GROUP BY questions that don't ask for a ranking."""
+    orchestrator = LLMOrchestrator(metadata_service=metadata_service, default_execute_sql=False)
+    intent = {"intent_id": "employee_count_by_department"}
+    result = orchestrator._extract_template_params(
+        "تعداد کارکنان در هر دپارتمان چقدر است؟", intent
+    )
+    assert result["params"].get("result_limit") != 1, (
+        f"result_limit should NOT be 1 for non-superlative, got: {result['params']}"
+    )
+
+
+def test_fallback_pipeline_superlative_dept_produces_limit_1_sql(metadata_service):
+    """End-to-end: a superlative department question must produce SQL with LIMIT 1."""
+    orchestrator = LLMOrchestrator(metadata_service=metadata_service, default_execute_sql=False)
+    d = _run(orchestrator, "کدام دپارتمان بیشترین تعداد کارکنان را دارد؟")
+    sql = (d.get("generated_sql") or "").upper()
+    assert "LIMIT" in sql, f"Expected LIMIT in SQL: {sql[:200]}"
+    assert "LIMIT 1" in sql or "LIMIT\n1" in sql, f"Expected LIMIT 1 in SQL: {sql[:200]}"
