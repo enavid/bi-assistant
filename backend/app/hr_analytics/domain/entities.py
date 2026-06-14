@@ -19,6 +19,8 @@ class GenerationResult:
     executed: bool = False
     row_count: int | None = None
     model_called: str | None = None
+    prompt_tokens: int | None = None
+    context_window: int | None = None
 
 
 @dataclass

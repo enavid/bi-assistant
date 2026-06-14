@@ -52,12 +52,20 @@ class OllamaClient:
             "stream": False,
             "options": options,
         }
+        context_window: int | None = model_cfg.get("num_ctx")
         try:
             async with httpx.AsyncClient(timeout=self._timeout) as client:
                 response = await client.post(self._url, json=payload)
                 response.raise_for_status()
-                sql = response.json().get("response", "").strip()
-                return GenerationResult(sql=sql, success=True)
+                data = response.json()
+                sql = data.get("response", "").strip()
+                prompt_tokens: int | None = data.get("prompt_eval_count")
+                return GenerationResult(
+                    sql=sql,
+                    success=True,
+                    prompt_tokens=prompt_tokens,
+                    context_window=context_window,
+                )
         except httpx.TimeoutException:
             return GenerationResult(sql="", success=False, error="Request timed out.")
         except httpx.ConnectError:

@@ -7,10 +7,12 @@
 #   category    - grouping label for reporting
 #   description - why this case exists / what edge case it covers
 #   expect:
-#     route     - REJECT | GAP | SQL | NEEDS_CLARIFICATION  (required)
-#     status    - ACCESS_DENIED | OUT_OF_SCOPE | DATA_GAP | ANALYTICAL_GAP
-#                 VALID | NEEDS_CLARIFICATION              (optional)
-#     intent    - expected detected_intent id              (optional, SQL only)
+#     route             - REJECT | GAP | SQL | NEEDS_CLARIFICATION  (required)
+#     status            - ACCESS_DENIED | OUT_OF_SCOPE | DATA_GAP | ANALYTICAL_GAP
+#                         VALID | NEEDS_CLARIFICATION              (optional)
+#     intent            - expected detected_intent id              (optional, SQL only)
+#     must_include_sql  - list of substrings that must appear in generated_sql (SQL cases)
+#     must_not_include_sql - list of substrings that must NOT appear in generated_sql
 
 cases:
 
@@ -236,6 +238,9 @@ cases:
     expect:
       route: SQL
       intent: total_employee_count
+      must_include_sql:
+        - "COUNT"
+        - "is_active"
 
   - id: sql-female-percentage
     question: "سهم کارکنان زن چند درصد است؟"
@@ -252,6 +257,10 @@ cases:
     expect:
       route: SQL
       intent: average_age
+      must_include_sql:
+        - "AVG"
+        - "age"
+        - "is_active"
 
   - id: sql-over-50
     question: "تعداد کارکنان بالای ۵۰ سال چند نفر است؟"
@@ -260,6 +269,9 @@ cases:
     expect:
       route: SQL
       intent: employee_count_by_age_filter
+      must_include_sql:
+        - "age"
+        - "is_active"
 
   - id: sql-under-30
     question: "چند نفر از کارکنان زیر ۳۰ سال دارند؟"
@@ -268,6 +280,9 @@ cases:
     expect:
       route: SQL
       intent: employee_count_by_age_filter
+      must_include_sql:
+        - "age"
+        - "is_active"
 
   - id: sql-most-hiring-year
     question: "بیشترین جذب"
@@ -332,6 +347,10 @@ cases:
     expect:
       route: SQL
       intent: average_service_years
+      must_include_sql:
+        - "AVG"
+        - "service_years"
+        - "is_active"
 
   - id: sql-headcount-by-department
     question: "تعداد کارکنان در هر واحد سازمانی"
@@ -340,6 +359,9 @@ cases:
     expect:
       route: SQL
       intent: employee_count_by_department
+      must_include_sql:
+        - "department_name"
+        - "GROUP BY"
 
   - id: sql-headcount-gap
     question: "کمبود نیرو در هر بخش چقدر است؟"
@@ -364,6 +386,9 @@ cases:
     expect:
       route: SQL
       intent: employee_count_by_province
+      must_include_sql:
+        - "province"
+        - "GROUP BY"
 
   - id: sql-contract-type
     question: "توزیع کارکنان بر اساس نوع قرارداد"
@@ -372,6 +397,9 @@ cases:
     expect:
       route: SQL
       intent: employee_count_by_contract_type
+      must_include_sql:
+        - "contract_type"
+        - "GROUP BY"
 
   - id: sql-gender-count
     question: "تعداد کارکنان زن و مرد چند نفر است؟"
@@ -379,6 +407,9 @@ cases:
     description: Headcount by gender (count not percentage)
     expect:
       route: SQL
+      must_include_sql:
+        - "gender"
+        - "GROUP BY"
 
   - id: sql-education-by-level
     question: "تعداد کارکنان بر اساس مدرک تحصیلی"
@@ -387,3 +418,57 @@ cases:
     expect:
       route: SQL
       intent: employee_count_by_education
+      must_include_sql:
+        - "education"
+        - "GROUP BY"
+
+  # ---------------------------------------------------------------------------
+  # FILTER COVERAGE — multi-dimensional queries that expose template gaps.
+  # SQL must include BOTH the filter column AND the grouping column.
+  # These cases are intentionally strict: they will fail until the
+  # SQL Coverage Validator (Phase 2) is in place.
+  # ---------------------------------------------------------------------------
+
+  - id: sql-avg-age-by-department
+    question: "میانگین سن کارکنان در هر دپارتمان چقدر است؟"
+    category: sql
+    description: Avg age grouped by department — template must produce GROUP BY department_name
+    expect:
+      route: SQL
+      must_include_sql:
+        - "AVG"
+        - "department_name"
+        - "GROUP BY"
+
+  - id: sql-female-count-by-department
+    question: "تعداد کارکنان زن در هر واحد سازمانی چند نفر است؟"
+    category: sql
+    description: Female headcount by department — template must filter gender AND group by dept
+    expect:
+      route: SQL
+      must_include_sql:
+        - "gender"
+        - "department_name"
+        - "GROUP BY"
+
+  - id: sql-under30-by-department
+    question: "چند نفر از کارکنان زیر ۳۰ سال در هر واحد سازمانی هستند؟"
+    category: sql
+    description: Under-30 count per department — needs age filter + dept grouping
+    expect:
+      route: SQL
+      must_include_sql:
+        - "age"
+        - "department_name"
+        - "GROUP BY"
+
+  - id: sql-employment-type-by-department
+    question: "توزیع نوع استخدام در هر دپارتمان چگونه است؟"
+    category: sql
+    description: Employment type distribution per department — two-dimension grouping
+    expect:
+      route: SQL
+      must_include_sql:
+        - "employment_type"
+        - "department_name"
+        - "GROUP BY"

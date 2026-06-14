@@ -67,3 +67,30 @@ def test_experiment_entry_created():
     e = ExperimentEntry(question="how many?", sql_output="SELECT 1;", correct=True, elapsed_ms=5.0)
     assert e.correct is True
     assert e.id
+
+
+# ---------------------------------------------------------------------------
+# Phase 1.3 — prompt_tokens and context_window trace fields
+# ---------------------------------------------------------------------------
+
+
+def test_generation_result_has_prompt_tokens_field():
+    r = GenerationResult(sql="SELECT 1;", success=True)
+    assert hasattr(r, "prompt_tokens")
+    assert r.prompt_tokens is None
+
+
+def test_generation_result_has_context_window_field():
+    r = GenerationResult(sql="SELECT 1;", success=True)
+    assert hasattr(r, "context_window")
+    assert r.context_window is None
+
+
+def test_generation_result_stores_prompt_tokens():
+    r = GenerationResult(sql="SELECT 1;", success=True, prompt_tokens=7536)
+    assert r.prompt_tokens == 7536
+
+
+def test_generation_result_stores_context_window():
+    r = GenerationResult(sql="SELECT 1;", success=True, context_window=8192)
+    assert r.context_window == 8192

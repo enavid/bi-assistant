@@ -211,6 +211,74 @@ async def test_orchestrator_model_called_appears_in_response(metadata_service):
 
 
 # ---------------------------------------------------------------------------
+# Phase 1.3 — prompt_tokens and context_window in orchestrator trace
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_orchestrator_trace_includes_prompt_tokens(metadata_service):
+    """When LLM is called, sql_plan.metadata must include prompt_tokens from OllamaClient."""
+    from unittest.mock import AsyncMock, MagicMock
+
+    from app.hr_analytics.domain.entities import GenerationResult
+
+    mock_ollama = AsyncMock()
+    gen_result = GenerationResult(
+        sql="SELECT COUNT(v.employee_id) FROM hr_mvp.vw_hr_employee_analytics v WHERE v.is_active = TRUE",
+        success=True,
+        prompt_tokens=7536,
+        context_window=8192,
+    )
+    mock_ollama.generate.return_value = gen_result
+
+    orchestrator = LLMOrchestrator(
+        metadata_service=metadata_service,
+        default_execute_sql=False,
+        ollama_client=mock_ollama,
+    )
+    response = await orchestrator.arun(
+        "تعداد کارکنان چند نفر است؟",
+        runtime_params={"model": "llama3.1:8b"},
+    )
+    payload = response.to_dict()
+    sql_plan = (payload.get("context") or {}).get("sql_plan") or {}
+    meta = sql_plan.get("metadata") or {}
+    assert meta.get("prompt_tokens") == 7536, f"prompt_tokens not in trace metadata: {meta}"
+    assert meta.get("context_window") == 8192, f"context_window not in trace metadata: {meta}"
+
+
+@pytest.mark.asyncio
+async def test_orchestrator_trace_prompt_tokens_none_when_not_returned(metadata_service):
+    """prompt_tokens is absent from metadata when OllamaClient does not return it."""
+    from unittest.mock import AsyncMock
+
+    from app.hr_analytics.domain.entities import GenerationResult
+
+    mock_ollama = AsyncMock()
+    gen_result = GenerationResult(
+        sql="SELECT COUNT(v.employee_id) FROM hr_mvp.vw_hr_employee_analytics v WHERE v.is_active = TRUE",
+        success=True,
+        # prompt_tokens=None is the default
+    )
+    mock_ollama.generate.return_value = gen_result
+
+    orchestrator = LLMOrchestrator(
+        metadata_service=metadata_service,
+        default_execute_sql=False,
+        ollama_client=mock_ollama,
+    )
+    response = await orchestrator.arun(
+        "تعداد کارکنان چند نفر است؟",
+        runtime_params={"model": "llama3.1:8b"},
+    )
+    payload = response.to_dict()
+    sql_plan = (payload.get("context") or {}).get("sql_plan") or {}
+    meta = sql_plan.get("metadata") or {}
+    # Key should not exist (or be None) — not a hard assertion, just must not raise
+    assert "prompt_tokens" not in meta or meta.get("prompt_tokens") is None
+
+
+# ---------------------------------------------------------------------------
 # BUG-003 — TEMPLATE_INCOMPLETE must be surfaced in response warnings
 # ---------------------------------------------------------------------------
 

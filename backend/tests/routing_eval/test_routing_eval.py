@@ -61,6 +61,20 @@ def _mismatches(payload: dict, expect: dict) -> list[str]:
         if got != expect["intent"]:
             errors.append(f"intent     expected={expect['intent']!r:20s}  got={got!r}")
 
+    sql = payload.get("generated_sql") or ""
+
+    if "must_include_sql" in expect:
+        for term in expect["must_include_sql"]:
+            if not sql:
+                errors.append(f"must_include_sql  term={term!r}  but generated_sql is empty/absent")
+            elif term.lower() not in sql.lower():
+                errors.append(f"must_include_sql  term={term!r}  not found in generated SQL")
+
+    if "must_not_include_sql" in expect:
+        for term in expect["must_not_include_sql"]:
+            if sql and term.lower() in sql.lower():
+                errors.append(f"must_not_include_sql  term={term!r}  found in generated SQL")
+
     return errors
 
 

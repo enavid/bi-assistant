@@ -630,6 +630,12 @@ class LLMOrchestrator:
         raw_text = gen_result.sql or ""
         sql = LLMClient.extract_sql(raw_text)
 
+        llm_meta: dict = {"model": model}
+        if gen_result.prompt_tokens is not None:
+            llm_meta["prompt_tokens"] = gen_result.prompt_tokens
+        if gen_result.context_window is not None:
+            llm_meta["context_window"] = gen_result.context_window
+
         if sql:
             return {
                 "status": "OK",
@@ -638,7 +644,7 @@ class LLMOrchestrator:
                 "sql": sql,
                 "can_execute_sql": True,
                 "generation_mode": "llm_primary",
-                "metadata": {"model": model},
+                "metadata": llm_meta,
             }
         return {
             "status": "NEEDS_LLM_SQL_FALLBACK",
@@ -648,7 +654,7 @@ class LLMOrchestrator:
             "can_execute_sql": False,
             "generation_mode": "llm_primary",
             "errors": [gen_result.error or "LLM returned no extractable SQL"],
-            "metadata": {"model": model},
+            "metadata": llm_meta,
         }
 
     def _template_plan_is_incomplete(self, context: RequestContext, plan: JsonDict) -> bool:
