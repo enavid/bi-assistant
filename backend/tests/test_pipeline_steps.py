@@ -139,3 +139,30 @@ def test_gap_service_result_has_required_fields(metadata_service):
     result = service.create_gap(gap=gap, metadata=metadata_service)
     for field in ("route", "status"):
         assert field in result, f"Missing field: {field}"
+
+
+# ---------------------------------------------------------------------------
+# BUG-011 — terminated/fired employee questions must route to DATA_GAP
+# ---------------------------------------------------------------------------
+
+
+def test_fired_employees_question_routes_to_gap(metadata_service):
+    result = SemanticMapper(metadata_service=metadata_service).map(
+        "کارمندانی که اخراج شدند چند نفرند؟"
+    )
+    assert result.get("route") == "GAP", f"Expected GAP, got {result.get('route')}"
+    assert result.get("status") == "DATA_GAP", f"Expected DATA_GAP, got {result.get('status')}"
+
+
+def test_inactive_employees_question_routes_to_gap(metadata_service):
+    result = SemanticMapper(metadata_service=metadata_service).map(
+        "تعداد کارمندان غیرفعال چقدر است؟"
+    )
+    assert result.get("route") == "GAP", f"Expected GAP, got {result.get('route')}"
+
+
+def test_left_service_question_routes_to_gap(metadata_service):
+    result = SemanticMapper(metadata_service=metadata_service).map(
+        "چند نفر از کارمندان ترک خدمت کرده‌اند؟"
+    )
+    assert result.get("route") == "GAP", f"Expected GAP, got {result.get('route')}"

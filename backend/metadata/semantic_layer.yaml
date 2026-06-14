@@ -1829,6 +1829,22 @@ data_gap_semantics:
   - روند ماهانه جذب
   response_status: DATA_GAP
   reason_fa: تقویم شمسی/ماه جذب معتبر در MVP فعلی آماده نیست.
+- gap_id: GAP_TERMINATED_EMPLOYEES
+  concept: terminated_employee_analysis
+  trigger_terms_fa:
+  - اخراج
+  - اخراجی
+  - اخراج شده
+  - اخراج شدند
+  - اخراجی‌ها
+  - غیرفعال
+  - ترک خدمت
+  - ترک کرده
+  - پایان کار
+  - پایان قرارداد
+  - خروج از سازمان
+  response_status: DATA_GAP
+  reason_fa: View فعلی فقط شامل کارمندان فعال است. اطلاعات کارمندان اخراجی یا ترک‌خدمت در این سیستم موجود نیست.
 reject_semantics:
 - reject_id: REJECT_PERSONAL_INFO
   response_status: ACCESS_DENIED
