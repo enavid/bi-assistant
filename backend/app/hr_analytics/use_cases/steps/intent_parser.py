@@ -1363,7 +1363,9 @@ class IntentParser:
             required_columns.extend(["service_years", "employee_id", "is_active"])
 
         elif best_intent_id == "employee_count_by_service_years_filter":
-            sy_filter = query_features.get("service_years_filter") or self._extract_service_years_filter(question)
+            sy_filter = query_features.get(
+                "service_years_filter"
+            ) or self._extract_service_years_filter(question)
             if sy_filter:
                 filters.append(sy_filter)
                 op = sy_filter.get("operator", "")
@@ -1553,11 +1555,21 @@ class IntentParser:
         m = re.search(r"سابقه\s+بین\s+(\d{1,3})\s+(?:تا|الی)\s+(\d{1,3})", question)
         if m:
             a, b = int(m.group(1)), int(m.group(2))
-            return {"column": "service_years", "operator": "BETWEEN", "value": [min(a, b), max(a, b)]}
-        m = re.search(r"(?:با\s+)?سابقه\s+(?:بین\s+)?(\d{1,3})\s+(?:تا|الی)\s+(\d{1,3})\s*سال", question)
+            return {
+                "column": "service_years",
+                "operator": "BETWEEN",
+                "value": [min(a, b), max(a, b)],
+            }
+        m = re.search(
+            r"(?:با\s+)?سابقه\s+(?:بین\s+)?(\d{1,3})\s+(?:تا|الی)\s+(\d{1,3})\s*سال", question
+        )
         if m:
             a, b = int(m.group(1)), int(m.group(2))
-            return {"column": "service_years", "operator": "BETWEEN", "value": [min(a, b), max(a, b)]}
+            return {
+                "column": "service_years",
+                "operator": "BETWEEN",
+                "value": [min(a, b), max(a, b)],
+            }
         return None
 
     @staticmethod

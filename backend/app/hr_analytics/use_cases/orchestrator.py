@@ -1574,7 +1574,9 @@ class LLMOrchestrator:
         ]
         for value in education_values:
             if value in question:
-                normalized_value = "دکترای تخصصی PHD / دکترای حرفه ای" if value == "دکترا" else value
+                normalized_value = (
+                    "دکترای تخصصی PHD / دکترای حرفه ای" if value == "دکترا" else value
+                )
                 params["education_title"] = normalized_value
                 filters.append(
                     {"column": "education_title", "operator": "=", "value": normalized_value}
