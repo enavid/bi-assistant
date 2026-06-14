@@ -1573,11 +1573,39 @@ class LLMOrchestrator:
             and any(t in q for t in ["انحراف معیار", "واریانس", "پراکندگی"])
         ):
             bonus += 10
+        _DEPT_TERMS = ["دپارتمان", "واحد", "بخش", "اداره"]
+        if (
+            intent_id == "avg_age_by_department"
+            and any(t in q for t in ["میانگین سن", "متوسط سن"])
+            and any(t in q for t in _DEPT_TERMS)
+        ):
+            bonus += 13
+        if (
+            intent_id == "employee_count_by_department_gender"
+            and any(t in q for t in ["زن", "مرد"])
+            and any(t in q for t in _DEPT_TERMS)
+        ):
+            bonus += 11
+        if (
+            intent_id == "employee_count_by_age_filter_by_department"
+            and any(t in q for t in ["زیر", "بالای", "به بالا"])
+            and "سال" in q
+            and "سابقه" not in q
+            and any(t in q for t in _DEPT_TERMS)
+        ):
+            bonus += 13
+        if (
+            intent_id == "employment_type_by_department"
+            and "نوع استخدام" in q
+            and any(t in q for t in _DEPT_TERMS)
+        ):
+            bonus += 13
         if (
             intent_id == "employee_count_by_age_filter"
             and ("زیر" in q or "بالای" in q or "به بالا" in q)
             and "سال" in q
             and "سابقه" not in q
+            and not any(t in q for t in _DEPT_TERMS)
         ):
             bonus += 7
         if (
@@ -1670,7 +1698,7 @@ class LLMOrchestrator:
             filters.append({"column": "gender", "operator": "=", "value": "مرد"})
 
         age_number = extract_first_int(question)
-        if intent_id == "employee_count_by_age_filter":
+        if intent_id in {"employee_count_by_age_filter", "employee_count_by_age_filter_by_department"}:
             if "زیر" in question or "کمتر از" in question:
                 params.update(
                     {

@@ -1389,9 +1389,14 @@ intents:
   - توزیع جنسیتی کارمندان در هر دپارتمان
   - نسبت زن و مرد در هر بخش
   - ترکیب جنسیتی هر واحد سازمانی
+  - تعداد کارکنان زن در هر واحد سازمانی
+  - تعداد کارمندان مرد در هر دپارتمان
   trigger_terms_fa:
-  - توزیع جنسیتی.*دپارتمان
-  - جنسیت.*واحد
+  - توزیع جنسیتی
+  - در هر واحد سازمانی
+  - ترکیب جنسیتی
+  - زن در هر واحد
+  - مرد در هر بخش
   required_columns:
   - employee_id
   - department_name
@@ -1400,6 +1405,83 @@ intents:
   output_type: table
   recommended_visualization: table
   sql_template_id: TPL_EMPLOYEE_COUNT_BY_DEPARTMENT_AND_GENDER
+- intent_id: avg_age_by_department
+  title_fa: میانگین سن کارکنان در هر دپارتمان
+  description_fa: میانگین سن به تفکیک دپارتمان
+  route: SQL
+  status: supported
+  question_type: statistical
+  priority: high
+  supported_in_phase2: true
+  demo_ready: true
+  user_examples:
+  - میانگین سن کارکنان در هر دپارتمان چقدر است؟
+  - متوسط سن در هر واحد سازمانی چقدر است؟
+  - میانگین سن به تفکیک دپارتمان
+  - متوسط سن کارکنان هر بخش چقدر است؟
+  trigger_terms_fa:
+  - در هر دپارتمان
+  - در هر واحد سازمانی
+  - میانگین سن به تفکیک
+  - متوسط سن به تفکیک
+  required_columns:
+  - age
+  - department_name
+  - employee_id
+  - is_active
+  output_type: table
+  recommended_visualization: bar_chart
+  sql_template_id: TPL_AVERAGE_AGE_BY_DEPARTMENT
+- intent_id: employee_count_by_age_filter_by_department
+  title_fa: تعداد کارکنان با فیلتر سنی در هر دپارتمان
+  description_fa: تعداد کارکنان در بازه سنی مشخص به تفکیک دپارتمان
+  route: SQL
+  status: supported
+  question_type: statistical
+  priority: high
+  supported_in_phase2: true
+  demo_ready: true
+  user_examples:
+  - چند نفر از کارکنان زیر ۳۰ سال در هر واحد سازمانی هستند؟
+  - تعداد کارکنان زیر ۳۵ سال در هر دپارتمان چقدر است؟
+  - کارکنان بالای ۵۰ سال در هر بخش چند نفرند؟
+  trigger_terms_fa:
+  - سال در هر واحد
+  - سال در هر دپارتمان
+  - سال در هر بخش
+  required_columns:
+  - age
+  - department_name
+  - employee_id
+  - is_active
+  output_type: table
+  recommended_visualization: bar_chart
+  sql_template_id: TPL_EMPLOYEE_COUNT_BY_AGE_FILTER_AND_DEPARTMENT
+- intent_id: employment_type_by_department
+  title_fa: توزیع نوع استخدام در هر دپارتمان
+  description_fa: تعداد کارکنان به تفکیک نوع استخدام و دپارتمان همزمان
+  route: SQL
+  status: supported
+  question_type: statistical
+  priority: high
+  supported_in_phase2: true
+  demo_ready: true
+  user_examples:
+  - توزیع نوع استخدام در هر دپارتمان چگونه است؟
+  - ترکیب استخدامی در هر واحد سازمانی چیست؟
+  - نوع استخدام کارکنان در هر بخش چگونه توزیع شده است؟
+  trigger_terms_fa:
+  - نوع استخدام در هر دپارتمان
+  - نوع استخدام در هر واحد
+  - ترکیب استخدامی در هر
+  required_columns:
+  - employee_id
+  - department_name
+  - employment_type
+  - is_active
+  output_type: table
+  recommended_visualization: table
+  sql_template_id: TPL_EMPLOYEE_COUNT_BY_DEPARTMENT_AND_EMPLOYMENT_TYPE
 - intent_id: employee_count_by_marital_status
   title_fa: تعداد کارکنان به تفکیک وضعیت تأهل
   description_fa: تعداد کارکنان به تفکیک وضعیت تأهل

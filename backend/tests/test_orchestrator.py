@@ -856,3 +856,78 @@ def test_fallback_pipeline_hire_year_produces_correct_sql(metadata_service):
     sql = (d.get("generated_sql") or "").upper()
     assert "HIRE_YEAR" in sql, f"Expected HIRE_YEAR in SQL: {sql[:200]}"
     assert "1400" in sql, f"Expected 1400 in SQL: {sql[:200]}"
+
+
+# ---------------------------------------------------------------------------
+# Phase 3.5 / BUG-007: 2D GROUP BY — new intents + templates
+# ---------------------------------------------------------------------------
+
+
+def test_avg_age_by_dept_intent_and_sql(metadata_service):
+    """'میانگین سن در هر دپارتمان' must route to avg_age_by_department and
+    produce SQL with AVG(age), department_name, and GROUP BY."""
+    orch = LLMOrchestrator(metadata_service=metadata_service, default_execute_sql=False)
+    d = _run(orch, "میانگین سن کارکنان در هر دپارتمان چقدر است؟")
+    assert d.get("detected_intent") == "avg_age_by_department", (
+        f"Wrong intent: {d.get('detected_intent')}"
+    )
+    sql = (d.get("generated_sql") or "").upper()
+    assert "AVG" in sql, f"Expected AVG in SQL: {sql[:200]}"
+    assert "DEPARTMENT_NAME" in sql, f"Expected DEPARTMENT_NAME in SQL: {sql[:200]}"
+    assert "GROUP BY" in sql, f"Expected GROUP BY in SQL: {sql[:200]}"
+
+
+def test_female_count_by_dept_intent_and_sql(metadata_service):
+    """'تعداد زنان در هر واحد' must route to a department×gender intent and
+    produce SQL with gender, department_name, and GROUP BY."""
+    orch = LLMOrchestrator(metadata_service=metadata_service, default_execute_sql=False)
+    d = _run(orch, "تعداد کارکنان زن در هر واحد سازمانی چند نفر است؟")
+    assert d.get("detected_intent") == "employee_count_by_department_gender", (
+        f"Wrong intent: {d.get('detected_intent')}"
+    )
+    sql = (d.get("generated_sql") or "").upper()
+    assert "GENDER" in sql, f"Expected GENDER in SQL: {sql[:200]}"
+    assert "DEPARTMENT_NAME" in sql, f"Expected DEPARTMENT_NAME in SQL: {sql[:200]}"
+    assert "GROUP BY" in sql, f"Expected GROUP BY in SQL: {sql[:200]}"
+
+
+def test_age_filter_by_dept_intent_and_sql(metadata_service):
+    """'زیر ۳۰ سال در هر واحد' must route to employee_count_by_age_filter_by_department
+    and produce SQL with age filter and GROUP BY department_name."""
+    orch = LLMOrchestrator(metadata_service=metadata_service, default_execute_sql=False)
+    d = _run(orch, "چند نفر از کارکنان زیر ۳۰ سال در هر واحد سازمانی هستند؟")
+    assert d.get("detected_intent") == "employee_count_by_age_filter_by_department", (
+        f"Wrong intent: {d.get('detected_intent')}"
+    )
+    sql = (d.get("generated_sql") or "").upper()
+    assert "AGE" in sql, f"Expected AGE in SQL: {sql[:200]}"
+    assert "DEPARTMENT_NAME" in sql, f"Expected DEPARTMENT_NAME in SQL: {sql[:200]}"
+    assert "GROUP BY" in sql, f"Expected GROUP BY in SQL: {sql[:200]}"
+    assert "30" in sql, f"Expected 30 in SQL: {sql[:200]}"
+
+
+def test_employment_type_by_dept_intent_and_sql(metadata_service):
+    """'توزیع نوع استخدام در هر دپارتمان' must route to employment_type_by_department
+    and produce SQL with employment_type, department_name, and GROUP BY."""
+    orch = LLMOrchestrator(metadata_service=metadata_service, default_execute_sql=False)
+    d = _run(orch, "توزیع نوع استخدام در هر دپارتمان چگونه است؟")
+    assert d.get("detected_intent") == "employment_type_by_department", (
+        f"Wrong intent: {d.get('detected_intent')}"
+    )
+    sql = (d.get("generated_sql") or "").upper()
+    assert "EMPLOYMENT_TYPE" in sql, f"Expected EMPLOYMENT_TYPE in SQL: {sql[:200]}"
+    assert "DEPARTMENT_NAME" in sql, f"Expected DEPARTMENT_NAME in SQL: {sql[:200]}"
+    assert "GROUP BY" in sql, f"Expected GROUP BY in SQL: {sql[:200]}"
+
+
+def test_extract_template_params_age_filter_by_dept(metadata_service):
+    """_extract_template_params for employee_count_by_age_filter_by_department
+    must set age_max_exclusive for 'زیر N سال'."""
+    orch = LLMOrchestrator(metadata_service=metadata_service, default_execute_sql=False)
+    intent = {"intent_id": "employee_count_by_age_filter_by_department"}
+    result = orch._extract_template_params(
+        "چند نفر از کارکنان زیر ۳۰ سال در هر واحد سازمانی هستند؟", intent
+    )
+    assert result["params"].get("age_max_exclusive") == 30, (
+        f"Expected age_max_exclusive=30, got: {result['params']}"
+    )
