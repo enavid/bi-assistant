@@ -106,7 +106,11 @@ async def generate(body: GenerateRequest) -> GenerateResponse:
     try:
         orchestrator = get_hr_bi_orchestrator()
         uc = HRBIOrchestrationUseCase(orchestrator)
-        result = await uc.generate(body.question, model=body.model_name)
+        result = await uc.generate(
+            body.question,
+            model=body.model_name,
+            execute_sql=bool(body.execute_sql),
+        )
         if not result.success:
             logger.warning(
                 "generate returned non-success route=%s status=%s", result.route, result.status

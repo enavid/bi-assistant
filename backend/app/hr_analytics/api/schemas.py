@@ -48,6 +48,7 @@ class GenerateRequest(BaseModel):
     question: str
     project_id: str | None = None
     model_name: str | None = None
+    execute_sql: bool = False
 
 
 class GenerateResponse(BaseModel):

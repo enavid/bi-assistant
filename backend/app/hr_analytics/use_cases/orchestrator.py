@@ -534,15 +534,15 @@ class LLMOrchestrator:
         # case we bypass the partial template and force dynamic generation.
         if self._template_plan_is_incomplete(context, plan):
             original_plan = deepcopy(plan)
+            bypass_msg = "Template was bypassed because it did not match the full semantic request."
+            context.warnings.append(bypass_msg)
             plan = {
                 "status": "TEMPLATE_INCOMPLETE",
                 "route": Route.SQL.value,
                 "source": "template_coverage_checker",
                 "can_execute_sql": False,
                 "reason": "Resolved SQL template does not cover all requested group_by/filter columns.",
-                "warnings": [
-                    "Template was bypassed because it did not match the full semantic request."
-                ],
+                "warnings": [bypass_msg],
                 "metadata": {"original_template_plan": redact_sql_for_trace(original_plan)},
             }
 
@@ -663,6 +663,10 @@ class LLMOrchestrator:
             return False
         grouped_in_sql = self._group_by_columns_in_sql(sql)
         if not grouped_in_sql:
+            context.warnings.append(
+                f"Template found but has no GROUP BY clause; "
+                f"requested group_by {requested_group_by} cannot be satisfied."
+            )
             return True
         missing = [col for col in requested_group_by if col not in grouped_in_sql]
         if missing:

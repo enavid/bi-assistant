@@ -190,9 +190,7 @@ async def test_orchestrator_model_called_appears_in_response(metadata_service):
 
     mock_ollama = AsyncMock()
     gen_result = MagicMock()
-    gen_result.sql = (
-        "SELECT COUNT(v.employee_id) FROM hr_mvp.vw_hr_employee_analytics v WHERE v.is_active = TRUE"
-    )
+    gen_result.sql = "SELECT COUNT(v.employee_id) FROM hr_mvp.vw_hr_employee_analytics v WHERE v.is_active = TRUE"
     gen_result.success = True
     gen_result.error = None
     mock_ollama.generate.return_value = gen_result
@@ -212,6 +210,58 @@ async def test_orchestrator_model_called_appears_in_response(metadata_service):
     assert model_in_meta == "llama3.1:8b"
 
 
+# ---------------------------------------------------------------------------
+# BUG-003 — TEMPLATE_INCOMPLETE must be surfaced in response warnings
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_template_incomplete_warning_surfaced_in_response(metadata_service):
+    """BUG-003: when template has no GROUP BY but group_by was requested, context.warnings
+    must include a template bypass message — it must not be silently swallowed."""
+    import uuid
+    from unittest.mock import patch
+
+    from app.hr_analytics.use_cases.orchestrator import RequestContext
+
+    orchestrator = LLMOrchestrator(metadata_service=metadata_service, default_execute_sql=False)
+
+    context = RequestContext(request_id=str(uuid.uuid4()), question="میانگین سن در دپارتمان")
+    # Simulate intent parser having extracted group_by
+    context.intent_result = {"intent": "average_age", "group_by": ["department_name"]}
+
+    # Template result without GROUP BY — simulates average_age template ignoring dept dimension
+    template_result = {
+        "status": "OK",
+        "route": "SQL",
+        "source": "sql_template_engine",
+        "sql": (
+            "SELECT ROUND(AVG(v.age), 2) AS average_age"
+            " FROM hr_mvp.vw_hr_employee_analytics v WHERE v.is_active = TRUE"
+        ),
+        "can_execute_sql": True,
+    }
+
+    with patch.object(orchestrator, "_fallback_sql_template_engine", return_value=template_result):
+        await orchestrator._plan_sql(context)
+
+    assert any("template" in w.lower() for w in context.warnings), (
+        f"Expected template bypass warning in context.warnings, got: {context.warnings}"
+    )
+
+
+@pytest.mark.asyncio
+async def test_template_incomplete_warning_not_present_for_simple_query(metadata_service):
+    """Simple queries with no group_by mismatch must not produce spurious template warnings."""
+    orchestrator = LLMOrchestrator(metadata_service=metadata_service, default_execute_sql=False)
+    response = await orchestrator.arun("تعداد کل کارکنان چند نفر است؟")
+    payload = response.to_dict()
+    warnings = payload.get("warnings") or []
+    assert not any("bypassed" in w.lower() for w in warnings), (
+        f"Unexpected bypass warning for simple query: {warnings}"
+    )
+
+
 @pytest.mark.asyncio
 async def test_orchestrator_skips_sql_generator_when_model_set(metadata_service):
     """When model is set, sql_generator must NOT be called — LLM primary path handles it."""
@@ -219,9 +269,7 @@ async def test_orchestrator_skips_sql_generator_when_model_set(metadata_service)
 
     mock_ollama = AsyncMock()
     gen_result = MagicMock()
-    gen_result.sql = (
-        "SELECT COUNT(v.employee_id) FROM hr_mvp.vw_hr_employee_analytics v WHERE v.is_active = TRUE"
-    )
+    gen_result.sql = "SELECT COUNT(v.employee_id) FROM hr_mvp.vw_hr_employee_analytics v WHERE v.is_active = TRUE"
     gen_result.success = True
     gen_result.error = None
     mock_ollama.generate.return_value = gen_result
