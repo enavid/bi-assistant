@@ -581,14 +581,15 @@ class LLMOrchestrator:
                 suggested_sql=suggested_sql,
             )
         else:
-            should_generate = (
+            _plan_status = str(plan.get("status") or "").upper()
+            _hard_stop_statuses = {"COVERAGE_INCOMPLETE", "PARAMETER_VALIDATION_FAILED"}
+            should_generate = _plan_status not in _hard_stop_statuses and (
                 not plan.get("sql")
-                or str(plan.get("status") or "").upper()
+                or _plan_status
                 in {
                     "NO_TEMPLATE",
                     "TEMPLATE_INCOMPLETE",
                     "TEMPLATE_RENDER_FAILED",
-                    "PARAMETER_VALIDATION_FAILED",
                 }
                 or (
                     not bool(plan.get("can_execute_sql", False))

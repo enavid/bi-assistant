@@ -540,3 +540,135 @@ async def test_orchestrator_skips_sql_generator_when_model_set(metadata_service)
 
     mock_generator.arun.assert_not_called()
     mock_ollama.generate.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# Phase 2.4 — No silent fallback on hard template errors
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_sql_generator_not_called_when_coverage_incomplete(metadata_service):
+    """When template coverage is incomplete, the sql_generator must NOT be called.
+    COVERAGE_INCOMPLETE is a hard stop — it must not silently fall through."""
+    import uuid
+    from unittest.mock import AsyncMock, patch
+
+    from app.hr_analytics.use_cases.orchestrator import RequestContext
+
+    mock_generator = AsyncMock()
+
+    orchestrator = LLMOrchestrator(
+        metadata_service=metadata_service,
+        default_execute_sql=False,
+        sql_generator=mock_generator,
+    )
+
+    context = RequestContext(request_id=str(uuid.uuid4()), question="تعداد کارکنان زن")
+    context.intent_result = {
+        "filters": [
+            {"column": "is_active", "operator": "=", "value": True, "source": "default_rule"},
+            {"column": "gender", "operator": "=", "value": "زن"},
+        ],
+        "group_by": [],
+        "metrics": [],
+        "params": {},
+    }
+
+    template_result = {
+        "status": "OK",
+        "route": "SQL",
+        "source": "sql_template_engine",
+        "sql": "SELECT COUNT(v.employee_id) FROM hr_mvp.vw_hr_employee_analytics v WHERE v.is_active = TRUE",
+        "can_execute_sql": True,
+    }
+
+    with patch.object(orchestrator, "_fallback_sql_template_engine", return_value=template_result):
+        await orchestrator._plan_sql(context)
+
+    assert context.sql_plan.get("status") == "COVERAGE_INCOMPLETE"
+    mock_generator.arun.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_sql_generator_not_called_when_parameter_validation_failed(metadata_service):
+    """When template parameter validation fails (critical filter unused), the
+    sql_generator must NOT be called. PARAMETER_VALIDATION_FAILED is a hard stop."""
+    import uuid
+    from unittest.mock import AsyncMock, patch
+
+    from app.hr_analytics.use_cases.orchestrator import RequestContext
+
+    mock_generator = AsyncMock()
+
+    orchestrator = LLMOrchestrator(
+        metadata_service=metadata_service,
+        default_execute_sql=False,
+        sql_generator=mock_generator,
+    )
+
+    context = RequestContext(request_id=str(uuid.uuid4()), question="تعداد کارکنان زن")
+    context.intent_result = {
+        "filters": [
+            {"column": "gender", "operator": "=", "value": "زن"},
+        ],
+        "group_by": [],
+        "metrics": [],
+        "params": {},
+    }
+
+    template_result = {
+        "status": "PARAMETER_VALIDATION_FAILED",
+        "route": "SQL",
+        "source": "sql_template_engine",
+        "sql": None,
+        "can_execute_sql": False,
+        "errors": ["Template cannot apply critical filter(s): ['gender_value']"],
+    }
+
+    with patch.object(orchestrator, "_fallback_sql_template_engine", return_value=template_result):
+        await orchestrator._plan_sql(context)
+
+    assert context.sql_plan.get("status") == "PARAMETER_VALIDATION_FAILED"
+    mock_generator.arun.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_sql_generator_called_when_no_template(metadata_service):
+    """When no template exists (NO_TEMPLATE), sql_generator SHOULD be called
+    — the question might still be answerable via Controlled Dynamic."""
+    import uuid
+    from unittest.mock import AsyncMock, patch
+
+    from app.hr_analytics.use_cases.orchestrator import RequestContext
+
+    mock_generator = AsyncMock()
+    mock_generator.arun.return_value = {
+        "status": "OK",
+        "route": "SQL",
+        "source": "sql_generator",
+        "sql": "SELECT 1",
+        "can_execute_sql": True,
+    }
+
+    orchestrator = LLMOrchestrator(
+        metadata_service=metadata_service,
+        default_execute_sql=False,
+        sql_generator=mock_generator,
+    )
+
+    context = RequestContext(request_id=str(uuid.uuid4()), question="تعداد کارکنان؟")
+    context.intent_result = {"filters": [], "group_by": [], "metrics": [], "params": {}}
+
+    template_result = {
+        "status": "NO_TEMPLATE",
+        "route": "SQL",
+        "source": "sql_template_engine",
+        "sql": None,
+        "can_execute_sql": False,
+    }
+
+    with patch.object(orchestrator, "_fallback_sql_template_engine", return_value=template_result):
+        await orchestrator._plan_sql(context)
+
+    mock_generator.arun.assert_called_once()
