@@ -19,6 +19,56 @@ import {
 import type { EvalQuestion, EvalRun, EvalRunResult } from '@/types'
 
 // ---------------------------------------------------------------------------
+// Export
+// ---------------------------------------------------------------------------
+
+function exportRunAsJson(run: EvalRun, setName: string) {
+  const results = run.results ?? []
+  const payload = {
+    set_name: setName,
+    run_id: run.id,
+    model: run.model_name ?? null,
+    started_at: run.started_at,
+    finished_at: run.finished_at,
+    summary: {
+      total: run.total,
+      passed: run.passed,
+      failed: run.failed,
+      pass_rate: run.total > 0 ? Math.round((run.passed / run.total) * 1000) / 1000 : null,
+    },
+    results: results.map((r) => ({
+      question_id: r.question_id,
+      category: r.category,
+      question: r.question,
+      expected_route: null as string | null,
+      actual_route: r.actual_route,
+      actual_status: r.actual_status,
+      actual_intent: r.actual_intent,
+      passed: r.passed,
+      duration_ms: r.total_duration_ms,
+      model_called: r.model_called,
+      source: r.source,
+      template_id: r.template_id,
+      sql_validator_status: r.sql_validator_status,
+      visualization: r.visualization,
+      error: r.error,
+      warnings: r.warnings,
+      trace: r.trace_steps ?? [],
+    })),
+  }
+
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
+  const url  = URL.createObjectURL(blob)
+  const a    = document.createElement('a')
+  const date = new Date().toISOString().slice(0, 10)
+  const slug = setName.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '')
+  a.href     = url
+  a.download = `eval_${slug}_${date}.json`
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
+// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
@@ -865,6 +915,16 @@ function SetDetail({ setId, onBack, onOpenSidebar }: { setId: string; onBack?: (
               </span>
             </div>
           </div>
+          {activeRun?.status === 'done' && (
+            <button
+              onClick={() => exportRunAsJson(activeRun, set?.name ?? 'eval')}
+              title="Export results as JSON"
+              className="h-7 px-2.5 flex items-center gap-1.5 rounded-[7px] text-[12px] font-medium transition-opacity hover:opacity-80"
+              style={{ background: 'var(--bg-raised)', border: '1px solid var(--border-default)', color: 'var(--text-2)' }}>
+              <Icon name="download" size={12} />
+              <span className="hidden sm:inline">Export</span>
+            </button>
+          )}
           <button onClick={() => setImportOpen(true)}
             className="h-7 px-2.5 flex items-center gap-1.5 rounded-[7px] text-[12px] font-medium transition-opacity hover:opacity-80"
             style={{ background: 'var(--bg-raised)', border: '1px solid var(--border-default)', color: 'var(--text-2)' }}>
