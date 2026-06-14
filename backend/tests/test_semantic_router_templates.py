@@ -201,3 +201,31 @@ def test_average_age_template_without_secondary_filters_has_null_conditions(meta
     assert "NULL IS NULL" in sql
     assert "is_contractor = TRUE" not in sql
     assert "gender = 'زن'" not in sql
+
+
+# ---------------------------------------------------------------------------
+# BUG-010 — TPL_EMPLOYEE_COUNT_BY_HIRE_YEAR must apply hire_year filter
+# ---------------------------------------------------------------------------
+
+
+def test_hire_year_template_renders_correct_sql(metadata_service):
+    context = {
+        "route_result": {
+            "route": "SQL",
+            "template_id": "TPL_EMPLOYEE_COUNT_BY_HIRE_YEAR",
+        },
+        "intent_result": {
+            "intent_id": "employee_count_by_hire_year",
+            "template_id": "TPL_EMPLOYEE_COUNT_BY_HIRE_YEAR",
+            "filters": [{"column": "hire_year", "operator": "=", "value": 1400}],
+        },
+    }
+    result = SQLTemplateEngine(metadata_service=metadata_service).build(
+        question="کارمندانی که در سال ۱۴۰۰ استخدام شدند چند نفرند؟",
+        context=context,
+        metadata=metadata_service,
+    )
+    sql = result.get("sql") or ""
+    assert result["route"] == "SQL", f"Unexpected: {result}"
+    assert "hire_year" in sql, f"Expected hire_year in SQL:\n{sql}"
+    assert "1400" in sql, f"Expected 1400 in SQL:\n{sql}"

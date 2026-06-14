@@ -605,6 +605,12 @@ class SQLTemplateEngine:
                     except Exception:
                         continue
 
+            if column == "hire_year" and operator == "=" and value is not None:
+                try:
+                    params["hire_year"] = int(value)
+                except Exception:
+                    continue
+
     @staticmethod
     def _normalize_default_value(value: Any) -> Any:
         if isinstance(value, str) and value.upper() == "NULL":

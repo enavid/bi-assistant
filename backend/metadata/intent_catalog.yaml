@@ -1327,6 +1327,31 @@ intents:
     \ v\nWHERE v.is_active = TRUE\n  AND (service_years_min IS NULL OR v.service_years\
     \ >= service_years_min)\n  AND (service_years_max_exclusive IS NULL OR v.service_years\
     \ < service_years_max_exclusive);\n"
+- intent_id: employee_count_by_hire_year
+  title_fa: تعداد کارکنان استخدام‌شده در یک سال
+  description_fa: تعداد کارکنان که در یک سال شمسی مشخص جذب شدند
+  route: SQL
+  status: supported
+  question_type: statistical
+  priority: high
+  supported_in_phase2: true
+  demo_ready: true
+  user_examples:
+  - کارمندانی که در سال ۱۴۰۰ استخدام شدند چند نفرند؟
+  - تعداد کارکنان جذب‌شده در سال ۱۴۰۲ چند نفر است؟
+  - چند نفر در سال ۱۳۹۸ جذب شدند؟
+  trigger_terms_fa:
+  - استخدام سال
+  - سال جذب
+  - جذب سال
+  metrics: *id001
+  required_columns:
+  - employee_id
+  - hire_year
+  - is_active
+  output_type: kpi_card
+  recommended_visualization: kpi_card
+  sql_template_id: TPL_EMPLOYEE_COUNT_BY_HIRE_YEAR
 - intent_id: employee_count_by_marital_status
   title_fa: تعداد کارکنان به تفکیک وضعیت تأهل
   description_fa: تعداد کارکنان به تفکیک وضعیت تأهل

@@ -325,3 +325,42 @@ def test_doctorate_params_produce_correct_education_title(metadata_service):
     assert params.get("education_title") == _DB_DOCTORATE_VALUE, (
         f"Expected education_title param={_DB_DOCTORATE_VALUE!r}, got {params.get('education_title')!r}"
     )
+
+
+# ---------------------------------------------------------------------------
+# BUG-010 — hire_year filter must not be dropped
+# ---------------------------------------------------------------------------
+
+
+def _hy_filter(result: dict) -> dict | None:
+    for f in result.get("filters") or []:
+        if f.get("column") == "hire_year":
+            return f
+    return None
+
+
+def test_hire_year_question_routes_to_correct_intent(metadata_service):
+    result = IntentParser(metadata_service=metadata_service).parse(
+        "کارمندانی که در سال ۱۴۰۰ استخدام شدند چند نفرند؟"
+    )
+    intent = result.get("intent_id") or result.get("intent")
+    assert intent == "employee_count_by_hire_year", (
+        f"Expected employee_count_by_hire_year, got {intent!r}"
+    )
+    f = _hy_filter(result)
+    assert f is not None, "Expected hire_year filter in result"
+    assert f.get("operator") == "=", f"Expected = operator, got {f.get('operator')!r}"
+    assert f.get("value") == 1400, f"Expected value=1400, got {f.get('value')!r}"
+
+
+def test_hire_year_1402_is_extracted(metadata_service):
+    result = IntentParser(metadata_service=metadata_service).parse(
+        "تعداد کارکنان جذب‌شده در سال ۱۴۰۲ چند نفر است؟"
+    )
+    intent = result.get("intent_id") or result.get("intent")
+    assert intent == "employee_count_by_hire_year", (
+        f"Expected employee_count_by_hire_year, got {intent!r}"
+    )
+    f = _hy_filter(result)
+    assert f is not None, "Expected hire_year filter"
+    assert f.get("value") == 1402, f"Expected value=1402, got {f.get('value')!r}"

@@ -116,6 +116,7 @@ DEFAULT_TEMPLATE_BY_INTENT: dict[str, str] = {
     "average_service_years": "TPL_AVERAGE_SERVICE_YEARS",
     "employee_count_without_service_years": "TPL_EMPLOYEE_COUNT_WITHOUT_SERVICE_YEARS",
     "employee_count_by_service_years_filter": "TPL_EMPLOYEE_COUNT_BY_SERVICE_YEARS_FILTER",
+    "employee_count_by_hire_year": "TPL_EMPLOYEE_COUNT_BY_HIRE_YEAR",
     "employee_count_by_marital_status": "TPL_EMPLOYEE_COUNT_BY_MARITAL_STATUS",
 }
 
@@ -799,6 +800,7 @@ class IntentParser:
         )
         features["age_filter"] = self._extract_age_filter(question)
         features["service_years_filter"] = self._extract_service_years_filter(question)
+        features["hire_year_filter"] = self._extract_hire_year(question)
         features["comparison_dimension"] = self._infer_comparison_dimension(question, features)
         return features
 
@@ -990,7 +992,10 @@ class IntentParser:
         if f.get("explicit_work_location"):
             add(("employee_count_by_work_location", 55, "work_location_distribution"))
 
-        if f.get("explicit_hiring"):
+        if f.get("hire_year_filter") is not None:
+            add(("employee_count_by_hire_year", 85, "hire_year_exact_filter"))
+
+        if f.get("explicit_hiring") and f.get("hire_year_filter") is None:
             if f.get("explicit_monthly"):
                 add(("monthly_hiring_trend", 92, "monthly_hiring_data_gap"))
             elif f.get("asks_last_15_years"):
@@ -1381,6 +1386,13 @@ class IntentParser:
                     params["service_years_max_inclusive"] = int(value[1])
             required_columns.extend(["service_years", "employee_id", "is_active"])
 
+        elif best_intent_id == "employee_count_by_hire_year":
+            year = query_features.get("hire_year_filter") or self._extract_hire_year(question)
+            if year is not None:
+                filters.append({"column": "hire_year", "operator": "=", "value": year})
+                params["hire_year"] = year
+            required_columns.extend(["hire_year", "employee_id", "is_active"])
+
         elif best_intent_id == "employee_count_by_marital_status":
             group_by = self._ensure_group_by(group_by, "marital_status")
             required_columns.extend(["marital_status", "employee_id", "is_active"])
@@ -1573,6 +1585,16 @@ class IntentParser:
         return None
 
     @staticmethod
+    def _extract_hire_year(question: str) -> int | None:
+        m = re.search(r"سال\s+(1[34]\d{2})", question)
+        if m:
+            return int(m.group(1))
+        m = re.search(r"(1[34]\d{2})\s*(?:استخدام|جذب)", question)
+        if m:
+            return int(m.group(1))
+        return None
+
+    @staticmethod
     def _age_filter_to_params(age_filter: JsonDict | None) -> JsonDict:
         params: JsonDict = {"age_min": None, "age_max_exclusive": None, "age_max_inclusive": None}
         if not age_filter:
@@ -1708,6 +1730,7 @@ class IntentParser:
                 "average_service_years",
                 "employee_count_without_service_years",
                 "employee_count_by_service_years_filter",
+                "employee_count_by_hire_year",
             }
             and not group_by
         ):
