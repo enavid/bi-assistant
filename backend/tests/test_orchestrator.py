@@ -142,7 +142,9 @@ async def test_orchestrator_calls_ollama_when_model_in_runtime_params(metadata_s
         "sql": None,
         "can_execute_sql": False,
     }
-    with patch.object(orchestrator, "_fallback_sql_template_engine", return_value=no_template_result):
+    with patch.object(
+        orchestrator, "_fallback_sql_template_engine", return_value=no_template_result
+    ):
         response = await orchestrator.arun(
             "تعداد کارکنان چند نفر است؟",
             runtime_params={"model": "llama3.1:8b"},
@@ -215,7 +217,9 @@ async def test_orchestrator_model_called_appears_in_response(metadata_service):
         "sql": None,
         "can_execute_sql": False,
     }
-    with patch.object(orchestrator, "_fallback_sql_template_engine", return_value=no_template_result):
+    with patch.object(
+        orchestrator, "_fallback_sql_template_engine", return_value=no_template_result
+    ):
         response = await orchestrator.arun(
             "تعداد کارکنان چند نفر است؟",
             runtime_params={"model": "llama3.1:8b"},
@@ -259,7 +263,9 @@ async def test_orchestrator_trace_includes_prompt_tokens(metadata_service):
         "sql": None,
         "can_execute_sql": False,
     }
-    with patch.object(orchestrator, "_fallback_sql_template_engine", return_value=no_template_result):
+    with patch.object(
+        orchestrator, "_fallback_sql_template_engine", return_value=no_template_result
+    ):
         response = await orchestrator.arun(
             "تعداد کارکنان چند نفر است؟",
             runtime_params={"model": "llama3.1:8b"},
@@ -750,9 +756,7 @@ def test_fallback_sql_template_engine_renders_default_params(metadata_service):
     result = orchestrator.run("میانگین سن کارکنان چقدر است؟")
     d = result.to_dict() if hasattr(result, "to_dict") else result
     sql = d.get("generated_sql") or ""
-    assert "{" not in sql, (
-        f"Unrendered placeholder found in SQL: {sql[:200]}"
-    )
+    assert "{" not in sql, f"Unrendered placeholder found in SQL: {sql[:200]}"
     assert "AVG" in sql.upper(), f"Expected AVG in SQL: {sql[:120]}"
 
 
@@ -793,9 +797,7 @@ def test_extract_template_params_no_result_limit_for_non_superlative(metadata_se
     GROUP BY questions that don't ask for a ranking."""
     orchestrator = LLMOrchestrator(metadata_service=metadata_service, default_execute_sql=False)
     intent = {"intent_id": "employee_count_by_department"}
-    result = orchestrator._extract_template_params(
-        "تعداد کارکنان در هر دپارتمان چقدر است؟", intent
-    )
+    result = orchestrator._extract_template_params("تعداد کارکنان در هر دپارتمان چقدر است؟", intent)
     assert result["params"].get("result_limit") != 1, (
         f"result_limit should NOT be 1 for non-superlative, got: {result['params']}"
     )
@@ -831,9 +833,7 @@ def test_extract_template_params_service_years_max_exclusive(metadata_service):
     """_extract_template_params must set service_years_max_exclusive for 'کمتر از N سال سابقه'."""
     orch = LLMOrchestrator(metadata_service=metadata_service, default_execute_sql=False)
     intent = {"intent_id": "employee_count_by_service_years_filter"}
-    result = orch._extract_template_params(
-        "کارکنان با کمتر از ۵ سال سابقه چند نفرند؟", intent
-    )
+    result = orch._extract_template_params("کارکنان با کمتر از ۵ سال سابقه چند نفرند؟", intent)
     assert result["params"].get("service_years_max_exclusive") == 5, (
         f"Expected service_years_max_exclusive=5, got: {result['params']}"
     )
@@ -853,9 +853,7 @@ def test_extract_template_params_hire_year(metadata_service):
     """_extract_template_params must extract hire_year from questions like 'سال ۱۴۰۰ استخدام'."""
     orch = LLMOrchestrator(metadata_service=metadata_service, default_execute_sql=False)
     intent = {"intent_id": "employee_count_by_hire_year"}
-    result = orch._extract_template_params(
-        "چند نفر از کارکنان در سال ۱۴۰۰ استخدام شده‌اند؟", intent
-    )
+    result = orch._extract_template_params("چند نفر از کارکنان در سال ۱۴۰۰ استخدام شده‌اند؟", intent)
     assert result["params"].get("hire_year") == 1400, (
         f"Expected hire_year=1400, got: {result['params']}"
     )
@@ -1122,9 +1120,7 @@ async def test_llm_trigger_reason_recorded_in_trace(metadata_service):
     with patch.object(orchestrator, "_fallback_sql_template_engine", return_value=template_result):
         await orchestrator._plan_sql(context)
 
-    trace_entry = next(
-        (t for t in context.traces if t.step == "sql_planner"), None
-    )
+    trace_entry = next((t for t in context.traces if t.step == "sql_planner"), None)
     assert trace_entry is not None, "sql_planner trace entry missing"
     assert trace_entry.details.get("llm_trigger_reason") == "NO_TEMPLATE", (
         f"Expected llm_trigger_reason='NO_TEMPLATE', got: {trace_entry.details}"
@@ -1261,7 +1257,9 @@ async def test_controlled_dynamic_falls_through_to_llm_on_group_by_missing(metad
         ollama_client=mock_ollama,
     )
 
-    context = RequestContext(request_id=str(uuid.uuid4()), question="تعداد کارکنان زن در هر دپارتمان")
+    context = RequestContext(
+        request_id=str(uuid.uuid4()), question="تعداد کارکنان زن در هر دپارتمان"
+    )
     context.runtime_params = {"model": "llama3.1:8b"}
     context.intent_result = {
         "filters": [

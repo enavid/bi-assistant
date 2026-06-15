@@ -693,13 +693,22 @@ class LLMOrchestrator:
         from app.infrastructure.llm.prompt_builder import PromptBuilder
 
         builder = PromptBuilder(metadata_service=self.metadata)
-        schema_context = self.metadata.build_schema_context_for_prompt()
         question = context.normalized_question or context.question
+
+        intent = context.intent_result or {}
+        required_cols: list[str] = list(intent.get("required_columns") or [])
+        filter_cols: list[str] = [
+            str(f.get("column")) for f in (intent.get("filters") or []) if f.get("column")
+        ]
+        group_by_cols: list[str] = list(intent.get("group_by") or [])
+        focused_columns: list[str] | None = (
+            list(dict.fromkeys(required_cols + filter_cols + group_by_cols)) or None
+        )
 
         built = builder.build_sql_fallback_prompt(
             question=str(question),
             context=context,
-            schema_context=schema_context,
+            focused_columns=focused_columns,
             suggested_sql=suggested_sql,
         )
         gen_result = await self.ollama_client.generate(built.prompt, model=model)

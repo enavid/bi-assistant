@@ -86,3 +86,71 @@ def test_prompt_builder_without_suggested_sql_still_works(metadata_service):
     result = builder.build_sql_fallback_prompt(question="تعداد کارکنان؟", context=ctx)
     assert isinstance(result, SQLFallbackPrompt)
     assert "hr_mvp.vw_hr_employee_analytics" in result.prompt
+
+
+# ---------------------------------------------------------------------------
+# Phase 4.3 — focused_columns reduces prompt length
+# ---------------------------------------------------------------------------
+
+
+def test_prompt_with_focused_columns_shorter_than_full_schema_prompt(metadata_service):
+    """Prompt generated with focused_columns must be shorter than without."""
+    builder = PromptBuilder(metadata_service=metadata_service)
+    ctx = _make_context(
+        intent_result={
+            "intent": "total_employee_count",
+            "route": "SQL",
+            "required_columns": ["employee_id"],
+            "filters": [],
+            "group_by": [],
+        },
+        semantic_result={},
+        route_result={"route": "SQL"},
+        validation_result={},
+    )
+    full_result = builder.build_sql_fallback_prompt(question="تعداد کارکنان؟", context=ctx)
+    focused_result = builder.build_sql_fallback_prompt(
+        question="تعداد کارکنان؟",
+        context=ctx,
+        focused_columns=["employee_id", "is_active"],
+    )
+    assert len(focused_result.prompt) < len(full_result.prompt), (
+        f"Focused prompt ({len(focused_result.prompt)}) should be shorter than full ({len(full_result.prompt)})"
+    )
+
+
+def test_prompt_focused_columns_still_has_view_name(metadata_service):
+    """Focused prompt still contains the view name and base structure."""
+    builder = PromptBuilder(metadata_service=metadata_service)
+    ctx = _make_context(
+        intent_result={"intent": "count_by_gender", "route": "SQL"},
+        semantic_result={},
+        route_result={"route": "SQL"},
+        validation_result={},
+    )
+    result = builder.build_sql_fallback_prompt(
+        question="تعداد کارکنان بر اساس جنسیت؟",
+        context=ctx,
+        focused_columns=["employee_id", "is_active", "gender"],
+    )
+    assert "hr_mvp.vw_hr_employee_analytics" in result.prompt
+    assert "gender" in result.prompt
+
+
+def test_prompt_focused_columns_under_6000_chars(metadata_service):
+    """A typical 5-column focused prompt must be under 6000 characters."""
+    builder = PromptBuilder(metadata_service=metadata_service)
+    ctx = _make_context(
+        intent_result={"intent": "count_by_department", "route": "SQL"},
+        semantic_result={},
+        route_result={"route": "SQL"},
+        validation_result={},
+    )
+    result = builder.build_sql_fallback_prompt(
+        question="تعداد کارکنان به تفکیک دپارتمان؟",
+        context=ctx,
+        focused_columns=["employee_id", "is_active", "department_name", "gender", "age"],
+    )
+    assert len(result.prompt) < 6000, (
+        f"Focused prompt should be under 6000 chars, got {len(result.prompt)}"
+    )

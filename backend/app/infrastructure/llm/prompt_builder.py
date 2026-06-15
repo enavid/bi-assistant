@@ -39,9 +39,12 @@ class PromptBuilder:
         metadata: Any | None = None,
         schema_context: str | None = None,
         suggested_sql: str | None = None,
+        focused_columns: list[str] | None = None,
     ) -> SQLFallbackPrompt:
         service = metadata or self.metadata
-        schema = schema_context or self._build_schema_context(service)
+        schema = schema_context or self._build_schema_context(
+            service, focused_columns=focused_columns
+        )
         modular_context = self.build_safe_modular_context(context)
         prompt = self._render_sql_prompt(
             question=question,
@@ -155,10 +158,15 @@ SQL OUTPUT ONLY:
         return {"name": intent or "unknown", "expression": None}
 
     @staticmethod
-    def _build_schema_context(service: Any | None) -> str:
+    def _build_schema_context(
+        service: Any | None, *, focused_columns: list[str] | None = None
+    ) -> str:
         if service is not None and hasattr(service, "build_schema_context_for_prompt"):
             try:
-                return str(service.build_schema_context_for_prompt())
+                kwargs: dict = {}
+                if focused_columns is not None:
+                    kwargs["column_names"] = focused_columns
+                return str(service.build_schema_context_for_prompt(**kwargs))
             except Exception:
                 pass
         return "View: hr_mvp.vw_hr_employee_analytics\nAlias: v\nColumns must be provided by MetadataService."

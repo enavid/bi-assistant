@@ -219,17 +219,13 @@ def test_left_service_question_routes_to_gap(metadata_service):
 
 
 def test_max_age_intent_is_recognized(metadata_service):
-    result = IntentParser(metadata_service=metadata_service).parse(
-        "بیشترین سن کارمندان چقدر است؟"
-    )
+    result = IntentParser(metadata_service=metadata_service).parse("بیشترین سن کارمندان چقدر است؟")
     intent = result.get("intent_id") or result.get("intent")
     assert intent == "max_age", f"Expected max_age intent, got {intent!r}"
 
 
 def test_min_age_intent_is_recognized(metadata_service):
-    result = IntentParser(metadata_service=metadata_service).parse(
-        "کمترین سن کارمندان چقدر است؟"
-    )
+    result = IntentParser(metadata_service=metadata_service).parse("کمترین سن کارمندان چقدر است؟")
     intent = result.get("intent_id") or result.get("intent")
     assert intent == "min_age", f"Expected min_age intent, got {intent!r}"
 
@@ -305,9 +301,7 @@ _DB_DOCTORATE_VALUE = "دکترای تخصصی PHD / دکترای حرفه ای"
 
 def test_doctorate_question_produces_correct_education_title_filter(metadata_service):
     orch = LLMOrchestrator(metadata_service=metadata_service)
-    result = orch._extract_template_params(
-        "میانگین سن کارمندان دکترا چقدر است؟", intent={}
-    )
+    result = orch._extract_template_params("میانگین سن کارمندان دکترا چقدر است؟", intent={})
     filters = result.get("filters") or []
     ed_filter = next((f for f in filters if f.get("column") == "education_title"), None)
     assert ed_filter is not None, "Expected education_title filter in result"
@@ -318,9 +312,7 @@ def test_doctorate_question_produces_correct_education_title_filter(metadata_ser
 
 def test_doctorate_params_produce_correct_education_title(metadata_service):
     orch = LLMOrchestrator(metadata_service=metadata_service)
-    result = orch._extract_template_params(
-        "تعداد کارمندان دکترا چند نفرند؟", intent={}
-    )
+    result = orch._extract_template_params("تعداد کارمندان دکترا چند نفرند؟", intent={})
     params = result.get("params") or {}
     assert params.get("education_title") == _DB_DOCTORATE_VALUE, (
         f"Expected education_title param={_DB_DOCTORATE_VALUE!r}, got {params.get('education_title')!r}"

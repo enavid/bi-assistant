@@ -782,20 +782,32 @@ class MetadataService:
     # Prompt/schema context helpers
     # ------------------------------------------------------------------
 
+    _ALWAYS_INCLUDE_COLUMNS: frozenset[str] = frozenset({"employee_id", "is_active"})
+
     def build_schema_context_for_prompt(
-        self, *, include_allowed_values: bool = True, include_semantics: bool = True
+        self,
+        *,
+        include_allowed_values: bool = True,
+        include_semantics: bool = True,
+        column_names: list[str] | None = None,
     ) -> str:
         """
         Build a compact text context for the SQL generator prompt.
 
-        This should be loaded separately from the fixed SQL prompt.
-        It intentionally contains metadata only, not raw data rows.
+        When column_names is provided, only those columns plus base columns
+        (employee_id, is_active) are included and semantic mappings are omitted.
+        This produces a focused schema (~1500-3000 chars vs ~17000 chars full).
         """
         main_view = self.get_main_view()
         view_name = (
             main_view.get("name") or main_view.get("relation") or "hr_mvp.vw_hr_employee_analytics"
         )
         alias = main_view.get("alias") or "v"
+
+        focused = column_names is not None
+        allowed_names: frozenset[str] | None = (
+            frozenset(column_names) | self._ALWAYS_INCLUDE_COLUMNS if focused else None
+        )
 
         lines: list[str] = [
             f"View: {view_name}",
@@ -808,6 +820,9 @@ class MetadataService:
 
         for column in self.get_columns(include_restricted=True):
             name = column.get("name")
+            if allowed_names is not None and name not in allowed_names:
+                continue
+
             data_type = column.get("data_type", "unknown")
             title = column.get("title_fa", "")
             description = column.get("description_fa", "")
@@ -834,7 +849,7 @@ class MetadataService:
                     values = ", ".join(str(v) for v in allowed_values[:30])
                     lines.append(f"  Allowed values: {values}")
 
-        if include_semantics:
+        if include_semantics and not focused:
             lines.extend(["", "Semantic mappings:"])
             semantic_concepts = (
                 self._raw.get("semantic_layer", {}).get("semantic_concepts", []) or []

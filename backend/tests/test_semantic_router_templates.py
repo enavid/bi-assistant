@@ -149,9 +149,7 @@ def test_average_age_template_applies_contractor_filter(metadata_service):
     )
     sql = result.get("sql") or ""
     assert result["route"] == "SQL", f"Expected SQL route, got: {result}"
-    assert "is_contractor = TRUE" in sql, (
-        f"Expected is_contractor = TRUE in SQL, got:\n{sql}"
-    )
+    assert "is_contractor = TRUE" in sql, f"Expected is_contractor = TRUE in SQL, got:\n{sql}"
 
 
 def test_average_age_template_applies_gender_and_education_filters(metadata_service):

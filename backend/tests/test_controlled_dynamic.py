@@ -1,4 +1,5 @@
 """Unit tests for Controlled Dynamic SQL patcher (Phase 4.2)."""
+
 from __future__ import annotations
 
 from app.hr_analytics.use_cases.sql.controlled_dynamic import apply_controlled_dynamic

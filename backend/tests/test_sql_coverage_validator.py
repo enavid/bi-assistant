@@ -85,20 +85,26 @@ def test_only_is_active_filter_is_complete():
 
 def test_filter_column_present_in_sql_is_complete():
     sql = _BASE_SQL + " AND v.gender = 'زن'"
-    intent = _intent(filters=[_active_filter(), {"column": "gender", "operator": "=", "value": "زن"}])
+    intent = _intent(
+        filters=[_active_filter(), {"column": "gender", "operator": "=", "value": "زن"}]
+    )
     result = validate_coverage(intent, sql)
     assert result.is_complete is True
 
 
 def test_filter_column_missing_from_sql_is_incomplete():
-    intent = _intent(filters=[_active_filter(), {"column": "gender", "operator": "=", "value": "زن"}])
+    intent = _intent(
+        filters=[_active_filter(), {"column": "gender", "operator": "=", "value": "زن"}]
+    )
     result = validate_coverage(intent, _BASE_SQL)
     assert result.is_complete is False
     assert any("gender" in m for m in result.missing)
 
 
 def test_filter_is_contractor_missing_is_incomplete():
-    intent = _intent(filters=[_active_filter(), {"column": "is_contractor", "operator": "=", "value": True}])
+    intent = _intent(
+        filters=[_active_filter(), {"column": "is_contractor", "operator": "=", "value": True}]
+    )
     result = validate_coverage(intent, _BASE_SQL)
     assert result.is_complete is False
     assert any("is_contractor" in m for m in result.missing)
@@ -106,20 +112,26 @@ def test_filter_is_contractor_missing_is_incomplete():
 
 def test_filter_service_years_present_is_complete():
     sql = _BASE_SQL + " AND v.service_years >= 10"
-    intent = _intent(filters=[_active_filter(), {"column": "service_years", "operator": ">=", "value": 10}])
+    intent = _intent(
+        filters=[_active_filter(), {"column": "service_years", "operator": ">=", "value": 10}]
+    )
     result = validate_coverage(intent, sql)
     assert result.is_complete is True
 
 
 def test_filter_service_years_missing_is_incomplete():
-    intent = _intent(filters=[_active_filter(), {"column": "service_years", "operator": ">=", "value": 10}])
+    intent = _intent(
+        filters=[_active_filter(), {"column": "service_years", "operator": ">=", "value": 10}]
+    )
     result = validate_coverage(intent, _BASE_SQL)
     assert result.is_complete is False
     assert any("service_years" in m for m in result.missing)
 
 
 def test_filter_hire_year_missing_is_incomplete():
-    intent = _intent(filters=[_active_filter(), {"column": "hire_year", "operator": "=", "value": 1400}])
+    intent = _intent(
+        filters=[_active_filter(), {"column": "hire_year", "operator": "=", "value": 1400}]
+    )
     result = validate_coverage(intent, _BASE_SQL)
     assert result.is_complete is False
     assert any("hire_year" in m for m in result.missing)
@@ -135,17 +147,21 @@ def test_is_active_filter_always_skipped():
 
 def test_default_rule_source_filter_skipped():
     """Filters with source='default_rule' are injected by the pipeline, not the user — skip them."""
-    intent = _intent(filters=[{"column": "gender", "operator": "=", "value": "زن", "source": "default_rule"}])
+    intent = _intent(
+        filters=[{"column": "gender", "operator": "=", "value": "زن", "source": "default_rule"}]
+    )
     result = validate_coverage(intent, _BASE_SQL)
     assert result.is_complete is True
 
 
 def test_multiple_filters_all_missing_reports_all():
-    intent = _intent(filters=[
-        _active_filter(),
-        {"column": "gender", "operator": "=", "value": "زن"},
-        {"column": "is_contractor", "operator": "=", "value": True},
-    ])
+    intent = _intent(
+        filters=[
+            _active_filter(),
+            {"column": "gender", "operator": "=", "value": "زن"},
+            {"column": "is_contractor", "operator": "=", "value": True},
+        ]
+    )
     result = validate_coverage(intent, _BASE_SQL)
     assert result.is_complete is False
     missing_str = " ".join(result.missing)
@@ -155,7 +171,9 @@ def test_multiple_filters_all_missing_reports_all():
 
 def test_filter_column_check_is_case_insensitive():
     sql = _BASE_SQL + " AND v.GENDER = 'زن'"
-    intent = _intent(filters=[_active_filter(), {"column": "gender", "operator": "=", "value": "زن"}])
+    intent = _intent(
+        filters=[_active_filter(), {"column": "gender", "operator": "=", "value": "زن"}]
+    )
     result = validate_coverage(intent, sql)
     assert result.is_complete is True
 
@@ -235,7 +253,9 @@ def test_metric_min_missing_is_incomplete():
 
 
 def test_metric_stddev_missing_is_incomplete():
-    intent = _intent(metrics=[{"name": "stddev_age", "expression": "ROUND(STDDEV(v.age)::numeric, 2)"}])
+    intent = _intent(
+        metrics=[{"name": "stddev_age", "expression": "ROUND(STDDEV(v.age)::numeric, 2)"}]
+    )
     result = validate_coverage(intent, _BASE_SQL)
     assert result.is_complete is False
     assert any("STDDEV" in m for m in result.missing)
@@ -317,13 +337,17 @@ def test_partial_satisfaction_reports_only_missing():
 
 
 def test_empty_sql_with_filters_is_incomplete():
-    intent = _intent(filters=[_active_filter(), {"column": "gender", "operator": "=", "value": "زن"}])
+    intent = _intent(
+        filters=[_active_filter(), {"column": "gender", "operator": "=", "value": "زن"}]
+    )
     result = validate_coverage(intent, "")
     assert result.is_complete is False
 
 
 def test_status_field_matches_is_complete():
-    intent = _intent(filters=[_active_filter(), {"column": "gender", "operator": "=", "value": "زن"}])
+    intent = _intent(
+        filters=[_active_filter(), {"column": "gender", "operator": "=", "value": "زن"}]
+    )
     result_fail = validate_coverage(intent, _BASE_SQL)
     assert result_fail.status == "COVERAGE_INCOMPLETE"
 
