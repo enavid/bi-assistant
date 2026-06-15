@@ -1543,9 +1543,7 @@ async def test_retirement_question_routes_to_sql_not_gap(metadata_service):
         metadata_service=metadata_service,
         default_execute_sql=False,
     )
-    result = await orchestrator.arun(
-        "چند نفر از کارمندان تا ۵ سال آینده بازنشسته می‌شوند؟"
-    )
+    result = await orchestrator.arun("چند نفر از کارمندان تا ۵ سال آینده بازنشسته می‌شوند؟")
     ctx = result.context
     intent_res = ctx.get("intent_result") or {}
     assert isinstance(intent_res, dict), "intent_result must be a dict"
@@ -1564,12 +1562,9 @@ async def test_retirement_question_has_sql_template(metadata_service):
         metadata_service=metadata_service,
         default_execute_sql=False,
     )
-    result = await orchestrator.arun(
-        "تعداد کارکنان در آستانه بازنشستگی چند نفر است؟"
-    )
+    result = await orchestrator.arun("تعداد کارکنان در آستانه بازنشستگی چند نفر است؟")
     ctx = result.context
     intent_res = ctx.get("intent_result") or {}
-    sql_plan = ctx.get("sql_plan") or {}
     assert isinstance(intent_res, dict)
     assert intent_res.get("sql_template_id") == "TPL_NEAR_RETIREMENT_5_YEARS", (
         f"Expected template TPL_NEAR_RETIREMENT_5_YEARS, got: {intent_res.get('sql_template_id')}"
@@ -1597,9 +1592,7 @@ async def test_retirement_question_not_detected_as_gender(metadata_service):
         intent_parser=IntentParser(metadata_service=metadata_service),
         default_execute_sql=False,
     )
-    result = await orchestrator.arun(
-        "چند نفر از کارمندان تا ۵ سال آینده بازنشسته می‌شوند؟"
-    )
+    result = await orchestrator.arun("چند نفر از کارمندان تا ۵ سال آینده بازنشسته می‌شوند؟")
     ctx = result.context
     intent_res = ctx.get("intent_result") or {}
     assert isinstance(intent_res, dict)
@@ -1626,9 +1619,7 @@ async def test_retirement_split_spelling_routes_to_sql(metadata_service):
         intent_parser=IntentParser(metadata_service=metadata_service),
         default_execute_sql=False,
     )
-    result = await orchestrator.arun(
-        "چند نفر از کارمندان تا 5 سال آینده باز نشسته میشوند؟"
-    )
+    result = await orchestrator.arun("چند نفر از کارمندان تا 5 سال آینده باز نشسته میشوند؟")
     ctx = result.context
     intent_res = ctx.get("intent_result") or {}
     assert intent_res.get("route") != "GAP", "retirement question must not be GAP"
@@ -1649,9 +1640,7 @@ async def test_retirement_no_half_space_routes_to_sql(metadata_service):
         intent_parser=IntentParser(metadata_service=metadata_service),
         default_execute_sql=False,
     )
-    result = await orchestrator.arun(
-        "چند نفر از کارمندان تا 5 سال آینده بازنشسته میشوند؟"
-    )
+    result = await orchestrator.arun("چند نفر از کارمندان تا 5 سال آینده بازنشسته میشوند؟")
     ctx = result.context
     intent_res = ctx.get("intent_result") or {}
     assert intent_res.get("intent_id") == "near_retirement_analysis", (
@@ -1675,6 +1664,7 @@ def test_normalize_text_splits_baz_neshaste():
 
 def _norm(text: str) -> str:
     from app.hr_analytics.use_cases.steps.intent_parser import IntentParser
+
     ip = IntentParser.__new__(IntentParser)
     return ip.normalize_text(text)
 
@@ -1775,9 +1765,11 @@ def test_trace_sql_planner_has_coverage_status(metadata_service):
     assert "coverage_status" in details, (
         f"sql_planner trace must contain coverage_status. Got keys: {list(details.keys())}"
     )
-    assert details["coverage_status"] in {"COMPLETE", "COVERAGE_INCOMPLETE", "PATCHED_BY_CONTROLLED_DYNAMIC"}, (
-        f"Unexpected coverage_status value: {details['coverage_status']!r}"
-    )
+    assert details["coverage_status"] in {
+        "COMPLETE",
+        "COVERAGE_INCOMPLETE",
+        "PATCHED_BY_CONTROLLED_DYNAMIC",
+    }, f"Unexpected coverage_status value: {details['coverage_status']!r}"
 
 
 def test_trace_sql_planner_has_missing_filters(metadata_service):
@@ -1857,3 +1849,136 @@ def test_trace_decision_by_is_controlled_dynamic_when_cd_patches_sql(metadata_se
         assert details.get("decision_by") in {"template", "controlled_dynamic"}, (
             f"Expected template or controlled_dynamic for filter+group query. Got: {details.get('decision_by')!r}"
         )
+
+
+# ---------------------------------------------------------------------------
+# 5.1 — Config flags: use_template_engine, use_controlled_dynamic,
+#        force_llm_for_incomplete_template
+# ---------------------------------------------------------------------------
+
+
+def test_settings_has_use_template_engine_flag():
+    """settings must expose use_template_engine with default True."""
+    from app.core.config import settings
+
+    assert hasattr(settings, "use_template_engine"), (
+        "settings must have use_template_engine attribute"
+    )
+    assert settings.use_template_engine is True, (
+        f"use_template_engine default must be True, got {settings.use_template_engine!r}"
+    )
+
+
+def test_settings_has_use_controlled_dynamic_flag():
+    """settings must expose use_controlled_dynamic with default True."""
+    from app.core.config import settings
+
+    assert hasattr(settings, "use_controlled_dynamic"), (
+        "settings must have use_controlled_dynamic attribute"
+    )
+    assert settings.use_controlled_dynamic is True, (
+        f"use_controlled_dynamic default must be True, got {settings.use_controlled_dynamic!r}"
+    )
+
+
+def test_settings_has_force_llm_for_incomplete_template_flag():
+    """settings must expose force_llm_for_incomplete_template with default False."""
+    from app.core.config import settings
+
+    assert hasattr(settings, "force_llm_for_incomplete_template"), (
+        "settings must have force_llm_for_incomplete_template attribute"
+    )
+    assert settings.force_llm_for_incomplete_template is False, (
+        f"force_llm_for_incomplete_template default must be False, got {settings.force_llm_for_incomplete_template!r}"
+    )
+
+
+def test_orchestrator_accepts_pipeline_flags(metadata_service):
+    """LLMOrchestrator constructor must accept use_template_engine,
+    use_controlled_dynamic, and force_llm_for_incomplete_template."""
+    orch = LLMOrchestrator(
+        metadata_service=metadata_service,
+        default_execute_sql=False,
+        use_template_engine=True,
+        use_controlled_dynamic=True,
+        force_llm_for_incomplete_template=False,
+    )
+    assert orch is not None
+
+
+def test_orchestrator_stores_pipeline_flags(metadata_service):
+    """Pipeline flags must be stored as instance attributes on LLMOrchestrator."""
+    orch = LLMOrchestrator(
+        metadata_service=metadata_service,
+        default_execute_sql=False,
+        use_template_engine=False,
+        use_controlled_dynamic=False,
+        force_llm_for_incomplete_template=True,
+    )
+    assert orch.use_template_engine is False
+    assert orch.use_controlled_dynamic is False
+    assert orch.force_llm_for_incomplete_template is True
+
+
+def test_trace_includes_pipeline_flags(metadata_service):
+    """sql_planner trace must include pipeline_flags showing the active configuration."""
+    orch = LLMOrchestrator(
+        metadata_service=metadata_service,
+        default_execute_sql=False,
+        use_template_engine=True,
+        use_controlled_dynamic=True,
+        force_llm_for_incomplete_template=False,
+    )
+    d = _run(orch, "میانگین سن کارکنان چقدر است؟")
+    details = _sql_planner_trace(d)
+    assert "pipeline_flags" in details, (
+        f"sql_planner trace must contain pipeline_flags. Got keys: {list(details.keys())}"
+    )
+    flags = details["pipeline_flags"]
+    assert flags.get("use_template_engine") is True
+    assert flags.get("use_controlled_dynamic") is True
+    assert flags.get("force_llm_for_incomplete_template") is False
+
+
+@pytest.mark.asyncio
+async def test_orchestrator_skips_template_when_flag_false(metadata_service):
+    """When use_template_engine=False, _fallback_sql_template_engine must never be called."""
+    from unittest.mock import AsyncMock, patch
+
+    mock_ollama = AsyncMock()
+    mock_ollama.generate.return_value = type(
+        "R",
+        (),
+        {
+            "sql": None,
+            "success": False,
+            "error": "no model",
+            "prompt_tokens": None,
+            "context_window": None,
+        },
+    )()
+
+    orch = LLMOrchestrator(
+        metadata_service=metadata_service,
+        default_execute_sql=False,
+        use_template_engine=False,
+        ollama_client=mock_ollama,
+    )
+    with patch.object(orch, "_fallback_sql_template_engine") as mock_tpl:
+        await orch.arun("میانگین سن کارکنان چقدر است؟")
+    mock_tpl.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_orchestrator_skips_controlled_dynamic_when_flag_false(metadata_service):
+    """When use_controlled_dynamic=False, apply_controlled_dynamic must never be called."""
+    from unittest.mock import patch
+
+    orch = LLMOrchestrator(
+        metadata_service=metadata_service,
+        default_execute_sql=False,
+        use_controlled_dynamic=False,
+    )
+    with patch("app.hr_analytics.use_cases.orchestrator.apply_controlled_dynamic") as mock_cd:
+        await orch.arun("تعداد کارکنان زن")
+    mock_cd.assert_not_called()

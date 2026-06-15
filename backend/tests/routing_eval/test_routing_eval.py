@@ -76,7 +76,7 @@ def _mismatches(payload: dict, expect: dict) -> list[str]:
                 errors.append(f"must_not_include_sql  term={term!r}  found in generated SQL")
 
     if "expected_filters" in expect:
-        for col in (expect["expected_filters"] or []):
+        for col in expect["expected_filters"] or []:
             if not sql:
                 errors.append(f"expected_filters  col={col!r}  but generated_sql is empty/absent")
             elif col.lower() not in sql.lower():
@@ -106,9 +106,7 @@ def _mismatches(payload: dict, expect: dict) -> list[str]:
                     )
                 for col in cols:
                     if col.lower() not in sql.lower():
-                        errors.append(
-                            f"expected_group_by  col={col!r}  not found in generated SQL"
-                        )
+                        errors.append(f"expected_group_by  col={col!r}  not found in generated SQL")
 
     return errors
 
@@ -117,7 +115,9 @@ def _needs_review(case: dict, expect: dict) -> bool:
     """True when an SQL case has no structured semantic expectations yet."""
     if case.get("category") != "sql":
         return False
-    return not any(k in expect for k in ("expected_filters", "expected_metric", "expected_group_by"))
+    return not any(
+        k in expect for k in ("expected_filters", "expected_metric", "expected_group_by")
+    )
 
 
 # ---------------------------------------------------------------------------

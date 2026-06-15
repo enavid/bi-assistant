@@ -34,6 +34,9 @@ class Settings(BaseSettings):
     default_execute_sql: bool = False
     enable_llm_sql_fallback: bool = True
     validate_sql_before_execution: bool = True
+    use_template_engine: bool = True
+    use_controlled_dynamic: bool = True
+    force_llm_for_incomplete_template: bool = False
 
     @field_validator("cors_origins", mode="before")
     @classmethod

@@ -208,6 +208,9 @@ class LLMOrchestrator:
         default_execute_sql: bool = True,
         current_shamsi_year: int = 1404,
         strict_metadata: bool = True,
+        use_template_engine: bool = True,
+        use_controlled_dynamic: bool = True,
+        force_llm_for_incomplete_template: bool = False,
     ) -> None:
         if metadata_service is not None:
             self.metadata = metadata_service
@@ -232,6 +235,9 @@ class LLMOrchestrator:
         self.default_user_role = default_user_role
         self.default_execute_sql = default_execute_sql
         self.current_shamsi_year = current_shamsi_year
+        self.use_template_engine = use_template_engine
+        self.use_controlled_dynamic = use_controlled_dynamic
+        self.force_llm_for_incomplete_template = force_llm_for_incomplete_template
 
     # ------------------------------------------------------------------
     # Public API
@@ -526,7 +532,15 @@ class LLMOrchestrator:
 
     async def _plan_sql(self, context: RequestContext) -> None:
         started = time.perf_counter()
-        if self.sql_template_engine is not None:
+        if not self.use_template_engine:
+            result = {
+                "status": "NO_TEMPLATE",
+                "route": Route.SQL.value,
+                "source": "sql_template_engine",
+                "sql": None,
+                "can_execute_sql": False,
+            }
+        elif self.sql_template_engine is not None:
             result = await call_component(
                 self.sql_template_engine,
                 ["build", "plan", "render", "run", "arun", "__call__"],
@@ -585,7 +599,8 @@ class LLMOrchestrator:
         # Controlled Dynamic: try to patch COVERAGE_INCOMPLETE plans by injecting
         # missing WHERE-clause filters before triggering the LLM.
         if (
-            str(plan.get("status") or "").upper() == "COVERAGE_INCOMPLETE"
+            self.use_controlled_dynamic
+            and str(plan.get("status") or "").upper() == "COVERAGE_INCOMPLETE"
             and _original_template_sql
         ):
             _cd = apply_controlled_dynamic(
@@ -686,6 +701,11 @@ class LLMOrchestrator:
                 "coverage_status": _cov.get("status"),
                 "missing_filters": list(_cov.get("missing") or []),
                 "model_called": _model_called,
+                "pipeline_flags": {
+                    "use_template_engine": self.use_template_engine,
+                    "use_controlled_dynamic": self.use_controlled_dynamic,
+                    "force_llm_for_incomplete_template": self.force_llm_for_incomplete_template,
+                },
             },
         )
 

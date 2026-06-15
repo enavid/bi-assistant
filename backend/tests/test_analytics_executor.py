@@ -1,11 +1,12 @@
 from __future__ import annotations
 
-import pytest
+from app.infrastructure.hr_db.analytics_executor import (
+    QueryExecutor,
+)
 
-from app.infrastructure.hr_db.analytics_executor import QueryExecutor, QueryExecutorNotConfiguredError
-
-
-VALID_SQL = "SELECT COUNT(v.employee_id) FROM hr_mvp.vw_hr_employee_analytics v WHERE v.is_active = TRUE"
+VALID_SQL = (
+    "SELECT COUNT(v.employee_id) FROM hr_mvp.vw_hr_employee_analytics v WHERE v.is_active = TRUE"
+)
 
 
 # ---------------------------------------------------------------------------

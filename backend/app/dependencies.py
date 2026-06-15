@@ -86,4 +86,7 @@ def get_hr_bi_orchestrator():
         default_execute_sql=settings.default_execute_sql,
         current_shamsi_year=settings.current_shamsi_year,
         strict_metadata=True,
+        use_template_engine=settings.use_template_engine,
+        use_controlled_dynamic=settings.use_controlled_dynamic,
+        force_llm_for_incomplete_template=settings.force_llm_for_incomplete_template,
     )

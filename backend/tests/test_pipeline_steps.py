@@ -296,9 +296,7 @@ def test_service_years_between_5_and_15_routes_to_count_intent(metadata_service)
 
 
 def test_service_years_sabeghe_balaye_5(metadata_service):
-    result = IntentParser(metadata_service=metadata_service).parse(
-        "کارکنان با سابقه بالای ۵ سال"
-    )
+    result = IntentParser(metadata_service=metadata_service).parse("کارکنان با سابقه بالای ۵ سال")
     intent = result.get("intent_id") or result.get("intent")
     assert intent == "employee_count_by_service_years_filter", (
         f"Expected employee_count_by_service_years_filter, got {intent!r}"
@@ -310,9 +308,7 @@ def test_service_years_sabeghe_balaye_5(metadata_service):
 
 
 def test_service_years_sabeghe_zir_3(metadata_service):
-    result = IntentParser(metadata_service=metadata_service).parse(
-        "سابقه زیر ۳ سال"
-    )
+    result = IntentParser(metadata_service=metadata_service).parse("سابقه زیر ۳ سال")
     intent = result.get("intent_id") or result.get("intent")
     assert intent == "employee_count_by_service_years_filter", (
         f"Expected employee_count_by_service_years_filter, got {intent!r}"
@@ -324,9 +320,7 @@ def test_service_years_sabeghe_zir_3(metadata_service):
 
 
 def test_service_years_sabeghe_kamtar_az_5(metadata_service):
-    result = IntentParser(metadata_service=metadata_service).parse(
-        "سابقه کمتر از ۵ سال دارند"
-    )
+    result = IntentParser(metadata_service=metadata_service).parse("سابقه کمتر از ۵ سال دارند")
     intent = result.get("intent_id") or result.get("intent")
     assert intent == "employee_count_by_service_years_filter", (
         f"Expected employee_count_by_service_years_filter, got {intent!r}"
@@ -338,9 +332,7 @@ def test_service_years_sabeghe_kamtar_az_5(metadata_service):
 
 
 def test_service_years_15_sal_sabeghe_be_bala(metadata_service):
-    result = IntentParser(metadata_service=metadata_service).parse(
-        "سابقه ۱۵ سال به بالا"
-    )
+    result = IntentParser(metadata_service=metadata_service).parse("سابقه ۱۵ سال به بالا")
     intent = result.get("intent_id") or result.get("intent")
     assert intent == "employee_count_by_service_years_filter", (
         f"Expected employee_count_by_service_years_filter, got {intent!r}"
@@ -486,14 +478,10 @@ def test_department_gender_routes_to_2d_intent(metadata_service):
 
 def test_intent_parser_extracts_gender_from_zanam_in_marital_question(metadata_service):
     """'تعداد زنان متأهل' — 'زنان' must produce gender=زن filter alongside marital_status."""
-    result = IntentParser(metadata_service=metadata_service).parse(
-        "تعداد زنان متأهل چند نفر است؟"
-    )
+    result = IntentParser(metadata_service=metadata_service).parse("تعداد زنان متأهل چند نفر است؟")
     filters = result.get("filters") or []
     columns = [f.get("column") for f in filters if isinstance(f, dict)]
-    assert "gender" in columns, (
-        f"'زنان' must produce gender filter. Got filters: {filters}"
-    )
+    assert "gender" in columns, f"'زنان' must produce gender filter. Got filters: {filters}"
     gender_filter = next((f for f in filters if f.get("column") == "gender"), None)
     assert gender_filter is not None and gender_filter.get("value") == "زن", (
         f"gender filter must have value='زن', got: {gender_filter}"
@@ -506,14 +494,10 @@ def test_intent_parser_contractor_count_routes_correctly(metadata_service):
         "تعداد کارکنان پیمانکار چند نفر است؟"
     )
     intent = result.get("intent_id") or result.get("intent")
-    assert intent == "contractor_share", (
-        f"Expected contractor_share, got {intent!r}"
-    )
+    assert intent == "contractor_share", f"Expected contractor_share, got {intent!r}"
     filters = result.get("filters") or []
     columns = [f.get("column") for f in filters if isinstance(f, dict)]
-    assert "is_contractor" in columns, (
-        f"Expected is_contractor filter. Got: {filters}"
-    )
+    assert "is_contractor" in columns, f"Expected is_contractor filter. Got: {filters}"
 
 
 # ---------------------------------------------------------------------------
@@ -529,10 +513,10 @@ def test_intent_parser_contractor_count_routes_correctly(metadata_service):
 
 def test_semantic_contract_has_metric_field(metadata_service):
     """parse() must always include a 'metric' key with 'function' and 'column'."""
-    result = IntentParser(metadata_service=metadata_service).parse(
-        "میانگین سن کارکنان چقدر است؟"
+    result = IntentParser(metadata_service=metadata_service).parse("میانگین سن کارکنان چقدر است؟")
+    assert "metric" in result, (
+        f"'metric' field missing from parse() output. Keys: {list(result.keys())}"
     )
-    assert "metric" in result, f"'metric' field missing from parse() output. Keys: {list(result.keys())}"
     metric = result["metric"]
     assert isinstance(metric, dict), f"'metric' must be a dict, got {type(metric)}"
     assert "function" in metric, f"'metric' must have 'function' key, got: {metric}"
@@ -540,9 +524,7 @@ def test_semantic_contract_has_metric_field(metadata_service):
 
 def test_semantic_contract_metric_function_avg(metadata_service):
     """'میانگین سن' → metric.function must be 'AVG'."""
-    result = IntentParser(metadata_service=metadata_service).parse(
-        "میانگین سن کارکنان چقدر است؟"
-    )
+    result = IntentParser(metadata_service=metadata_service).parse("میانگین سن کارکنان چقدر است؟")
     assert result.get("metric", {}).get("function") == "AVG", (
         f"Expected metric.function=AVG, got: {result.get('metric')!r}"
     )
@@ -550,9 +532,7 @@ def test_semantic_contract_metric_function_avg(metadata_service):
 
 def test_semantic_contract_metric_function_count(metadata_service):
     """'تعداد کارکنان' → metric.function must be 'COUNT'."""
-    result = IntentParser(metadata_service=metadata_service).parse(
-        "تعداد کل کارکنان چند نفر است؟"
-    )
+    result = IntentParser(metadata_service=metadata_service).parse("تعداد کل کارکنان چند نفر است؟")
     assert result.get("metric", {}).get("function") == "COUNT", (
         f"Expected metric.function=COUNT, got: {result.get('metric')!r}"
     )
@@ -573,9 +553,7 @@ def test_semantic_contract_has_superlative_for_most_question(metadata_service):
 
 def test_semantic_contract_superlative_none_for_plain_question(metadata_service):
     """A plain non-superlative question must have superlative=None."""
-    result = IntentParser(metadata_service=metadata_service).parse(
-        "تعداد کارکنان در هر دپارتمان"
-    )
+    result = IntentParser(metadata_service=metadata_service).parse("تعداد کارکنان در هر دپارتمان")
     assert "superlative" in result, (
         f"'superlative' key must always be present. Keys: {list(result.keys())}"
     )

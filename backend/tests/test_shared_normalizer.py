@@ -2,6 +2,7 @@
 Unit tests for the shared Persian text normalizer.
 Run: uv run pytest tests/test_shared_normalizer.py -v
 """
+
 from __future__ import annotations
 
 import pytest
@@ -9,12 +10,14 @@ import pytest
 
 def _norm(text: str) -> str:
     from app.hr_analytics.use_cases.steps.shared_normalizer import normalize
+
     return normalize(text)
 
 
 # ---------------------------------------------------------------------------
 # Character normalization
 # ---------------------------------------------------------------------------
+
 
 class TestCharNormalization:
     def test_arabic_ye_to_persian(self):
@@ -37,6 +40,7 @@ class TestCharNormalization:
 # ---------------------------------------------------------------------------
 # Compound word joining (HR domain)
 # ---------------------------------------------------------------------------
+
 
 class TestCompoundWords:
     def test_baz_neshaste_split(self):
@@ -70,6 +74,7 @@ class TestCompoundWords:
 # می verb prefix joining
 # ---------------------------------------------------------------------------
 
+
 class TestMiJoining:
     def test_mi_space_verb(self):
         assert "میشوند" in _norm("می شوند")
@@ -83,9 +88,7 @@ class TestMiJoining:
     def test_mi_suffix_word_not_joined(self):
         """'اسامی کارکنان' — 'می' ending 'اسامی' must NOT merge with next word."""
         result = _norm("لیست اسامی کارکنان دپارتمان مالی")
-        assert "اسامی کارکنان" in result, (
-            f"'اسامی کارکنان' must stay separate, got: '{result}'"
-        )
+        assert "اسامی کارکنان" in result, f"'اسامی کارکنان' must stay separate, got: '{result}'"
 
     def test_adami_not_joined(self):
         """'آدمی کارمند' — 'می' in 'آدمی' must NOT merge with next word."""
@@ -96,6 +99,7 @@ class TestMiJoining:
 # ---------------------------------------------------------------------------
 # Colloquial verb normalization
 # ---------------------------------------------------------------------------
+
 
 class TestColloquialVerbs:
     def test_mishon(self):
@@ -130,6 +134,7 @@ class TestColloquialVerbs:
 # Whitespace / punctuation cleanup
 # ---------------------------------------------------------------------------
 
+
 class TestCleanup:
     def test_multi_space_collapsed(self):
         assert _norm("کارمند  داریم") == "کارمند داریم"
@@ -145,13 +150,15 @@ class TestCleanup:
 # Integration: domain_classifier uses shared normalizer
 # ---------------------------------------------------------------------------
 
+
 class TestDomainClassifierIntegration:
     def test_split_word_karmandar_classified_hr(self):
         """'کار مندان' after normalization must match HR terms."""
         from app.hr_analytics.use_cases.steps.domain_classifier import (
-            DomainClassifier,
             DOMAIN_HR,
+            DomainClassifier,
         )
+
         dc = DomainClassifier()
         result = dc.classify("چند نفر از کار مندان تا 5 سال آینده باز نشسته میشن ؟")
         assert result["domain"] == DOMAIN_HR, (
@@ -161,9 +168,10 @@ class TestDomainClassifierIntegration:
     def test_split_baz_neshaste_classified_hr(self):
         """'باز نشسته' split form must be recognized as HR domain."""
         from app.hr_analytics.use_cases.steps.domain_classifier import (
-            DomainClassifier,
             DOMAIN_HR,
+            DomainClassifier,
         )
+
         dc = DomainClassifier()
         result = dc.classify("چه کسانی باز نشسته میشن ؟")
         assert result["domain"] == DOMAIN_HR, (
@@ -173,9 +181,10 @@ class TestDomainClassifierIntegration:
     def test_colloquial_mishon_classified_hr(self):
         """Colloquial 'میشن' must not prevent HR classification."""
         from app.hr_analytics.use_cases.steps.domain_classifier import (
-            DomainClassifier,
             DOMAIN_HR,
+            DomainClassifier,
         )
+
         dc = DomainClassifier()
         result = dc.classify("تعداد کارکنانی که بازنشسته میشن چقدره ؟")
         assert result["domain"] == DOMAIN_HR, (
@@ -187,19 +196,23 @@ class TestDomainClassifierIntegration:
 # Backward-compat: IntentParser.normalize_text delegates to shared normalizer
 # ---------------------------------------------------------------------------
 
+
 class TestIntentParserBackwardCompat:
     def test_normalize_text_still_joins_compound(self):
         from app.hr_analytics.use_cases.steps.intent_parser import IntentParser
+
         ip = IntentParser.__new__(IntentParser)
         assert "بازنشسته" in ip.normalize_text("باز نشسته")
 
     def test_normalize_text_still_converts_colloquial(self):
         from app.hr_analytics.use_cases.steps.intent_parser import IntentParser
+
         ip = IntentParser.__new__(IntentParser)
         assert "میشوند" in ip.normalize_text("میشن")
 
     def test_normalize_text_kar_mandan(self):
         from app.hr_analytics.use_cases.steps.intent_parser import IntentParser
+
         ip = IntentParser.__new__(IntentParser)
         assert "کارمندان" in ip.normalize_text("کار مندان")
 
@@ -208,10 +221,12 @@ class TestIntentParserBackwardCompat:
 # Root fix: orchestrator entry-point normalization
 # ---------------------------------------------------------------------------
 
+
 class TestOrchestratorNormalization:
     def test_shared_normalizer_fixes_metadata_gap(self):
         """shared_normalizer must produce what metadata.normalize_question cannot."""
         from app.hr_analytics.use_cases.steps.shared_normalizer import normalize
+
         result = normalize("کار مندان باز نشسته میشن")
         assert "کارمندان" in result
         assert "بازنشسته" in result
@@ -220,6 +235,7 @@ class TestOrchestratorNormalization:
     def test_metadata_normalize_question_uses_shared(self):
         """After fix: metadata.normalize_question must delegate to shared_normalizer."""
         from app.infrastructure.metadata.service import MetadataService
+
         svc = MetadataService.__new__(MetadataService)
         result = svc.normalize_question("چند نفر از کار مندان باز نشسته میشن ؟")
         assert "کارمندان" in result, "metadata.normalize_question must join 'کار مندان'"
@@ -245,6 +261,7 @@ class TestSemanticMatchingAfterNormalization:
     def test_access_question_reaches_access_denied_not_out_of_scope(self):
         """'لیست افراد' questions must be ACCESS_DENIED, not OUT_OF_SCOPE."""
         import asyncio
+
         from app.hr_analytics.use_cases.orchestrator import LLMOrchestrator
         from app.infrastructure.metadata.service import get_metadata_service
 
@@ -261,14 +278,13 @@ class TestSemanticMatchingAfterNormalization:
     def test_fihrist_afrad_access_denied(self):
         """'فهرست افراد' access question must be ACCESS_DENIED."""
         import asyncio
+
         from app.hr_analytics.use_cases.orchestrator import LLMOrchestrator
         from app.infrastructure.metadata.service import get_metadata_service
 
         svc = get_metadata_service()
         orch = LLMOrchestrator(metadata_service=svc, default_execute_sql=False)
-        result = asyncio.run(
-            orch.arun("فهرست افراد زیر ۳۰ سال با شناسه", execute_sql=False)
-        )
+        result = asyncio.run(orch.arun("فهرست افراد زیر ۳۰ سال با شناسه", execute_sql=False))
         d = result if isinstance(result, dict) else vars(result)
         assert d.get("status") == "ACCESS_DENIED", (
             f"'فهرست افراد' must return ACCESS_DENIED, got {d.get('status')}"
@@ -282,6 +298,7 @@ class TestEndToEndColloquialRouting:
     def sync_orchestrator(self):
         """Build a minimal sync-runnable orchestrator for routing tests."""
         import asyncio
+
         from app.hr_analytics.use_cases.orchestrator import LLMOrchestrator
         from app.infrastructure.metadata.service import get_metadata_service
 
@@ -299,7 +316,13 @@ class TestEndToEndColloquialRouting:
     def test_split_kar_mandan_routes_sql(self, sync_orchestrator):
         """'کار مندان' (split) must reach SQL route, not NEEDS_CLARIFICATION."""
         result = sync_orchestrator.run("چند نفر از کار مندان تا ۵ سال آینده باز نشسته میشن ؟")
-        d = result if isinstance(result, dict) else result.to_dict() if hasattr(result, 'to_dict') else vars(result)
+        d = (
+            result
+            if isinstance(result, dict)
+            else result.to_dict()
+            if hasattr(result, "to_dict")
+            else vars(result)
+        )
         assert d.get("route") == "SQL" or d.get("status") not in ("NEEDS_CLARIFICATION",), (
             f"split 'کار مندان' returned {d.get('route')}/{d.get('status')} instead of SQL"
         )
@@ -307,7 +330,13 @@ class TestEndToEndColloquialRouting:
     def test_colloquial_mishon_routes_sql(self, sync_orchestrator):
         """'میشن' (colloquial) must not block SQL routing."""
         result = sync_orchestrator.run("چند نفر از کارمندان بازنشسته میشن ؟")
-        d = result if isinstance(result, dict) else result.to_dict() if hasattr(result, 'to_dict') else vars(result)
+        d = (
+            result
+            if isinstance(result, dict)
+            else result.to_dict()
+            if hasattr(result, "to_dict")
+            else vars(result)
+        )
         assert d.get("status") not in ("NEEDS_CLARIFICATION",), (
             f"colloquial 'میشن' returned {d.get('status')}"
         )
