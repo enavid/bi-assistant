@@ -1758,7 +1758,7 @@ async def test_retirement_colloquial_baz_neshaste_mishon(metadata_service):
 
 
 def _sql_planner_trace(d: dict) -> dict:
-    """Extract the sql_planner trace step from a full orchestrator result dict."""
+    """Extract the sql_planner trace step details from a full orchestrator result dict."""
     ctx = d.get("context") or {}
     traces = ctx.get("traces") or []
     for step in traces:
@@ -1817,3 +1817,43 @@ def test_trace_sql_planner_complete_coverage_has_empty_missing_filters(metadata_
     assert details.get("missing_filters") == [], (
         f"Expected empty missing_filters, got: {details.get('missing_filters')!r}"
     )
+
+
+# ---------------------------------------------------------------------------
+# 4.5 — decision_by must reflect the actual SQL source precisely
+# ---------------------------------------------------------------------------
+
+
+def test_trace_decision_by_is_template_when_sql_comes_from_template(metadata_service):
+    """When SQL comes from a template (no LLM), decision_by must be 'template'."""
+    orch = LLMOrchestrator(metadata_service=metadata_service, default_execute_sql=False)
+    d = _run(orch, "میانگین سن کارکنان چقدر است؟")
+    details = _sql_planner_trace(d)
+    assert details.get("decision_by") == "template", (
+        f"Expected decision_by='template' for template-driven SQL. Got: {details.get('decision_by')!r}"
+    )
+    assert details.get("model_called") is None, (
+        f"model_called must be None when no LLM configured. Got: {details.get('model_called')!r}"
+    )
+
+
+def test_trace_decision_by_is_controlled_dynamic_when_cd_patches_sql(metadata_service):
+    """When Controlled Dynamic patches the SQL, decision_by must be 'controlled_dynamic'."""
+    from app.hr_analytics.use_cases.steps.intent_parser import IntentParser
+
+    orch = LLMOrchestrator(
+        metadata_service=metadata_service,
+        intent_parser=IntentParser(metadata_service=metadata_service),
+        default_execute_sql=False,
+    )
+    d = _run(orch, "تعداد کارکنان زن در هر دپارتمان چقدر است؟")
+    details = _sql_planner_trace(d)
+    source = details.get("source") or ""
+    if "controlled_dynamic" in source:
+        assert details.get("decision_by") == "controlled_dynamic", (
+            f"When source=controlled_dynamic, decision_by must match. Got: {details.get('decision_by')!r}"
+        )
+    else:
+        assert details.get("decision_by") in {"template", "controlled_dynamic"}, (
+            f"Expected template or controlled_dynamic for filter+group query. Got: {details.get('decision_by')!r}"
+        )

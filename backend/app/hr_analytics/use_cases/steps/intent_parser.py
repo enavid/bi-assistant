@@ -394,6 +394,14 @@ class IntentParser:
                 "expected_status_sql"
             ) or self._status_sql_for_route(route, status)
 
+        result["metric"] = self._build_metric_contract(
+            best.intent_id, query_features, result["metrics"]
+        )
+        result["superlative"] = self._build_superlative_contract(
+            query_features, extraction.get("params", {})
+        )
+        result["privacy_level"] = "individual" if route == ROUTE_REJECT else "aggregate"
+
         return result
 
     # ------------------------------------------------------------------
@@ -641,6 +649,54 @@ class IntentParser:
         if status == STATUS_NEEDS_CLARIFICATION or route == ROUTE_CLARIFICATION:
             return "SELECT 'NEEDS_CLARIFICATION' AS status;"
         return "SELECT 'DATA_GAP' AS status;"
+
+    def _build_metric_contract(
+        self, intent_id: str, query_features: dict, metrics: list
+    ) -> dict | None:
+        func: str | None = None
+        col: str | None = None
+
+        if metrics:
+            expr = str(metrics[0].get("expression") or "").upper()
+            for fn in ("STDDEV", "AVG", "MAX", "MIN", "SUM", "COUNT"):
+                if fn in expr:
+                    func = fn
+                    break
+            m = re.search(r"(?:STDDEV|AVG|MAX|MIN|SUM|COUNT)\(v\.(\w+)", expr)
+            if m:
+                col = m.group(1)
+
+        if func is None:
+            if query_features.get("asks_average"):
+                func = "AVG"
+            elif intent_id.startswith("max_"):
+                func = "MAX"
+            elif intent_id.startswith("min_"):
+                func = "MIN"
+            elif "stddev" in intent_id:
+                func = "STDDEV"
+            else:
+                func = "COUNT"
+
+        if col is None:
+            if "age" in intent_id:
+                col = "age"
+            elif "service_years" in intent_id:
+                col = "service_years"
+            else:
+                col = "employee_id"
+
+        return {"function": func, "column": col}
+
+    @staticmethod
+    def _build_superlative_contract(query_features: dict, params: dict) -> dict | None:
+        if params.get("result_limit") != 1:
+            return None
+        if query_features.get("asks_most"):
+            return {"type": "MAX", "limit": 1}
+        if query_features.get("asks_least"):
+            return {"type": "MIN", "limit": 1}
+        return {"type": "SUPERLATIVE", "limit": 1}
 
     def _guess_gap_intent(self, question: str, payload: JsonDict | None = None) -> str:
         payload = payload or {}

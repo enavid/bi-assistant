@@ -666,10 +666,12 @@ class LLMOrchestrator:
         context.sql_plan = plan
         _plan_source = str(plan.get("source") or "").lower()
         _sql_decision = (
-            "template"
+            "llm"
+            if _model_called is not None
+            else "template"
             if "template" in _plan_source
-            else "llm"
-            if any(x in _plan_source for x in ("generator", "llm"))
+            else "controlled_dynamic"
+            if "controlled_dynamic" in _plan_source
             else "rule"
         )
         _cov = context.coverage_result or {}

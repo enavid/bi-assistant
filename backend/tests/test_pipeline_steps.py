@@ -521,6 +521,99 @@ def test_intent_parser_contractor_count_routes_correctly(metadata_service):
 # ---------------------------------------------------------------------------
 
 
+# ---------------------------------------------------------------------------
+# 1.5 — Semantic Contract: intent_parser output must include standardized
+#        metric, superlative, and privacy_level fields.
+# ---------------------------------------------------------------------------
+
+
+def test_semantic_contract_has_metric_field(metadata_service):
+    """parse() must always include a 'metric' key with 'function' and 'column'."""
+    result = IntentParser(metadata_service=metadata_service).parse(
+        "میانگین سن کارکنان چقدر است؟"
+    )
+    assert "metric" in result, f"'metric' field missing from parse() output. Keys: {list(result.keys())}"
+    metric = result["metric"]
+    assert isinstance(metric, dict), f"'metric' must be a dict, got {type(metric)}"
+    assert "function" in metric, f"'metric' must have 'function' key, got: {metric}"
+
+
+def test_semantic_contract_metric_function_avg(metadata_service):
+    """'میانگین سن' → metric.function must be 'AVG'."""
+    result = IntentParser(metadata_service=metadata_service).parse(
+        "میانگین سن کارکنان چقدر است؟"
+    )
+    assert result.get("metric", {}).get("function") == "AVG", (
+        f"Expected metric.function=AVG, got: {result.get('metric')!r}"
+    )
+
+
+def test_semantic_contract_metric_function_count(metadata_service):
+    """'تعداد کارکنان' → metric.function must be 'COUNT'."""
+    result = IntentParser(metadata_service=metadata_service).parse(
+        "تعداد کل کارکنان چند نفر است؟"
+    )
+    assert result.get("metric", {}).get("function") == "COUNT", (
+        f"Expected metric.function=COUNT, got: {result.get('metric')!r}"
+    )
+
+
+def test_semantic_contract_has_superlative_for_most_question(metadata_service):
+    """'کدام دپارتمان بیشترین' → superlative field must be set with limit=1."""
+    result = IntentParser(metadata_service=metadata_service).parse(
+        "کدام دپارتمان بیشترین تعداد کارکنان را دارد؟"
+    )
+    assert "superlative" in result, (
+        f"'superlative' field missing for a 'بیشترین' question. Keys: {list(result.keys())}"
+    )
+    sup = result["superlative"]
+    assert sup is not None, "superlative must not be None for 'بیشترین' question"
+    assert sup.get("limit") == 1, f"superlative.limit must be 1, got: {sup!r}"
+
+
+def test_semantic_contract_superlative_none_for_plain_question(metadata_service):
+    """A plain non-superlative question must have superlative=None."""
+    result = IntentParser(metadata_service=metadata_service).parse(
+        "تعداد کارکنان در هر دپارتمان"
+    )
+    assert "superlative" in result, (
+        f"'superlative' key must always be present. Keys: {list(result.keys())}"
+    )
+    assert result["superlative"] is None, (
+        f"superlative must be None for plain question, got: {result['superlative']!r}"
+    )
+
+
+def test_semantic_contract_has_privacy_level(metadata_service):
+    """parse() must always include 'privacy_level' as 'aggregate' or 'individual'."""
+    for question in [
+        "تعداد کل کارکنان چند نفر است؟",
+        "میانگین سن کارکنان چقدر است؟",
+    ]:
+        result = IntentParser(metadata_service=metadata_service).parse(question)
+        assert "privacy_level" in result, (
+            f"'privacy_level' field missing. Keys: {list(result.keys())}"
+        )
+        assert result["privacy_level"] in {"aggregate", "individual"}, (
+            f"privacy_level must be 'aggregate' or 'individual', got: {result['privacy_level']!r}"
+        )
+
+
+def test_semantic_contract_privacy_level_individual_for_reject(metadata_service):
+    """Personal data questions (REJECT route) must have privacy_level='individual'."""
+    result = IntentParser(metadata_service=metadata_service).parse(
+        "لیست نام و کد ملی کارکنان را بده"
+    )
+    assert result.get("privacy_level") == "individual", (
+        f"Expected individual for personal data question, got: {result.get('privacy_level')!r}"
+    )
+
+
+# ---------------------------------------------------------------------------
+# BUG-007 — 2D GROUP BY: department × gender / department × education
+# ---------------------------------------------------------------------------
+
+
 def test_intent_parser_dept_gender_2d_routes_correctly(metadata_service):
     """'توزیع جنسیت در هر دپارتمان' must route to employee_count_by_department_gender."""
     for question in [
