@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import math
 import re
-import unicodedata
 from collections.abc import Mapping
 from dataclasses import asdict, dataclass, field
 from typing import Any
