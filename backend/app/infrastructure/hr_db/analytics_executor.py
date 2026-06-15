@@ -581,18 +581,25 @@ class QueryExecutor:
             conn, sql, params=params, max_rows=max_rows, close_after=True
         )
 
+    def _normalize_sync_url(self) -> str:
+        """Return a sync-driver-compatible URL by stripping async-only dialect specs."""
+        url = self.database_url or ""
+        return url.replace("postgresql+asyncpg://", "postgresql://", 1)
+
     def _execute_from_database_url(
         self, sql: str, params: Mapping[str, Any], max_rows: int
     ) -> JsonDict:
         if not self.database_url:
             raise QueryExecutorNotConfiguredError("database_url is empty.")
 
+        sync_url = self._normalize_sync_url()
+
         # Prefer SQLAlchemy if available because it works with multiple DB URLs.
         try:
             from sqlalchemy import create_engine  # type: ignore
 
             engine = create_engine(
-                self.database_url, pool_pre_ping=True, connect_args=self._sqlalchemy_connect_args()
+                sync_url, pool_pre_ping=True, connect_args=self._sqlalchemy_connect_args()
             )
             old_engine = self.engine
             self.engine = engine
@@ -608,14 +615,12 @@ class QueryExecutor:
             try:
                 import psycopg  # type: ignore
 
-                conn = psycopg.connect(self.database_url, application_name=self.config.app_name)
+                conn = psycopg.connect(sync_url, application_name=self.config.app_name)
             except Exception:
                 try:
                     import psycopg2  # type: ignore
 
-                    conn = psycopg2.connect(
-                        self.database_url, application_name=self.config.app_name
-                    )
+                    conn = psycopg2.connect(sync_url, application_name=self.config.app_name)
                 except Exception as exc:
                     raise QueryExecutorNotConfiguredError(
                         "Could not open database_url. Install SQLAlchemy, psycopg, or psycopg2 and verify the DSN. "
@@ -743,8 +748,11 @@ class QueryExecutor:
             )
 
     def _sqlalchemy_connect_args(self) -> JsonDict:
-        # Do not force connect_args for non-PostgreSQL URLs. SQLAlchemy will ignore or reject unknown args.
-        if self.database_url and self.database_url.startswith(("postgresql", "postgres")):
+        # asyncpg does not accept application_name via connect_args; use normalized sync URL instead.
+        url = self.database_url or ""
+        if "+asyncpg" in url:
+            return {}
+        if url.startswith(("postgresql", "postgres")):
             return {"application_name": self.config.app_name}
         return {}
 

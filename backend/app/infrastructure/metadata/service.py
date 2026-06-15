@@ -734,6 +734,20 @@ class MetadataService:
         text = re.sub(r"\s+", " ", text)
         return text
 
+    @staticmethod
+    def _term_in_text(term: str, text: str) -> bool:
+        """Return True if term appears in text, using word-boundary check for short terms.
+
+        Short single-word terms (≤3 chars) must not match as substrings inside
+        longer compound words — e.g. 'زن' must not match inside 'بازنشسته'.
+        """
+        if not term:
+            return False
+        if " " not in term and len(term) <= 3:
+            pattern = rf"(?<!\S){re.escape(term)}(?!\S)"
+            return bool(re.search(pattern, text))
+        return term in text
+
     def find_semantic_matches(self, question: str, *, max_matches: int = 20) -> list[JsonDict]:
         normalized = self.normalize_question(question)
         matches: list[JsonDict] = []
@@ -742,7 +756,9 @@ class MetadataService:
         for concept_id, concept in self._semantic_concepts_by_id.items():
             terms = concept.get("user_terms_fa", []) or []
             matched_terms = [
-                term for term in terms if isinstance(term, str) and term and term in normalized
+                term
+                for term in terms
+                if isinstance(term, str) and self._term_in_text(term, normalized)
             ]
             if matched_terms:
                 matches.append(

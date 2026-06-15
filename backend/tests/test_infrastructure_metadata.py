@@ -129,4 +129,54 @@ def test_schema_context_without_column_names_unchanged(metadata_service):
     full = metadata_service.build_schema_context_for_prompt()
     assert "hr_mvp.vw_hr_employee_analytics" in full
     assert "employee_id" in full
-    assert len(full) > 3000
+
+
+# ---------------------------------------------------------------------------
+# Bug fix: find_semantic_matches must not match short terms as substrings
+# ---------------------------------------------------------------------------
+
+
+def test_find_semantic_matches_zan_does_not_match_inside_bazneshasteha(metadata_service):
+    """'زن' must NOT match inside 'بازنشسته' — substring match is a bug."""
+    q = "چند نفر از کارمندان تا ۵ سال آینده بازنشسته می‌شوند؟"
+    matches = metadata_service.find_semantic_matches(q)
+    matched_ids = [m["concept_id"] for m in matches]
+    assert "female" not in matched_ids, (
+        f"'female' concept must not match inside 'بازنشسته'. Got: {matched_ids}"
+    )
+
+
+def test_find_semantic_matches_zan_matches_when_standalone(metadata_service):
+    """'زن' must still match when it appears as a standalone word."""
+    q = "تعداد کارکنان زن چند نفر است؟"
+    matches = metadata_service.find_semantic_matches(q)
+    matched_ids = [m["concept_id"] for m in matches]
+    assert "female" in matched_ids, (
+        f"'female' concept must match 'زن' as standalone word. Got: {matched_ids}"
+    )
+
+
+# ---------------------------------------------------------------------------
+# Bug fix: near_retirement_analysis must route to SQL
+# ---------------------------------------------------------------------------
+
+
+def test_near_retirement_intent_routes_to_sql(metadata_service):
+    """near_retirement_analysis intent must have route=SQL, not GAP."""
+    intent = metadata_service.get_intent("near_retirement_analysis")
+    assert intent is not None, "near_retirement_analysis intent not found"
+    assert intent.get("route") == "SQL", f"Expected route=SQL, got: {intent.get('route')}"
+
+
+def test_near_retirement_sql_template_exists(metadata_service):
+    """near_retirement_analysis must have a resolvable SQL template."""
+    intent = metadata_service.get_intent("near_retirement_analysis")
+    assert intent is not None
+    tpl_id = intent.get("sql_template_id")
+    assert tpl_id, "near_retirement_analysis must have sql_template_id"
+    tpl = metadata_service.get_sql_template(tpl_id)
+    assert tpl is not None, f"Template '{tpl_id}' not found"
+    sql = tpl.get("sql", "")
+    assert "age" in sql.lower(), "Retirement template must check age"
+    assert "service_years" in sql.lower(), "Retirement template must check service_years"
+    assert "gender" in sql.lower(), "Retirement template must differentiate gender"

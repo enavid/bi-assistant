@@ -1529,3 +1529,81 @@ async def test_llm_coverage_result_stored_on_context(metadata_service):
         f"coverage_result missing llm_coverage_status: {context.coverage_result}"
     )
     assert context.coverage_result["llm_coverage_status"] == "COMPLETE"
+
+
+# ---------------------------------------------------------------------------
+# Bug fix: near_retirement_analysis must NOT be a hardcoded GAP rule
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_retirement_question_routes_to_sql_not_gap(metadata_service):
+    """Retirement question must route to SQL, not GAP, via fallback parser."""
+    orchestrator = LLMOrchestrator(
+        metadata_service=metadata_service,
+        default_execute_sql=False,
+    )
+    result = await orchestrator.arun(
+        "چند نفر از کارمندان تا ۵ سال آینده بازنشسته می‌شوند؟"
+    )
+    ctx = result.context
+    intent_res = ctx.get("intent_result") or {}
+    assert isinstance(intent_res, dict), "intent_result must be a dict"
+    assert intent_res.get("route") != "GAP", (
+        f"Retirement question must not route to GAP. Got: {intent_res.get('route')}"
+    )
+    assert intent_res.get("intent_id") == "near_retirement_analysis", (
+        f"Wrong intent: {intent_res.get('intent_id')}"
+    )
+
+
+@pytest.mark.asyncio
+async def test_retirement_question_has_sql_template(metadata_service):
+    """Retirement question result must carry the SQL template reference."""
+    orchestrator = LLMOrchestrator(
+        metadata_service=metadata_service,
+        default_execute_sql=False,
+    )
+    result = await orchestrator.arun(
+        "تعداد کارکنان در آستانه بازنشستگی چند نفر است؟"
+    )
+    ctx = result.context
+    intent_res = ctx.get("intent_result") or {}
+    sql_plan = ctx.get("sql_plan") or {}
+    assert isinstance(intent_res, dict)
+    assert intent_res.get("sql_template_id") == "TPL_NEAR_RETIREMENT_5_YEARS", (
+        f"Expected template TPL_NEAR_RETIREMENT_5_YEARS, got: {intent_res.get('sql_template_id')}"
+    )
+
+
+# ---------------------------------------------------------------------------
+# Bug fix: explicit_gender must not fire on "بازنشسته" via substring "زن"
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_retirement_question_not_detected_as_gender(metadata_service):
+    """'بازنشسته' must not trigger gender detection via substring 'زن'."""
+    from app.hr_analytics.use_cases.steps.domain_classifier import DomainClassifier
+    from app.hr_analytics.use_cases.steps.intent_parser import IntentParser
+    from app.hr_analytics.use_cases.steps.question_validator import QuestionValidator
+    from app.hr_analytics.use_cases.steps.semantic_mapper import SemanticMapper
+
+    orchestrator = LLMOrchestrator(
+        metadata_service=metadata_service,
+        domain_classifier=DomainClassifier(),
+        question_validator=QuestionValidator(),
+        semantic_mapper=SemanticMapper(metadata_service=metadata_service),
+        intent_parser=IntentParser(metadata_service=metadata_service),
+        default_execute_sql=False,
+    )
+    result = await orchestrator.arun(
+        "چند نفر از کارمندان تا ۵ سال آینده بازنشسته می‌شوند؟"
+    )
+    ctx = result.context
+    intent_res = ctx.get("intent_result") or {}
+    assert isinstance(intent_res, dict)
+    assert intent_res.get("intent_id") == "near_retirement_analysis", (
+        f"Retirement question got wrong intent: {intent_res.get('intent_id')} "
+        f"(likely gender false-positive via 'زن' inside 'بازنشسته')"
+    )

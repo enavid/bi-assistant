@@ -77,8 +77,8 @@ data_gap_rules:
   - آستانه بازنشستگی
   - نزدیک بازنشستگی
   - در شرف بازنشستگی
-  status: DATA_GAP
-  reason_fa: قانون رسمی بازنشستگی بر اساس سن، سابقه، جنسیت و قواعد سازمانی هنوز در Metadata تعریف نشده است.
+  - بازنشستگی
+  status: available
 - concept: monthly_hiring_trend
   trigger_terms_fa:
   - روند جذب ماهانه

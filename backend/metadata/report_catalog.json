@@ -2107,13 +2107,13 @@
     {
       "report_id": "RPT_HR_014",
       "title_fa": "تحلیل آستانه بازنشستگی",
-      "description_fa": "تحلیل کارکنان نزدیک به بازنشستگی بر اساس قانون رسمی بازنشستگی.",
+      "description_fa": "تعداد کارکنانی که ظرف ۵ سال آینده به سن یا سنوات بازنشستگی می‌رسند (بر اساس قانون کار ایران).",
       "category": "retirement",
       "business_priority": "medium",
-      "demo_priority": 97,
+      "demo_priority": 14,
       "intent": "near_retirement_analysis",
-      "route": "GAP",
-      "status": "data_gap",
+      "route": "SQL",
+      "status": "ready_for_demo",
       "question_examples": [
         "چند نفر در آستانه بازنشستگی هستند؟",
         "آیا نیروی انسانی نزدیک بازنشستگی زیاد است؟",
@@ -2131,8 +2131,8 @@
       "group_by": [],
       "optional_group_by": [],
       "order_by": [],
-      "recommended_visualization": "status_message",
-      "sql_template_id": null,
+      "recommended_visualization": "kpi_card",
+      "sql_template_id": "TPL_NEAR_RETIREMENT_5_YEARS",
       "sql_template_variants": {},
       "output_grain": "aggregated",
       "privacy_level": "aggregated_non_sensitive",
@@ -2145,16 +2145,14 @@
       "limitations_fa": [],
       "notes_fa": [],
       "tags": [
-        "gap",
-        "retirement"
+        "sql",
+        "retirement",
+        "scalar"
       ],
       "validation_focus": [
-        "return_SELECT_DATA_GAP_status",
-        "do_not_guess_retirement_rule"
-      ],
-      "gap_reason_fa": "قانون رسمی بازنشستگی در Metadata فعلی تعریف نشده است؛ این قانون ممکن است به سن، سابقه، جنسیت و قواعد سازمانی وابسته باشد.",
-      "recommended_response_fa": "برای پاسخ دقیق، باید قانون بازنشستگی بر اساس سن، سابقه، جنسیت و قواعد سازمانی مشخص و در Metadata ثبت شود.",
-      "expected_status": "DATA_GAP"
+        "returns_scalar_count",
+        "uses_retirement_thresholds_from_iranian_law"
+      ]
     },
     {
       "report_id": "RPT_HR_013",

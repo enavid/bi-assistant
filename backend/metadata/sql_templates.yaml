@@ -1105,6 +1105,22 @@ templates:
     \ AS employee_count\nFROM hr_mvp.vw_hr_employee_analytics v\nWHERE v.is_active\
     \ = TRUE\nGROUP BY v.department_name, v.employment_type\nORDER BY v.department_name,\
     \ employee_count DESC;\n"
+- template_id: TPL_NEAR_RETIREMENT_5_YEARS
+  route: SQL
+  status: ready_for_demo
+  title_fa: تعداد کارکنان در آستانه بازنشستگی (ظرف ۵ سال)
+  output_type: scalar
+  required_columns:
+  - employee_id
+  - age
+  - service_years
+  - gender
+  - is_active
+  sql: "SELECT COUNT(v.employee_id) AS near_retirement_count\nFROM hr_mvp.vw_hr_employee_analytics\
+    \ v\nWHERE v.is_active = TRUE\n  AND (\n    (v.gender = 'زن'  AND v.age\
+    \ >= 50)\n    OR (v.gender = 'مرد' AND v.age >= 55)\n    OR (v.gender\
+    \ = 'زن'  AND v.service_years >= 25)\n    OR (v.gender = 'مر\
+    د' AND v.service_years >= 30)\n  );\n"
 status_templates:
 - template_id: TPL_DATA_GAP
   route: GAP
@@ -1140,7 +1156,7 @@ status_templates:
     '
 gap_and_reject_mapping:
   city_level_analysis: TPL_DATA_GAP
-  near_retirement_analysis: TPL_DATA_GAP
+
   workforce_aging_trend_analysis: TPL_DATA_GAP
   education_training_need_analysis: TPL_DATA_GAP
   department_balance_analysis: TPL_DATA_GAP

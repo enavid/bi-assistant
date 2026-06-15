@@ -134,7 +134,6 @@ TERMINAL_STATUS_TO_INTENT: dict[str, tuple[str, str, str]] = {
 
 DATA_GAP_INTENT_KEYWORDS: list[tuple[str, list[str]]] = [
     ("city_level_analysis", ["شهر", "شهری", "هر شهر"]),
-    ("near_retirement_analysis", ["بازنشستگی", "آستانه بازنشستگی", "نزدیک بازنشستگی"]),
     (
         "contractor_productivity_analysis",
         ["بهره وری پیمانکار", "بهره وری پیمانکاری", "عملکرد پیمانکار"],
@@ -766,7 +765,10 @@ class IntentParser:
                 "explicit_province": "استان" in question,
                 "explicit_city": "شهر" in question,
                 "explicit_work_location": "محل خدمت" in question or "سایت" in question,
-                "explicit_gender": self._has_any(question, ["جنسیت", "زن", "مرد", "خانم", "آقا"]),
+                "explicit_gender": any(
+                    self._term_in_question(question, t)
+                    for t in ["جنسیت", "زن", "مرد", "خانم", "آقا"]
+                ),
                 "explicit_age": self._has_any(
                     question, ["سن", "سنی", "سال به بالا", "زیر", "بالای"]
                 ),
@@ -890,7 +892,7 @@ class IntentParser:
         if f.get("explicit_city"):
             add(("city_level_analysis", 90, "city_level_data_gap"))
         if self._has_any(question, ["بازنشستگی", "نزدیک بازنشستگی", "آستانه بازنشستگی"]):
-            add(("near_retirement_analysis", 90, "retirement_rule_gap"))
+            add(("near_retirement_analysis", 90, "retirement_keywords"))
         if self._has_any(question, ["بهره وری پیمانکار", "بهره وری پیمانکاری", "عملکرد پیمانکار"]):
             add(("contractor_productivity_analysis", 90, "contractor_productivity_gap"))
         if self._has_any(question, ["افزایش کار", "رشد کار", "حجم کار"]):

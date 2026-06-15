@@ -151,11 +151,10 @@ cases:
 
   - id: gap-near-retirement
     question: "کارکنان در آستانه بازنشستگی چند نفرند؟"
-    category: data_gap
-    description: Retirement threshold not officially defined yet
+    category: sql
+    description: Retirement query — now has SQL template (Iranian law thresholds)
     expect:
-      route: GAP
-      status: DATA_GAP
+      route: SQL
 
   - id: gap-monthly-hiring
     question: "جذب ماهانه کارکنان در سال گذشته چند نفر بوده؟"
@@ -175,11 +174,10 @@ cases:
 
   - id: gap-retirement-threshold
     question: "کارکنانی که به زودی بازنشسته می‌شوند چند نفرند؟"
-    category: data_gap
-    description: Retirement soon — same near_retirement gap
+    category: sql
+    description: Retirement soon — maps to near_retirement_analysis SQL template
     expect:
-      route: GAP
-      status: DATA_GAP
+      route: SQL
 
   # ---------------------------------------------------------------------------
   # ANALYTICAL_GAP — HR question but analytical index/method not defined

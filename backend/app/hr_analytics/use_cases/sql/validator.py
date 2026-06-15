@@ -213,7 +213,6 @@ class SQLValidator:
 
     DATA_GAP_QUESTION_PATTERNS = {
         "city_level_analysis": ["شهر", "شهری", "هر شهر"],
-        "near_retirement_analysis": ["بازنشستگی", "بازنشسته", "آستانه بازنشستگی"],
         "contractor_productivity_analysis": [
             "بهره وری",
             "بهره‌وری",

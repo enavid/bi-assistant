@@ -1552,31 +1552,33 @@ intents:
   gap_reason: در داده MVP فعلی، city به‌عنوان داده قابل اتکا برای تحلیل شهری تأیید نشده است.
   expected_status_sql: SELECT 'DATA_GAP' AS status;
 - intent_id: near_retirement_analysis
-  title_fa: تحلیل آستانه بازنشستگی
-  description_fa: تحلیل آستانه بازنشستگی
-  route: GAP
-  status: data_gap
+  title_fa: تعداد کارکنان در آستانه بازنشستگی
+  description_fa: تعداد کارکنانی که ظرف ۵ سال آینده به سن یا سنوات بازنشستگی می‌رسند
+  route: SQL
+  status: active
   question_type: analytical
   priority: high
-  supported_in_phase2: false
+  supported_in_phase2: true
   demo_ready: true
+  sql_template_id: TPL_NEAR_RETIREMENT_5_YEARS
   user_examples:
   - چند نفر در آستانه بازنشستگی هستند؟
+  - چند نفر از کارمندان تا ۵ سال آینده بازنشسته می‌شوند؟
   - آیا نیروی انسانی نزدیک بازنشستگی زیاد است؟
   - ریسک بازنشستگی کارکنان چقدر است؟
   trigger_terms_fa:
   - آستانه بازنشستگی
   - نزدیک بازنشستگی
   - ریسک بازنشستگی
+  - بازنشسته می‌شوند
+  - بازنشستگی
   required_columns:
   - age
   - service_years
   - gender
-  output_type: status_message
-  recommended_visualization: status_message
+  output_type: scalar
+  recommended_visualization: kpi_card
   report_id: RPT_HR_014
-  gap_reason: قانون رسمی بازنشستگی بر اساس سن، سابقه، جنسیت و قواعد سازمانی در Metadata تعریف نشده است.
-  expected_status_sql: SELECT 'DATA_GAP' AS status;
 - intent_id: workforce_aging_trend_analysis
   title_fa: تحلیل حرکت ساختار کارکنان به سمت سالخوردگی
   description_fa: تحلیل حرکت ساختار کارکنان به سمت سالخوردگی
@@ -2069,7 +2071,8 @@ report_catalog_alignment:
     route: GAP
   - report_id: RPT_HR_014
     intent_id: near_retirement_analysis
-    route: GAP
+    sql_template_id: TPL_NEAR_RETIREMENT_5_YEARS
+    route: SQL
   important_sync_note_fa: در sql_templates.yaml باید شناسه TPL_CONTRACTOR_SHARE برای سهم کلی پیمانکاری وجود داشته باشد و در
     صورت نیاز TPL_CONTRACTOR_SHARE_BY_SERVICE_DOMAIN برای تفکیک حوزه اضافه شود.
 evaluation_goldset_alignment:

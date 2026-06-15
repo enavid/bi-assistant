@@ -473,9 +473,9 @@ semantic_concepts:
   ambiguity_notes_fa: برای ۶۰ سال به بالا از v.age >= 60 استفاده شود.
 - concept_id: near_retirement
   title_fa: آستانه بازنشستگی
-  category: gap
+  category: analytical
   priority: high
-  data_status: data_gap
+  data_status: available
   user_terms_fa:
   - آستانه بازنشستگی
   - نزدیک بازنشستگی
@@ -483,14 +483,17 @@ semantic_concepts:
   - آماده بازنشستگی
   - بازنشستگی نزدیک
   - قابل بازنشستگی
+  - بازنشسته می‌شوند
+  - بازنشسته خواهند شد
+  - تا ۵ سال آینده بازنشسته
+  - بازنشستگی
   maps_to:
-    route: GAP
-    response_status: DATA_GAP
-    required_missing_definition: retirement_rule
+    route: SQL
+    column: age
+    metric: COUNT(v.employee_id)
     related_intents:
     - near_retirement_analysis
-    reason_fa: در MVP فعلی قانون رسمی بازنشستگی بر اساس سن، سابقه، جنسیت و قواعد سازمانی تعریف نشده است.
-  default_output_type: status_message
+  default_output_type: kpi_card
 - concept_id: education
   title_fa: تحصیلات
   category: education
