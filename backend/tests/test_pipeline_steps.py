@@ -514,3 +514,64 @@ def test_intent_parser_contractor_count_routes_correctly(metadata_service):
     assert "is_contractor" in columns, (
         f"Expected is_contractor filter. Got: {filters}"
     )
+
+
+# ---------------------------------------------------------------------------
+# BUG-007 — 2D GROUP BY: department × gender / department × education
+# ---------------------------------------------------------------------------
+
+
+def test_intent_parser_dept_gender_2d_routes_correctly(metadata_service):
+    """'توزیع جنسیت در هر دپارتمان' must route to employee_count_by_department_gender."""
+    for question in [
+        "توزیع جنسیت در هر دپارتمان",
+        "تعداد کارکنان به تفکیک دپارتمان و جنسیت",
+    ]:
+        result = IntentParser(metadata_service=metadata_service).parse(question)
+        intent = result.get("intent_id") or result.get("intent")
+        assert intent == "employee_count_by_department_gender", (
+            f"{question!r} → expected employee_count_by_department_gender, got {intent!r}"
+        )
+
+
+def test_intent_parser_dept_education_2d_routes_correctly(metadata_service):
+    """'توزیع مدرک در هر دپارتمان' must route to employee_count_by_department_education."""
+    for question in [
+        "توزیع مدرک تحصیلی در هر دپارتمان",
+        "تعداد کارکنان به تفکیک دپارتمان و مدرک تحصیلی",
+    ]:
+        result = IntentParser(metadata_service=metadata_service).parse(question)
+        intent = result.get("intent_id") or result.get("intent")
+        assert intent == "employee_count_by_department_education", (
+            f"{question!r} → expected employee_count_by_department_education, got {intent!r}"
+        )
+
+
+def test_orchestrator_dept_gender_sql_has_two_group_by_columns(metadata_service):
+    """'توزیع جنسیت در هر دپارتمان' SQL must GROUP BY both department_name and gender."""
+    orch = LLMOrchestrator(
+        metadata_service=metadata_service,
+        intent_parser=IntentParser(metadata_service=metadata_service),
+        default_execute_sql=False,
+    )
+    result = orch.run("توزیع جنسیت در هر دپارتمان")
+    d = result.to_dict() if hasattr(result, "to_dict") else result
+    sql = (d.get("generated_sql") or "").lower()
+    assert "department_name" in sql, f"SQL must contain department_name, got: {sql[:200]}"
+    assert "gender" in sql, f"SQL must contain gender, got: {sql[:200]}"
+    assert "group by" in sql, f"SQL must contain GROUP BY, got: {sql[:200]}"
+
+
+def test_orchestrator_dept_education_sql_has_two_group_by_columns(metadata_service):
+    """'توزیع مدرک در هر دپارتمان' SQL must GROUP BY both department_name and education_title."""
+    orch = LLMOrchestrator(
+        metadata_service=metadata_service,
+        intent_parser=IntentParser(metadata_service=metadata_service),
+        default_execute_sql=False,
+    )
+    result = orch.run("توزیع مدرک تحصیلی در هر دپارتمان")
+    d = result.to_dict() if hasattr(result, "to_dict") else result
+    sql = (d.get("generated_sql") or "").lower()
+    assert "department_name" in sql, f"SQL must contain department_name, got: {sql[:200]}"
+    assert "education" in sql, f"SQL must contain education, got: {sql[:200]}"
+    assert "group by" in sql, f"SQL must contain GROUP BY, got: {sql[:200]}"

@@ -733,3 +733,35 @@ cases:
       must_include_sql:
         - "gender"
         - "marital_status"
+
+  # ---------------------------------------------------------------------------
+  # BUG-007 — 2D GROUP BY: department × gender and department × education
+  # ---------------------------------------------------------------------------
+
+  - id: sql-dept-gender-2d
+    question: "توزیع جنسیت در هر دپارتمان"
+    category: sql
+    description: 2D GROUP BY — must produce GROUP BY department_name, gender (not filter by gender)
+    expect:
+      route: SQL
+      intent: employee_count_by_department_gender
+      expected_metric: "COUNT"
+      expected_group_by: ["department_name", "gender"]
+      must_include_sql:
+        - "department_name"
+        - "gender"
+        - "GROUP BY"
+
+  - id: sql-dept-education-2d
+    question: "توزیع مدرک تحصیلی در هر دپارتمان"
+    category: sql
+    description: 2D GROUP BY — must produce GROUP BY department_name, education_title
+    expect:
+      route: SQL
+      intent: employee_count_by_department_education
+      expected_metric: "COUNT"
+      expected_group_by: ["department_name", "education_title"]
+      must_include_sql:
+        - "department_name"
+        - "education_title"
+        - "GROUP BY"
