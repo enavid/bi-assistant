@@ -75,7 +75,49 @@ def _mismatches(payload: dict, expect: dict) -> list[str]:
             if sql and term.lower() in sql.lower():
                 errors.append(f"must_not_include_sql  term={term!r}  found in generated SQL")
 
+    if "expected_filters" in expect:
+        for col in (expect["expected_filters"] or []):
+            if not sql:
+                errors.append(f"expected_filters  col={col!r}  but generated_sql is empty/absent")
+            elif col.lower() not in sql.lower():
+                errors.append(f"expected_filters  col={col!r}  not found in generated SQL")
+
+    if "expected_metric" in expect:
+        metric = expect["expected_metric"]
+        if metric:
+            if not sql:
+                errors.append(
+                    f"expected_metric  metric={metric!r}  but generated_sql is empty/absent"
+                )
+            elif metric.lower() not in sql.lower():
+                errors.append(f"expected_metric  metric={metric!r}  not found in generated SQL")
+
+    if "expected_group_by" in expect:
+        cols = expect["expected_group_by"] or []
+        if cols:
+            if not sql:
+                errors.append(
+                    f"expected_group_by  cols={cols!r}  but generated_sql is empty/absent"
+                )
+            else:
+                if "group by" not in sql.lower():
+                    errors.append(
+                        f"expected_group_by  'GROUP BY' not found in generated SQL (cols={cols!r})"
+                    )
+                for col in cols:
+                    if col.lower() not in sql.lower():
+                        errors.append(
+                            f"expected_group_by  col={col!r}  not found in generated SQL"
+                        )
+
     return errors
+
+
+def _needs_review(case: dict, expect: dict) -> bool:
+    """True when an SQL case has no structured semantic expectations yet."""
+    if case.get("category") != "sql":
+        return False
+    return not any(k in expect for k in ("expected_filters", "expected_metric", "expected_group_by"))
 
 
 # ---------------------------------------------------------------------------
@@ -91,6 +133,7 @@ def test_routing(request: pytest.FixtureRequest, orchestrator: Any, case: dict[s
     description = case.get("description", "")
 
     payload = _run(orchestrator, question)
+    payload = {**payload, "needs_review": _needs_review(case, expect)}
 
     # Expose payload to conftest hook for the results table.
     request.node._eval_payload = payload  # type: ignore[attr-defined]

@@ -7,6 +7,8 @@ from collections.abc import Mapping
 from dataclasses import asdict, dataclass, field
 from typing import Any
 
+from app.core.persian_normalizer import normalize as _shared_normalize
+
 """
 domain_classifier.py
 --------------------
@@ -492,29 +494,10 @@ class DomainClassifier:
 
 
 def normalize_fa_text(text: str) -> str:
-    """Normalize Persian/Arabic text and digits for deterministic matching."""
+    """Normalize Persian/Arabic text using the shared pipeline normalizer."""
     if text is None:
         return ""
-    value = unicodedata.normalize("NFKC", str(text))
-    replacements = {
-        "ي": "ی",
-        "ى": "ی",
-        "ك": "ک",
-        "ۀ": "ه",
-        "ة": "ه",
-        "ؤ": "و",
-        "أ": "ا",
-        "إ": "ا",
-        "آ": "آ",
-        "‌": " ",  # zero-width non-joiner to ordinary space for matching
-        "ـ": "",
-    }
-    for src, dst in replacements.items():
-        value = value.replace(src, dst)
-    value = translate_digits_to_ascii(value)
-    value = re.sub(r"[\t\r\n]+", " ", value)
-    value = re.sub(r"\s+", " ", value).strip()
-    return value
+    return _shared_normalize(str(text))
 
 
 def translate_digits_to_ascii(text: str) -> str:
@@ -588,6 +571,7 @@ def _build_hr_terms() -> list[WeightedTerm]:
         "وضعیت تاهل",
         "وضعیت تأهل",
         "بازنشستگی",
+        "بازنشسته",
         "چارت مصوب",
         "کمبود نیرو",
         "نیروی موجود",

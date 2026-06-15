@@ -55,6 +55,7 @@ def pytest_runtest_makereport(item: pytest.Item, call: pytest.CallInfo) -> Any: 
             "got_status": payload.get("status", "—"),
             "got_intent": payload.get("detected_intent") or payload.get("intent") or "—",
             "passed": report.passed,
+            "needs_review": payload.get("needs_review", False),
         }
     )
 
@@ -113,10 +114,17 @@ def pytest_terminal_summary(terminalreporter: Any, exitstatus: int, config: Any)
             got_i = str(r["got_intent"])
             exp = r["expect"]
 
-            mark = "✓" if r["passed"] else "✗"
+            if r["passed"] and r.get("needs_review"):
+                mark = "?"
+            elif r["passed"]:
+                mark = "✓"
+            else:
+                mark = "✗"
             line = f"  {mark} {q:<{col_q}}  {got_r:<{col_r}}  {got_s:<{col_s}}  {got_i}"
 
-            if r["passed"]:
+            if r["passed"] and r.get("needs_review"):
+                tr.write_line(line, yellow=True)
+            elif r["passed"]:
                 tr.write_line(line, green=True)
             else:
                 tr.write_line(line, red=True)
@@ -136,10 +144,20 @@ def pytest_terminal_summary(terminalreporter: Any, exitstatus: int, config: Any)
     total_all = len(_RESULTS)
     passed_all = sum(1 for r in _RESULTS if r["passed"])
     failed_all = total_all - passed_all
+    review_all = sum(1 for r in _RESULTS if r["passed"] and r.get("needs_review"))
 
-    if failed_all == 0:
+    if failed_all == 0 and review_all == 0:
         tr.write_line(f"  All {total_all} routing cases passed.\n", bold=True, green=True)
-    else:
+    elif failed_all == 0:
         tr.write_line(
-            f"  {passed_all}/{total_all} passed,  {failed_all} failed.\n", bold=True, red=True
+            f"  All {total_all} routing cases passed  ({review_all} need more detail — marked ?).\n",
+            bold=True,
+            yellow=True,
+        )
+    else:
+        suffix = f"  ({review_all} need more detail)" if review_all else ""
+        tr.write_line(
+            f"  {passed_all}/{total_all} passed,  {failed_all} failed.{suffix}\n",
+            bold=True,
+            red=True,
         )

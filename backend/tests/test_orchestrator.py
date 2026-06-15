@@ -1607,3 +1607,145 @@ async def test_retirement_question_not_detected_as_gender(metadata_service):
         f"Retirement question got wrong intent: {intent_res.get('intent_id')} "
         f"(likely gender false-positive via 'زن' inside 'بازنشسته')"
     )
+
+
+# ---------------------------------------------------------------------------
+# Bug fix: "باز نشسته" (split spelling) must route to near_retirement_analysis
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_retirement_split_spelling_routes_to_sql(metadata_service):
+    """'باز نشسته' (two words) must detect near_retirement_analysis, not age filter."""
+    from app.hr_analytics.use_cases.steps.intent_parser import IntentParser
+    from app.hr_analytics.use_cases.steps.semantic_mapper import SemanticMapper
+
+    orchestrator = LLMOrchestrator(
+        metadata_service=metadata_service,
+        semantic_mapper=SemanticMapper(metadata_service=metadata_service),
+        intent_parser=IntentParser(metadata_service=metadata_service),
+        default_execute_sql=False,
+    )
+    result = await orchestrator.arun(
+        "چند نفر از کارمندان تا 5 سال آینده باز نشسته میشوند؟"
+    )
+    ctx = result.context
+    intent_res = ctx.get("intent_result") or {}
+    assert intent_res.get("route") != "GAP", "retirement question must not be GAP"
+    assert intent_res.get("intent_id") == "near_retirement_analysis", (
+        f"split 'باز نشسته' got wrong intent: {intent_res.get('intent_id')}"
+    )
+
+
+@pytest.mark.asyncio
+async def test_retirement_no_half_space_routes_to_sql(metadata_service):
+    """'بازنشسته میشوند' (no half-space before میشوند) must still detect near_retirement_analysis."""
+    from app.hr_analytics.use_cases.steps.intent_parser import IntentParser
+    from app.hr_analytics.use_cases.steps.semantic_mapper import SemanticMapper
+
+    orchestrator = LLMOrchestrator(
+        metadata_service=metadata_service,
+        semantic_mapper=SemanticMapper(metadata_service=metadata_service),
+        intent_parser=IntentParser(metadata_service=metadata_service),
+        default_execute_sql=False,
+    )
+    result = await orchestrator.arun(
+        "چند نفر از کارمندان تا 5 سال آینده بازنشسته میشوند؟"
+    )
+    ctx = result.context
+    intent_res = ctx.get("intent_result") or {}
+    assert intent_res.get("intent_id") == "near_retirement_analysis", (
+        f"'بازنشسته میشوند' (no half-space) got wrong intent: {intent_res.get('intent_id')}"
+    )
+
+
+def test_normalize_text_splits_baz_neshaste():
+    """normalize_text must collapse 'باز نشسته' → 'بازنشسته'."""
+    from app.hr_analytics.use_cases.steps.intent_parser import IntentParser
+
+    ip = IntentParser.__new__(IntentParser)
+    result = ip.normalize_text("باز نشسته میشوند")
+    assert "بازنشسته" in result, f"expected 'بازنشسته' in '{result}'"
+
+
+# ---------------------------------------------------------------------------
+# Phase 1.2 — Persian colloquial verb normalization
+# ---------------------------------------------------------------------------
+
+
+def _norm(text: str) -> str:
+    from app.hr_analytics.use_cases.steps.intent_parser import IntentParser
+    ip = IntentParser.__new__(IntentParser)
+    return ip.normalize_text(text)
+
+
+def test_normalize_joins_mi_with_next_verb():
+    """'می شوند' (half-space already converted to space) → 'میشوند'."""
+    assert "میشوند" in _norm("می شوند")
+
+
+def test_normalize_joins_mi_from_halfspace():
+    """'می‌شوند' (half-space U+200C) → 'میشوند' after join."""
+    assert "میشوند" in _norm("می‌شوند")
+
+
+def test_normalize_colloquial_mishon():
+    assert "میشوند" in _norm("میشن")
+
+
+def test_normalize_colloquial_mishe():
+    assert "میشود" in _norm("میشه")
+
+
+def test_normalize_colloquial_hastan():
+    assert "هستند" in _norm("هستن")
+
+
+def test_normalize_colloquial_mikonan():
+    assert "میکنند" in _norm("میکنن")
+
+
+def test_normalize_colloquial_daran():
+    assert "دارند" in _norm("دارن")
+
+
+def test_normalize_colloquial_bashn():
+    assert "بشوند" in _norm("بشن")
+
+
+@pytest.mark.asyncio
+async def test_retirement_colloquial_mishon_routes_correctly(metadata_service):
+    """'بازنشسته میشن' must route to near_retirement_analysis."""
+    from app.hr_analytics.use_cases.steps.intent_parser import IntentParser
+    from app.hr_analytics.use_cases.steps.semantic_mapper import SemanticMapper
+
+    orchestrator = LLMOrchestrator(
+        metadata_service=metadata_service,
+        semantic_mapper=SemanticMapper(metadata_service=metadata_service),
+        intent_parser=IntentParser(metadata_service=metadata_service),
+        default_execute_sql=False,
+    )
+    result = await orchestrator.arun("چند نفر از کارمندان تا 5 سال آینده بازنشسته میشن؟")
+    intent_res = result.context.get("intent_result") or {}
+    assert intent_res.get("intent_id") == "near_retirement_analysis", (
+        f"colloquial 'میشن' got wrong intent: {intent_res.get('intent_id')}"
+    )
+
+
+@pytest.mark.asyncio
+async def test_retirement_colloquial_baz_neshaste_mishon(metadata_service):
+    """'باز نشسته میشن' (split word + colloquial) must route to near_retirement_analysis."""
+    from app.hr_analytics.use_cases.steps.intent_parser import IntentParser
+    from app.hr_analytics.use_cases.steps.semantic_mapper import SemanticMapper
+
+    orchestrator = LLMOrchestrator(
+        metadata_service=metadata_service,
+        semantic_mapper=SemanticMapper(metadata_service=metadata_service),
+        intent_parser=IntentParser(metadata_service=metadata_service),
+        default_execute_sql=False,
+    )
+    result = await orchestrator.arun("چند نفر از کارمندان تا 5 سال آینده باز نشسته میشن؟")
+    intent_res = result.context.get("intent_result") or {}
+    assert intent_res.get("intent_id") == "near_retirement_analysis", (
+        f"'باز نشسته میشن' got wrong intent: {intent_res.get('intent_id')}"
+    )

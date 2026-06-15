@@ -8,6 +8,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from app.core.persian_normalizer import normalize as _shared_normalize
 from app.infrastructure.metadata.service import MetadataService, get_metadata_service
 
 """
@@ -401,33 +402,11 @@ class IntentParser:
 
     @staticmethod
     def normalize_text(text: str) -> str:
-        text = str(text or "")
-        replacements = {
-            "ي": "ی",
-            "ى": "ی",
-            "ك": "ک",
-            "ۀ": "ه",
-            "ة": "ه",
-            "ؤ": "و",
-            "إ": "ا",
-            "أ": "ا",
-            "ٱ": "ا",
-            "‌": " ",
-            "–": "-",
-            "—": "-",
-            "“": '"',
-            "”": '"',
-            "‘": "'",
-            "’": "'",
-        }
-        for src, dst in replacements.items():
-            text = text.replace(src, dst)
-        text = text.translate(DIGIT_TRANSLATION)
+        text = _shared_normalize(text)
+        # Convert Persian number words to digits (intent-parser specific, used for
+        # parameter extraction — e.g. "پنج سال" → "5 سال").
         for word, value in sorted(PERSIAN_NUMBER_WORDS.items(), key=lambda item: -len(item[0])):
             text = re.sub(rf"(?<!\S){re.escape(word)}(?=\s*(?:سال|تا|و|$))", str(value), text)
-        text = re.sub(r"[\t\r\n]+", " ", text)
-        text = re.sub(r"[؟?؛;،,]+", " ", text)
-        text = re.sub(r"\s+", " ", text)
         return text.strip()
 
     # ------------------------------------------------------------------
@@ -891,7 +870,7 @@ class IntentParser:
 
         if f.get("explicit_city"):
             add(("city_level_analysis", 90, "city_level_data_gap"))
-        if self._has_any(question, ["بازنشستگی", "نزدیک بازنشستگی", "آستانه بازنشستگی"]):
+        if self._has_any(question, ["بازنشستگی", "بازنشسته", "نزدیک بازنشستگی", "آستانه بازنشستگی"]):
             add(("near_retirement_analysis", 90, "retirement_keywords"))
         if self._has_any(question, ["بهره وری پیمانکار", "بهره وری پیمانکاری", "عملکرد پیمانکار"]):
             add(("contractor_productivity_analysis", 90, "contractor_productivity_gap"))

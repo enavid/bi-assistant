@@ -10,6 +10,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from app.core.persian_normalizer import normalize as _shared_normalize
+
 """
 metadata_service.py
 -------------------
@@ -718,21 +720,7 @@ class MetadataService:
     # ------------------------------------------------------------------
 
     def normalize_question(self, question: str) -> str:
-        text = question.strip()
-        replacements = {
-            "ي": "ی",
-            "ك": "ک",
-            "ة": "ه",
-            "ۀ": "ه",
-            "ؤ": "و",
-            "إ": "ا",
-            "أ": "ا",
-            "آ": "آ",
-        }
-        for src, dst in replacements.items():
-            text = text.replace(src, dst)
-        text = re.sub(r"\s+", " ", text)
-        return text
+        return _shared_normalize(question)
 
     @staticmethod
     def _term_in_text(term: str, text: str) -> bool:
@@ -740,13 +728,19 @@ class MetadataService:
 
         Short single-word terms (≤3 chars) must not match as substrings inside
         longer compound words — e.g. 'زن' must not match inside 'بازنشسته'.
+
+        Both term and text must be in the same normalized form (shared normalizer)
+        so Persian digits, Arabic chars, etc. do not cause false mismatches.
         """
         if not term:
             return False
-        if " " not in term and len(term) <= 3:
-            pattern = rf"(?<!\S){re.escape(term)}(?!\S)"
+        normalized_term = _shared_normalize(term)
+        if not normalized_term:
+            return False
+        if " " not in normalized_term and len(normalized_term) <= 3:
+            pattern = rf"(?<!\S){re.escape(normalized_term)}(?!\S)"
             return bool(re.search(pattern, text))
-        return term in text
+        return normalized_term in text
 
     def find_semantic_matches(self, question: str, *, max_matches: int = 20) -> list[JsonDict]:
         normalized = self.normalize_question(question)

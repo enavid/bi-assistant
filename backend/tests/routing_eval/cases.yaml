@@ -155,6 +155,8 @@ cases:
     description: Retirement query — now has SQL template (Iranian law thresholds)
     expect:
       route: SQL
+      intent: near_retirement_analysis
+      expected_metric: "COUNT"
 
   - id: gap-monthly-hiring
     question: "جذب ماهانه کارکنان در سال گذشته چند نفر بوده؟"
@@ -178,6 +180,8 @@ cases:
     description: Retirement soon — maps to near_retirement_analysis SQL template
     expect:
       route: SQL
+      intent: near_retirement_analysis
+      expected_metric: "COUNT"
 
   # ---------------------------------------------------------------------------
   # ANALYTICAL_GAP — HR question but analytical index/method not defined
@@ -236,6 +240,8 @@ cases:
     expect:
       route: SQL
       intent: total_employee_count
+      expected_metric: "COUNT"
+      expected_group_by: []
       must_include_sql:
         - "COUNT"
         - "is_active"
@@ -255,6 +261,8 @@ cases:
     expect:
       route: SQL
       intent: average_age
+      expected_metric: "AVG"
+      expected_group_by: []
       must_include_sql:
         - "AVG"
         - "age"
@@ -267,6 +275,8 @@ cases:
     expect:
       route: SQL
       intent: employee_count_by_age_filter
+      expected_filters: ["age"]
+      expected_metric: "COUNT"
       must_include_sql:
         - "age"
         - "is_active"
@@ -278,6 +288,8 @@ cases:
     expect:
       route: SQL
       intent: employee_count_by_age_filter
+      expected_filters: ["age"]
+      expected_metric: "COUNT"
       must_include_sql:
         - "age"
         - "is_active"
@@ -345,6 +357,8 @@ cases:
     expect:
       route: SQL
       intent: average_service_years
+      expected_metric: "AVG"
+      expected_group_by: []
       must_include_sql:
         - "AVG"
         - "service_years"
@@ -357,6 +371,8 @@ cases:
     expect:
       route: SQL
       intent: employee_count_by_department
+      expected_metric: "COUNT"
+      expected_group_by: ["department_name"]
       must_include_sql:
         - "department_name"
         - "GROUP BY"
@@ -384,6 +400,8 @@ cases:
     expect:
       route: SQL
       intent: employee_count_by_province
+      expected_metric: "COUNT"
+      expected_group_by: ["province"]
       must_include_sql:
         - "province"
         - "GROUP BY"
@@ -395,6 +413,8 @@ cases:
     expect:
       route: SQL
       intent: employee_count_by_contract_type
+      expected_metric: "COUNT"
+      expected_group_by: ["contract_type"]
       must_include_sql:
         - "contract_type"
         - "GROUP BY"
@@ -405,6 +425,8 @@ cases:
     description: Headcount by gender (count not percentage)
     expect:
       route: SQL
+      expected_metric: "COUNT"
+      expected_group_by: ["gender"]
       must_include_sql:
         - "gender"
         - "GROUP BY"
@@ -416,6 +438,8 @@ cases:
     expect:
       route: SQL
       intent: employee_count_by_education
+      expected_metric: "COUNT"
+      expected_group_by: ["education"]
       must_include_sql:
         - "education"
         - "GROUP BY"
@@ -434,10 +458,13 @@ cases:
     expect:
       route: SQL
       intent: max_age
+      expected_metric: "MAX"
       must_include_sql:
         - "MAX"
         - "age"
         - "is_active"
+      must_not_include_sql:
+        - "COUNT"
 
   - id: sql-min-age
     question: "کمترین سن کارمندان چقدر است؟"
@@ -446,10 +473,13 @@ cases:
     expect:
       route: SQL
       intent: min_age
+      expected_metric: "MIN"
       must_include_sql:
         - "MIN"
         - "age"
         - "is_active"
+      must_not_include_sql:
+        - "COUNT"
 
   - id: sql-stddev-age
     question: "انحراف معیار سن کارمندان چقدر است؟"
@@ -458,6 +488,7 @@ cases:
     expect:
       route: SQL
       intent: stddev_age
+      expected_metric: "STDDEV"
       must_include_sql:
         - "STDDEV"
         - "age"
@@ -469,6 +500,8 @@ cases:
     description: Avg age grouped by department — template must produce GROUP BY department_name
     expect:
       route: SQL
+      expected_metric: "AVG"
+      expected_group_by: ["department_name"]
       must_include_sql:
         - "AVG"
         - "department_name"
@@ -480,6 +513,9 @@ cases:
     description: Female headcount by department — template must filter gender AND group by dept
     expect:
       route: SQL
+      expected_filters: ["gender"]
+      expected_metric: "COUNT"
+      expected_group_by: ["department_name"]
       must_include_sql:
         - "gender"
         - "department_name"
@@ -491,6 +527,9 @@ cases:
     description: Under-30 count per department — needs age filter + dept grouping
     expect:
       route: SQL
+      expected_filters: ["age"]
+      expected_metric: "COUNT"
+      expected_group_by: ["department_name"]
       must_include_sql:
         - "age"
         - "department_name"
@@ -502,6 +541,8 @@ cases:
     description: Employment type distribution per department — two-dimension grouping
     expect:
       route: SQL
+      expected_metric: "COUNT"
+      expected_group_by: ["employment_type"]
       must_include_sql:
         - "employment_type"
         - "department_name"
@@ -538,6 +579,8 @@ cases:
     expect:
       route: SQL
       intent: employee_count_by_service_years_filter
+      expected_filters: ["service_years"]
+      expected_metric: "COUNT"
       must_include_sql:
         - "service_years"
         - "10"
@@ -549,6 +592,8 @@ cases:
     expect:
       route: SQL
       intent: employee_count_by_service_years_filter
+      expected_filters: ["service_years"]
+      expected_metric: "COUNT"
       must_include_sql:
         - "service_years"
         - "5"
@@ -561,6 +606,75 @@ cases:
     expect:
       route: SQL
       intent: employee_count_by_hire_year
+      expected_filters: ["hire_year"]
+      expected_metric: "COUNT"
       must_include_sql:
         - "hire_year"
         - "1400"
+
+  # ---------------------------------------------------------------------------
+  # NEW CASES — Phase 1.2
+  # ---------------------------------------------------------------------------
+
+  - id: sql-contractor-count
+    question: "تعداد کارکنان پیمانکار چند نفر است؟"
+    category: sql
+    description: Count of contractor employees — SQL must filter on is_contractor
+    expect:
+      route: SQL
+      expected_filters: ["is_contractor"]
+      expected_metric: "COUNT"
+      must_include_sql:
+        - "is_contractor"
+
+  - id: sql-avg-age-contractors
+    question: "میانگین سن پیمانکاران چقدر است؟"
+    category: sql
+    description: Average age of contractor employees — needs is_contractor filter and AVG(age)
+    expect:
+      route: SQL
+      expected_filters: ["is_contractor"]
+      expected_metric: "AVG"
+      must_include_sql:
+        - "is_contractor"
+        - "AVG"
+        - "age"
+
+  - id: sql-headcount-by-marital-status
+    question: "تعداد کارکنان بر اساس وضعیت تاهل"
+    category: sql
+    description: Headcount grouped by marital status
+    expect:
+      route: SQL
+      intent: employee_count_by_marital_status
+      expected_metric: "COUNT"
+      expected_group_by: ["marital_status"]
+      must_include_sql:
+        - "marital_status"
+        - "GROUP BY"
+
+  - id: sql-service-years-10-20
+    question: "تعداد کارکنان با سابقه بین ۱۰ تا ۲۰ سال چند نفر است؟"
+    category: sql
+    description: Service years BETWEEN 10 and 20 — SQL must contain both boundary values
+    expect:
+      route: SQL
+      intent: employee_count_by_service_years_filter
+      expected_filters: ["service_years"]
+      expected_metric: "COUNT"
+      must_include_sql:
+        - "service_years"
+        - "10"
+        - "20"
+
+  - id: sql-female-married
+    question: "تعداد زنان متأهل چند نفر است؟"
+    category: sql
+    description: Compound filter — female employees who are married; SQL needs both gender and marital_status
+    expect:
+      route: SQL
+      expected_filters: ["gender", "marital_status"]
+      expected_metric: "COUNT"
+      must_include_sql:
+        - "gender"
+        - "marital_status"
