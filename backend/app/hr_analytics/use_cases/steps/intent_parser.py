@@ -870,7 +870,9 @@ class IntentParser:
 
         if f.get("explicit_city"):
             add(("city_level_analysis", 90, "city_level_data_gap"))
-        if self._has_any(question, ["بازنشستگی", "بازنشسته", "نزدیک بازنشستگی", "آستانه بازنشستگی"]):
+        if self._has_any(
+            question, ["بازنشستگی", "بازنشسته", "نزدیک بازنشستگی", "آستانه بازنشستگی"]
+        ):
             add(("near_retirement_analysis", 90, "retirement_keywords"))
         if self._has_any(question, ["بهره وری پیمانکار", "بهره وری پیمانکاری", "عملکرد پیمانکار"]):
             add(("contractor_productivity_analysis", 90, "contractor_productivity_gap"))

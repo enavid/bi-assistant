@@ -24,7 +24,7 @@ _ARABIC_TO_PERSIAN: dict[str, str] = {
     "أ": "ا",
     "إ": "ا",
     "ٱ": "ا",
-    "‌": " ",   # ZWNJ → ordinary space
+    "‌": " ",  # ZWNJ → ordinary space
     "–": "-",
     "—": "-",
     "“": '"',
@@ -34,10 +34,8 @@ _ARABIC_TO_PERSIAN: dict[str, str] = {
 }
 
 _PERSIAN_DIGITS = "۰۱۲۳۴۵۶۷۸۹"
-_ARABIC_DIGITS  = "٠١٢٣٤٥٦٧٨٩"
-_DIGIT_TRANS: dict[int, str] = {
-    ord(ch): str(i) for i, ch in enumerate(_PERSIAN_DIGITS)
-}
+_ARABIC_DIGITS = "٠١٢٣٤٥٦٧٨٩"
+_DIGIT_TRANS: dict[int, str] = {ord(ch): str(i) for i, ch in enumerate(_PERSIAN_DIGITS)}
 _DIGIT_TRANS.update({ord(ch): str(i) for i, ch in enumerate(_ARABIC_DIGITS)})
 
 # ---------------------------------------------------------------------------
@@ -48,15 +46,15 @@ _DIGIT_TRANS.update({ord(ch): str(i) for i, ch in enumerate(_ARABIC_DIGITS)})
 _COMPOUND_WORDS: list[tuple[str, str]] = [
     # Retirement
     ("باز نشستگی", "بازنشستگی"),
-    ("باز نشستن",  "بازنشستن"),
-    ("باز نشسته",  "بازنشسته"),
+    ("باز نشستن", "بازنشستن"),
+    ("باز نشسته", "بازنشسته"),
     # Employee / workforce
-    ("کار کنان",   "کارکنان"),
-    ("کار مندان",  "کارمندان"),
-    ("کار مند",    "کارمند"),
+    ("کار کنان", "کارکنان"),
+    ("کار مندان", "کارمندان"),
+    ("کار مند", "کارمند"),
     # Contractor
     ("پیمان کاری", "پیمانکاری"),
-    ("پیمان کار",  "پیمانکار"),
+    ("پیمان کار", "پیمانکار"),
 ]
 
 # ---------------------------------------------------------------------------
@@ -64,19 +62,18 @@ _COMPOUND_WORDS: list[tuple[str, str]] = [
 # ---------------------------------------------------------------------------
 
 _COLLOQUIAL_VERBS: list[tuple[str, str]] = [
-    ("میشن",  "میشوند"),
-    ("میشه",  "میشود"),
-    ("هستن",  "هستند"),
+    ("میشن", "میشوند"),
+    ("میشه", "میشود"),
+    ("هستن", "هستند"),
     ("میکنن", "میکنند"),
-    ("دارن",  "دارند"),
-    ("بشن",   "بشوند"),
-    ("بشه",   "بشود"),
+    ("دارن", "دارند"),
+    ("بشن", "بشوند"),
+    ("بشه", "بشود"),
 ]
 
 # Pre-compiled patterns for word-boundary colloquial replacement.
 _COLLOQUIAL_PATTERNS: list[tuple[re.Pattern[str], str]] = [
-    (re.compile(rf"(?<!\S){re.escape(col)}(?!\S)"), std)
-    for col, std in _COLLOQUIAL_VERBS
+    (re.compile(rf"(?<!\S){re.escape(col)}(?!\S)"), std) for col, std in _COLLOQUIAL_VERBS
 ]
 
 # ---------------------------------------------------------------------------
