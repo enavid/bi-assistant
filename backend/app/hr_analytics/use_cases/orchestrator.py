@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Any, Protocol
 
 from app.hr_analytics.domain.interfaces import IMetadataService
+from app.hr_analytics.use_cases.sql.controlled_dynamic import apply_controlled_dynamic
 from app.hr_analytics.use_cases.steps.sql_coverage_validator import validate_coverage
 from app.infrastructure.metadata.service import get_metadata_service
 
@@ -543,6 +544,7 @@ class LLMOrchestrator:
         _template_sources = {"sql_template", "sql_template_engine"}
         _plan_sql_text = str(plan.get("sql") or "")
         _plan_src = str(plan.get("source") or "").lower()
+        _original_template_sql: str | None = None  # preserved for Controlled Dynamic
         if _plan_sql_text and _plan_src in _template_sources:
             _cov = validate_coverage(context.intent_result, _plan_sql_text)
             context.coverage_result = {
@@ -551,6 +553,7 @@ class LLMOrchestrator:
                 "is_complete": _cov.is_complete,
             }
             if not _cov.is_complete:
+                _original_template_sql = _plan_sql_text
                 original_plan = deepcopy(plan)
                 context.warnings.append(
                     f"Template SQL coverage incomplete — missing: {_cov.missing}"
@@ -578,6 +581,32 @@ class LLMOrchestrator:
                 "warnings": [bypass_msg],
                 "metadata": {"original_template_plan": redact_sql_for_trace(original_plan)},
             }
+
+        # Controlled Dynamic: try to patch COVERAGE_INCOMPLETE plans by injecting
+        # missing WHERE-clause filters before triggering the LLM.
+        if (
+            str(plan.get("status") or "").upper() == "COVERAGE_INCOMPLETE"
+            and _original_template_sql
+        ):
+            _cd = apply_controlled_dynamic(
+                _original_template_sql,
+                context.intent_result,
+                missing=context.coverage_result.get("missing"),
+            )
+            if _cd.get("status") == "OK" and _cd.get("sql"):
+                context.coverage_result["status"] = "PATCHED_BY_CONTROLLED_DYNAMIC"
+                plan = {
+                    "status": "OK",
+                    "route": Route.SQL.value,
+                    "source": "controlled_dynamic",
+                    "sql": _cd["sql"],
+                    "can_execute_sql": True,
+                    "patches_applied": _cd.get("patches_applied", []),
+                    "intent": context.intent_result.get("intent")
+                    or context.intent_result.get("intent_id"),
+                }
+            else:
+                plan.setdefault("controlled_dynamic_reason", _cd.get("reason"))
 
         model = context.runtime_params.get("model")
         _plan_status = str(plan.get("status") or "").upper()

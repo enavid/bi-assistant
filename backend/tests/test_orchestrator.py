@@ -361,8 +361,8 @@ async def test_template_incomplete_warning_not_present_for_simple_query(metadata
 
 @pytest.mark.asyncio
 async def test_coverage_check_marks_plan_incomplete_when_filter_missing(metadata_service):
-    """When the template SQL is missing a user-requested filter column, the plan
-    must be marked COVERAGE_INCOMPLETE and can_execute_sql must be False."""
+    """When the template SQL is missing a user-requested filter, Controlled Dynamic
+    patches it. Plan status becomes OK with source=controlled_dynamic."""
     import uuid
     from unittest.mock import patch
 
@@ -381,7 +381,6 @@ async def test_coverage_check_marks_plan_incomplete_when_filter_missing(metadata
         "params": {},
     }
 
-    # Template returns SQL without the gender filter
     template_result = {
         "status": "OK",
         "route": "SQL",
@@ -393,8 +392,11 @@ async def test_coverage_check_marks_plan_incomplete_when_filter_missing(metadata
     with patch.object(orchestrator, "_fallback_sql_template_engine", return_value=template_result):
         await orchestrator._plan_sql(context)
 
-    assert context.sql_plan.get("status") == "COVERAGE_INCOMPLETE"
-    assert context.sql_plan.get("can_execute_sql") is False
+    # Controlled Dynamic patches the missing gender filter → plan becomes OK
+    assert context.sql_plan.get("status") == "OK"
+    assert context.sql_plan.get("source") == "controlled_dynamic"
+    assert "v.gender = 'زن'" in (context.sql_plan.get("sql") or "")
+    assert context.sql_plan.get("can_execute_sql") is True
 
 
 @pytest.mark.asyncio
@@ -465,10 +467,16 @@ async def test_coverage_result_stored_in_context(metadata_service):
     with patch.object(orchestrator, "_fallback_sql_template_engine", return_value=template_result):
         await orchestrator._plan_sql(context)
 
+    # coverage_result must always be populated when coverage was checked
     assert context.coverage_result != {}
-    assert context.coverage_result.get("status") == "COVERAGE_INCOMPLETE"
+    # CD patched the missing gender filter — coverage_result still records the original gap
     missing = context.coverage_result.get("missing", [])
-    assert any("gender" in m for m in missing)
+    assert any("gender" in m for m in missing), f"Expected gender in missing: {missing}"
+    # status is either COVERAGE_INCOMPLETE (before CD) or PATCHED_BY_CONTROLLED_DYNAMIC (after)
+    assert context.coverage_result.get("status") in {
+        "COVERAGE_INCOMPLETE",
+        "PATCHED_BY_CONTROLLED_DYNAMIC",
+    }
 
 
 @pytest.mark.asyncio
@@ -568,8 +576,8 @@ async def test_orchestrator_skips_sql_generator_when_model_set(metadata_service)
 
 @pytest.mark.asyncio
 async def test_sql_generator_not_called_when_coverage_incomplete(metadata_service):
-    """When template coverage is incomplete, the sql_generator must NOT be called.
-    COVERAGE_INCOMPLETE is a hard stop — it must not silently fall through."""
+    """When coverage is incomplete with group_by missing (CD cannot fix it),
+    sql_generator must NOT be called — COVERAGE_INCOMPLETE is a hard stop."""
     import uuid
     from unittest.mock import AsyncMock, patch
 
@@ -583,22 +591,22 @@ async def test_sql_generator_not_called_when_coverage_incomplete(metadata_servic
         sql_generator=mock_generator,
     )
 
-    context = RequestContext(request_id=str(uuid.uuid4()), question="تعداد کارکنان زن")
+    context = RequestContext(request_id=str(uuid.uuid4()), question="تعداد کارکنان در هر دپارتمان")
     context.intent_result = {
         "filters": [
             {"column": "is_active", "operator": "=", "value": True, "source": "default_rule"},
-            {"column": "gender", "operator": "=", "value": "زن"},
         ],
-        "group_by": [],
+        "group_by": ["department_name"],
         "metrics": [],
         "params": {},
     }
 
+    # Template SQL has no GROUP BY — CD cannot fix group_by gap → stays COVERAGE_INCOMPLETE
     template_result = {
         "status": "OK",
         "route": "SQL",
         "source": "sql_template_engine",
-        "sql": "SELECT COUNT(v.employee_id) FROM hr_mvp.vw_hr_employee_analytics v WHERE v.is_active = TRUE",
+        "sql": "SELECT COUNT(v.employee_id) AS employee_count FROM hr_mvp.vw_hr_employee_analytics v WHERE v.is_active = TRUE",
         "can_execute_sql": True,
     }
 
@@ -1121,3 +1129,165 @@ async def test_llm_trigger_reason_recorded_in_trace(metadata_service):
     assert trace_entry.details.get("llm_trigger_reason") == "NO_TEMPLATE", (
         f"Expected llm_trigger_reason='NO_TEMPLATE', got: {trace_entry.details}"
     )
+
+
+# ---------------------------------------------------------------------------
+# Phase 4.2 — Controlled Dynamic
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_controlled_dynamic_patches_coverage_incomplete(metadata_service):
+    """When template SQL covers only some filters, CD must patch the missing ones
+    and plan status must become OK — no LLM needed."""
+    import uuid
+    from unittest.mock import AsyncMock, patch
+
+    from app.hr_analytics.use_cases.orchestrator import RequestContext
+
+    mock_ollama = AsyncMock()
+
+    orchestrator = LLMOrchestrator(
+        metadata_service=metadata_service,
+        default_execute_sql=False,
+        ollama_client=mock_ollama,
+    )
+
+    context = RequestContext(request_id=str(uuid.uuid4()), question="تعداد کارکنان زن زیر ۳۰ سال")
+    context.runtime_params = {"model": "llama3.1:8b"}
+    context.intent_result = {
+        "filters": [
+            {"column": "is_active", "operator": "=", "value": True, "source": "default_rule"},
+            {"column": "gender", "operator": "=", "value": "زن"},
+            {"column": "age", "operator": "<", "value": 30},
+        ],
+        "group_by": [],
+        "metrics": [],
+        "params": {},
+    }
+
+    # Template produced SQL with age but missing gender — coverage fails
+    template_result = {
+        "status": "OK",
+        "route": "SQL",
+        "source": "sql_template",
+        "sql": (
+            "SELECT COUNT(v.employee_id) AS employee_count\n"
+            "FROM hr_mvp.vw_hr_employee_analytics v\n"
+            "WHERE v.is_active = TRUE\n"
+            "  AND v.age < 30\n"
+            "ORDER BY employee_count DESC"
+        ),
+        "can_execute_sql": True,
+    }
+
+    with patch.object(orchestrator, "_fallback_sql_template_engine", return_value=template_result):
+        await orchestrator._plan_sql(context)
+
+    assert context.sql_plan.get("status") == "OK", (
+        f"Expected OK after CD patch, got: {context.sql_plan.get('status')}"
+    )
+    assert context.sql_plan.get("source") == "controlled_dynamic"
+    assert "v.gender = 'زن'" in (context.sql_plan.get("sql") or "")
+    mock_ollama.generate.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_controlled_dynamic_llm_not_called_after_successful_patch(metadata_service):
+    """After CD patches the SQL, LLM must NOT be invoked even when model is set."""
+    import uuid
+    from unittest.mock import AsyncMock, patch
+
+    from app.hr_analytics.use_cases.orchestrator import RequestContext
+
+    mock_ollama = AsyncMock()
+    orchestrator = LLMOrchestrator(
+        metadata_service=metadata_service,
+        default_execute_sql=False,
+        ollama_client=mock_ollama,
+    )
+
+    context = RequestContext(request_id=str(uuid.uuid4()), question="تعداد کارکنان پیمانکار")
+    context.runtime_params = {"model": "llama3.1:8b"}
+    context.intent_result = {
+        "filters": [
+            {"column": "is_contractor", "operator": "=", "value": True},
+        ],
+        "group_by": [],
+        "metrics": [],
+        "params": {},
+    }
+
+    # Template has no is_contractor filter — coverage will fail
+    template_result = {
+        "status": "OK",
+        "route": "SQL",
+        "source": "sql_template",
+        "sql": (
+            "SELECT COUNT(v.employee_id) AS employee_count\n"
+            "FROM hr_mvp.vw_hr_employee_analytics v\n"
+            "WHERE v.is_active = TRUE\n"
+            "ORDER BY employee_count DESC"
+        ),
+        "can_execute_sql": True,
+    }
+
+    with patch.object(orchestrator, "_fallback_sql_template_engine", return_value=template_result):
+        await orchestrator._plan_sql(context)
+
+    assert context.sql_plan.get("source") == "controlled_dynamic"
+    assert "v.is_contractor = TRUE" in (context.sql_plan.get("sql") or "")
+    mock_ollama.generate.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_controlled_dynamic_falls_through_to_llm_on_group_by_missing(metadata_service):
+    """When missing items include group_by:*, CD must fail and LLM must be called."""
+    import uuid
+    from unittest.mock import AsyncMock, MagicMock, patch
+
+    from app.hr_analytics.use_cases.orchestrator import RequestContext
+
+    mock_ollama = AsyncMock()
+    gen_result = MagicMock()
+    gen_result.sql = "SELECT v.department_name, COUNT(v.employee_id) FROM hr_mvp.vw_hr_employee_analytics v WHERE v.is_active = TRUE GROUP BY v.department_name"
+    gen_result.success = True
+    gen_result.error = None
+    mock_ollama.generate.return_value = gen_result
+
+    orchestrator = LLMOrchestrator(
+        metadata_service=metadata_service,
+        default_execute_sql=False,
+        ollama_client=mock_ollama,
+    )
+
+    context = RequestContext(request_id=str(uuid.uuid4()), question="تعداد کارکنان زن در هر دپارتمان")
+    context.runtime_params = {"model": "llama3.1:8b"}
+    context.intent_result = {
+        "filters": [
+            {"column": "gender", "operator": "=", "value": "زن"},
+        ],
+        "group_by": ["department_name"],
+        "metrics": [],
+        "params": {},
+    }
+
+    # Template only counts total — no gender and no GROUP BY
+    template_result = {
+        "status": "OK",
+        "route": "SQL",
+        "source": "sql_template",
+        "sql": (
+            "SELECT COUNT(v.employee_id) AS employee_count\n"
+            "FROM hr_mvp.vw_hr_employee_analytics v\n"
+            "WHERE v.is_active = TRUE\n"
+            "ORDER BY employee_count DESC"
+        ),
+        "can_execute_sql": True,
+    }
+
+    with patch.object(orchestrator, "_fallback_sql_template_engine", return_value=template_result):
+        await orchestrator._plan_sql(context)
+
+    # CD cannot fix GROUP BY → LLM must be called
+    mock_ollama.generate.assert_called_once()
