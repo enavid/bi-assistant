@@ -708,7 +708,16 @@ class IntentParser:
                     question, ["تفکیک", "بر اساس", "به تفکیک", "توزیع", "سهم هر", "در هر"]
                 ),
                 "asks_most": self._has_any(
-                    question, ["بیشترین", "بالاترین", "حداکثر", "کدام بیشتر", "بیشترين"]
+                    question,
+                    [
+                        "بیشترین",
+                        "بالاترین",
+                        "حداکثر",
+                        "کدام بیشتر",
+                        "بیشترين",
+                        "رایج‌ترین",
+                        "رایج ترین",
+                    ],
                 ),
                 "asks_least": self._has_any(
                     question, ["کمترین", "پایین ترین", "حداقل", "کدام کمتر"]
@@ -762,7 +771,14 @@ class IntentParser:
                 ),
                 "asks_recent_year": self._has_any(question, ["سال اخیر", "سال جاری", "امسال"]),
                 "asks_last_15_years": self._has_any(
-                    question, ["۱۵ سال اخیر", "15 سال اخیر", "پانزده سال اخیر"]
+                    question,
+                    [
+                        "۱۵ سال اخیر",
+                        "15 سال اخیر",
+                        "پانزده سال اخیر",
+                        "۱۵ سال گذشته",
+                        "15 سال گذشته",
+                    ],
                 ),
                 "asks_zero_service": self._has_any(
                     question, ["بدون سابقه", "سابقه صفر", "0 سال سابقه"]
@@ -909,7 +925,10 @@ class IntentParser:
                 add(("employee_count_by_gender", 45, "gender_distribution"))
 
         if f.get("asks_average") and f.get("explicit_age"):
-            add(("average_age", 70, "average_age"))
+            if f.get("explicit_department"):
+                add(("avg_age_by_department", 85, "avg_age_by_department"))
+            else:
+                add(("average_age", 70, "average_age"))
         if f.get("asks_most") and f.get("explicit_age") and not f.get("age_filter"):
             add(("max_age", 75, "max_age"))
         if f.get("asks_least") and f.get("explicit_age") and not f.get("age_filter"):
@@ -917,7 +936,10 @@ class IntentParser:
         if f.get("asks_stddev") and f.get("explicit_age"):
             add(("stddev_age", 80, "stddev_age"))
         if f.get("explicit_age") and f.get("age_filter"):
-            add(("employee_count_by_age_filter", 60, "age_filter"))
+            if f.get("explicit_department"):
+                add(("employee_count_by_age_filter_by_department", 85, "age_filter_by_dept"))
+            else:
+                add(("employee_count_by_age_filter", 60, "age_filter"))
         if f.get("explicit_age") and self._has_any(
             question, ["گروه سنی", "کدام گروه سنی", "بازه سنی"]
         ):
@@ -940,7 +962,10 @@ class IntentParser:
                 add(("employee_count_by_education", 55, "education_distribution_or_filter"))
 
         if f.get("explicit_employment_type"):
-            add(("employee_count_by_employment_type", 70, "employment_type"))
+            if f.get("explicit_department"):
+                add(("employment_type_by_department", 85, "employment_type_by_dept"))
+            else:
+                add(("employee_count_by_employment_type", 70, "employment_type"))
         if f.get("explicit_contract_type"):
             if f.get("explicit_hiring") or f.get("asks_recent_year"):
                 add(("hiring_by_contract_type_recent_year", 70, "recent_hiring_contract_type"))
@@ -1395,6 +1420,9 @@ class IntentParser:
 
         elif best_intent_id == "employee_count_by_marital_status":
             group_by = self._ensure_group_by(group_by, "marital_status")
+            if gender_value:
+                filters.append({"column": "gender", "operator": "=", "value": gender_value})
+                required_columns.append("gender")
             required_columns.extend(["marital_status", "employee_id", "is_active"])
 
         # Superlative queries ("بیشترین"/"کمترین") on grouped distributions → top-1 only.

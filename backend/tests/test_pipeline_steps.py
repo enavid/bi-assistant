@@ -418,3 +418,40 @@ def test_department_gender_routes_to_2d_intent(metadata_service):
     group_by = result.get("group_by") or []
     assert "department_name" in group_by, f"Expected department_name in group_by: {group_by}"
     assert "gender" in group_by, f"Expected gender in group_by: {group_by}"
+
+
+# ---------------------------------------------------------------------------
+# BUG: 'زنان' in multi-filter questions must produce gender=زن filter
+# ---------------------------------------------------------------------------
+
+
+def test_intent_parser_extracts_gender_from_zanam_in_marital_question(metadata_service):
+    """'تعداد زنان متأهل' — 'زنان' must produce gender=زن filter alongside marital_status."""
+    result = IntentParser(metadata_service=metadata_service).parse(
+        "تعداد زنان متأهل چند نفر است؟"
+    )
+    filters = result.get("filters") or []
+    columns = [f.get("column") for f in filters if isinstance(f, dict)]
+    assert "gender" in columns, (
+        f"'زنان' must produce gender filter. Got filters: {filters}"
+    )
+    gender_filter = next((f for f in filters if f.get("column") == "gender"), None)
+    assert gender_filter is not None and gender_filter.get("value") == "زن", (
+        f"gender filter must have value='زن', got: {gender_filter}"
+    )
+
+
+def test_intent_parser_contractor_count_routes_correctly(metadata_service):
+    """'تعداد کارکنان پیمانکار' must route to contractor_share, not total_employee_count."""
+    result = IntentParser(metadata_service=metadata_service).parse(
+        "تعداد کارکنان پیمانکار چند نفر است؟"
+    )
+    intent = result.get("intent_id") or result.get("intent")
+    assert intent == "contractor_share", (
+        f"Expected contractor_share, got {intent!r}"
+    )
+    filters = result.get("filters") or []
+    columns = [f.get("column") for f in filters if isinstance(f, dict)]
+    assert "is_contractor" in columns, (
+        f"Expected is_contractor filter. Got: {filters}"
+    )
