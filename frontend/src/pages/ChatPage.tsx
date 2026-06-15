@@ -40,12 +40,13 @@ const STATUS_LABEL: Record<string, string> = {
 }
 
 const DECISION_STYLE: Record<string, { color: string; bg: string; border: string }> = {
-  rule:      { color: 'var(--text-3)',      bg: 'var(--bg-raised)',   border: 'var(--border-subtle)' },
-  policy:    { color: 'var(--red)',         bg: 'var(--red-bg)',      border: 'var(--red-border)' },
-  template:  { color: 'var(--accent-text)', bg: 'var(--accent-bg)',   border: 'var(--accent-border)' },
-  llm:       { color: 'var(--amber)',       bg: 'var(--amber-bg)',    border: 'var(--amber-border)' },
-  db:        { color: 'var(--text-2)',      bg: 'var(--bg-raised)',   border: 'var(--border-default)' },
-  component: { color: 'var(--text-2)',      bg: 'var(--bg-raised)',   border: 'var(--border-default)' },
+  rule:              { color: 'var(--text-3)',      bg: 'var(--bg-raised)',   border: 'var(--border-subtle)' },
+  policy:            { color: 'var(--red)',         bg: 'var(--red-bg)',      border: 'var(--red-border)' },
+  template:          { color: 'var(--accent-text)', bg: 'var(--accent-bg)',   border: 'var(--accent-border)' },
+  controlled_dynamic:{ color: 'var(--green)',       bg: 'var(--green-bg)',    border: 'var(--green-border)' },
+  llm:               { color: 'var(--amber)',       bg: 'var(--amber-bg)',    border: 'var(--amber-border)' },
+  db:                { color: 'var(--text-2)',      bg: 'var(--bg-raised)',   border: 'var(--border-default)' },
+  component:         { color: 'var(--text-2)',      bg: 'var(--bg-raised)',   border: 'var(--border-default)' },
 }
 
 function traceStatusColor(status: string): string {
@@ -59,6 +60,7 @@ function traceStatusColor(status: string): string {
 
 function sqlSourceLabel(source?: string | null): string | null {
   if (!source) return null
+  if (source.includes('controlled_dynamic')) return 'controlled_dynamic'
   if (source.includes('template')) return 'template'
   if (source.includes('generator') || source.includes('llm')) return 'llm'
   return null
@@ -140,6 +142,143 @@ function TraceDetails({ details }: { details: Record<string, unknown> }) {
   )
 }
 
+function CoverageChip({ status }: { status: string }) {
+  const s = status.toUpperCase()
+  const color =
+    s === 'COMPLETE' ? 'var(--green)' :
+    s === 'PATCHED_BY_CONTROLLED_DYNAMIC' ? 'var(--accent-text)' :
+    'var(--red)'
+  const bg =
+    s === 'COMPLETE' ? 'var(--green-bg)' :
+    s === 'PATCHED_BY_CONTROLLED_DYNAMIC' ? 'var(--accent-bg)' :
+    'var(--red-bg)'
+  const border =
+    s === 'COMPLETE' ? 'var(--green-border)' :
+    s === 'PATCHED_BY_CONTROLLED_DYNAMIC' ? 'var(--accent-border)' :
+    'var(--red-border)'
+  const label =
+    s === 'PATCHED_BY_CONTROLLED_DYNAMIC' ? 'patched' : status
+  return (
+    <span
+      className="px-1.5 py-[2px] rounded-[3px] text-[9px] uppercase tracking-wide"
+      style={{ color, background: bg, border: `1px solid ${border}` }}
+    >
+      {label}
+    </span>
+  )
+}
+
+function ContextWindowBar({ tokens, window: ctxWindow }: { tokens: number; window: number }) {
+  const pct = Math.min(100, Math.round((tokens / ctxWindow) * 100))
+  const filled = Math.round(pct / 10)
+  const bar = '█'.repeat(filled) + '░'.repeat(10 - filled)
+  const warn = pct >= 90
+  return (
+    <span className="flex items-center gap-1.5">
+      <span className="font-mono tracking-tighter" style={{ color: warn ? 'var(--red)' : 'var(--text-2)', letterSpacing: '-0.5px' }}>
+        {bar}
+      </span>
+      <span style={{ color: warn ? 'var(--red)' : 'var(--text-3)' }}>
+        {tokens.toLocaleString()} / {ctxWindow.toLocaleString()} ({pct}%)
+      </span>
+      {warn && <span style={{ color: 'var(--red)' }}>⚠️</span>}
+    </span>
+  )
+}
+
+function PipelineFlagsRow({ flags }: { flags: Record<string, boolean> }) {
+  const labels: Record<string, string> = {
+    use_template_engine: 'template',
+    use_controlled_dynamic: 'cd',
+    force_llm_for_incomplete_template: 'force-llm',
+  }
+  return (
+    <div className="flex items-center gap-1.5 flex-wrap">
+      {Object.entries(flags).map(([k, v]) => (
+        <span
+          key={k}
+          className="px-1.5 py-[2px] rounded-[3px] text-[9px]"
+          style={{
+            color: v ? 'var(--accent-text)' : 'var(--text-3)',
+            background: v ? 'var(--accent-bg)' : 'var(--bg-raised)',
+            border: `1px solid ${v ? 'var(--accent-border)' : 'var(--border-subtle)'}`,
+            opacity: v ? 1 : 0.6,
+          }}
+        >
+          {v ? '✓' : '✗'} {labels[k] ?? k}
+        </span>
+      ))}
+    </div>
+  )
+}
+
+function SqlPlannerDetails({ details }: { details: Record<string, unknown> }) {
+  const coverageStatus = details.coverage_status as string | null | undefined
+  const missingFilters = (details.missing_filters as string[] | null | undefined) ?? []
+  const modelCalled = details.model_called as string | null | undefined
+  const llmReason = details.llm_trigger_reason as string | null | undefined
+  const source = details.source as string | null | undefined
+  const templateId = details.template_id as string | null | undefined
+  const pipelineFlags = details.pipeline_flags as Record<string, boolean> | null | undefined
+  const meta = details.metadata as Record<string, unknown> | null | undefined
+  const promptTokens = typeof meta?.prompt_tokens === 'number' ? meta.prompt_tokens : null
+  const ctxWindow = typeof meta?.context_window === 'number' ? meta.context_window : null
+
+  const rows: Array<[string, React.ReactNode]> = []
+
+  if (source) rows.push(['source', <span style={{ color: 'var(--text-2)' }}>{source}</span>])
+  if (templateId) rows.push(['template_id', <span style={{ color: 'var(--text-2)', fontStyle: 'italic' }}>{templateId}</span>])
+  if (coverageStatus) rows.push(['coverage', <CoverageChip status={coverageStatus} />])
+  if (missingFilters.length > 0) rows.push([
+    'missing',
+    <span className="flex flex-wrap gap-1">
+      {missingFilters.map((f) => (
+        <span key={f} className="px-1 py-[1px] rounded-[3px]" style={{ background: 'var(--red-bg)', color: 'var(--red)', border: '1px solid var(--red-border)' }}>{f}</span>
+      ))}
+    </span>,
+  ])
+  rows.push(['model_called', modelCalled
+    ? <span style={{ color: 'var(--amber)' }}>{modelCalled}</span>
+    : <span style={{ color: 'var(--text-3)' }}>—</span>
+  ])
+  if (llmReason) rows.push(['llm_trigger', <span style={{ color: 'var(--amber)' }}>{llmReason}</span>])
+  if (promptTokens !== null && ctxWindow !== null) {
+    rows.push(['context_window', <ContextWindowBar tokens={promptTokens} window={ctxWindow} />])
+  }
+
+  return (
+    <div
+      className="text-[10px] font-mono"
+      style={{
+        borderTop: '1px solid var(--border-subtle)',
+        background: 'var(--bg-base)',
+        borderLeft: '3px solid var(--accent-border)',
+      }}
+    >
+      <div
+        className="grid px-3 py-2 gap-x-4 gap-y-[4px] items-center"
+        style={{ gridTemplateColumns: 'minmax(90px, max-content) 1fr' }}
+      >
+        {rows.map(([label, node]) => (
+          <>
+            <span key={`lbl-${label}`} style={{ color: 'var(--text-3)' }}>{label}</span>
+            <span key={`val-${label}`}>{node}</span>
+          </>
+        ))}
+      </div>
+      {pipelineFlags && (
+        <div
+          className="px-3 pb-2 pt-1.5"
+          style={{ borderTop: '1px solid var(--border-subtle)' }}
+        >
+          <div className="mb-1" style={{ color: 'var(--text-3)' }}>pipeline_flags</div>
+          <PipelineFlagsRow flags={pipelineFlags} />
+        </div>
+      )}
+    </div>
+  )
+}
+
 function TracePanel({ traces }: { traces: TraceStep[] }) {
   const [expandedRow, setExpandedRow] = useState<number | null>(null)
 
@@ -189,7 +328,9 @@ function TracePanel({ traces }: { traces: TraceStep[] }) {
               </div>
               {isExpanded && t.details && (
                 <div key={`det-${i}`} className="col-span-4" style={{ borderBottom: isLast ? undefined : '1px solid var(--border-subtle)' }}>
-                  <TraceDetails details={t.details} />
+                  {t.step === 'sql_planner'
+                    ? <SqlPlannerDetails details={t.details} />
+                    : <TraceDetails details={t.details} />}
                 </div>
               )}
             </>
@@ -209,6 +350,7 @@ function PipelineBadges({ info }: { info: GenerateResponse }) {
   const srcLabel = route === 'SQL' ? sqlSourceLabel(info.source) : null
   const templateId = route === 'SQL' && info.template_id ? info.template_id : null
   const modelLabel = route === 'SQL' && srcLabel === 'llm' && info.model_called ? info.model_called : null
+  const srcDs = srcLabel ? DECISION_STYLE[srcLabel] : null
   const rowsLabel = route === 'SQL'
     ? (info.executed ? `${info.row_count ?? 0} rows` : 'not run')
     : null
@@ -226,7 +368,14 @@ function PipelineBadges({ info }: { info: GenerateResponse }) {
         </span>
         {statusLabel && <MetaChip label={statusLabel} />}
         {route === 'GAP' && info.detected_intent && <MetaChip label={info.detected_intent} />}
-        {srcLabel && <MetaChip label={srcLabel} />}
+        {srcLabel && srcDs ? (
+          <span
+            className="text-[10px] font-mono px-1.5 py-[3px] rounded-[4px]"
+            style={{ background: srcDs.bg, color: srcDs.color, border: `1px solid ${srcDs.border}` }}
+          >
+            {srcLabel}
+          </span>
+        ) : srcLabel ? <MetaChip label={srcLabel} /> : null}
         {modelLabel && <MetaChip label={modelLabel} />}
         {templateId && (
           <span
