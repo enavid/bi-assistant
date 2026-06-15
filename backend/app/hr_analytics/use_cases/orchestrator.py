@@ -177,7 +177,14 @@ class LLMOrchestrator:
 
     Real modules can be injected gradually. Until then, the fallback logic lets the
     backend run a deterministic MVP using only metadata.
+
+    LLM is invoked only when the template path cannot produce a complete answer.
+    See _LLM_TRIGGER_STATUSES for the gate conditions.
     """
+
+    _LLM_TRIGGER_STATUSES: frozenset[str] = frozenset(
+        {"NO_TEMPLATE", "TEMPLATE_INCOMPLETE", "COVERAGE_INCOMPLETE", "TEMPLATE_RENDER_FAILED"}
+    )
 
     def __init__(
         self,
@@ -573,15 +580,23 @@ class LLMOrchestrator:
             }
 
         model = context.runtime_params.get("model")
-        if model and self.ollama_client is not None:
-            suggested_sql = plan.get("sql") if plan.get("sql") else None
+        _plan_status = str(plan.get("status") or "").upper()
+        _llm_trigger_reason: str | None = (
+            _plan_status if _plan_status in self._LLM_TRIGGER_STATUSES else None
+        )
+        should_call_llm = (
+            model is not None and self.ollama_client is not None and _llm_trigger_reason is not None
+        )
+
+        if should_call_llm:
+            suggested_sql = plan.get("sql") or None
             plan = await self._call_llm_primary(
                 context=context,
                 model=model,
                 suggested_sql=suggested_sql,
+                llm_trigger_reason=_llm_trigger_reason,
             )
         else:
-            _plan_status = str(plan.get("status") or "").upper()
             _hard_stop_statuses = {"COVERAGE_INCOMPLETE", "PARAMETER_VALIDATION_FAILED"}
             should_generate = _plan_status not in _hard_stop_statuses and (
                 not plan.get("sql")
@@ -630,7 +645,11 @@ class LLMOrchestrator:
             "sql_planner",
             plan.get("status", "ok"),
             started,
-            {**redact_sql_for_trace(plan), "decision_by": _sql_decision},
+            {
+                **redact_sql_for_trace(plan),
+                "decision_by": _sql_decision,
+                "llm_trigger_reason": _llm_trigger_reason,
+            },
         )
 
     async def _call_llm_primary(
@@ -639,6 +658,7 @@ class LLMOrchestrator:
         context: RequestContext,
         model: str,
         suggested_sql: str | None,
+        llm_trigger_reason: str | None = None,
     ) -> JsonDict:
         from app.infrastructure.llm.analytics_client import LLMClient
         from app.infrastructure.llm.prompt_builder import PromptBuilder
@@ -1350,6 +1370,7 @@ class LLMOrchestrator:
             "template_id": template.get("template_id") or template_id,
             "params": params,
             "sql": sql,
+            "can_execute_sql": True,
             "result_columns": template.get("result_columns", []),
             "output_type": template.get("output_type"),
         }

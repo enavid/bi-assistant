@@ -117,8 +117,8 @@ def test_orchestrator_ollama_client_defaults_to_none(metadata_service):
 
 @pytest.mark.asyncio
 async def test_orchestrator_calls_ollama_when_model_in_runtime_params(metadata_service):
-    """When model is set in runtime_params, OllamaClient must be called for valid SQL questions."""
-    from unittest.mock import AsyncMock, MagicMock
+    """When model is set and template returns NO_TEMPLATE, OllamaClient must be called."""
+    from unittest.mock import AsyncMock, MagicMock, patch
 
     mock_ollama = AsyncMock()
     gen_result = MagicMock()
@@ -135,10 +135,18 @@ async def test_orchestrator_calls_ollama_when_model_in_runtime_params(metadata_s
         default_execute_sql=False,
         ollama_client=mock_ollama,
     )
-    response = await orchestrator.arun(
-        "تعداد کارکنان چند نفر است؟",
-        runtime_params={"model": "llama3.1:8b"},
-    )
+    no_template_result = {
+        "status": "NO_TEMPLATE",
+        "route": "SQL",
+        "source": "sql_template_engine",
+        "sql": None,
+        "can_execute_sql": False,
+    }
+    with patch.object(orchestrator, "_fallback_sql_template_engine", return_value=no_template_result):
+        response = await orchestrator.arun(
+            "تعداد کارکنان چند نفر است؟",
+            runtime_params={"model": "llama3.1:8b"},
+        )
     payload = response.to_dict()
 
     mock_ollama.generate.assert_called_once()
@@ -185,8 +193,8 @@ async def test_orchestrator_ollama_not_called_for_rejected_question(metadata_ser
 
 @pytest.mark.asyncio
 async def test_orchestrator_model_called_appears_in_response(metadata_service):
-    """model_called field in sql_plan metadata must reflect the selected model."""
-    from unittest.mock import AsyncMock, MagicMock
+    """When LLM is invoked (NO_TEMPLATE), model name must appear in sql_plan metadata."""
+    from unittest.mock import AsyncMock, MagicMock, patch
 
     mock_ollama = AsyncMock()
     gen_result = MagicMock()
@@ -200,10 +208,18 @@ async def test_orchestrator_model_called_appears_in_response(metadata_service):
         default_execute_sql=False,
         ollama_client=mock_ollama,
     )
-    response = await orchestrator.arun(
-        "تعداد کارکنان چند نفر است؟",
-        runtime_params={"model": "llama3.1:8b"},
-    )
+    no_template_result = {
+        "status": "NO_TEMPLATE",
+        "route": "SQL",
+        "source": "sql_template_engine",
+        "sql": None,
+        "can_execute_sql": False,
+    }
+    with patch.object(orchestrator, "_fallback_sql_template_engine", return_value=no_template_result):
+        response = await orchestrator.arun(
+            "تعداد کارکنان چند نفر است؟",
+            runtime_params={"model": "llama3.1:8b"},
+        )
     payload = response.to_dict()
     sql_plan = (payload.get("context") or {}).get("sql_plan") or {}
     model_in_meta = (sql_plan.get("metadata") or {}).get("model")
@@ -217,8 +233,8 @@ async def test_orchestrator_model_called_appears_in_response(metadata_service):
 
 @pytest.mark.asyncio
 async def test_orchestrator_trace_includes_prompt_tokens(metadata_service):
-    """When LLM is called, sql_plan.metadata must include prompt_tokens from OllamaClient."""
-    from unittest.mock import AsyncMock
+    """When LLM is invoked (NO_TEMPLATE), sql_plan.metadata must include prompt_tokens."""
+    from unittest.mock import AsyncMock, patch
 
     from app.hr_analytics.domain.entities import GenerationResult
 
@@ -236,10 +252,18 @@ async def test_orchestrator_trace_includes_prompt_tokens(metadata_service):
         default_execute_sql=False,
         ollama_client=mock_ollama,
     )
-    response = await orchestrator.arun(
-        "تعداد کارکنان چند نفر است؟",
-        runtime_params={"model": "llama3.1:8b"},
-    )
+    no_template_result = {
+        "status": "NO_TEMPLATE",
+        "route": "SQL",
+        "source": "sql_template_engine",
+        "sql": None,
+        "can_execute_sql": False,
+    }
+    with patch.object(orchestrator, "_fallback_sql_template_engine", return_value=no_template_result):
+        response = await orchestrator.arun(
+            "تعداد کارکنان چند نفر است؟",
+            runtime_params={"model": "llama3.1:8b"},
+        )
     payload = response.to_dict()
     sql_plan = (payload.get("context") or {}).get("sql_plan") or {}
     meta = sql_plan.get("metadata") or {}
@@ -518,16 +542,11 @@ async def test_coverage_check_skipped_when_no_sql_in_plan(metadata_service):
 
 @pytest.mark.asyncio
 async def test_orchestrator_skips_sql_generator_when_model_set(metadata_service):
-    """When model is set, sql_generator must NOT be called — LLM primary path handles it."""
-    from unittest.mock import AsyncMock, MagicMock
+    """When model is set and template is valid, neither sql_generator nor LLM is called.
+    The gate must prevent LLM invocation when template already provides valid SQL."""
+    from unittest.mock import AsyncMock
 
     mock_ollama = AsyncMock()
-    gen_result = MagicMock()
-    gen_result.sql = "SELECT COUNT(v.employee_id) FROM hr_mvp.vw_hr_employee_analytics v WHERE v.is_active = TRUE"
-    gen_result.success = True
-    gen_result.error = None
-    mock_ollama.generate.return_value = gen_result
-
     mock_generator = AsyncMock()
 
     orchestrator = LLMOrchestrator(
@@ -539,7 +558,7 @@ async def test_orchestrator_skips_sql_generator_when_model_set(metadata_service)
     await orchestrator.arun("تعداد کارکنان؟", runtime_params={"model": "llama3.1:8b"})
 
     mock_generator.arun.assert_not_called()
-    mock_ollama.generate.assert_called_once()
+    mock_ollama.generate.assert_not_called()
 
 
 # ---------------------------------------------------------------------------
@@ -930,4 +949,175 @@ def test_extract_template_params_age_filter_by_dept(metadata_service):
     )
     assert result["params"].get("age_max_exclusive") == 30, (
         f"Expected age_max_exclusive=30, got: {result['params']}"
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 4.1 — LLM Invocation Gate
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_llm_not_called_when_template_valid(metadata_service):
+    """When template returns status OK with valid SQL, LLM must NOT be called
+    even when model is provided in runtime_params."""
+    import uuid
+    from unittest.mock import AsyncMock, patch
+
+    from app.hr_analytics.use_cases.orchestrator import RequestContext
+
+    mock_ollama = AsyncMock()
+
+    orchestrator = LLMOrchestrator(
+        metadata_service=metadata_service,
+        default_execute_sql=False,
+        ollama_client=mock_ollama,
+    )
+
+    context = RequestContext(request_id=str(uuid.uuid4()), question="تعداد کارکنان؟")
+    context.runtime_params = {"model": "llama3.1:8b"}
+    context.intent_result = {"filters": [], "group_by": [], "metrics": [], "params": {}}
+
+    template_result = {
+        "status": "OK",
+        "route": "SQL",
+        "source": "sql_template_engine",
+        "sql": "SELECT COUNT(v.employee_id) AS employee_count FROM hr_mvp.vw_hr_employee_analytics v WHERE v.is_active = TRUE",
+        "can_execute_sql": True,
+    }
+
+    with patch.object(orchestrator, "_fallback_sql_template_engine", return_value=template_result):
+        await orchestrator._plan_sql(context)
+
+    mock_ollama.generate.assert_not_called()
+    assert context.sql_plan.get("status") == "OK"
+    assert "SELECT COUNT" in (context.sql_plan.get("sql") or "")
+
+
+@pytest.mark.asyncio
+async def test_llm_called_when_no_template_and_model_set(metadata_service):
+    """When template returns NO_TEMPLATE and model is set, LLM must be invoked."""
+    import uuid
+    from unittest.mock import AsyncMock, MagicMock, patch
+
+    from app.hr_analytics.use_cases.orchestrator import RequestContext
+
+    mock_ollama = AsyncMock()
+    gen_result = MagicMock()
+    gen_result.sql = "SELECT COUNT(v.employee_id) FROM hr_mvp.vw_hr_employee_analytics v WHERE v.is_active = TRUE"
+    gen_result.success = True
+    gen_result.error = None
+    mock_ollama.generate.return_value = gen_result
+
+    orchestrator = LLMOrchestrator(
+        metadata_service=metadata_service,
+        default_execute_sql=False,
+        ollama_client=mock_ollama,
+    )
+
+    context = RequestContext(request_id=str(uuid.uuid4()), question="سوال بدون template")
+    context.runtime_params = {"model": "llama3.1:8b"}
+    context.intent_result = {"filters": [], "group_by": [], "metrics": [], "params": {}}
+
+    template_result = {
+        "status": "NO_TEMPLATE",
+        "route": "SQL",
+        "source": "sql_template_engine",
+        "sql": None,
+        "can_execute_sql": False,
+    }
+
+    with patch.object(orchestrator, "_fallback_sql_template_engine", return_value=template_result):
+        await orchestrator._plan_sql(context)
+
+    mock_ollama.generate.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_llm_called_when_template_incomplete_and_model_set(metadata_service):
+    """When template is marked TEMPLATE_INCOMPLETE and model is set, LLM must be invoked."""
+    import uuid
+    from unittest.mock import AsyncMock, MagicMock, patch
+
+    from app.hr_analytics.use_cases.orchestrator import RequestContext
+
+    mock_ollama = AsyncMock()
+    gen_result = MagicMock()
+    gen_result.sql = "SELECT COUNT(v.employee_id) FROM hr_mvp.vw_hr_employee_analytics v WHERE v.is_active = TRUE"
+    gen_result.success = True
+    gen_result.error = None
+    mock_ollama.generate.return_value = gen_result
+
+    orchestrator = LLMOrchestrator(
+        metadata_service=metadata_service,
+        default_execute_sql=False,
+        ollama_client=mock_ollama,
+    )
+
+    context = RequestContext(request_id=str(uuid.uuid4()), question="تعداد زنان در هر دپارتمان")
+    context.runtime_params = {"model": "llama3.1:8b"}
+    context.intent_result = {
+        "filters": [{"column": "gender", "operator": "=", "value": "زن"}],
+        "group_by": ["department_name"],
+        "metrics": [],
+        "params": {},
+    }
+
+    template_result = {
+        "status": "TEMPLATE_INCOMPLETE",
+        "route": "SQL",
+        "source": "template_coverage_checker",
+        "sql": None,
+        "can_execute_sql": False,
+        "reason": "Template does not cover all filters.",
+    }
+
+    with patch.object(orchestrator, "_fallback_sql_template_engine", return_value=template_result):
+        await orchestrator._plan_sql(context)
+
+    mock_ollama.generate.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_llm_trigger_reason_recorded_in_trace(metadata_service):
+    """When LLM is invoked due to NO_TEMPLATE, the trace must record llm_trigger_reason."""
+    import uuid
+    from unittest.mock import AsyncMock, MagicMock, patch
+
+    from app.hr_analytics.use_cases.orchestrator import RequestContext
+
+    mock_ollama = AsyncMock()
+    gen_result = MagicMock()
+    gen_result.sql = "SELECT COUNT(v.employee_id) FROM hr_mvp.vw_hr_employee_analytics v WHERE v.is_active = TRUE"
+    gen_result.success = True
+    gen_result.error = None
+    mock_ollama.generate.return_value = gen_result
+
+    orchestrator = LLMOrchestrator(
+        metadata_service=metadata_service,
+        default_execute_sql=False,
+        ollama_client=mock_ollama,
+    )
+
+    context = RequestContext(request_id=str(uuid.uuid4()), question="سوال بدون template")
+    context.runtime_params = {"model": "llama3.1:8b"}
+    context.intent_result = {"filters": [], "group_by": [], "metrics": [], "params": {}}
+
+    template_result = {
+        "status": "NO_TEMPLATE",
+        "route": "SQL",
+        "source": "sql_template_engine",
+        "sql": None,
+        "can_execute_sql": False,
+    }
+
+    with patch.object(orchestrator, "_fallback_sql_template_engine", return_value=template_result):
+        await orchestrator._plan_sql(context)
+
+    trace_entry = next(
+        (t for t in context.traces if t.step == "sql_planner"), None
+    )
+    assert trace_entry is not None, "sql_planner trace entry missing"
+    assert trace_entry.details.get("llm_trigger_reason") == "NO_TEMPLATE", (
+        f"Expected llm_trigger_reason='NO_TEMPLATE', got: {trace_entry.details}"
     )
