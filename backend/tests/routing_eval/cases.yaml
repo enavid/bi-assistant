@@ -253,6 +253,10 @@ cases:
     expect:
       route: SQL
       intent: gender_percentage
+      expected_metric: "COUNT"
+      must_include_sql:
+        - "gender"
+        - "is_active"
 
   - id: sql-average-age
     question: "میانگین سن کارکنان چقدر است؟"
@@ -301,6 +305,11 @@ cases:
     expect:
       route: SQL
       intent: most_or_least_hiring_year
+      expected_metric: "COUNT"
+      expected_group_by: ["hire_year"]
+      must_include_sql:
+        - "hire_year"
+        - "LIMIT"
 
   - id: sql-least-hiring-year
     question: "کمترین جذب در چه سالی بوده؟"
@@ -309,6 +318,11 @@ cases:
     expect:
       route: SQL
       intent: most_or_least_hiring_year
+      expected_metric: "COUNT"
+      expected_group_by: ["hire_year"]
+      must_include_sql:
+        - "hire_year"
+        - "LIMIT"
 
   - id: sql-low-education-expert-roles
     question: "تعداد افراد با مدرک پایین‌تر از نیاز پست چقدر است؟"
@@ -317,6 +331,10 @@ cases:
     expect:
       route: SQL
       intent: low_education_in_expert_roles
+      expected_metric: "COUNT"
+      must_include_sql:
+        - "education"
+        - "is_active"
 
   - id: sql-contractor-share-by-domain
     question: "سهم پیمانکاری در هر حوزه خدمت چند درصد است؟"
@@ -325,6 +343,13 @@ cases:
     expect:
       route: SQL
       intent: contractor_share_by_service_domain
+      expected_filters: ["is_contractor"]
+      expected_metric: "COUNT"
+      expected_group_by: ["service_domain"]
+      must_include_sql:
+        - "is_contractor"
+        - "service_domain"
+        - "GROUP BY"
 
   - id: sql-employment-type
     question: "تعداد کارکنان بر اساس نوع استخدام"
@@ -333,6 +358,11 @@ cases:
     expect:
       route: SQL
       intent: employee_count_by_employment_type
+      expected_metric: "COUNT"
+      expected_group_by: ["employment_type"]
+      must_include_sql:
+        - "employment_type"
+        - "GROUP BY"
 
   - id: sql-annual-hiring-trend
     question: "روند جذب سالانه کارکنان"
@@ -341,6 +371,11 @@ cases:
     expect:
       route: SQL
       intent: hiring_trend_annual
+      expected_metric: "COUNT"
+      expected_group_by: ["hire_year"]
+      must_include_sql:
+        - "hire_year"
+        - "GROUP BY"
 
   - id: sql-15-year-hiring
     question: "جذب نیرو در ۱۵ سال گذشته"
@@ -349,6 +384,11 @@ cases:
     expect:
       route: SQL
       intent: hiring_last_15_years
+      expected_metric: "COUNT"
+      expected_group_by: ["hire_year"]
+      must_include_sql:
+        - "hire_year"
+        - "GROUP BY"
 
   - id: sql-average-service-years
     question: "میانگین سابقه خدمت کارکنان چند سال است؟"
@@ -384,14 +424,25 @@ cases:
     expect:
       route: SQL
       intent: headcount_gap_by_department
+      expected_metric: "COUNT"
+      expected_group_by: ["department_name"]
+      must_include_sql:
+        - "department_name"
+        - "GROUP BY"
 
   - id: sql-most-common-education
     question: "رایج‌ترین مدرک تحصیلی کارکنان چیست؟"
     category: sql
-    description: Most common education level
+    description: Most common education level — must return single top result
     expect:
       route: SQL
       intent: most_common_education
+      expected_metric: "COUNT"
+      expected_group_by: ["education_title"]
+      must_include_sql:
+        - "education_title"
+        - "GROUP BY"
+        - "LIMIT"
 
   - id: sql-headcount-by-province
     question: "تعداد کارکنان هر استان چند نفر است؟"
@@ -555,6 +606,8 @@ cases:
     expect:
       route: SQL
       intent: employee_count_by_department
+      expected_metric: "COUNT"
+      expected_group_by: ["department_name"]
       must_include_sql:
         - "LIMIT 1"
         - "department_name"
@@ -567,6 +620,8 @@ cases:
     expect:
       route: SQL
       intent: employee_count_by_province
+      expected_metric: "COUNT"
+      expected_group_by: ["province"]
       must_include_sql:
         - "LIMIT 1"
         - "province"
