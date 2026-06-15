@@ -616,6 +616,7 @@ class LLMOrchestrator:
         should_call_llm = (
             model is not None and self.ollama_client is not None and _llm_trigger_reason is not None
         )
+        _model_called: str | None = None
 
         if should_call_llm:
             suggested_sql = plan.get("sql") or None
@@ -625,6 +626,7 @@ class LLMOrchestrator:
                 suggested_sql=suggested_sql,
                 llm_trigger_reason=_llm_trigger_reason,
             )
+            _model_called = model
         else:
             _hard_stop_statuses = {"COVERAGE_INCOMPLETE", "PARAMETER_VALIDATION_FAILED"}
             should_generate = _plan_status not in _hard_stop_statuses and (
@@ -670,6 +672,7 @@ class LLMOrchestrator:
             if any(x in _plan_source for x in ("generator", "llm"))
             else "rule"
         )
+        _cov = context.coverage_result or {}
         context.add_trace(
             "sql_planner",
             plan.get("status", "ok"),
@@ -678,6 +681,9 @@ class LLMOrchestrator:
                 **redact_sql_for_trace(plan),
                 "decision_by": _sql_decision,
                 "llm_trigger_reason": _llm_trigger_reason,
+                "coverage_status": _cov.get("status"),
+                "missing_filters": list(_cov.get("missing") or []),
+                "model_called": _model_called,
             },
         )
 

@@ -1749,3 +1749,71 @@ async def test_retirement_colloquial_baz_neshaste_mishon(metadata_service):
     assert intent_res.get("intent_id") == "near_retirement_analysis", (
         f"'باز نشسته میشن' got wrong intent: {intent_res.get('intent_id')}"
     )
+
+
+# ---------------------------------------------------------------------------
+# 1.4 — Trace completeness: sql_planner must expose coverage_status,
+#        missing_filters, and model_called in its details dict.
+# ---------------------------------------------------------------------------
+
+
+def _sql_planner_trace(d: dict) -> dict:
+    """Extract the sql_planner trace step from a full orchestrator result dict."""
+    ctx = d.get("context") or {}
+    traces = ctx.get("traces") or []
+    for step in traces:
+        if step.get("step") == "sql_planner":
+            return step.get("details") or {}
+    return {}
+
+
+def test_trace_sql_planner_has_coverage_status(metadata_service):
+    """sql_planner trace must include coverage_status from coverage_result."""
+    orch = LLMOrchestrator(metadata_service=metadata_service, default_execute_sql=False)
+    d = _run(orch, "میانگین سن کارکنان چقدر است؟")
+    details = _sql_planner_trace(d)
+    assert "coverage_status" in details, (
+        f"sql_planner trace must contain coverage_status. Got keys: {list(details.keys())}"
+    )
+    assert details["coverage_status"] in {"COMPLETE", "COVERAGE_INCOMPLETE", "PATCHED_BY_CONTROLLED_DYNAMIC"}, (
+        f"Unexpected coverage_status value: {details['coverage_status']!r}"
+    )
+
+
+def test_trace_sql_planner_has_missing_filters(metadata_service):
+    """sql_planner trace must include missing_filters (empty list when coverage is complete)."""
+    orch = LLMOrchestrator(metadata_service=metadata_service, default_execute_sql=False)
+    d = _run(orch, "میانگین سن کارکنان چقدر است؟")
+    details = _sql_planner_trace(d)
+    assert "missing_filters" in details, (
+        f"sql_planner trace must contain missing_filters. Got keys: {list(details.keys())}"
+    )
+    assert isinstance(details["missing_filters"], list), (
+        f"missing_filters must be a list, got {type(details['missing_filters'])}"
+    )
+
+
+def test_trace_sql_planner_has_model_called(metadata_service):
+    """sql_planner trace must include model_called (None when no LLM was invoked)."""
+    orch = LLMOrchestrator(metadata_service=metadata_service, default_execute_sql=False)
+    d = _run(orch, "میانگین سن کارکنان چقدر است؟")
+    details = _sql_planner_trace(d)
+    assert "model_called" in details, (
+        f"sql_planner trace must contain model_called. Got keys: {list(details.keys())}"
+    )
+    assert details["model_called"] is None, (
+        f"model_called must be None when no LLM is configured, got {details['model_called']!r}"
+    )
+
+
+def test_trace_sql_planner_complete_coverage_has_empty_missing_filters(metadata_service):
+    """When template covers all fields, missing_filters must be an empty list."""
+    orch = LLMOrchestrator(metadata_service=metadata_service, default_execute_sql=False)
+    d = _run(orch, "تعداد کل کارکنان چند نفر است؟")
+    details = _sql_planner_trace(d)
+    assert details.get("coverage_status") == "COMPLETE", (
+        f"Expected COMPLETE coverage for simple headcount, got: {details.get('coverage_status')!r}"
+    )
+    assert details.get("missing_filters") == [], (
+        f"Expected empty missing_filters, got: {details.get('missing_filters')!r}"
+    )
