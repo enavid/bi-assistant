@@ -1600,10 +1600,19 @@ class IntentParser:
         m = re.search(r"(?:بیش از|بالای|بالاتر از|بیشتر از)\s*(\d{1,3})\s*سال\s*سابقه", question)
         if m:
             return {"column": "service_years", "operator": ">=", "value": int(m.group(1))}
+        m = re.search(r"سابقه\s+(?:بالای|بیش از|بیشتر از|بالاتر از)\s*(\d{1,3})\s*سال", question)
+        if m:
+            return {"column": "service_years", "operator": ">=", "value": int(m.group(1))}
         m = re.search(r"(\d{1,3})\s*سال\s*سابقه\s*(?:به بالا|و بالاتر|بیشتر)", question)
         if m:
             return {"column": "service_years", "operator": ">=", "value": int(m.group(1))}
+        m = re.search(r"سابقه\s+(\d{1,3})\s*سال\s*(?:به بالا|و بالاتر|بیشتر)", question)
+        if m:
+            return {"column": "service_years", "operator": ">=", "value": int(m.group(1))}
         m = re.search(r"(?:کمتر از|زیر|پایین‌تر از|پایین تر از)\s*(\d{1,3})\s*سال\s*سابقه", question)
+        if m:
+            return {"column": "service_years", "operator": "<", "value": int(m.group(1))}
+        m = re.search(r"سابقه\s+(?:زیر|کمتر از|پایین‌تر از|پایین تر از)\s*(\d{1,3})\s*سال", question)
         if m:
             return {"column": "service_years", "operator": "<", "value": int(m.group(1))}
         m = re.search(r"سابقه\s+بین\s+(\d{1,3})\s+(?:تا|الی)\s+(\d{1,3})", question)

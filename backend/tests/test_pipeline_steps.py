@@ -292,6 +292,65 @@ def test_service_years_between_5_and_15_routes_to_count_intent(metadata_service)
     assert f.get("value") == [5, 15], f"Expected [5,15], got {f.get('value')!r}"
 
 
+# BUG-3.6 — service_years filter when "سابقه" appears at the START of the phrase
+
+
+def test_service_years_sabeghe_balaye_5(metadata_service):
+    result = IntentParser(metadata_service=metadata_service).parse(
+        "کارکنان با سابقه بالای ۵ سال"
+    )
+    intent = result.get("intent_id") or result.get("intent")
+    assert intent == "employee_count_by_service_years_filter", (
+        f"Expected employee_count_by_service_years_filter, got {intent!r}"
+    )
+    f = _sy_filter(result)
+    assert f is not None, "Expected service_years filter"
+    assert f.get("operator") in {">", ">="}, f"Expected >= operator, got {f.get('operator')!r}"
+    assert f.get("value") == 5, f"Expected value=5, got {f.get('value')!r}"
+
+
+def test_service_years_sabeghe_zir_3(metadata_service):
+    result = IntentParser(metadata_service=metadata_service).parse(
+        "سابقه زیر ۳ سال"
+    )
+    intent = result.get("intent_id") or result.get("intent")
+    assert intent == "employee_count_by_service_years_filter", (
+        f"Expected employee_count_by_service_years_filter, got {intent!r}"
+    )
+    f = _sy_filter(result)
+    assert f is not None, "Expected service_years filter"
+    assert f.get("operator") == "<", f"Expected < operator, got {f.get('operator')!r}"
+    assert f.get("value") == 3, f"Expected value=3, got {f.get('value')!r}"
+
+
+def test_service_years_sabeghe_kamtar_az_5(metadata_service):
+    result = IntentParser(metadata_service=metadata_service).parse(
+        "سابقه کمتر از ۵ سال دارند"
+    )
+    intent = result.get("intent_id") or result.get("intent")
+    assert intent == "employee_count_by_service_years_filter", (
+        f"Expected employee_count_by_service_years_filter, got {intent!r}"
+    )
+    f = _sy_filter(result)
+    assert f is not None, "Expected service_years filter"
+    assert f.get("operator") == "<", f"Expected < operator, got {f.get('operator')!r}"
+    assert f.get("value") == 5, f"Expected value=5, got {f.get('value')!r}"
+
+
+def test_service_years_15_sal_sabeghe_be_bala(metadata_service):
+    result = IntentParser(metadata_service=metadata_service).parse(
+        "سابقه ۱۵ سال به بالا"
+    )
+    intent = result.get("intent_id") or result.get("intent")
+    assert intent == "employee_count_by_service_years_filter", (
+        f"Expected employee_count_by_service_years_filter, got {intent!r}"
+    )
+    f = _sy_filter(result)
+    assert f is not None, "Expected service_years filter"
+    assert f.get("operator") in {">", ">="}, f"Expected >= operator, got {f.get('operator')!r}"
+    assert f.get("value") == 15, f"Expected value=15, got {f.get('value')!r}"
+
+
 # ---------------------------------------------------------------------------
 # BUG-001 — education_title for doctorate must match the actual DB value
 # ---------------------------------------------------------------------------
