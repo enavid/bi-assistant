@@ -722,6 +722,19 @@ class LLMOrchestrator:
             llm_meta["context_window"] = gen_result.context_window
 
         if sql:
+            from app.hr_analytics.use_cases.steps.sql_coverage_validator import validate_coverage
+
+            _llm_cov = validate_coverage(context.intent_result, sql)
+            context.coverage_result = {
+                **context.coverage_result,
+                "llm_coverage_status": _llm_cov.status,
+                "llm_coverage_missing": _llm_cov.missing,
+            }
+            if not _llm_cov.is_complete:
+                context.warnings.append(
+                    f"LLM SQL coverage incomplete — missing: {_llm_cov.missing}"
+                )
+            _cov_status = "COMPLETE" if _llm_cov.is_complete else "LLM_COVERAGE_INCOMPLETE"
             return {
                 "status": "OK",
                 "route": Route.SQL.value,
@@ -729,6 +742,8 @@ class LLMOrchestrator:
                 "sql": sql,
                 "can_execute_sql": True,
                 "generation_mode": "llm_primary",
+                "coverage_status": _cov_status,
+                "coverage_missing": _llm_cov.missing,
                 "metadata": llm_meta,
             }
         return {

@@ -1289,3 +1289,243 @@ async def test_controlled_dynamic_falls_through_to_llm_on_group_by_missing(metad
 
     # CD cannot fix GROUP BY → LLM must be called
     mock_ollama.generate.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# Phase 4.4 — LLM output through Coverage Validator
+# ---------------------------------------------------------------------------
+
+
+_NO_TEMPLATE_PLAN = {
+    "status": "NO_TEMPLATE",
+    "route": "SQL",
+    "source": "sql_template_engine",
+    "sql": None,
+    "can_execute_sql": False,
+}
+
+
+@pytest.mark.asyncio
+async def test_llm_plan_has_coverage_status_complete_when_sql_covers_all(metadata_service):
+    """When LLM SQL includes all required filters/group_by, plan must have coverage_status=COMPLETE."""
+    import uuid
+    from unittest.mock import AsyncMock, MagicMock, patch
+
+    from app.hr_analytics.use_cases.orchestrator import RequestContext
+
+    mock_ollama = AsyncMock()
+    gen_result = MagicMock()
+    gen_result.sql = (
+        "SELECT v.gender, COUNT(v.employee_id) AS cnt "
+        "FROM hr_mvp.vw_hr_employee_analytics v "
+        "WHERE v.is_active = TRUE AND v.department_name = 'IT' "
+        "GROUP BY v.gender"
+    )
+    gen_result.prompt_tokens = None
+    gen_result.context_window = None
+    gen_result.error = None
+    mock_ollama.generate.return_value = gen_result
+
+    orchestrator = LLMOrchestrator(
+        metadata_service=metadata_service,
+        default_execute_sql=False,
+        ollama_client=mock_ollama,
+    )
+
+    context = RequestContext(request_id=str(uuid.uuid4()), question="تعداد زن و مرد در IT")
+    context.runtime_params = {"model": "llama3.1:8b"}
+    context.intent_result = {
+        "filters": [{"column": "department_name", "operator": "=", "value": "IT"}],
+        "group_by": ["gender"],
+        "metrics": [],
+        "params": {},
+    }
+
+    with patch.object(
+        orchestrator, "_fallback_sql_template_engine", return_value=_NO_TEMPLATE_PLAN
+    ):
+        await orchestrator._plan_sql(context)
+
+    plan = context.sql_plan
+    assert plan.get("coverage_status") == "COMPLETE", f"Expected COMPLETE, got: {plan}"
+    assert plan.get("coverage_missing") == []
+
+
+@pytest.mark.asyncio
+async def test_llm_plan_has_coverage_status_incomplete_when_filter_missing(metadata_service):
+    """When LLM SQL misses a required filter, plan must report LLM_COVERAGE_INCOMPLETE."""
+    import uuid
+    from unittest.mock import AsyncMock, MagicMock, patch
+
+    from app.hr_analytics.use_cases.orchestrator import RequestContext
+
+    mock_ollama = AsyncMock()
+    gen_result = MagicMock()
+    # LLM forgot to include the gender filter
+    gen_result.sql = (
+        "SELECT COUNT(v.employee_id) AS cnt "
+        "FROM hr_mvp.vw_hr_employee_analytics v "
+        "WHERE v.is_active = TRUE"
+    )
+    gen_result.prompt_tokens = None
+    gen_result.context_window = None
+    gen_result.error = None
+    mock_ollama.generate.return_value = gen_result
+
+    orchestrator = LLMOrchestrator(
+        metadata_service=metadata_service,
+        default_execute_sql=False,
+        ollama_client=mock_ollama,
+    )
+
+    context = RequestContext(request_id=str(uuid.uuid4()), question="تعداد کارکنان زن")
+    context.runtime_params = {"model": "llama3.1:8b"}
+    context.intent_result = {
+        "filters": [{"column": "gender", "operator": "=", "value": "زن"}],
+        "group_by": [],
+        "metrics": [],
+        "params": {},
+    }
+
+    with patch.object(
+        orchestrator, "_fallback_sql_template_engine", return_value=_NO_TEMPLATE_PLAN
+    ):
+        await orchestrator._plan_sql(context)
+
+    plan = context.sql_plan
+    assert plan.get("coverage_status") == "LLM_COVERAGE_INCOMPLETE", (
+        f"Expected LLM_COVERAGE_INCOMPLETE, got: {plan}"
+    )
+    assert "filter:gender" in (plan.get("coverage_missing") or [])
+
+
+@pytest.mark.asyncio
+async def test_llm_coverage_incomplete_still_can_execute(metadata_service):
+    """Even when LLM SQL has incomplete coverage, can_execute_sql must remain True."""
+    import uuid
+    from unittest.mock import AsyncMock, MagicMock, patch
+
+    from app.hr_analytics.use_cases.orchestrator import RequestContext
+
+    mock_ollama = AsyncMock()
+    gen_result = MagicMock()
+    gen_result.sql = (
+        "SELECT COUNT(v.employee_id) FROM hr_mvp.vw_hr_employee_analytics v "
+        "WHERE v.is_active = TRUE"
+    )
+    gen_result.prompt_tokens = None
+    gen_result.context_window = None
+    gen_result.error = None
+    mock_ollama.generate.return_value = gen_result
+
+    orchestrator = LLMOrchestrator(
+        metadata_service=metadata_service,
+        default_execute_sql=False,
+        ollama_client=mock_ollama,
+    )
+
+    context = RequestContext(request_id=str(uuid.uuid4()), question="تعداد کارکنان زن")
+    context.runtime_params = {"model": "llama3.1:8b"}
+    context.intent_result = {
+        "filters": [{"column": "gender", "operator": "=", "value": "زن"}],
+        "group_by": [],
+        "metrics": [],
+        "params": {},
+    }
+
+    with patch.object(
+        orchestrator, "_fallback_sql_template_engine", return_value=_NO_TEMPLATE_PLAN
+    ):
+        await orchestrator._plan_sql(context)
+
+    assert context.sql_plan.get("can_execute_sql") is True
+
+
+@pytest.mark.asyncio
+async def test_llm_coverage_incomplete_adds_warning_to_context(metadata_service):
+    """Incomplete LLM coverage must add a warning to context.warnings."""
+    import uuid
+    from unittest.mock import AsyncMock, MagicMock, patch
+
+    from app.hr_analytics.use_cases.orchestrator import RequestContext
+
+    mock_ollama = AsyncMock()
+    gen_result = MagicMock()
+    gen_result.sql = (
+        "SELECT COUNT(v.employee_id) FROM hr_mvp.vw_hr_employee_analytics v "
+        "WHERE v.is_active = TRUE"
+    )
+    gen_result.prompt_tokens = None
+    gen_result.context_window = None
+    gen_result.error = None
+    mock_ollama.generate.return_value = gen_result
+
+    orchestrator = LLMOrchestrator(
+        metadata_service=metadata_service,
+        default_execute_sql=False,
+        ollama_client=mock_ollama,
+    )
+
+    context = RequestContext(request_id=str(uuid.uuid4()), question="تعداد کارکنان زن")
+    context.runtime_params = {"model": "llama3.1:8b"}
+    context.intent_result = {
+        "filters": [{"column": "gender", "operator": "=", "value": "زن"}],
+        "group_by": [],
+        "metrics": [],
+        "params": {},
+    }
+
+    with patch.object(
+        orchestrator, "_fallback_sql_template_engine", return_value=_NO_TEMPLATE_PLAN
+    ):
+        await orchestrator._plan_sql(context)
+
+    assert any("coverage" in w.lower() or "missing" in w.lower() for w in context.warnings), (
+        f"Expected a coverage warning, got: {context.warnings}"
+    )
+
+
+@pytest.mark.asyncio
+async def test_llm_coverage_result_stored_on_context(metadata_service):
+    """After LLM call, context.coverage_result must contain llm_coverage_status."""
+    import uuid
+    from unittest.mock import AsyncMock, MagicMock, patch
+
+    from app.hr_analytics.use_cases.orchestrator import RequestContext
+
+    mock_ollama = AsyncMock()
+    gen_result = MagicMock()
+    gen_result.sql = (
+        "SELECT COUNT(v.employee_id) AS cnt "
+        "FROM hr_mvp.vw_hr_employee_analytics v "
+        "WHERE v.is_active = TRUE AND v.gender = 'زن'"
+    )
+    gen_result.prompt_tokens = None
+    gen_result.context_window = None
+    gen_result.error = None
+    mock_ollama.generate.return_value = gen_result
+
+    orchestrator = LLMOrchestrator(
+        metadata_service=metadata_service,
+        default_execute_sql=False,
+        ollama_client=mock_ollama,
+    )
+
+    context = RequestContext(request_id=str(uuid.uuid4()), question="تعداد کارکنان زن")
+    context.runtime_params = {"model": "llama3.1:8b"}
+    context.intent_result = {
+        "filters": [{"column": "gender", "operator": "=", "value": "زن"}],
+        "group_by": [],
+        "metrics": [],
+        "params": {},
+    }
+
+    with patch.object(
+        orchestrator, "_fallback_sql_template_engine", return_value=_NO_TEMPLATE_PLAN
+    ):
+        await orchestrator._plan_sql(context)
+
+    assert "llm_coverage_status" in context.coverage_result, (
+        f"coverage_result missing llm_coverage_status: {context.coverage_result}"
+    )
+    assert context.coverage_result["llm_coverage_status"] == "COMPLETE"
