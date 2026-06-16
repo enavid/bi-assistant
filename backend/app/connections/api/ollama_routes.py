@@ -251,8 +251,9 @@ def _fmt_size(size_bytes: int) -> str:
 
 def _clear_llm_cache() -> None:
     try:
-        from app.dependencies import get_llm_client
+        from app.dependencies import get_hr_bi_orchestrator, get_llm_client
 
         get_llm_client.cache_clear()
+        get_hr_bi_orchestrator.cache_clear()
     except Exception:
         pass
