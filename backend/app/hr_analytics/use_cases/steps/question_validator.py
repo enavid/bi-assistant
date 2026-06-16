@@ -77,6 +77,7 @@ STATUS_OK = "OK"
 STATUS_VALID = "VALID"
 STATUS_DATA_GAP = "DATA_GAP"
 STATUS_ANALYTICAL_GAP = "ANALYTICAL_GAP"
+STATUS_KNOWLEDGE_GAP = "KNOWLEDGE_GAP"
 STATUS_ACCESS_DENIED = "ACCESS_DENIED"
 STATUS_OUT_OF_SCOPE = "OUT_OF_SCOPE"
 STATUS_NEEDS_CLARIFICATION = "NEEDS_CLARIFICATION"
@@ -576,6 +577,7 @@ class QuestionValidator:
         matched_rules: list[ValidationRuleMatch] = []
         gap_candidates: list[str] = []
         has_analytical_gap = False
+        has_knowledge_gap = False
 
         # Rule definitions intentionally mirror metadata GAP examples.
         for rule in self.data_gap_rules:
@@ -593,8 +595,11 @@ class QuestionValidator:
             if rule_id == "QVAL_GAP_CITY" and self._metadata_says_city_is_reliable(metadata):
                 continue
 
-            if rule.get("gap_type") == "analytical":
+            gap_type = rule.get("gap_type")
+            if gap_type == "analytical":
                 has_analytical_gap = True
+            elif gap_type == "knowledge":
+                has_knowledge_gap = True
 
             gap_candidates.append(str(rule["gap_key"]))
             matched_rules.append(
@@ -605,15 +610,22 @@ class QuestionValidator:
                     matched_terms=matched,
                     message_fa=str(rule.get("message_fa") or "این سؤال در MVP فعلی Data Gap است."),
                     route=ROUTE_GAP,
-                    status=STATUS_ANALYTICAL_GAP
-                    if rule.get("gap_type") == "analytical"
+                    status=STATUS_KNOWLEDGE_GAP
+                    if gap_type == "knowledge"
+                    else STATUS_ANALYTICAL_GAP
+                    if gap_type == "analytical"
                     else STATUS_DATA_GAP,
                 )
             )
 
         if matched_rules:
             primary = matched_rules[0]
-            final_status = STATUS_ANALYTICAL_GAP if has_analytical_gap else STATUS_DATA_GAP
+            if has_knowledge_gap:
+                final_status = STATUS_KNOWLEDGE_GAP
+            elif has_analytical_gap:
+                final_status = STATUS_ANALYTICAL_GAP
+            else:
+                final_status = STATUS_DATA_GAP
             return QuestionValidationResult(
                 route=ROUTE_GAP,
                 status=final_status,
@@ -1262,6 +1274,33 @@ def _build_data_gap_rules() -> list[JsonDict]:
             ],
             "severity": "medium",
             "message_fa": "تحلیل پیشرفته تعادل نیروی انسانی نیازمند تعریف شاخص و قانون کسب‌وکاری است؛ محاسبه ساده اختلاف چارت فقط partial پشتیبانی می‌شود.",
+        },
+        {
+            "rule_id": "QVAL_GAP_KNOWLEDGE_DEFINITION",
+            "gap_key": "hr_terminology_definition",
+            "terms": ["تعریف", "منظور از", "مفهوم"],
+            "required_any": ["چیست", "چیه", "است؟", "هست؟"],
+            "severity": "medium",
+            "gap_type": "knowledge",
+            "message_fa": "این سؤال درباره تعریف یا مفهوم یک اصطلاح است. پیش از ارائه RAG، پاسخ مستند در سیستم موجود نیست.",
+        },
+        {
+            "rule_id": "QVAL_GAP_KNOWLEDGE_MEANING",
+            "gap_key": "hr_terminology_meaning",
+            "terms": ["یعنی چه", "یعنی چی"],
+            "severity": "medium",
+            "gap_type": "knowledge",
+            "message_fa": "این سؤال درباره معنی یک اصطلاح HR است و نیاز به منبع دانشی دارد.",
+        },
+        {
+            "rule_id": "QVAL_GAP_KNOWLEDGE_DIFFERENCE",
+            "gap_key": "hr_terminology_difference",
+            "terms": ["تفاوت"],
+            "required_any": ["چیست", "چیه"],
+            "excluded_any": ["تعداد", "چند نفر", "چقدر است", "چند درصد"],
+            "severity": "medium",
+            "gap_type": "knowledge",
+            "message_fa": "این سؤال درباره تفاوت مفهومی دو اصطلاح است و نیاز به منبع دانشی دارد.",
         },
     ]
 

@@ -69,6 +69,7 @@ class ValidationStatus(StrEnum):
     VALID = "VALID"
     DATA_GAP = "DATA_GAP"
     ANALYTICAL_GAP = "ANALYTICAL_GAP"
+    KNOWLEDGE_GAP = "KNOWLEDGE_GAP"
     ACCESS_DENIED = "ACCESS_DENIED"
     OUT_OF_SCOPE = "OUT_OF_SCOPE"
     NEEDS_CLARIFICATION = "NEEDS_CLARIFICATION"
@@ -1040,11 +1041,12 @@ class LLMOrchestrator:
                 }
         else:
             prior_status = str(context.route_result.get("status") or "").upper()
-            gap_status = (
-                ValidationStatus.ANALYTICAL_GAP.value
-                if prior_status == ValidationStatus.ANALYTICAL_GAP.value
-                else ValidationStatus.DATA_GAP.value
-            )
+            if prior_status == ValidationStatus.ANALYTICAL_GAP.value:
+                gap_status = ValidationStatus.ANALYTICAL_GAP.value
+            elif prior_status == ValidationStatus.KNOWLEDGE_GAP.value:
+                gap_status = ValidationStatus.KNOWLEDGE_GAP.value
+            else:
+                gap_status = ValidationStatus.DATA_GAP.value
             context.gap_result = {
                 "route": Route.GAP.value,
                 "status": gap_status,
@@ -1405,6 +1407,7 @@ class LLMOrchestrator:
         if intent_status in {
             "DATA_GAP",
             "ANALYTICAL_GAP",
+            "KNOWLEDGE_GAP",
             "ACCESS_DENIED",
             "OUT_OF_SCOPE",
             "NEEDS_CLARIFICATION",
@@ -1668,6 +1671,29 @@ class LLMOrchestrator:
                     "confidence": 0.9,
                     "reason": reason,
                 }
+
+        _knowledge_prefixes = ["تعریف ", "منظور از ", "مفهوم "]
+        _knowledge_suffixes = [" چیست", " یعنی چه", " یعنی چی"]
+        _knowledge_difference_triggers = [" تفاوت ", "تفاوت "]
+        _data_question_excludes = ["تعداد", "چند نفر", "چقدر", "چند درصد", "کدام"]
+
+        _has_knowledge_prefix = any(question.startswith(p) or p in question for p in _knowledge_prefixes)
+        _has_knowledge_suffix = any(question.endswith(s) or s in question for s in _knowledge_suffixes)
+        _is_difference_question = (
+            any(t in question for t in _knowledge_difference_triggers)
+            and _has_knowledge_suffix
+            and not any(ex in question for ex in _data_question_excludes)
+        )
+
+        if (_has_knowledge_prefix and _has_knowledge_suffix) or _is_difference_question:
+            return {
+                "route": Route.GAP.value,
+                "status": ValidationStatus.KNOWLEDGE_GAP.value,
+                "intent": "hr_terminology_knowledge",
+                "intent_id": "hr_terminology_knowledge",
+                "confidence": 0.9,
+                "reason": "سؤال درباره تعریف یا مفهوم اصطلاح است؛ پیش از ارائه RAG پاسخ مستند موجود نیست.",
+            }
 
         _near_retirement_indicators = [
             "آستانه بازنشستگی",
@@ -2094,6 +2120,7 @@ class LLMOrchestrator:
         } or status in {
             ValidationStatus.DATA_GAP.value,
             ValidationStatus.ANALYTICAL_GAP.value,
+            ValidationStatus.KNOWLEDGE_GAP.value,
             ValidationStatus.ACCESS_DENIED.value,
             ValidationStatus.OUT_OF_SCOPE.value,
             ValidationStatus.NEEDS_CLARIFICATION.value,
@@ -2174,7 +2201,11 @@ def to_plain_dict(value: Any) -> JsonDict:
 
 def route_for_status(status: str) -> str:
     status = status.upper()
-    if status in {ValidationStatus.DATA_GAP.value, ValidationStatus.ANALYTICAL_GAP.value}:
+    if status in {
+        ValidationStatus.DATA_GAP.value,
+        ValidationStatus.ANALYTICAL_GAP.value,
+        ValidationStatus.KNOWLEDGE_GAP.value,
+    }:
         return Route.GAP.value
     if status == ValidationStatus.NEEDS_CLARIFICATION.value:
         return Route.NEEDS_CLARIFICATION.value
@@ -2187,6 +2218,7 @@ def status_for_route(route: str, *, fallback: str | None = None) -> str:
     if fallback in {
         ValidationStatus.DATA_GAP.value,
         ValidationStatus.ANALYTICAL_GAP.value,
+        ValidationStatus.KNOWLEDGE_GAP.value,
         ValidationStatus.ACCESS_DENIED.value,
         ValidationStatus.OUT_OF_SCOPE.value,
         ValidationStatus.NEEDS_CLARIFICATION.value,

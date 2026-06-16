@@ -360,3 +360,51 @@ def test_query_executor_trace_has_row_count(metadata_service):
     assert "row_count" in executor["details"], (
         "query_executor trace must include row_count"
     )
+
+
+# ---------------------------------------------------------------------------
+# Knowledge questions → KNOWLEDGE_GAP (not SQL)
+# ---------------------------------------------------------------------------
+
+
+def test_question_validator_definition_is_knowledge_gap():
+    from app.hr_analytics.use_cases.steps.question_validator import QuestionValidator
+
+    v = QuestionValidator()
+    result = v.validate("تعریف چارت مصوب چیست؟")
+    assert result["route"] == "GAP", f"Expected GAP, got: {result['route']}"
+    assert result["status"] == "KNOWLEDGE_GAP", f"Expected KNOWLEDGE_GAP, got: {result['status']}"
+
+
+def test_question_validator_difference_is_knowledge_gap():
+    from app.hr_analytics.use_cases.steps.question_validator import QuestionValidator
+
+    v = QuestionValidator()
+    result = v.validate("تفاوت نوع استخدام و نوع قرارداد چیست؟")
+    assert result["route"] == "GAP", f"Expected GAP, got: {result['route']}"
+    assert result["status"] == "KNOWLEDGE_GAP", f"Expected KNOWLEDGE_GAP, got: {result['status']}"
+
+
+def test_question_validator_meaning_is_knowledge_gap():
+    from app.hr_analytics.use_cases.steps.question_validator import QuestionValidator
+
+    v = QuestionValidator()
+    result = v.validate("چارت مصوب یعنی چه؟")
+    assert result["route"] == "GAP", f"Expected GAP, got: {result['route']}"
+    assert result["status"] == "KNOWLEDGE_GAP", f"Expected KNOWLEDGE_GAP, got: {result['status']}"
+
+
+def test_question_validator_normal_data_question_not_knowledge_gap():
+    from app.hr_analytics.use_cases.steps.question_validator import QuestionValidator
+
+    v = QuestionValidator()
+    result = v.validate("تعداد کارکنان زن چند نفر است؟")
+    assert result.get("status") != "KNOWLEDGE_GAP"
+
+
+@pytest.mark.integration
+def test_orchestrator_knowledge_question_routes_to_knowledge_gap(metadata_service):
+    orch = LLMOrchestrator(metadata_service=metadata_service, default_execute_sql=False)
+    payload = _run(orch, "تعریف چارت مصوب چیست؟")
+    assert payload["route"] == "GAP"
+    assert payload["status"] == "KNOWLEDGE_GAP"
