@@ -74,6 +74,7 @@ export interface GenerateResponse {
   executed?: boolean
   row_count?: number | null
   model_called?: string | null
+  llm_prompt?: string | null
 }
 
 export interface OllamaModel {

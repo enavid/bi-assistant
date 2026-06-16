@@ -2083,3 +2083,77 @@ async def test_fallback_skipped_reason_in_trace_when_model_not_configured(metada
     assert "fallback_skipped_reason" in planner_trace.details, (
         f"Expected fallback_skipped_reason in trace, got: {planner_trace.details}"
     )
+
+
+# ---------------------------------------------------------------------------
+# LLM primary — prompt and raw response captured in plan metadata
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_llm_primary_stores_prompt_in_plan_metadata(metadata_service):
+    from unittest.mock import AsyncMock, MagicMock
+
+    raw_sql = (
+        "SELECT COUNT(v.employee_id) AS cnt"
+        " FROM hr_mvp.vw_hr_employee_analytics v WHERE v.is_active = TRUE"
+    )
+    gen_result = MagicMock()
+    gen_result.sql = raw_sql
+    gen_result.prompt_tokens = 512
+    gen_result.context_window = 8192
+    gen_result.error = None
+
+    ollama_client = AsyncMock()
+    ollama_client.generate = AsyncMock(return_value=gen_result)
+
+    orchestrator = LLMOrchestrator(
+        metadata_service=metadata_service,
+        ollama_client=ollama_client,
+        default_model="llama3",
+        default_execute_sql=False,
+        use_template_engine=False,
+    )
+    response = await orchestrator.arun("تعداد کارکنان؟")
+    ctx = response.context or {}
+    meta = (ctx.get("sql_plan") or {}).get("metadata") or {}
+
+    assert "prompt" in meta, "llm_meta must include the full prompt text"
+    assert len(meta["prompt"]) > 50
+    assert "raw_response" in meta, "llm_meta must include raw LLM output before extract_sql"
+    assert meta["raw_response"] == raw_sql
+    assert "schema_context_chars" in meta, "llm_meta must include schema_context char count"
+    assert isinstance(meta["schema_context_chars"], int)
+    assert meta["schema_context_chars"] > 0
+
+
+@pytest.mark.asyncio
+async def test_llm_primary_stores_prompt_tokens_and_context_window(metadata_service):
+    from unittest.mock import AsyncMock, MagicMock
+
+    raw_sql = (
+        "SELECT COUNT(v.employee_id) AS cnt"
+        " FROM hr_mvp.vw_hr_employee_analytics v WHERE v.is_active = TRUE"
+    )
+    gen_result = MagicMock()
+    gen_result.sql = raw_sql
+    gen_result.prompt_tokens = 777
+    gen_result.context_window = 16384
+    gen_result.error = None
+
+    ollama_client = AsyncMock()
+    ollama_client.generate = AsyncMock(return_value=gen_result)
+
+    orchestrator = LLMOrchestrator(
+        metadata_service=metadata_service,
+        ollama_client=ollama_client,
+        default_model="llama3",
+        default_execute_sql=False,
+        use_template_engine=False,
+    )
+    response = await orchestrator.arun("تعداد کارکنان؟")
+    ctx = response.context or {}
+    meta = (ctx.get("sql_plan") or {}).get("metadata") or {}
+
+    assert meta.get("prompt_tokens") == 777
+    assert meta.get("context_window") == 16384

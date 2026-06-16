@@ -755,7 +755,12 @@ class LLMOrchestrator:
         raw_text = gen_result.sql or ""
         sql = LLMClient.extract_sql(raw_text)
 
-        llm_meta: dict = {"model": model}
+        llm_meta: dict = {
+            "model": model,
+            "prompt": built.prompt,
+            "schema_context_chars": len(built.schema_context),
+            "raw_response": raw_text,
+        }
         if gen_result.prompt_tokens is not None:
             llm_meta["prompt_tokens"] = gen_result.prompt_tokens
         if gen_result.context_window is not None:

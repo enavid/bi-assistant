@@ -130,6 +130,7 @@ async def generate(body: GenerateRequest) -> GenerateResponse:
             executed=result.executed,
             row_count=result.row_count,
             model_called=result.model_called,
+            llm_prompt=result.llm_prompt,
         )
     except Exception as exc:
         logger.error("generate failed: %s", exc, exc_info=True)

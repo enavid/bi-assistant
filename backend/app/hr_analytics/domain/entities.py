@@ -21,6 +21,7 @@ class GenerationResult:
     model_called: str | None = None
     prompt_tokens: int | None = None
     context_window: int | None = None
+    llm_prompt: str | None = None
 
 
 @dataclass

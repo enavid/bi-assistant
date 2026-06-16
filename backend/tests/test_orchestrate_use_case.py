@@ -194,6 +194,52 @@ async def test_generate_not_executed_row_count_is_none():
 
 
 # ---------------------------------------------------------------------------
+# generate() — llm_prompt, prompt_tokens, context_window propagation
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_generate_extracts_llm_prompt_from_metadata():
+    payload = _base_payload()
+    payload["context"]["sql_plan"]["metadata"]["prompt"] = "You are the SQL generator for HR BI..."
+    uc = HRBIOrchestrationUseCase(_make_orchestrator(payload))
+    result = await uc.generate("سوال")
+    assert result.llm_prompt == "You are the SQL generator for HR BI..."
+
+
+@pytest.mark.asyncio
+async def test_generate_llm_prompt_is_none_when_absent():
+    uc = HRBIOrchestrationUseCase(_make_orchestrator(_base_payload()))
+    result = await uc.generate("سوال")
+    assert result.llm_prompt is None
+
+
+@pytest.mark.asyncio
+async def test_generate_extracts_prompt_tokens_from_metadata():
+    payload = _base_payload()
+    payload["context"]["sql_plan"]["metadata"]["prompt_tokens"] = 1234
+    uc = HRBIOrchestrationUseCase(_make_orchestrator(payload))
+    result = await uc.generate("سوال")
+    assert result.prompt_tokens == 1234
+
+
+@pytest.mark.asyncio
+async def test_generate_extracts_context_window_from_metadata():
+    payload = _base_payload()
+    payload["context"]["sql_plan"]["metadata"]["context_window"] = 32768
+    uc = HRBIOrchestrationUseCase(_make_orchestrator(payload))
+    result = await uc.generate("سوال")
+    assert result.context_window == 32768
+
+
+@pytest.mark.asyncio
+async def test_generate_prompt_tokens_none_when_no_llm():
+    uc = HRBIOrchestrationUseCase(_make_orchestrator(_base_payload()))
+    result = await uc.generate("سوال")
+    assert result.prompt_tokens is None
+
+
+# ---------------------------------------------------------------------------
 # _derive_source
 # ---------------------------------------------------------------------------
 

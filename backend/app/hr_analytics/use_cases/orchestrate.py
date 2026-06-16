@@ -60,6 +60,9 @@ class HRBIOrchestrationUseCase:
         template_id = sql_plan.get("template_id") or sql_plan.get("report_id")
         llm_meta = sql_plan.get("metadata") or {}
         model_called = llm_meta.get("model") if isinstance(llm_meta, dict) else None
+        llm_prompt = llm_meta.get("prompt") if isinstance(llm_meta, dict) else None
+        prompt_tokens_val = llm_meta.get("prompt_tokens") if isinstance(llm_meta, dict) else None
+        context_window_val = llm_meta.get("context_window") if isinstance(llm_meta, dict) else None
         execution_status = str(query_result.get("execution_status") or "")
         executed = execution_status == "SUCCESS"
         rows = query_result.get("rows") or []
@@ -80,6 +83,9 @@ class HRBIOrchestrationUseCase:
             executed=executed,
             row_count=row_count,
             model_called=str(model_called) if model_called else None,
+            prompt_tokens=int(prompt_tokens_val) if prompt_tokens_val is not None else None,
+            context_window=int(context_window_val) if context_window_val is not None else None,
+            llm_prompt=str(llm_prompt) if llm_prompt is not None else None,
         )
 
 

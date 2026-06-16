@@ -66,6 +66,7 @@ class GenerateResponse(BaseModel):
     executed: bool = False
     row_count: int | None = None
     model_called: str | None = None
+    llm_prompt: str | None = None
 
 
 class QueryRequest(BaseModel):

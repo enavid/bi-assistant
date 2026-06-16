@@ -212,17 +212,46 @@ function PipelineFlagsRow({ flags }: { flags: Record<string, boolean> }) {
   )
 }
 
-function SqlPlannerDetails({ details }: { details: Record<string, unknown> }) {
+function CollapsibleText({ label, text, accentColor }: { label: string; text: string; accentColor?: string }) {
+  const [open, setOpen] = useState(false)
+  const color = accentColor ?? 'var(--accent-border)'
+  return (
+    <div style={{ borderTop: '1px solid var(--border-subtle)' }}>
+      <button
+        className="w-full flex items-center gap-1.5 px-3 py-1.5 text-left text-[10px] font-mono select-none hover:opacity-70 transition-opacity"
+        style={{ color: 'var(--text-3)', background: 'var(--bg-base)' }}
+        onClick={() => setOpen((v) => !v)}
+      >
+        <span style={{ color }}>{open ? '▾' : '▸'}</span>
+        {label}
+        <span className="ml-auto tabular-nums" style={{ color: 'var(--text-3)' }}>{text.length.toLocaleString()} chars</span>
+      </button>
+      {open && (
+        <pre
+          className="px-3 pb-3 text-[9.5px] overflow-x-auto leading-relaxed whitespace-pre-wrap break-words"
+          style={{ background: 'var(--bg-base)', color: 'var(--text-2)', borderTop: '1px solid var(--border-subtle)', maxHeight: '400px', overflowY: 'auto' }}
+        >
+          {text}
+        </pre>
+      )}
+    </div>
+  )
+}
+
+function SqlPlannerDetails({ details, llmPrompt }: { details: Record<string, unknown>; llmPrompt?: string | null }) {
   const coverageStatus = details.coverage_status as string | null | undefined
   const missingFilters = (details.missing_filters as string[] | null | undefined) ?? []
   const modelCalled = details.model_called as string | null | undefined
-  const llmReason = details.llm_trigger_reason as string | null | undefined
+  const llmReason = details.model_reason as string | null | undefined
   const source = details.source as string | null | undefined
   const templateId = details.template_id as string | null | undefined
   const pipelineFlags = details.pipeline_flags as Record<string, boolean> | null | undefined
   const meta = details.metadata as Record<string, unknown> | null | undefined
   const promptTokens = typeof meta?.prompt_tokens === 'number' ? meta.prompt_tokens : null
   const ctxWindow = typeof meta?.context_window === 'number' ? meta.context_window : null
+  const schemaChars = typeof meta?.schema_context_chars === 'number' ? meta.schema_context_chars : null
+  const rawResponse = typeof meta?.raw_response === 'string' ? meta.raw_response : null
+  const promptText = llmPrompt ?? (typeof meta?.prompt === 'string' ? meta.prompt : null)
 
   const rows: Array<[string, React.ReactNode]> = []
 
@@ -242,6 +271,7 @@ function SqlPlannerDetails({ details }: { details: Record<string, unknown> }) {
     : <span style={{ color: 'var(--text-3)' }}>—</span>
   ])
   if (llmReason) rows.push(['llm_trigger', <span style={{ color: 'var(--amber)' }}>{llmReason}</span>])
+  if (schemaChars !== null) rows.push(['schema_chars', <span style={{ color: 'var(--text-2)' }}>{schemaChars.toLocaleString()}</span>])
   if (promptTokens !== null && ctxWindow !== null) {
     rows.push(['context_window', <ContextWindowBar tokens={promptTokens} window={ctxWindow} />])
   }
@@ -275,11 +305,13 @@ function SqlPlannerDetails({ details }: { details: Record<string, unknown> }) {
           <PipelineFlagsRow flags={pipelineFlags} />
         </div>
       )}
+      {promptText && <CollapsibleText label="llm_prompt" text={promptText} accentColor="var(--amber-border)" />}
+      {rawResponse && <CollapsibleText label="raw_response" text={rawResponse} accentColor="var(--green-border)" />}
     </div>
   )
 }
 
-function TracePanel({ traces }: { traces: TraceStep[] }) {
+function TracePanel({ traces, llmPrompt }: { traces: TraceStep[]; llmPrompt?: string | null }) {
   const [expandedRow, setExpandedRow] = useState<number | null>(null)
 
   return (
@@ -329,7 +361,7 @@ function TracePanel({ traces }: { traces: TraceStep[] }) {
               {isExpanded && t.details && (
                 <div key={`det-${i}`} className="col-span-4" style={{ borderBottom: isLast ? undefined : '1px solid var(--border-subtle)' }}>
                   {t.step === 'sql_planner'
-                    ? <SqlPlannerDetails details={t.details} />
+                    ? <SqlPlannerDetails details={t.details} llmPrompt={llmPrompt} />
                     : <TraceDetails details={t.details} />}
                 </div>
               )}
@@ -402,7 +434,7 @@ function PipelineBadges({ info }: { info: GenerateResponse }) {
           </button>
         )}
       </div>
-      {open && hasTraces && <TracePanel traces={traces} />}
+      {open && hasTraces && <TracePanel traces={traces} llmPrompt={info.llm_prompt} />}
     </div>
   )
 }
