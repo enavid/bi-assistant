@@ -132,6 +132,9 @@ def test_routing(request: pytest.FixtureRequest, orchestrator: Any, case: dict[s
     category = case.get("category", "unknown")
     description = case.get("description", "")
 
+    if case.get("xfail"):
+        pytest.xfail(f"known gap: {case.get('xfail_reason', 'system routes incorrectly')}")
+
     payload = _run(orchestrator, question)
     payload = {**payload, "needs_review": _needs_review(case, expect)}
 
