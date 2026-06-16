@@ -1036,7 +1036,8 @@ class IntentParser:
             if f.get("explicit_department"):
                 add(("avg_age_by_department", 85, "avg_age_by_department"))
             else:
-                add(("average_age", 70, "average_age"))
+                # Boost to beat contractor_share (75) when question asks avg age of contractors
+                add(("average_age", 92, "average_age"))
         if f.get("asks_most") and f.get("explicit_age") and not f.get("age_filter"):
             add(("max_age", 75, "max_age"))
         if f.get("asks_least") and f.get("explicit_age") and not f.get("age_filter"):
@@ -1067,7 +1068,8 @@ class IntentParser:
             ):
                 add(("low_education_in_expert_roles", 60, "low_education_expert_roles"))
             else:
-                add(("employee_count_by_education", 55, "education_distribution_or_filter"))
+                # Boost over total_employee_count (60) triggered by "کل کارکنان" in phrasing
+                add(("employee_count_by_education", 72, "education_distribution_or_filter"))
 
         if f.get("explicit_employment_type"):
             if f.get("explicit_department"):
@@ -1103,6 +1105,9 @@ class IntentParser:
         ):
             if f.get("asks_gap_or_shortage"):
                 add(("headcount_gap_by_service_domain", 82, "headcount_gap_service_domain"))
+            elif f.get("explicit_gender"):
+                # Gender breakdown by service domain — boost to beat gender_percentage (65)
+                add(("employee_count_by_service_domain", 85, "gender_by_service_domain"))
             else:
                 add(("employee_count_by_service_domain", 60, "service_domain_distribution"))
         if f.get("explicit_department"):
@@ -1110,7 +1115,8 @@ class IntentParser:
                 add(("headcount_gap_by_department", 75, "headcount_gap_department"))
             else:
                 add(("employee_count_by_department", 55, "department_distribution"))
-        if f.get("explicit_province"):
+        # Only add province distribution when not already covered by a service_domain or dept filter
+        if f.get("explicit_province") and not f.get("explicit_service_domain"):
             add(("employee_count_by_province", 60, "province_distribution"))
         if f.get("explicit_work_location"):
             add(("employee_count_by_work_location", 55, "work_location_distribution"))
@@ -1288,6 +1294,9 @@ class IntentParser:
                     pass
             if age_filter:
                 filters.append(age_filter)
+            if query_features.get("explicit_service_domain"):
+                group_by = self._ensure_group_by(group_by, "service_domain")
+                required_columns.extend(["service_domain"])
             required_columns.extend(["age", "employee_id", "is_active"])
 
         elif best_intent_id == "employee_count_by_gender_age_filter":
@@ -1302,13 +1311,15 @@ class IntentParser:
 
         elif best_intent_id == "average_age":
             if "زن و مرد" in question or "تفکیک جنسیت" in question:
-                group_by = self._ensure_group_by(group_by, "gender")
+                group_by = ["gender"]
             elif "هر حوزه" in question or "به تفکیک حوزه" in question:
-                group_by = self._ensure_group_by(group_by, "service_domain")
+                group_by = ["service_domain"]
             elif self._has_any(question, ["هر دپارتمان", "هر بخش", "هر واحد", "هر اداره"]):
-                group_by = self._ensure_group_by(group_by, "department_name")
+                group_by = ["department_name"]
+            else:
+                group_by = []
             # Secondary WHERE filters — kept separate from group_by dimensions
-            if query_features.get("explicit_contractor") and "gender" not in group_by:
+            if query_features.get("explicit_contractor"):
                 filters.append({"column": "is_contractor", "operator": "=", "value": True})
                 required_columns.append("is_contractor")
             if gender_value and "gender" not in group_by:
@@ -1365,6 +1376,10 @@ class IntentParser:
                 )
             else:
                 group_by = self._ensure_group_by(group_by, "employment_type")
+            if gender_value and not employment_value:
+                # "درصد زنان در هر نوع استخدام" — gender as a percentage dimension, not a filter
+                filters.append({"column": "gender", "operator": "=", "value": gender_value})
+                required_columns.append("gender")
             required_columns.extend(["employment_type", "employee_id", "is_active"])
 
         elif best_intent_id == "employee_count_by_contract_type":
@@ -1410,6 +1425,17 @@ class IntentParser:
 
         elif best_intent_id == "employee_count_by_service_domain":
             group_by = self._ensure_group_by(group_by, "service_domain")
+            if query_features.get("explicit_gender"):
+                group_by = self._ensure_group_by(group_by, "gender")
+                required_columns.extend(["gender"])
+            if query_features.get("explicit_province"):
+                province_val = self._extract_province_value(question)
+                if province_val:
+                    filters.append(
+                        {"column": "province", "operator": "=", "value": province_val}
+                    )
+                    required_columns.extend(["province"])
+                    group_by = [col for col in group_by if col != "province"]
             required_columns.extend(["service_domain", "employee_id", "is_active"])
 
         elif best_intent_id == "employee_count_by_department":
@@ -1526,6 +1552,14 @@ class IntentParser:
                 params["hire_year"] = year
             required_columns.extend(["hire_year", "employee_id", "is_active"])
 
+        elif best_intent_id == "near_retirement_analysis":
+            if query_features.get("explicit_service_domain"):
+                group_by = self._ensure_group_by(group_by, "service_domain")
+                required_columns.extend(["service_domain"])
+            if age_filter:
+                filters.append(age_filter)
+            required_columns.extend(["age", "service_years", "employee_id", "is_active"])
+
         elif best_intent_id == "employee_count_by_marital_status":
             group_by = self._ensure_group_by(group_by, "marital_status")
             if gender_value:
@@ -1585,6 +1619,42 @@ class IntentParser:
                 service, "TPL_AVERAGE_AGE_BY_SERVICE_DOMAIN"
             ):
                 return "TPL_AVERAGE_AGE_BY_SERVICE_DOMAIN"
+
+        if intent_id == "employee_count_by_service_domain":
+            group_by = set(extraction.get("group_by", []) or [])
+            if "gender" in group_by and self._template_exists(
+                service, "TPL_EMPLOYEE_COUNT_BY_GENDER_AND_SERVICE_DOMAIN"
+            ):
+                return "TPL_EMPLOYEE_COUNT_BY_GENDER_AND_SERVICE_DOMAIN"
+
+        if intent_id == "employee_count_by_contract_type":
+            group_by = set(extraction.get("group_by", []) or [])
+            if "province" in group_by and self._template_exists(
+                service, "TPL_EMPLOYEE_COUNT_BY_CONTRACT_AND_PROVINCE"
+            ):
+                return "TPL_EMPLOYEE_COUNT_BY_CONTRACT_AND_PROVINCE"
+
+        if intent_id == "employee_count_by_employment_type":
+            filters = extraction.get("filters", []) or []
+            has_gender = any(f.get("column") == "gender" for f in filters if isinstance(f, dict))
+            if has_gender and self._template_exists(
+                service, "TPL_EMPLOYEE_COUNT_BY_EMPLOYMENT_TYPE_FEMALE_PCT"
+            ):
+                return "TPL_EMPLOYEE_COUNT_BY_EMPLOYMENT_TYPE_FEMALE_PCT"
+
+        if intent_id == "employee_count_by_age_filter":
+            group_by = set(extraction.get("group_by", []) or [])
+            if "service_domain" in group_by and self._template_exists(
+                service, "TPL_EMPLOYEE_COUNT_BY_AGE_FILTER_AND_SERVICE_DOMAIN"
+            ):
+                return "TPL_EMPLOYEE_COUNT_BY_AGE_FILTER_AND_SERVICE_DOMAIN"
+
+        if intent_id == "near_retirement_analysis":
+            group_by = set(extraction.get("group_by", []) or [])
+            if "service_domain" in group_by and self._template_exists(
+                service, "TPL_NEAR_RETIREMENT_BY_SERVICE_DOMAIN"
+            ):
+                return "TPL_NEAR_RETIREMENT_BY_SERVICE_DOMAIN"
 
         if intent_id == "employee_count_by_age_filter":
             params = extraction.get("params", {}) or {}
@@ -1684,6 +1754,22 @@ class IntentParser:
         ):
             return None
         return self._extract_allowed_value(question, service, "contract_type")
+
+    _PROVINCE_STOP_WORDS: frozenset[str] = frozenset(
+        {"به", "در", "از", "با", "برای", "که", "تا", "یا", "و", "را", "ها", "های", "بر", "این", "آن", "هر"}
+    )
+
+    def _extract_province_value(self, question: str) -> str | None:
+        m = re.search(r"استان\s+([^\s،,?؟]+)(?:\s+([^\s،,?؟]+))?", question)
+        if not m:
+            return None
+        first_word = m.group(1).strip()
+        second_word = m.group(2).strip() if m.group(2) else None
+        if first_word.endswith("ها") or first_word.endswith("های") or first_word == "ها":
+            return None
+        if second_word and second_word not in self._PROVINCE_STOP_WORDS:
+            return f"{first_word} {second_word}"
+        return first_word
 
     def _extract_age_filter(self, question: str) -> JsonDict | None:
         # age 60 and above

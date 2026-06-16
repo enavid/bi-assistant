@@ -275,3 +275,34 @@ def test_missing_param_filter_only_succeeds():
 
     assert result["status"] == "OK"
     assert "v.gender = 'زن'" in result["sql"]
+
+
+def test_patches_province_filter():
+    """province column should be patchable as a WHERE filter."""
+    intent = {
+        "filters": [
+            {"column": "is_active", "operator": "=", "value": True, "source": "default_rule"},
+            {"column": "province", "operator": "=", "value": "تهران"},
+        ]
+    }
+    result = apply_controlled_dynamic(_BASE_GROUP_BY_SQL, intent)
+
+    assert result["status"] == "OK", f"Expected OK, got: {result}"
+    assert "v.province" in result["sql"]
+    assert "تهران" in result["sql"]
+    assert result["can_execute_sql"] is True
+
+
+def test_patches_province_filter_coverage_guided():
+    """province patch works in coverage-guided mode (missing=['filter:province'])."""
+    intent = {
+        "filters": [
+            {"column": "province", "operator": "=", "value": "اصفهان"},
+        ]
+    }
+    missing = ["filter:province"]
+
+    result = apply_controlled_dynamic(_BASE_COUNT_SQL, intent, missing=missing)
+
+    assert result["status"] == "OK"
+    assert "اصفهان" in result["sql"]

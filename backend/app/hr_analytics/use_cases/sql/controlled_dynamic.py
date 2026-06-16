@@ -16,6 +16,7 @@ _COLUMN_MAP: dict[str, str] = {
     "is_contractor": "v.is_contractor",
     "service_years": "v.service_years",
     "age": "v.age",
+    "province": "v.province",
     "province_name": "v.province_name",
     "education_title": "v.education_title",
     "employment_type": "v.employment_type",

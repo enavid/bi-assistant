@@ -933,7 +933,7 @@ class SemanticMapper:
                 "department_name",
                 "implicit_department",
             ),
-            (["هر استان", "استان"], "province", "implicit_province"),
+            (["هر استان", "به تفکیک استان", "پراکندگی استان", "نیروهای هر استان"], "province", "implicit_province"),
             (["سال جذب", "جذب سالانه"], "hire_year", "implicit_hire_year"),
         ]
         for terms, column, source in implicit_group_patterns:

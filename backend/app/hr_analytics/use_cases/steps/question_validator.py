@@ -594,6 +594,8 @@ class QuestionValidator:
                 continue
             if rule_id == "QVAL_GAP_CITY" and self._metadata_says_city_is_reliable(metadata):
                 continue
+            if rule_id == "QVAL_GAP_NEAR_RETIREMENT" and re.search(r"\d+\s*سال", question):
+                continue
 
             gap_type = rule.get("gap_type")
             if gap_type == "analytical":

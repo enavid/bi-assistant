@@ -2,14 +2,36 @@ from __future__ import annotations
 
 import pytest
 
+from app.hr_analytics.adapters.response_builder import ResponseBuilder
 from app.hr_analytics.use_cases.orchestrator import LLMOrchestrator, ValidationStatus
+from app.hr_analytics.use_cases.sql.template_engine import SQLTemplateEngine
+from app.hr_analytics.use_cases.sql.validator import SQLValidator
 from app.hr_analytics.use_cases.steps.decision_router import DecisionRouter
+from app.hr_analytics.use_cases.steps.gap_service import GapService
+from app.hr_analytics.use_cases.steps.intent_parser import IntentParser
 from app.hr_analytics.use_cases.steps.question_validator import QuestionValidator
+from app.hr_analytics.use_cases.steps.semantic_mapper import SemanticMapper
 
 
 def _run(orchestrator, question: str) -> dict:
     result = orchestrator.run(question)
     return result.to_dict() if hasattr(result, "to_dict") else result
+
+
+def _full_orch(metadata_service) -> LLMOrchestrator:
+    """Full orchestrator with all components wired — exercises real intent_parser logic."""
+    return LLMOrchestrator(
+        metadata_service=metadata_service,
+        question_validator=QuestionValidator(),
+        semantic_mapper=SemanticMapper(metadata_service=metadata_service),
+        intent_parser=IntentParser(metadata_service=metadata_service),
+        router=DecisionRouter(metadata_service=metadata_service),
+        sql_template_engine=SQLTemplateEngine(metadata_service=metadata_service),
+        sql_validator=SQLValidator(metadata_service=metadata_service),
+        gap_service=GapService(metadata_service=metadata_service),
+        response_builder=ResponseBuilder(metadata_service=metadata_service),
+        default_execute_sql=False,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -408,3 +430,169 @@ def test_orchestrator_knowledge_question_routes_to_knowledge_gap(metadata_servic
     payload = _run(orch, "تعریف چارت مصوب چیست؟")
     assert payload["route"] == "GAP"
     assert payload["status"] == "KNOWLEDGE_GAP"
+
+
+# ---------------------------------------------------------------------------
+# Fix D: Q6 province filter vs group_by
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.integration
+def test_q6_province_filter_routes_to_sql(metadata_service):
+    """'استان تهران' should be a WHERE filter, not cause group_by:province failure."""
+    orch = _full_orch(metadata_service)
+    payload = _run(orch, "تعداد کارکنان استان تهران به تفکیک حوزه سازمانی چقدر است؟")
+    assert payload["route"] == "SQL", f"Expected SQL, got {payload['route']} / {payload['status']}"
+
+
+@pytest.mark.integration
+def test_q6_province_filter_sql_contains_province_and_domain(metadata_service):
+    """Generated SQL must filter by province and group by service_domain."""
+    orch = _full_orch(metadata_service)
+    payload = _run(orch, "تعداد کارکنان استان تهران به تفکیک حوزه سازمانی چقدر است؟")
+    sql = (payload.get("generated_sql") or "").upper()
+    assert "PROVINCE" in sql, "SQL must reference province column"
+    assert "SERVICE_DOMAIN" in sql, "SQL must group by service_domain"
+
+
+# ---------------------------------------------------------------------------
+# Fix B2: Q4 average age of contractors by gender
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.integration
+def test_q4_avg_age_contractor_by_gender_routes_to_sql(metadata_service):
+    """'میانگین سن پیمانکاری به تفکیک جنسیت' must route to SQL, not REJECT."""
+    orch = _full_orch(metadata_service)
+    payload = _run(orch, "میانگین سن کارکنان شاغل در پیمانکاری به تفکیک جنسیت چقدر است؟")
+    assert payload["route"] == "SQL", f"Got {payload['route']} / {payload['status']}"
+
+
+@pytest.mark.integration
+def test_q4_avg_age_contractor_sql_has_avg_and_gender(metadata_service):
+    """SQL must have AVG(age) grouped by gender with contractor filter."""
+    orch = _full_orch(metadata_service)
+    payload = _run(orch, "میانگین سن کارکنان شاغل در پیمانکاری به تفکیک جنسیت چقدر است؟")
+    sql = (payload.get("generated_sql") or "").upper()
+    assert "AVG" in sql, "SQL must use AVG aggregation for age"
+    assert "GENDER" in sql, "SQL must reference gender column"
+
+
+# ---------------------------------------------------------------------------
+# Fix B3: Q1 gender composition by service domain
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.integration
+def test_q1_gender_by_domain_routes_to_sql(metadata_service):
+    """'ترکیب جنسیتی هر حوزه' must route to SQL."""
+    orch = _full_orch(metadata_service)
+    payload = _run(orch, "ترکیب جنسیتی هر حوزه سازمانی به درصد چگونه است؟")
+    assert payload["route"] == "SQL", f"Got {payload['route']} / {payload['status']}"
+
+
+@pytest.mark.integration
+def test_q1_gender_by_domain_sql_has_gender_and_service_domain(metadata_service):
+    """SQL must group by both gender and service_domain."""
+    orch = _full_orch(metadata_service)
+    payload = _run(orch, "ترکیب جنسیتی هر حوزه سازمانی به درصد چگونه است؟")
+    sql = (payload.get("generated_sql") or "").upper()
+    assert "GENDER" in sql, "SQL must include gender column"
+    assert "SERVICE_DOMAIN" in sql, "SQL must group by service_domain"
+
+
+# ---------------------------------------------------------------------------
+# Fix B1: Q7 education share intent routing
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.integration
+def test_q7_education_share_routes_to_sql(metadata_service):
+    """'سهم هر مدرک تحصیلی' must route to SQL via education intent."""
+    orch = _full_orch(metadata_service)
+    payload = _run(orch, "سهم هر مدرک تحصیلی از کل کارکنان چقدر است؟")
+    assert payload["route"] == "SQL", f"Got {payload['route']} / {payload['status']}"
+
+
+@pytest.mark.integration
+def test_q7_education_share_sql_has_education_title(metadata_service):
+    """SQL must group by education_title."""
+    orch = _full_orch(metadata_service)
+    payload = _run(orch, "سهم هر مدرک تحصیلی از کل کارکنان چقدر است؟")
+    sql = (payload.get("generated_sql") or "").upper()
+    assert "EDUCATION_TITLE" in sql, "SQL must reference education_title"
+
+
+# ---------------------------------------------------------------------------
+# Fix C: Q5 female percentage by employment type
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.integration
+def test_q5_female_pct_by_employment_type_routes_to_sql(metadata_service):
+    """'درصد زنان در هر نوع استخدام' must route to SQL."""
+    orch = _full_orch(metadata_service)
+    payload = _run(orch, "در هر نوع استخدام چند درصد کارکنان زن هستند؟")
+    assert payload["route"] == "SQL", f"Got {payload['route']} / {payload['status']}"
+
+
+@pytest.mark.integration
+def test_q5_female_pct_sql_has_gender_and_employment_type(metadata_service):
+    """SQL must reference both gender and employment_type."""
+    orch = _full_orch(metadata_service)
+    payload = _run(orch, "در هر نوع استخدام چند درصد کارکنان زن هستند؟")
+    sql = (payload.get("generated_sql") or "").upper()
+    assert "EMPLOYMENT_TYPE" in sql, "SQL must group by employment_type"
+    assert "GENDER" in sql or "ZAN" in sql or "زن".upper() in sql, "SQL must reference gender"
+
+
+# ---------------------------------------------------------------------------
+# Fix A: Q3 contract type by province
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.integration
+def test_q3_contract_by_province_routes_to_sql(metadata_service):
+    """'سهم قرارداد در هر استان' must route to SQL."""
+    orch = _full_orch(metadata_service)
+    payload = _run(orch, "در هر استان سهم هر نوع قرارداد از کل کارکنان همان استان چند درصد است؟")
+    assert payload["route"] == "SQL", f"Got {payload['route']} / {payload['status']}"
+
+
+@pytest.mark.integration
+def test_q3_contract_by_province_sql_has_province_and_contract(metadata_service):
+    """SQL must group by both province and contract_type."""
+    orch = _full_orch(metadata_service)
+    payload = _run(orch, "در هر استان سهم هر نوع قرارداد از کل کارکنان همان استان چند درصد است؟")
+    sql = (payload.get("generated_sql") or "").upper()
+    assert "PROVINCE" in sql, "SQL must reference province"
+    assert "CONTRACT_TYPE" in sql, "SQL must group by contract_type"
+
+
+# ---------------------------------------------------------------------------
+# Fix A: Q8 near-retirement employees by service domain
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.integration
+def test_q8_near_retirement_by_domain_routes_to_sql(metadata_service):
+    """'کارکنان نزدیک بازنشستگی بالای ۵۵ سال به تفکیک حوزه' must route to SQL."""
+    orch = _full_orch(metadata_service)
+    payload = _run(
+        orch,
+        "تعداد کارکنان نزدیک به بازنشستگی یعنی بالای ۵۵ سال به تفکیک حوزه سازمانی چقدر است؟",
+    )
+    assert payload["route"] == "SQL", f"Got {payload['route']} / {payload['status']}"
+
+
+@pytest.mark.integration
+def test_q8_near_retirement_sql_has_age_filter_and_domain(metadata_service):
+    """SQL must filter by age > 55 and group by service_domain."""
+    orch = _full_orch(metadata_service)
+    payload = _run(
+        orch,
+        "تعداد کارکنان نزدیک به بازنشستگی یعنی بالای ۵۵ سال به تفکیک حوزه سازمانی چقدر است؟",
+    )
+    sql = (payload.get("generated_sql") or "").upper()
+    assert "AGE" in sql, "SQL must reference age column"
+    assert "SERVICE_DOMAIN" in sql, "SQL must group by service_domain"
