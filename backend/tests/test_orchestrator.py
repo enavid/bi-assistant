@@ -1995,9 +1995,8 @@ async def test_llm_fallback_called_when_default_model_set(metadata_service):
     import uuid
     from unittest.mock import AsyncMock, patch
 
-    from app.hr_analytics.use_cases.orchestrator import RequestContext
-
     from app.hr_analytics.domain.entities import GenerationResult as LLMGenResult
+    from app.hr_analytics.use_cases.orchestrator import RequestContext
 
     mock_ollama = AsyncMock()
     mock_ollama.generate = AsyncMock(

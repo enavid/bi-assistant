@@ -2,7 +2,12 @@ from __future__ import annotations
 
 from functools import lru_cache
 
-from app.connections.active import get_active_dsn, get_active_model, get_active_ollama_base_url, get_all_model_configs
+from app.connections.active import (
+    get_active_dsn,
+    get_active_model,
+    get_active_ollama_base_url,
+    get_all_model_configs,
+)
 from app.infrastructure.hr_db.executor import HRQueryExecutor
 from app.infrastructure.llm.ollama_client import OllamaClient
 from app.workspace.use_cases.run_query import RunQueryUseCase
