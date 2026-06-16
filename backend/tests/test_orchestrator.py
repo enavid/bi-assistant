@@ -1122,8 +1122,8 @@ async def test_llm_trigger_reason_recorded_in_trace(metadata_service):
 
     trace_entry = next((t for t in context.traces if t.step == "sql_planner"), None)
     assert trace_entry is not None, "sql_planner trace entry missing"
-    assert trace_entry.details.get("llm_trigger_reason") == "NO_TEMPLATE", (
-        f"Expected llm_trigger_reason='NO_TEMPLATE', got: {trace_entry.details}"
+    assert trace_entry.details.get("model_reason") == "NO_TEMPLATE", (
+        f"Expected model_reason='NO_TEMPLATE', got: {trace_entry.details}"
     )
 
 

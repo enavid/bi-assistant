@@ -87,6 +87,7 @@ class SQLTemplatePlan:
     reason: str | None = None
     warnings: list[str] = field(default_factory=list)
     errors: list[str] = field(default_factory=list)
+    unused_params: list[str] = field(default_factory=list)
     metadata: JsonDict = field(default_factory=dict)
 
     def to_dict(self) -> JsonDict:
@@ -234,7 +235,7 @@ class SQLTemplateEngine:
             semantic_payload=semantic_payload,
             runtime_payload=runtime_payload,
         )
-        validation_errors, validation_warnings = self._validate_template_params(
+        validation_errors, validation_warnings, validation_unused = self._validate_template_params(
             service, template, params
         )
         if validation_errors:
@@ -251,6 +252,7 @@ class SQLTemplateEngine:
                 reason="SQL template parameters failed validation.",
                 warnings=validation_warnings,
                 errors=validation_errors,
+                unused_params=validation_unused,
                 metadata={"question": normalized_question},
             ).to_dict()
 
@@ -311,6 +313,7 @@ class SQLTemplateEngine:
             can_execute_sql=True,
             reason="SQL was rendered from a controlled metadata template.",
             warnings=validation_warnings,
+            unused_params=validation_unused,
             metadata={
                 "question": normalized_question,
                 "template_title_fa": template.get("title_fa"),
@@ -632,7 +635,7 @@ class SQLTemplateEngine:
 
     def _validate_template_params(
         self, service: Any, template: JsonDict, params: JsonDict
-    ) -> tuple[list[str], list[str]]:
+    ) -> tuple[list[str], list[str], list[str]]:
         errors: list[str] = []
         warnings: list[str] = []
         placeholders = set(_PLACEHOLDER_RE.findall(str(template.get("sql", ""))))
@@ -686,7 +689,7 @@ class SQLTemplateEngine:
         if non_critical_unused:
             warnings.append("Unused normalized parameter(s): " + ", ".join(non_critical_unused))
 
-        return errors, warnings
+        return errors, warnings, critical_unused + non_critical_unused
 
     @staticmethod
     def _is_empty_param(value: Any) -> bool:

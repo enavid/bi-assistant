@@ -697,7 +697,9 @@ class LLMOrchestrator:
             {
                 **redact_sql_for_trace(plan),
                 "decision_by": _sql_decision,
-                "llm_trigger_reason": _llm_trigger_reason,
+                "template_status": plan.get("status"),
+                "unused_filters": list(plan.get("unused_params") or []),
+                "model_reason": _llm_trigger_reason,
                 "coverage_status": _cov.get("status"),
                 "missing_filters": list(_cov.get("missing") or []),
                 "model_called": _model_called,
@@ -897,7 +899,13 @@ class LLMOrchestrator:
                 "query_executor",
                 "not_executed",
                 started,
-                {"decision_by": "rule", "reason": "execute_sql=False", "sql_chars": len(sql)},
+                {
+                    "decision_by": "rule",
+                    "reason": "execute_sql=False",
+                    "sql_chars": len(sql),
+                    "sql_executed": False,
+                    "row_count": 0,
+                },
             )
             return
 
@@ -913,7 +921,12 @@ class LLMOrchestrator:
                 "query_executor",
                 "not_configured",
                 started,
-                {"decision_by": "rule", "reason": "query_executor not configured"},
+                {
+                    "decision_by": "rule",
+                    "reason": "query_executor not configured",
+                    "sql_executed": False,
+                    "row_count": 0,
+                },
             )
             return
 
@@ -953,11 +966,16 @@ class LLMOrchestrator:
                 "rows": [],
             }
             context.errors.append(str(exc))
+        _rows = context.query_result.get("rows") or []
         context.add_trace(
             "query_executor",
             context.query_result.get("execution_status", "unknown"),
             started,
-            {"decision_by": "db"},
+            {
+                "decision_by": "db",
+                "sql_executed": context.query_result.get("execution_status") == "SUCCESS",
+                "row_count": len(_rows),
+            },
         )
 
     async def _select_visualization(self, context: RequestContext) -> None:

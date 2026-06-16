@@ -263,3 +263,100 @@ def test_intent_parser_maps_bazneshastan_to_data_gap_intent(metadata_service):
         "DATA_GAP",
         "ANALYTICAL_GAP",
     }, f"Expected GAP/DATA_GAP route, got: {result}"
+
+
+# ---------------------------------------------------------------------------
+# data_gap_flags in semantic_mapper output
+# ---------------------------------------------------------------------------
+
+
+def test_semantic_mapper_output_has_data_gap_flags_field(metadata_service):
+    from app.hr_analytics.use_cases.steps.semantic_mapper import SemanticMapper
+
+    mapper = SemanticMapper(metadata_service=metadata_service)
+    result = mapper.map(question="تعداد کارکنان زن چند نفرند؟")
+    assert "data_gap_flags" in result, "semantic_mapper output must have data_gap_flags field"
+    assert isinstance(result["data_gap_flags"], list)
+    assert result["data_gap_flags"] == []
+
+
+def test_semantic_mapper_gap_question_populates_data_gap_flags(metadata_service):
+    from app.hr_analytics.use_cases.steps.semantic_mapper import SemanticMapper
+
+    mapper = SemanticMapper(metadata_service=metadata_service)
+    result = mapper.map(question="تعداد کارکنان اخراجی چند نفر است؟")
+    assert "data_gap_flags" in result
+    assert len(result["data_gap_flags"]) > 0
+    assert all(isinstance(f, str) for f in result["data_gap_flags"])
+
+
+# ---------------------------------------------------------------------------
+# Trace fields: template_status, unused_filters, model_reason
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.integration
+def test_sql_planner_trace_has_template_status(metadata_service):
+    orch = LLMOrchestrator(metadata_service=metadata_service, default_execute_sql=False)
+    payload = _run(orch, "تعداد کل کارکنان چند نفر است؟")
+    traces = payload["context"]["traces"]
+    planner = next((t for t in traces if t["step"] == "sql_planner"), None)
+    assert planner is not None, "sql_planner trace step missing"
+    assert "template_status" in planner["details"], (
+        "sql_planner trace must include template_status"
+    )
+
+
+@pytest.mark.integration
+def test_sql_planner_trace_has_model_reason(metadata_service):
+    orch = LLMOrchestrator(metadata_service=metadata_service, default_execute_sql=False)
+    payload = _run(orch, "تعداد کل کارکنان چند نفر است؟")
+    traces = payload["context"]["traces"]
+    planner = next((t for t in traces if t["step"] == "sql_planner"), None)
+    assert planner is not None
+    assert "model_reason" in planner["details"], (
+        "sql_planner trace must include model_reason"
+    )
+
+
+@pytest.mark.integration
+def test_sql_planner_trace_has_unused_filters(metadata_service):
+    orch = LLMOrchestrator(metadata_service=metadata_service, default_execute_sql=False)
+    payload = _run(orch, "تعداد کل کارکنان چند نفر است؟")
+    traces = payload["context"]["traces"]
+    planner = next((t for t in traces if t["step"] == "sql_planner"), None)
+    assert planner is not None
+    assert "unused_filters" in planner["details"], (
+        "sql_planner trace must include unused_filters"
+    )
+    assert isinstance(planner["details"]["unused_filters"], list)
+
+
+# ---------------------------------------------------------------------------
+# Trace fields: sql_executed, row_count in query_executor
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.integration
+def test_query_executor_trace_has_sql_executed(metadata_service):
+    orch = LLMOrchestrator(metadata_service=metadata_service, default_execute_sql=False)
+    payload = _run(orch, "تعداد کل کارکنان چند نفر است؟")
+    traces = payload["context"]["traces"]
+    executor = next((t for t in traces if t["step"] == "query_executor"), None)
+    assert executor is not None, "query_executor trace step missing"
+    assert "sql_executed" in executor["details"], (
+        "query_executor trace must include sql_executed"
+    )
+    assert executor["details"]["sql_executed"] is False
+
+
+@pytest.mark.integration
+def test_query_executor_trace_has_row_count(metadata_service):
+    orch = LLMOrchestrator(metadata_service=metadata_service, default_execute_sql=False)
+    payload = _run(orch, "تعداد کل کارکنان چند نفر است؟")
+    traces = payload["context"]["traces"]
+    executor = next((t for t in traces if t["step"] == "query_executor"), None)
+    assert executor is not None
+    assert "row_count" in executor["details"], (
+        "query_executor trace must include row_count"
+    )

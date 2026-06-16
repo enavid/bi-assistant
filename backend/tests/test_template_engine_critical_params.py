@@ -26,7 +26,8 @@ _SIMPLE_PARAMS = {"some_param": 1, "current_shamsi_year": 1404}
 
 
 def _call(template: dict, params: dict) -> tuple[list[str], list[str]]:
-    return _ENGINE._validate_template_params(None, template, dict(params))
+    errors, warnings, _ = _ENGINE._validate_template_params(None, template, dict(params))
+    return errors, warnings
 
 
 # ---------------------------------------------------------------------------
