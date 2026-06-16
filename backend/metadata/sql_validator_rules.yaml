@@ -454,8 +454,7 @@ parameter_validation:
     - کاردانی
     - کارشناسی
     - کارشناسی ارشد
-    - دکترا
-    - دکترای تخصصی / حرفه‌ای
+    - دکترای تخصصی PHD / دکترای حرفه ای
   unknown_requested_value_policy: DATA_GAP
 mandatory_rules:
 - rule_id: SQL_ONLY_ONE_STATEMENT

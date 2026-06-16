@@ -147,6 +147,24 @@ DATA_GAP_INTENT_KEYWORDS: list[tuple[str, list[str]]] = [
         ["تعادل", "متوازن", "چارت سازمانی و واقعیت", "واقعیت نیروی انسانی"],
     ),
     ("employment_stability_impact_analysis", ["ثبات سازمان", "تاثیر می گذارد", "اثر می گذارد"]),
+    (
+        "terminated_employee_analysis",
+        [
+            "اخراج",
+            "اخراجی",
+            "اخراج شده",
+            "اخراج شدند",
+            "اخراجی‌ها",
+            "غیرفعال",
+            "ترک خدمت",
+            "ترک کرده",
+            "پایان کار",
+            "پایان قرارداد",
+            "خروج از سازمان",
+            "بازنشستگان",
+            "بازنشسته",
+        ],
+    ),
 ]
 
 
@@ -942,9 +960,42 @@ class IntentParser:
 
         if f.get("explicit_city"):
             add(("city_level_analysis", 90, "city_level_data_gap"))
-        if self._has_any(
-            question, ["بازنشستگی", "بازنشسته", "نزدیک بازنشستگی", "آستانه بازنشستگی"]
+        _terminated_terms = [
+            "اخراج",
+            "اخراجی",
+            "اخراج شده",
+            "اخراجی‌ها",
+            "غیرفعال",
+            "ترک خدمت",
+            "ترک کرده",
+            "پایان کار",
+            "خروج از سازمان",
+            "بازنشستگان",
+        ]
+        _near_retirement_indicators = [
+            "آستانه بازنشستگی",
+            "نزدیک بازنشستگی",
+            "در شرف بازنشستگی",
+            "بازنشسته می‌شوند",
+            "بازنشسته میشوند",
+            "بازنشسته می‌شود",
+            "بازنشسته میشود",
+            "بازنشسته خواهند",
+            "سال آینده بازنشسته",
+            "ریسک بازنشستگی",
+            "به زودی بازنشسته",
+        ]
+        if self._has_any(question, _terminated_terms) or (
+            "بازنشسته" in question
+            and not self._has_any(question, _near_retirement_indicators)
         ):
+            add(("terminated_employee_analysis", 200, "terminated_employee_data_gap"))
+        if self._has_any(
+            question,
+            ["آستانه بازنشستگی", "نزدیک بازنشستگی", "در شرف بازنشستگی", "بازنشستگی قریب"],
+        ):
+            add(("near_retirement_analysis", 300, "near_future_retirement_keywords"))
+        if self._has_any(question, ["بازنشستگی", "بازنشسته می‌شوند", "بازنشسته میشوند", "بازنشسته خواهند"]):
             add(("near_retirement_analysis", 90, "retirement_keywords"))
         if self._has_any(question, ["بهره وری پیمانکار", "بهره وری پیمانکاری", "عملکرد پیمانکار"]):
             add(("contractor_productivity_analysis", 90, "contractor_productivity_gap"))

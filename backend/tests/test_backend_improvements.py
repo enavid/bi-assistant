@@ -196,3 +196,70 @@ def test_question_validator_access_denied_list_of_people():
     result = validator.validate("لیست افراد دپارتمان مالی را بده")
     assert result["route"] == "REJECT"
     assert result["status"] == "ACCESS_DENIED"
+
+
+# ---------------------------------------------------------------------------
+# BUG-011 — terminated / retired employees must route to DATA_GAP
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.integration
+def test_terminated_employees_routes_to_data_gap(metadata_service):
+    orch = LLMOrchestrator(metadata_service=metadata_service, default_execute_sql=False)
+    payload = _run(orch, "تعداد کارکنان اخراج شده چند نفر است؟")
+    assert payload["route"] == "GAP", f"Expected GAP, got '{payload['route']}'"
+    assert payload["status"] == ValidationStatus.DATA_GAP.value
+
+
+@pytest.mark.integration
+def test_resigned_employees_routes_to_data_gap(metadata_service):
+    orch = LLMOrchestrator(metadata_service=metadata_service, default_execute_sql=False)
+    payload = _run(orch, "چند نفر ترک خدمت کرده‌اند؟")
+    assert payload["route"] == "GAP", f"Expected GAP, got '{payload['route']}'"
+    assert payload["status"] == ValidationStatus.DATA_GAP.value
+
+
+@pytest.mark.integration
+def test_retired_employees_routes_to_data_gap(metadata_service):
+    orch = LLMOrchestrator(metadata_service=metadata_service, default_execute_sql=False)
+    payload = _run(orch, "تعداد کارکنان بازنشسته چند نفر است؟")
+    assert payload["route"] == "GAP", f"Expected GAP, got '{payload['route']}'"
+    assert payload["status"] == ValidationStatus.DATA_GAP.value
+
+
+@pytest.mark.integration
+def test_inactive_employees_routes_to_data_gap(metadata_service):
+    orch = LLMOrchestrator(metadata_service=metadata_service, default_execute_sql=False)
+    payload = _run(orch, "لیست کارکنان غیرفعال را بده")
+    assert payload["route"] == "GAP", f"Expected GAP, got '{payload['route']}'"
+    assert payload["status"] == ValidationStatus.DATA_GAP.value
+
+
+def test_intent_parser_maps_ekhraj_to_data_gap_intent(metadata_service):
+    from app.hr_analytics.use_cases.steps.intent_parser import IntentParser
+
+    parser = IntentParser(metadata_service=metadata_service)
+    result = parser.parse(
+        question="تعداد کارکنان اخراج شده چند نفر است؟",
+        semantic_result={},
+        metadata=metadata_service,
+    )
+    assert result.get("route") == "GAP" or result.get("status") in {
+        "DATA_GAP",
+        "ANALYTICAL_GAP",
+    }, f"Expected GAP/DATA_GAP route, got: {result}"
+
+
+def test_intent_parser_maps_bazneshastan_to_data_gap_intent(metadata_service):
+    from app.hr_analytics.use_cases.steps.intent_parser import IntentParser
+
+    parser = IntentParser(metadata_service=metadata_service)
+    result = parser.parse(
+        question="کارکنان بازنشسته چند نفرند؟",
+        semantic_result={},
+        metadata=metadata_service,
+    )
+    assert result.get("route") == "GAP" or result.get("status") in {
+        "DATA_GAP",
+        "ANALYTICAL_GAP",
+    }, f"Expected GAP/DATA_GAP route, got: {result}"

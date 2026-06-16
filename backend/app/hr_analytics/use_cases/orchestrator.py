@@ -1573,6 +1573,23 @@ class LLMOrchestrator:
         # (intent_id, terms, reason, is_analytical_gap)
         gap_rules = [
             (
+                "terminated_employee_analysis",
+                [
+                    "اخراج",
+                    "اخراجی",
+                    "اخراج شده",
+                    "اخراجی‌ها",
+                    "غیرفعال",
+                    "ترک خدمت",
+                    "ترک کرده",
+                    "پایان کار",
+                    "خروج از سازمان",
+                    "بازنشستگان",
+                ],
+                "View فعلی فقط شامل کارمندان فعال است. اطلاعات کارمندان اخراجی، بازنشسته یا ترک‌خدمت موجود نیست.",
+                False,
+            ),
+            (
                 "city_level_analysis",
                 ["شهر", "شهری", "هر شهر"],
                 "در MVP فعلی داده شهر قابل اتکا نیست.",
@@ -1624,6 +1641,32 @@ class LLMOrchestrator:
                     "confidence": 0.9,
                     "reason": reason,
                 }
+
+        _near_retirement_indicators = [
+            "آستانه بازنشستگی",
+            "نزدیک بازنشستگی",
+            "در شرف بازنشستگی",
+            "بازنشسته می‌شوند",
+            "بازنشسته میشوند",
+            "بازنشسته می‌شود",
+            "بازنشسته میشود",
+            "بازنشسته خواهند",
+            "بازنشسته خواهد",
+            "سال آینده بازنشسته",
+            "ریسک بازنشستگی",
+            "به زودی بازنشسته",
+        ]
+        if "بازنشسته" in question and not any(
+            ind in question for ind in _near_retirement_indicators
+        ):
+            return {
+                "route": Route.GAP.value,
+                "status": ValidationStatus.DATA_GAP.value,
+                "intent": "terminated_employee_analysis",
+                "intent_id": "terminated_employee_analysis",
+                "confidence": 0.9,
+                "reason": "View فعلی فقط شامل کارمندان فعال است. اطلاعات کارمندان بازنشسته موجود نیست.",
+            }
 
         if any(term in question for term in ["فروش", "درآمد", "سود", "زیان", "مشتری"]):
             return {

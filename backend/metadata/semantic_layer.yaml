@@ -1520,15 +1520,16 @@ value_aliases:
     - فوق‌لیسانس
     - مدرک ارشد
     filter_sql: v.education_title = 'کارشناسی ارشد'
-  - canonical_value: دکترای تخصصی / حرفه‌ای
+  - canonical_value: دکترای تخصصی PHD / دکترای حرفه ای
     aliases_fa:
     - دکترا
     - دکتری
     - دکترای تخصصی
     - دکترای حرفه‌ای
+    - دکترای تخصصی / حرفه‌ای
     - phd
     - PHD
-    filter_sql: v.education_title = 'دکترای تخصصی / حرفه‌ای'
+    filter_sql: v.education_title = 'دکترای تخصصی PHD / دکترای حرفه ای'
   employment_type:
   - canonical_value: رسمی
     aliases_fa:
@@ -1846,8 +1847,9 @@ data_gap_semantics:
   - پایان کار
   - پایان قرارداد
   - خروج از سازمان
+  - بازنشستگان
   response_status: DATA_GAP
-  reason_fa: View فعلی فقط شامل کارمندان فعال است. اطلاعات کارمندان اخراجی یا ترک‌خدمت در این سیستم موجود نیست.
+  reason_fa: View فعلی فقط شامل کارمندان فعال است. اطلاعات کارمندان اخراجی، بازنشسته یا ترک‌خدمت در این سیستم موجود نیست.
 reject_semantics:
 - reject_id: REJECT_PERSONAL_INFO
   response_status: ACCESS_DENIED

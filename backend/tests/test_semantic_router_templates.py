@@ -262,6 +262,55 @@ def test_department_template_with_result_limit_1_adds_limit_clause(metadata_serv
 # ---------------------------------------------------------------------------
 
 
+# ---------------------------------------------------------------------------
+# 3.8 — Education values from DB (not hardcoded)
+# ---------------------------------------------------------------------------
+
+DB_DOCTORAL_VALUE = "دکترای تخصصی PHD / دکترای حرفه ای"
+
+
+def test_semantic_mapper_doctoral_filter_uses_correct_db_value(metadata_service):
+    result = SemanticMapper(metadata_service=metadata_service).map_question(
+        "تعداد کارکنان با مدرک دکترا چند نفر است؟",
+        metadata=metadata_service,
+    )
+    filters = result.get("filters", [])
+    edu_filters = [f for f in filters if f.get("column") == "education_title"]
+    assert edu_filters, f"No education_title filter found. Full result: {result}"
+    filter_sql = edu_filters[0].get("filter_sql", "")
+    assert DB_DOCTORAL_VALUE in filter_sql, (
+        f"filter_sql '{filter_sql}' should contain '{DB_DOCTORAL_VALUE}'"
+    )
+
+
+def test_semantic_mapper_doktori_alias_maps_to_correct_db_value(metadata_service):
+    result = SemanticMapper(metadata_service=metadata_service).map_question(
+        "سهم کارکنان با مدرک دکتری چقدر است؟",
+        metadata=metadata_service,
+    )
+    filters = result.get("filters", [])
+    edu_filters = [f for f in filters if f.get("column") == "education_title"]
+    assert edu_filters, f"No education_title filter found. Full result: {result}"
+    value = edu_filters[0].get("value", "")
+    assert DB_DOCTORAL_VALUE in str(value), (
+        f"Filter value '{value}' should be '{DB_DOCTORAL_VALUE}'"
+    )
+
+
+def test_semantic_mapper_kamtar_az_sikl_uses_own_db_value(metadata_service):
+    result = SemanticMapper(metadata_service=metadata_service).map_question(
+        "تعداد کارکنان کمتر از سیکل چند نفر است؟",
+        metadata=metadata_service,
+    )
+    filters = result.get("filters", [])
+    edu_filters = [f for f in filters if f.get("column") == "education_title"]
+    assert edu_filters, f"No education_title filter found. Full result: {result}"
+    value = str(edu_filters[0].get("value", ""))
+    assert value == "کمتر از سیکل", (
+        f"'کمتر از سیکل' should map to its own DB value 'کمتر از سیکل', got '{value}'"
+    )
+
+
 def test_department_education_template_groups_by_both_axes(metadata_service):
     context = {
         "route_result": {
