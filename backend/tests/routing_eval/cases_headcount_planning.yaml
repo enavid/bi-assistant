@@ -1,0 +1,212 @@
+cases:
+  # ---------------------------------------------------------------------------
+  # Headcount Planning — colloquial & paraphrase robustness variants
+  # 3-4 informal/spoken variants per question (hcp-192 to hcp-200)
+  # ---------------------------------------------------------------------------
+
+  # ── hcp-192: headcount gap per department ─────────────────────────────────
+
+  - id: hcp-192v1
+    question: "هر دپارتمان چقدر کمبود نیرو داره؟"
+    category: headcount_planning
+    expect:
+      route: SQL
+      intent: headcount_gap_by_department
+
+  - id: hcp-192v2
+    question: "کمبود کارمند در هر واحد سازمانی چنده؟"
+    category: headcount_planning
+    expect:
+      route: SQL
+      intent: headcount_gap_by_department
+
+  - id: hcp-192v3
+    question: "هر دپارتمان چند نفر کم داره؟"
+    category: headcount_planning
+    expect:
+      route: SQL
+      intent: headcount_gap_by_department
+
+  # ── hcp-193: department with largest headcount gap ────────────────────────
+
+  - id: hcp-193v1
+    question: "کدوم دپارتمان بیشترین کمبود نیرو داره؟"
+    category: headcount_planning
+    expect:
+      route: SQL
+      intent: headcount_gap_by_department
+
+  - id: hcp-193v2
+    question: "کدوم واحد سازمانی بیشتر از همه کم نیرو داره؟"
+    category: headcount_planning
+    expect:
+      route: SQL
+      intent: headcount_gap_by_department
+
+  - id: hcp-193v3
+    question: "بیشترین کمبود نیرو توی کدوم دپارتمانه؟"
+    category: headcount_planning
+    expect:
+      route: SQL
+      intent: headcount_gap_by_department
+
+  # ── hcp-194: service domain with largest headcount gap ────────────────────
+
+  - id: hcp-194v1
+    question: "کدوم حوزه خدمت بیشترین کمبود نیرو داره؟"
+    category: headcount_planning
+    expect:
+      route: SQL
+      intent: headcount_gap_by_service_domain
+
+  - id: hcp-194v2
+    question: "بیشترین کمبود نیرو توی کدوم حوزه‌ست؟"
+    category: headcount_planning
+    expect:
+      route: SQL
+      intent: headcount_gap_by_service_domain
+
+  - id: hcp-194v3
+    question: "کدوم حوزه از نظر نیرو کم‌ترین تکمیل چارت رو داره؟"
+    category: headcount_planning
+    expect:
+      route: SQL
+      intent: headcount_gap_by_service_domain
+
+  # ── hcp-195: actual vs approved headcount per department ──────────────────
+
+  - id: hcp-195v1
+    question: "هر دپارتمان نسبت به چارتش چند نفر داره؟"
+    category: headcount_planning
+    expect:
+      route: SQL
+      intent: headcount_gap_by_department
+
+  - id: hcp-195v2
+    question: "تعداد واقعی نیروها در هر دپارتمان نسبت به چارت مصوب؟"
+    category: headcount_planning
+    expect:
+      route: SQL
+      intent: headcount_gap_by_department
+
+  - id: hcp-195v3
+    question: "وضعیت پر شدن چارت مصوب در هر واحد؟"
+    category: headcount_planning
+    expect:
+      route: SQL
+      intent: headcount_gap_by_department
+
+  # ── hcp-196: gap between actual and approved headcount per domain ──────────
+
+  - id: hcp-196v1
+    question: "هر حوزه خدمت چقدر با چارتش فاصله داره؟"
+    category: headcount_planning
+    expect:
+      route: SQL
+      intent: headcount_gap_by_service_domain
+
+  - id: hcp-196v2
+    question: "فاصله نیروی موجود از چارت مصوب در هر حوزه؟"
+    category: headcount_planning
+    expect:
+      route: SQL
+      intent: headcount_gap_by_service_domain
+
+  - id: hcp-196v3
+    question: "هر حوزه نسبت به چارتش چقدر کمبود یا مازاد داره؟"
+    category: headcount_planning
+    expect:
+      route: SQL
+      intent: headcount_gap_by_service_domain
+
+  # ── hcp-197: units with more than approved headcount ─────────────────────
+
+  - id: hcp-197v1
+    question: "کدوم واحدها بیشتر از چارتشون نیرو دارن؟"
+    category: headcount_planning
+    expect:
+      route: SQL
+      intent: headcount_gap_by_department
+
+  - id: hcp-197v2
+    question: "کجاها مازاد نیرو نسبت به چارت مصوب دارن؟"
+    category: headcount_planning
+    expect:
+      route: SQL
+      intent: headcount_gap_by_department
+
+  - id: hcp-197v3
+    question: "کدوم دپارتمان‌ها از چارتشون بیشتر نیرو گرفتن؟"
+    category: headcount_planning
+    expect:
+      route: SQL
+      intent: headcount_gap_by_department
+
+  # ── hcp-198: units with fewer than approved headcount ────────────────────
+
+  - id: hcp-198v1
+    question: "کدوم واحدها کمتر از چارتشون نیرو دارن؟"
+    category: headcount_planning
+    expect:
+      route: SQL
+      intent: headcount_gap_by_department
+
+  - id: hcp-198v2
+    question: "کجاها کمبود نیرو نسبت به چارت مصوب دارن؟"
+    category: headcount_planning
+    expect:
+      route: SQL
+      intent: headcount_gap_by_department
+
+  - id: hcp-198v3
+    question: "کدوم دپارتمان‌ها چارتشون پر نشده؟"
+    category: headcount_planning
+    expect:
+      route: SQL
+      intent: headcount_gap_by_department
+
+  # ── hcp-199: chart fulfillment percentage per department ──────────────────
+
+  - id: hcp-199v1
+    question: "هر دپارتمان چند درصد چارتش رو پر کرده؟"
+    category: headcount_planning
+    expect:
+      route: SQL
+      intent: headcount_gap_by_department
+
+  - id: hcp-199v2
+    question: "درصد تحقق چارت مصوب در هر واحد سازمانی؟"
+    category: headcount_planning
+    expect:
+      route: SQL
+      intent: headcount_gap_by_department
+
+  - id: hcp-199v3
+    question: "وضعیت پر شدن چارت در هر دپارتمان چقدره؟"
+    category: headcount_planning
+    expect:
+      route: SQL
+      intent: headcount_gap_by_department
+
+  # ── hcp-200: chart fulfillment percentage per service domain ──────────────
+
+  - id: hcp-200v1
+    question: "هر حوزه خدمت چند درصد چارتش رو پر کرده؟"
+    category: headcount_planning
+    expect:
+      route: SQL
+      intent: headcount_gap_by_service_domain
+
+  - id: hcp-200v2
+    question: "درصد تحقق چارت مصوب در هر حوزه؟"
+    category: headcount_planning
+    expect:
+      route: SQL
+      intent: headcount_gap_by_service_domain
+
+  - id: hcp-200v3
+    question: "وضعیت پر شدن چارت مصوب در هر حوزه خدمتی؟"
+    category: headcount_planning
+    expect:
+      route: SQL
+      intent: headcount_gap_by_service_domain

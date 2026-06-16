@@ -1210,7 +1210,10 @@ def _build_data_gap_rules() -> list[JsonDict]:
         {
             "rule_id": "QVAL_GAP_NEAR_RETIREMENT",
             "gap_key": "near_retirement_analysis",
-            "terms": ["آستانه بازنشستگی", "نزدیک بازنشستگی", "در شرف بازنشستگی", "بازنشستگی"],
+            # Only catch conceptual "about to retire" questions without an explicit threshold.
+            # "آستانه بازنشستگی" and plain "بازنشستگی" are covered by the near_retirement_analysis
+            # template (age >= 60) and by dedicated KNOWLEDGE_GAP rules for policy/law questions.
+            "terms": ["نزدیک بازنشستگی", "در شرف بازنشستگی"],
             "severity": "high",
             "message_fa": "برای پاسخ دقیق، قانون رسمی بازنشستگی بر اساس سن، سابقه، جنسیت و قواعد سازمانی باید تعریف شود.",
         },
@@ -1222,6 +1225,8 @@ def _build_data_gap_rules() -> list[JsonDict]:
                 "بهره‌وری پیمانکار",
                 "بهره وری پیمانکاری",
                 "بهره‌وری پیمانکاری",
+                "بهره وری نیروهای پیمانکاری",
+                "بهره‌وری نیروهای پیمانکاری",
                 "عملکرد پیمانکار",
             ],
             "severity": "medium",
@@ -1255,6 +1260,7 @@ def _build_data_gap_rules() -> list[JsonDict]:
                 "افزایش نیاز به آموزش",
             ],
             "severity": "medium",
+            "gap_type": "analytical",
             "message_fa": "تحلیل نیاز آموزشی نیازمند تعریف شاخص یا اسناد آموزشی است و در MVP فعلی کامل نیست.",
         },
         {
@@ -1262,20 +1268,8 @@ def _build_data_gap_rules() -> list[JsonDict]:
             "gap_key": "workforce_aging_trend_analysis",
             "terms": ["سالخوردگی", "پیر شدن", "به سمت سالخوردگی", "ساختار کلی کارکنان به سمت"],
             "severity": "medium",
+            "gap_type": "analytical",
             "message_fa": "تحلیل سالخوردگی نیروی انسانی نیازمند تعریف آستانه و منطق تحلیلی رسمی است.",
-        },
-        {
-            "rule_id": "QVAL_GAP_ADVANCED_BALANCE",
-            "gap_key": "department_balance_analysis",
-            "terms": [
-                "تعادل نیروی انسانی",
-                "متوازن است",
-                "توازن بین بخش",
-                "تعادل بین چارت",
-                "واقعیت نیروی انسانی",
-            ],
-            "severity": "medium",
-            "message_fa": "تحلیل پیشرفته تعادل نیروی انسانی نیازمند تعریف شاخص و قانون کسب‌وکاری است؛ محاسبه ساده اختلاف چارت فقط partial پشتیبانی می‌شود.",
         },
         {
             "rule_id": "QVAL_GAP_KNOWLEDGE_DEFINITION",
@@ -1303,6 +1297,56 @@ def _build_data_gap_rules() -> list[JsonDict]:
             "severity": "medium",
             "gap_type": "knowledge",
             "message_fa": "این سؤال درباره تفاوت مفهومی دو اصطلاح است و نیاز به منبع دانشی دارد.",
+        },
+        {
+            "rule_id": "QVAL_GAP_KNOWLEDGE_METHODOLOGY",
+            "gap_key": "hr_indicator_methodology",
+            # Use short stem so normalization variants (می‌شود / می شود / میشود) all match
+            "terms": ["چگونه محاسبه", "چطور محاسبه", "نحوه محاسبه شاخص"],
+            "required_any": ["شاخص", "محاسبه"],
+            "severity": "medium",
+            "gap_type": "knowledge",
+            "message_fa": "این سؤال درباره نحوه محاسبه یک شاخص است و نیاز به مستند روش‌شناسی دارد.",
+        },
+        {
+            "rule_id": "QVAL_GAP_KNOWLEDGE_RETIREMENT_POLICY",
+            "gap_key": "retirement_policy_knowledge",
+            "terms": ["سیاست سازمان", "سیاست بازنشستگی"],
+            "severity": "medium",
+            "gap_type": "knowledge",
+            "message_fa": "سیاست‌های بازنشستگی سازمان در سیستم مستند نیست و نیاز به منبع دانشی دارد.",
+        },
+        {
+            "rule_id": "QVAL_GAP_KNOWLEDGE_RETIREMENT_LAW",
+            "gap_key": "retirement_law_knowledge",
+            "terms": ["قانون رسمی"],
+            "required_any": ["بازنشستگی", "سن بازنشستگی"],
+            "severity": "medium",
+            "gap_type": "knowledge",
+            "message_fa": "قانون رسمی بازنشستگی تعریف نشده است و نیاز به منبع دانشی دارد.",
+        },
+        {
+            "rule_id": "QVAL_GAP_ANALYTICAL_RISK_ASSESSMENT",
+            "gap_key": "risk_assessment_analysis",
+            "terms": ["چه ریسکی", "چه خطری", "ریسکی برای سازمان", "ریسکی ایجاد می کند", "ریسکی ایجاد می‌کند"],
+            "severity": "medium",
+            "gap_type": "analytical",
+            "message_fa": "ارزیابی ریسک نیازمند تعریف شاخص، آستانه و داده تحلیلی فراتر از داده‌های جاری است.",
+        },
+        {
+            "rule_id": "QVAL_GAP_ANALYTICAL_MANAGEMENT_JUDGMENT",
+            "gap_key": "management_judgment_analysis",
+            "terms": ["نیازمند توجه مدیریتی", "نیاز به توجه مدیریتی", "نیاز مدیریتی دارد"],
+            "severity": "medium",
+            "gap_type": "analytical",
+            "message_fa": "تشخیص نیاز مدیریتی نیازمند معیار، وزن‌دهی و قضاوت تخصصی است که در سیستم تعریف نشده.",
+        },
+        {
+            "rule_id": "QVAL_GAP_JOB_FAMILY",
+            "gap_key": "job_family_analysis",
+            "terms": ["خانواده شغلی"],
+            "severity": "medium",
+            "message_fa": "ستون خانواده شغلی در view تحلیلی MVP فعلی موجود نیست.",
         },
     ]
 

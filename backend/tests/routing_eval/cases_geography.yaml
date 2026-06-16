@@ -1,0 +1,327 @@
+cases:
+  # ---------------------------------------------------------------------------
+  # Geography — colloquial & paraphrase robustness variants
+  # 3-4 informal/spoken variants per question (geo-125 to geo-138)
+  # ---------------------------------------------------------------------------
+
+  # ── geo-125: employee count by province ──────────────────────────────────
+
+  - id: geo-125v1
+    question: "هر استان چند نفر کارمند داره؟"
+    category: geography
+    expect:
+      route: SQL
+      intent: employee_count_by_province
+
+  - id: geo-125v2
+    question: "تعداد پرسنل به تفکیک استان؟"
+    category: geography
+    expect:
+      route: SQL
+      intent: employee_count_by_province
+
+  - id: geo-125v3
+    question: "نیروها رو استان به استان نشون بده"
+    category: geography
+    expect:
+      route: SQL
+      intent: employee_count_by_province
+
+  # ── geo-126: share of each province ──────────────────────────────────────
+
+  - id: geo-126v1
+    question: "هر استان چند درصد از کل کارکنانه؟"
+    category: geography
+    expect:
+      route: SQL
+      intent: employee_count_by_province
+
+  - id: geo-126v2
+    question: "سهم هر استان از کل نیروهای سازمان؟"
+    category: geography
+    expect:
+      route: SQL
+      intent: employee_count_by_province
+
+  - id: geo-126v3
+    question: "نسبت کارکنان هر استان به کل چقدره؟"
+    category: geography
+    expect:
+      route: SQL
+      intent: employee_count_by_province
+
+  # ── geo-127: province with most employees ────────────────────────────────
+
+  - id: geo-127v1
+    question: "کدوم استان بیشترین کارمند داره؟"
+    category: geography
+    expect:
+      route: SQL
+      intent: employee_count_by_province
+
+  - id: geo-127v2
+    question: "پر نیروترین استان کدومه؟"
+    category: geography
+    expect:
+      route: SQL
+      intent: employee_count_by_province
+
+  - id: geo-127v3
+    question: "بیشترین کارکنان توی کدوم استانن؟"
+    category: geography
+    expect:
+      route: SQL
+      intent: employee_count_by_province
+
+  # ── geo-128: province with fewest employees ───────────────────────────────
+
+  - id: geo-128v1
+    question: "کدوم استان کمترین کارمند داره؟"
+    category: geography
+    expect:
+      route: SQL
+      intent: employee_count_by_province
+
+  - id: geo-128v2
+    question: "کم نیروترین استان کدومه؟"
+    category: geography
+    expect:
+      route: SQL
+      intent: employee_count_by_province
+
+  - id: geo-128v3
+    question: "کمترین کارکنان توی کدوم استانن؟"
+    category: geography
+    expect:
+      route: SQL
+      intent: employee_count_by_province
+
+  # ── geo-129: male/female count by province ────────────────────────────────
+
+  - id: geo-129v1
+    question: "هر استان چند تا خانم و آقا داره؟"
+    category: geography
+    expect:
+      route: SQL
+      intent: employee_count_by_province
+
+  - id: geo-129v2
+    question: "تعداد زن و مرد به تفکیک استان؟"
+    category: geography
+    expect:
+      route: SQL
+      intent: employee_count_by_province
+
+  - id: geo-129v3
+    question: "ترکیب جنسیتی کارکنان در هر استان؟"
+    category: geography
+    expect:
+      route: SQL
+      intent: employee_count_by_province
+
+  # ── geo-130: average age per province ────────────────────────────────────
+
+  - id: geo-130v1
+    question: "میانگین سنی کارکنان در هر استان؟"
+    category: geography
+    expect:
+      route: SQL
+      intent: average_age
+
+  - id: geo-130v2
+    question: "کارکنان هر استان به طور متوسط چند سالشونه؟"
+    category: geography
+    expect:
+      route: SQL
+      intent: average_age
+
+  - id: geo-130v3
+    question: "متوسط سن نیروها در هر استان چنده؟"
+    category: geography
+    expect:
+      route: SQL
+      intent: average_age
+
+  # ── geo-131: employees 60+ by province ───────────────────────────────────
+
+  - id: geo-131v1
+    question: "هر استان چند نفر بالای ۶۰ سال داره؟"
+    category: geography
+    expect:
+      route: SQL
+      intent: employee_count_by_province
+
+  - id: geo-131v2
+    question: "تعداد کارکنان مسن (۶۰ به بالا) در هر استان؟"
+    category: geography
+    expect:
+      route: SQL
+      intent: employee_count_by_province
+
+  - id: geo-131v3
+    question: "کارکنان ۶۰ سال به بالا استان به استان چند نفرن؟"
+    category: geography
+    expect:
+      route: SQL
+      intent: employee_count_by_province
+
+  # ── geo-132: employees under 30 by province ───────────────────────────────
+
+  - id: geo-132v1
+    question: "هر استان چند نفر جوون زیر ۳۰ سال داره؟"
+    category: geography
+    expect:
+      route: SQL
+      intent: employee_count_by_age_filter
+
+  - id: geo-132v2
+    question: "تعداد کارکنان جوان (زیر ۳۰) در هر استان؟"
+    category: geography
+    expect:
+      route: SQL
+      intent: employee_count_by_age_filter
+
+  - id: geo-132v3
+    question: "نیروهای زیر سی سال استان به استان چند نفرن؟"
+    category: geography
+    expect:
+      route: SQL
+      intent: employee_count_by_age_filter
+
+  # ── geo-133: employee count by work location ──────────────────────────────
+
+  - id: geo-133v1
+    question: "هر محل خدمت چند نفر کارمند داره؟"
+    category: geography
+    expect:
+      route: SQL
+      intent: employee_count_by_work_location
+
+  - id: geo-133v2
+    question: "تعداد پرسنل به تفکیک محل خدمت؟"
+    category: geography
+    expect:
+      route: SQL
+      intent: employee_count_by_work_location
+
+  - id: geo-133v3
+    question: "نیروها رو به تفکیک محل کارشون بده"
+    category: geography
+    expect:
+      route: SQL
+      intent: employee_count_by_work_location
+
+  # ── geo-134: work location with most employees ────────────────────────────
+
+  - id: geo-134v1
+    question: "کدوم محل خدمت بیشترین نیرو داره؟"
+    category: geography
+    expect:
+      route: SQL
+      intent: employee_count_by_work_location
+
+  - id: geo-134v2
+    question: "پر نفرترین محل خدمت کدومه؟"
+    category: geography
+    expect:
+      route: SQL
+      intent: employee_count_by_work_location
+
+  - id: geo-134v3
+    question: "بیشترین کارمند کجا خدمت می‌کنن؟"
+    category: geography
+    expect:
+      route: SQL
+      intent: employee_count_by_work_location
+
+  # ── geo-135: employees in Tehran city → DATA_GAP (city not in DB) ─────────
+
+  - id: geo-135v1
+    question: "تهران چند تا کارمند داره؟"
+    category: geography
+    expect:
+      route: GAP
+      status: DATA_GAP
+
+  - id: geo-135v2
+    question: "چند نفر توی شهر تهران کار می‌کنن؟"
+    category: geography
+    expect:
+      route: GAP
+      status: DATA_GAP
+
+  - id: geo-135v3
+    question: "تعداد نیروهای شهر تهران؟"
+    category: geography
+    expect:
+      route: GAP
+      status: DATA_GAP
+
+  # ── geo-136: employee count per city → DATA_GAP ───────────────────────────
+
+  - id: geo-136v1
+    question: "هر شهر چند نفر کارمند داره؟"
+    category: geography
+    expect:
+      route: GAP
+      status: DATA_GAP
+
+  - id: geo-136v2
+    question: "آمار کارکنان شهر به شهر چنده؟"
+    category: geography
+    expect:
+      route: GAP
+      status: DATA_GAP
+
+  - id: geo-136v3
+    question: "تعداد پرسنل به تفکیک شهر؟"
+    category: geography
+    expect:
+      route: GAP
+      status: DATA_GAP
+
+  # ── geo-137: city with most employees → DATA_GAP ─────────────────────────
+
+  - id: geo-137v1
+    question: "کدوم شهر بیشترین کارمند داره؟"
+    category: geography
+    expect:
+      route: GAP
+      status: DATA_GAP
+
+  - id: geo-137v2
+    question: "پر نفرترین شهر از نظر کارکنان کدومه؟"
+    category: geography
+    expect:
+      route: GAP
+      status: DATA_GAP
+
+  - id: geo-137v3
+    question: "بیشترین نیرو توی کدوم شهره؟"
+    category: geography
+    expect:
+      route: GAP
+      status: DATA_GAP
+
+  # ── geo-138: share of employees per city → DATA_GAP ──────────────────────
+
+  - id: geo-138v1
+    question: "هر شهر چند درصد از کل کارکنانه؟"
+    category: geography
+    expect:
+      route: GAP
+      status: DATA_GAP
+
+  - id: geo-138v2
+    question: "سهم هر شهر از کل نیروهای سازمان؟"
+    category: geography
+    expect:
+      route: GAP
+      status: DATA_GAP
+
+  - id: geo-138v3
+    question: "توزیع کارکنان بین شهرها چطوره؟"
+    category: geography
+    expect:
+      route: GAP
+      status: DATA_GAP

@@ -1,0 +1,709 @@
+cases:
+  # ---------------------------------------------------------------------------
+  # Org Structure — colloquial & paraphrase robustness variants
+  # 3-4 informal/spoken variants per question (org-095 to org-124)
+  # ---------------------------------------------------------------------------
+
+  # ── org-095: employee count by service domain ─────────────────────────────
+
+  - id: org-095v1
+    question: "هر حوزه خدمتی چند نفر کارمند داره؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: employee_count_by_service_domain
+
+  - id: org-095v2
+    question: "تعداد پرسنل هر حوزه خدمت چنده؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: employee_count_by_service_domain
+
+  - id: org-095v3
+    question: "آمار کارکنان به تفکیک حوزه خدمت؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: employee_count_by_service_domain
+
+  - id: org-095v4
+    question: "نیروها رو بر اساس حوزه خدمتشون برام بگو"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: employee_count_by_service_domain
+
+  # ── org-096: share of each service domain ────────────────────────────────
+
+  - id: org-096v1
+    question: "هر حوزه خدمتی چند درصد از کارکنانه؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: employee_count_by_service_domain
+
+  - id: org-096v2
+    question: "نسبت کارکنان هر حوزه خدمت به کل چقدره؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: employee_count_by_service_domain
+
+  - id: org-096v3
+    question: "درصد پرسنل هر حوزه خدمت از کل؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: employee_count_by_service_domain
+
+  # ── org-097: domain with most employees ──────────────────────────────────
+
+  - id: org-097v1
+    question: "کدوم حوزه خدمت پر نفرتره؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: employee_count_by_service_domain
+
+  - id: org-097v2
+    question: "بیشترین کارمند رو کدوم حوزه داره؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: employee_count_by_service_domain
+
+  - id: org-097v3
+    question: "کدوم حوزه بیشترین آدم رو داره؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: employee_count_by_service_domain
+
+  # ── org-098: domain with fewest employees ────────────────────────────────
+
+  - id: org-098v1
+    question: "کم نفرترین حوزه خدمت کدومه؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: employee_count_by_service_domain
+
+  - id: org-098v2
+    question: "کدوم حوزه کمترین کارمند رو داره؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: employee_count_by_service_domain
+
+  - id: org-098v3
+    question: "حوزه‌ای که کمترین نیرو داره کدومه؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: employee_count_by_service_domain
+
+  # ── org-099: male/female count per service domain ────────────────────────
+
+  - id: org-099v1
+    question: "هر حوزه چند تا خانم و آقا داره؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: employee_count_by_service_domain
+
+  - id: org-099v2
+    question: "تعداد زن‌ها و مردها در هر حوزه خدمت؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: employee_count_by_service_domain
+
+  - id: org-099v3
+    question: "به تفکیک جنسیت هر حوزه چند نفره؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: employee_count_by_service_domain
+
+  # ── org-100: female percentage per service domain ────────────────────────
+
+  - id: org-100v1
+    question: "نسبت خانم‌ها در هر حوزه خدمتی چقدره؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: employee_count_by_service_domain
+
+  - id: org-100v2
+    question: "هر حوزه چند درصد خانمه؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: employee_count_by_service_domain
+
+  - id: org-100v3
+    question: "سهم زنان در هر حوزه خدمت؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: employee_count_by_service_domain
+
+  # ── org-101: male percentage per service domain ──────────────────────────
+
+  - id: org-101v1
+    question: "چند درصد از کارکنان هر حوزه آقا هستن؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: employee_count_by_service_domain
+
+  - id: org-101v2
+    question: "نسبت مردها در هر حوزه خدمتی؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: employee_count_by_service_domain
+
+  - id: org-101v3
+    question: "سهم آقایون در هر حوزه چقدره؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: employee_count_by_service_domain
+
+  # ── org-102: average age per service domain ──────────────────────────────
+
+  - id: org-102v1
+    question: "متوسط سنی کارکنان هر حوزه خدمتی چنده؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: average_age
+
+  - id: org-102v2
+    question: "کارکنان هر حوزه به طور میانگین چند سالشونه؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: average_age
+
+  - id: org-102v3
+    question: "میانگین سنی هر حوزه خدمت چنده؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: average_age
+
+  # ── org-103: average seniority per service domain ────────────────────────
+
+  - id: org-103v1
+    question: "کارکنان هر حوزه به طور متوسط چند سال سابقه دارن؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: average_service_years
+
+  - id: org-103v2
+    question: "متوسط سابقه کاری در هر حوزه خدمت؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: average_service_years
+
+  - id: org-103v3
+    question: "میانگین سنوات هر حوزه چنده؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: average_service_years
+
+  # ── org-104: employees aged 60+ per service domain ───────────────────────
+
+  - id: org-104v1
+    question: "هر حوزه چند نفر بالای ۶۰ سال داره؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: employee_count_by_age_filter
+
+  - id: org-104v2
+    question: "تعداد کارکنان مسن‌تر از ۶۰ سال در هر حوزه؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: employee_count_by_age_filter
+
+  - id: org-104v3
+    question: "چند نفر از کارکنان هر حوزه ۶۰ سال به بالان؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: employee_count_by_age_filter
+
+  # ── org-105: employees under 30 per service domain ───────────────────────
+
+  - id: org-105v1
+    question: "هر حوزه چند نفر جوون زیر ۳۰ سال داره؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: employee_count_by_age_filter
+
+  - id: org-105v2
+    question: "تعداد کارکنان جوان (زیر ۳۰) در هر حوزه خدمت؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: employee_count_by_age_filter
+
+  - id: org-105v3
+    question: "چند نفر از کارکنان هر حوزه زیر ۳۰ سالشونه؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: employee_count_by_age_filter
+
+  # ── org-106: employee count by department ────────────────────────────────
+
+  - id: org-106v1
+    question: "هر دپارتمان چند نفر کارمند داره؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: employee_count_by_department
+
+  - id: org-106v2
+    question: "تعداد پرسنل هر واحد سازمانی؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: employee_count_by_department
+
+  - id: org-106v3
+    question: "نیروها رو به تفکیک دپارتمان بده"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: employee_count_by_department
+
+  - id: org-106v4
+    question: "آمار کارکنان هر واحد سازمانی چنده؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: employee_count_by_department
+
+  # ── org-107: department with most employees ───────────────────────────────
+
+  - id: org-107v1
+    question: "کدوم دپارتمان بیشترین آدم داره؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: employee_count_by_department
+
+  - id: org-107v2
+    question: "پر نفرترین واحد سازمانی کدومه؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: employee_count_by_department
+
+  - id: org-107v3
+    question: "کدوم دپارتمان بزرگ‌ترینه؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: employee_count_by_department
+
+  # ── org-108: department with fewest employees ─────────────────────────────
+
+  - id: org-108v1
+    question: "کم نفرترین دپارتمان کدومه؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: employee_count_by_department
+
+  - id: org-108v2
+    question: "کدوم واحد کمترین کارمند داره؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: employee_count_by_department
+
+  - id: org-108v3
+    question: "کوچیک‌ترین دپارتمان از نظر تعداد نیرو؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: employee_count_by_department
+
+  # ── org-109: headcount by gender per department ───────────────────────────
+
+  - id: org-109v1
+    question: "هر دپارتمان چند تا خانم و چند تا آقا داره؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: employee_count_by_department_gender
+
+  - id: org-109v2
+    question: "تعداد زن و مرد در هر واحد سازمانی؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: employee_count_by_department_gender
+
+  - id: org-109v3
+    question: "ترکیب جنسیتی کارکنان هر دپارتمان چطوره؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: employee_count_by_department_gender
+
+  # ── org-110: average age per department ──────────────────────────────────
+
+  - id: org-110v1
+    question: "متوسط سن کارکنان در هر دپارتمان؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: avg_age_by_department
+
+  - id: org-110v2
+    question: "هر واحد سازمانی به طور میانگین چند سالشونه؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: avg_age_by_department
+
+  - id: org-110v3
+    question: "میانگین سنی دپارتمان‌ها چنده؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: avg_age_by_department
+
+  # ── org-111: employee count by department level ───────────────────────────
+
+  - id: org-111v1
+    question: "هر سطح سازمانی چند نفر کارمند داره؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: employee_count_by_department
+
+  - id: org-111v2
+    question: "تعداد پرسنل به تفکیک سطح واحد؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: employee_count_by_department
+
+  - id: org-111v3
+    question: "توزیع کارکنان بر اساس سطح دپارتمان؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: employee_count_by_department
+
+  # ── org-112: employees at org level 1 ────────────────────────────────────
+
+  - id: org-112v1
+    question: "چند نفر توی سطح ۱ سازمان هستن؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: total_employee_count
+
+  - id: org-112v2
+    question: "تعداد پرسنل سطح اول سازمانی؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: total_employee_count
+
+  - id: org-112v3
+    question: "نیروهای سطح یک چند نفرن؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: total_employee_count
+
+  # ── org-113: employees at org level 2 ────────────────────────────────────
+
+  - id: org-113v1
+    question: "چند نفر توی سطح ۲ سازمان هستن؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: total_employee_count
+
+  - id: org-113v2
+    question: "تعداد کارکنان سطح دوم سازمانی؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: total_employee_count
+
+  - id: org-113v3
+    question: "نیروهای سطح دو چند نفرن؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: total_employee_count
+
+  # ── org-114: employees at org level 3 ────────────────────────────────────
+
+  - id: org-114v1
+    question: "چند نفر توی سطح ۳ سازمان هستن؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: total_employee_count
+
+  - id: org-114v2
+    question: "تعداد کارکنان سطح سوم سازمانی؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: total_employee_count
+
+  - id: org-114v3
+    question: "نیروهای سطح سه چند نفرن؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: total_employee_count
+
+  # ── org-115: share of each department level ───────────────────────────────
+
+  - id: org-115v1
+    question: "هر سطح سازمانی چند درصد از کل کارکنانه؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: total_employee_count
+
+  - id: org-115v2
+    question: "نسبت کارکنان هر سطح دپارتمان به کل؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: total_employee_count
+
+  - id: org-115v3
+    question: "درصد پرسنل به تفکیک سطح واحد سازمانی؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: total_employee_count
+
+  # ── org-116: employee count by job position ───────────────────────────────
+
+  - id: org-116v1
+    question: "هر پست چند نفر کارمند داره؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: total_employee_count
+
+  - id: org-116v2
+    question: "توزیع نیروها به تفکیک پست سازمانی؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: total_employee_count
+
+  - id: org-116v3
+    question: "تعداد پرسنل در هر پست؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: total_employee_count
+
+  # ── org-117: position with most employees ────────────────────────────────
+
+  - id: org-117v1
+    question: "کدوم پست بیشترین نیرو رو داره؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: total_employee_count
+
+  - id: org-117v2
+    question: "پر متصدی‌ترین پست سازمانی کدومه؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: total_employee_count
+
+  - id: org-117v3
+    question: "بیشترین تعداد آدم رو کدوم پست داره؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: total_employee_count
+
+  # ── org-118: employee count by position level ─────────────────────────────
+
+  - id: org-118v1
+    question: "هر سطح پست چند نفر کارمند داره؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: total_employee_count
+
+  - id: org-118v2
+    question: "توزیع کارکنان بر اساس سطح پست سازمانی؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: total_employee_count
+
+  - id: org-118v3
+    question: "تعداد نیروها به تفکیک سطح پست؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: total_employee_count
+
+  # ── org-119: employees in expert positions ────────────────────────────────
+
+  - id: org-119v1
+    question: "چند نفر پست کارشناسی دارن؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: employee_count_by_education
+
+  - id: org-119v2
+    question: "تعداد نیروهای پست کارشناس؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: employee_count_by_education
+
+  - id: org-119v3
+    question: "کارکنان پست‌های کارشناسی چند نفرن؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: employee_count_by_education
+
+  # ── org-120: share of expert positions ───────────────────────────────────
+
+  - id: org-120v1
+    question: "چند درصد از کارکنان پست کارشناسی دارن؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: employee_count_by_education
+
+  - id: org-120v2
+    question: "نسبت پست‌های کارشناسی به کل چقدره؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: employee_count_by_education
+
+  - id: org-120v3
+    question: "درصد کارکنان با پست کارشناسی؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: employee_count_by_education
+
+  # ── org-121: by job family → DATA_GAP (field not in DB) ──────────────────
+
+  - id: org-121v1
+    question: "هر خانواده شغلی چند نفر کارمند داره؟"
+    category: org_structure
+    expect:
+      route: GAP
+      status: DATA_GAP
+
+  - id: org-121v2
+    question: "توزیع نیروها بر اساس خانواده شغلی؟"
+    category: org_structure
+    expect:
+      route: GAP
+      status: DATA_GAP
+
+  - id: org-121v3
+    question: "کارکنان رو به تفکیک خانواده شغلی نشون بده"
+    category: org_structure
+    expect:
+      route: GAP
+      status: DATA_GAP
+
+  # ── org-122: job family with most employees → DATA_GAP ───────────────────
+
+  - id: org-122v1
+    question: "کدوم خانواده شغلی بیشترین نیرو داره؟"
+    category: org_structure
+    expect:
+      route: GAP
+      status: DATA_GAP
+
+  - id: org-122v2
+    question: "پر نفرترین خانواده شغلی کدومه؟"
+    category: org_structure
+    expect:
+      route: GAP
+      status: DATA_GAP
+
+  - id: org-122v3
+    question: "بزرگ‌ترین خانواده شغلی از نظر تعداد کارمند؟"
+    category: org_structure
+    expect:
+      route: GAP
+      status: DATA_GAP
+
+  # ── org-123: employee count by unit sensitivity level ─────────────────────
+
+  - id: org-123v1
+    question: "هر سطح حساسیت واحد چند نفر کارمند داره؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: employee_count_by_department
+
+  - id: org-123v2
+    question: "توزیع کارکنان بر اساس حساسیت واحد؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: employee_count_by_department
+
+  - id: org-123v3
+    question: "کارکنان رو به تفکیک سطح حساسیت سازمانی نشون بده"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: employee_count_by_department
+
+  # ── org-124: sensitivity level with most employees ────────────────────────
+
+  - id: org-124v1
+    question: "کدوم سطح حساسیت واحد بیشترین نیرو داره؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: total_employee_count
+
+  - id: org-124v2
+    question: "پر نفرترین سطح حساسیت سازمانی کدومه؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: total_employee_count
+
+  - id: org-124v3
+    question: "بیشترین کارمند توی کدوم سطح حساسیت هستن؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: total_employee_count

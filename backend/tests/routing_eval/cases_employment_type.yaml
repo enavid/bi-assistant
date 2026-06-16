@@ -1,0 +1,564 @@
+cases:
+  # ---------------------------------------------------------------------------
+  # Employment Type — colloquial & paraphrase robustness variants
+  # 3-4 informal/spoken variants per question (emp-055 to emp-078)
+  # ---------------------------------------------------------------------------
+
+  # ── emp-055: employee count by employment type ────────────────────────────
+
+  - id: emp-055v1
+    question: "هر نوع استخدامی چند نفر کارمند داره؟"
+    category: employment_type
+    expect:
+      route: SQL
+      intent: employee_count_by_employment_type
+
+  - id: emp-055v2
+    question: "تعداد پرسنل رو به تفکیک نوع استخدام بده"
+    category: employment_type
+    expect:
+      route: SQL
+      intent: employee_count_by_employment_type
+
+  - id: emp-055v3
+    question: "کارکنان به تفکیک نوع استخدامشون چند نفرن؟"
+    category: employment_type
+    expect:
+      route: SQL
+      intent: employee_count_by_employment_type
+
+  - id: emp-055v4
+    question: "آمار کارکنان بر اساس نوع استخدام؟"
+    category: employment_type
+    expect:
+      route: SQL
+      intent: employee_count_by_employment_type
+
+  # ── emp-056: share of each employment type ────────────────────────────────
+
+  - id: emp-056v1
+    question: "هر نوع استخدام چند درصد از کل کارکنانه؟"
+    category: employment_type
+    expect:
+      route: SQL
+      intent: employee_count_by_employment_type
+
+  - id: emp-056v2
+    question: "نسبت هر نوع استخدام به کل چقدره؟"
+    category: employment_type
+    expect:
+      route: SQL
+      intent: employee_count_by_employment_type
+
+  - id: emp-056v3
+    question: "سهم انواع استخدام از کل نیروها چنده؟"
+    category: employment_type
+    expect:
+      route: SQL
+      intent: employee_count_by_employment_type
+
+  # ── emp-057: number of permanent employees ────────────────────────────────
+
+  - id: emp-057v1
+    question: "چند نفر کارمند رسمی داریم؟"
+    category: employment_type
+    expect:
+      route: SQL
+      intent: employee_count_by_employment_type
+
+  - id: emp-057v2
+    question: "تعداد نیروهای رسمی چنده؟"
+    category: employment_type
+    expect:
+      route: SQL
+      intent: employee_count_by_employment_type
+
+  - id: emp-057v3
+    question: "کارکنان رسمی سازمان چند نفرن؟"
+    category: employment_type
+    expect:
+      route: SQL
+      intent: employee_count_by_employment_type
+
+  # ── emp-058: number of contract employees ─────────────────────────────────
+
+  - id: emp-058v1
+    question: "چند نفر قراردادی داریم؟"
+    category: employment_type
+    expect:
+      route: SQL
+      intent: employee_count_by_employment_type
+
+  - id: emp-058v2
+    question: "تعداد نیروهای قراردادی چنده؟"
+    category: employment_type
+    expect:
+      route: SQL
+      intent: employee_count_by_employment_type
+
+  - id: emp-058v3
+    question: "کارکنان قراردادی سازمان چند نفرن؟"
+    category: employment_type
+    expect:
+      route: SQL
+      intent: employee_count_by_employment_type
+
+  # ── emp-059: number of provisional employees ──────────────────────────────
+
+  - id: emp-059v1
+    question: "چند نفر پیمانی داریم؟"
+    category: employment_type
+    expect:
+      route: SQL
+      intent: employee_count_by_employment_type
+
+  - id: emp-059v2
+    question: "تعداد نیروهای پیمانی سازمان؟"
+    category: employment_type
+    expect:
+      route: SQL
+      intent: employee_count_by_employment_type
+
+  - id: emp-059v3
+    question: "کارکنان پیمانی چند نفرن؟"
+    category: employment_type
+    expect:
+      route: SQL
+      intent: employee_count_by_employment_type
+
+  # ── emp-060: number of employees working in contracting ───────────────────
+
+  - id: emp-060v1
+    question: "چند نفر از کارکنان توی پیمانکاری کار می‌کنن؟"
+    category: employment_type
+    expect:
+      route: SQL
+      intent: contractor_share
+
+  - id: emp-060v2
+    question: "تعداد کارکنان شاغل پیمانکاری چنده؟"
+    category: employment_type
+    expect:
+      route: SQL
+      intent: contractor_share
+
+  - id: emp-060v3
+    question: "نیروهای شاغل در پیمانکاری چند نفرن؟"
+    category: employment_type
+    expect:
+      route: SQL
+      intent: contractor_share
+
+  # ── emp-061: percentage of employees in contracting ───────────────────────
+
+  - id: emp-061v1
+    question: "چند درصد نیروها پیمانکاری هستن؟"
+    category: employment_type
+    expect:
+      route: SQL
+      intent: contractor_share
+
+  - id: emp-061v2
+    question: "سهم پیمانکارها از کل کارکنان چقدره؟"
+    category: employment_type
+    expect:
+      route: SQL
+      intent: contractor_share
+
+  - id: emp-061v3
+    question: "نسبت کارکنان پیمانکاری به کل نیروها؟"
+    category: employment_type
+    expect:
+      route: SQL
+      intent: contractor_share
+
+  # ── emp-062: employment type with most employees ──────────────────────────
+
+  - id: emp-062v1
+    question: "کدوم نوع استخدام بیشترین نیرو رو داره؟"
+    category: employment_type
+    expect:
+      route: SQL
+      intent: employee_count_by_employment_type
+
+  - id: emp-062v2
+    question: "پر نفرترین نوع استخدام کدومه؟"
+    category: employment_type
+    expect:
+      route: SQL
+      intent: employee_count_by_employment_type
+
+  - id: emp-062v3
+    question: "بیشترین کارمند توی کدوم نوع استخدامه؟"
+    category: employment_type
+    expect:
+      route: SQL
+      intent: employee_count_by_employment_type
+
+  # ── emp-063: employment type with fewest employees ────────────────────────
+
+  - id: emp-063v1
+    question: "کدوم نوع استخدام کمترین نیرو رو داره؟"
+    category: employment_type
+    expect:
+      route: SQL
+      intent: employee_count_by_employment_type
+
+  - id: emp-063v2
+    question: "کم نفرترین نوع استخدام کدومه؟"
+    category: employment_type
+    expect:
+      route: SQL
+      intent: employee_count_by_employment_type
+
+  - id: emp-063v3
+    question: "کمترین کارمند توی کدوم نوع استخدامه؟"
+    category: employment_type
+    expect:
+      route: SQL
+      intent: employee_count_by_employment_type
+
+  # ── emp-064: employee count by contract type ──────────────────────────────
+
+  - id: emp-064v1
+    question: "هر نوع قراردادی چند نفر کارمند داره؟"
+    category: employment_type
+    expect:
+      route: SQL
+      intent: employee_count_by_contract_type
+
+  - id: emp-064v2
+    question: "تعداد پرسنل به تفکیک نوع قرارداد؟"
+    category: employment_type
+    expect:
+      route: SQL
+      intent: employee_count_by_contract_type
+
+  - id: emp-064v3
+    question: "کارکنان رو بر اساس نوع قراردادشون بده"
+    category: employment_type
+    expect:
+      route: SQL
+      intent: employee_count_by_contract_type
+
+  # ── emp-065: share of each contract type ─────────────────────────────────
+
+  - id: emp-065v1
+    question: "هر نوع قرارداد چند درصد از کل کارکنانه؟"
+    category: employment_type
+    expect:
+      route: SQL
+      intent: employee_count_by_contract_type
+
+  - id: emp-065v2
+    question: "نسبت انواع قرارداد به کل کارکنان؟"
+    category: employment_type
+    expect:
+      route: SQL
+      intent: employee_count_by_contract_type
+
+  - id: emp-065v3
+    question: "سهم هر قرارداد از کل نیروها چنده؟"
+    category: employment_type
+    expect:
+      route: SQL
+      intent: employee_count_by_contract_type
+
+  # ── emp-066: contract type with most employees ────────────────────────────
+
+  - id: emp-066v1
+    question: "کدوم نوع قرارداد بیشترین نیرو رو داره؟"
+    category: employment_type
+    expect:
+      route: SQL
+      intent: employee_count_by_contract_type
+
+  - id: emp-066v2
+    question: "پر نفرترین نوع قرارداد کدومه؟"
+    category: employment_type
+    expect:
+      route: SQL
+      intent: employee_count_by_contract_type
+
+  - id: emp-066v3
+    question: "بیشترین کارمند روی کدوم نوع قراردادن؟"
+    category: employment_type
+    expect:
+      route: SQL
+      intent: employee_count_by_contract_type
+
+  # ── emp-067: contract type with fewest employees ──────────────────────────
+
+  - id: emp-067v1
+    question: "کدوم نوع قرارداد کمترین نیرو رو داره؟"
+    category: employment_type
+    expect:
+      route: SQL
+      intent: employee_count_by_contract_type
+
+  - id: emp-067v2
+    question: "کم نفرترین نوع قرارداد کدومه؟"
+    category: employment_type
+    expect:
+      route: SQL
+      intent: employee_count_by_contract_type
+
+  - id: emp-067v3
+    question: "کمترین کارمند روی کدوم نوع قراردادن؟"
+    category: employment_type
+    expect:
+      route: SQL
+      intent: employee_count_by_contract_type
+
+  # ── emp-068: permanent employees by contract type ─────────────────────────
+
+  - id: emp-068v1
+    question: "کارمندای رسمی چه نوع قراردادی دارن؟"
+    category: employment_type
+    expect:
+      route: SQL
+      intent: employee_count_by_contract_type
+
+  - id: emp-068v2
+    question: "تعداد نیروهای رسمی به تفکیک نوع قرارداد؟"
+    category: employment_type
+    expect:
+      route: SQL
+      intent: employee_count_by_contract_type
+
+  - id: emp-068v3
+    question: "قراردادهای کارکنان رسمی چه نوعیه؟"
+    category: employment_type
+    expect:
+      route: SQL
+      intent: employee_count_by_contract_type
+
+  # ── emp-069: contract employees by contract type ──────────────────────────
+
+  - id: emp-069v1
+    question: "کارمندای قراردادی چه نوع قراردادی دارن؟"
+    category: employment_type
+    expect:
+      route: SQL
+      intent: employee_count_by_contract_type
+
+  - id: emp-069v2
+    question: "تعداد نیروهای قراردادی به تفکیک نوع قرارداد؟"
+    category: employment_type
+    expect:
+      route: SQL
+      intent: employee_count_by_contract_type
+
+  - id: emp-069v3
+    question: "قراردادهای کارکنان قراردادی چه انواعیه؟"
+    category: employment_type
+    expect:
+      route: SQL
+      intent: employee_count_by_contract_type
+
+  # ── emp-070: difference between permanent and contract employees ──────────
+
+  - id: emp-070v1
+    question: "چقدر فرق بین رسمی‌ها و قراردادی‌هاست؟"
+    category: employment_type
+    expect:
+      route: SQL
+      intent: employee_count_by_employment_type
+
+  - id: emp-070v2
+    question: "اختلاف تعداد کارکنان رسمی با قراردادی چنده؟"
+    category: employment_type
+    expect:
+      route: SQL
+      intent: employee_count_by_employment_type
+
+  - id: emp-070v3
+    question: "تعداد رسمی‌ها بیشتره یا قراردادی‌ها؟"
+    category: employment_type
+    expect:
+      route: SQL
+      intent: employee_count_by_employment_type
+
+  # ── emp-071: female employees by employment type ──────────────────────────
+
+  - id: emp-071v1
+    question: "خانم‌ها چه نوع استخدامی دارن؟"
+    category: employment_type
+    expect:
+      route: SQL
+      intent: employee_count_by_employment_type
+
+  - id: emp-071v2
+    question: "تعداد کارکنان زن به تفکیک نوع استخدام؟"
+    category: employment_type
+    expect:
+      route: SQL
+      intent: employee_count_by_employment_type
+
+  - id: emp-071v3
+    question: "زن‌ها بیشتر چه نوع استخدامی دارن؟"
+    category: employment_type
+    expect:
+      route: SQL
+      intent: employee_count_by_employment_type
+
+  # ── emp-072: male employees by employment type ────────────────────────────
+
+  - id: emp-072v1
+    question: "آقاها چه نوع استخدامی دارن؟"
+    category: employment_type
+    expect:
+      route: SQL
+      intent: employee_count_by_employment_type
+
+  - id: emp-072v2
+    question: "تعداد کارکنان مرد به تفکیک نوع استخدام؟"
+    category: employment_type
+    expect:
+      route: SQL
+      intent: employee_count_by_employment_type
+
+  - id: emp-072v3
+    question: "مردها بیشتر چه نوع استخدامی دارن؟"
+    category: employment_type
+    expect:
+      route: SQL
+      intent: employee_count_by_employment_type
+
+  # ── emp-073: female employees by contract type ────────────────────────────
+
+  - id: emp-073v1
+    question: "خانم‌ها چه نوع قراردادی دارن؟"
+    category: employment_type
+    expect:
+      route: SQL
+      intent: employee_count_by_contract_type
+
+  - id: emp-073v2
+    question: "تعداد کارکنان زن به تفکیک نوع قرارداد؟"
+    category: employment_type
+    expect:
+      route: SQL
+      intent: employee_count_by_contract_type
+
+  - id: emp-073v3
+    question: "زن‌ها بیشتر با چه نوع قراردادی کار می‌کنن؟"
+    category: employment_type
+    expect:
+      route: SQL
+      intent: employee_count_by_contract_type
+
+  # ── emp-074: male employees by contract type ──────────────────────────────
+
+  - id: emp-074v1
+    question: "آقاها چه نوع قراردادی دارن؟"
+    category: employment_type
+    expect:
+      route: SQL
+      intent: employee_count_by_contract_type
+
+  - id: emp-074v2
+    question: "تعداد کارکنان مرد به تفکیک نوع قرارداد؟"
+    category: employment_type
+    expect:
+      route: SQL
+      intent: employee_count_by_contract_type
+
+  - id: emp-074v3
+    question: "مردها بیشتر با چه نوع قراردادی کار می‌کنن؟"
+    category: employment_type
+    expect:
+      route: SQL
+      intent: employee_count_by_contract_type
+
+  # ── emp-075: average age by employment type ───────────────────────────────
+
+  - id: emp-075v1
+    question: "میانگین سنی هر نوع استخدام چنده؟"
+    category: employment_type
+    expect:
+      route: SQL
+      intent: average_age
+
+  - id: emp-075v2
+    question: "متوسط سن کارکنان به تفکیک نوع استخدام؟"
+    category: employment_type
+    expect:
+      route: SQL
+      intent: average_age
+
+  - id: emp-075v3
+    question: "رسمی‌ها جوون‌ترن یا قراردادی‌ها؟"
+    category: employment_type
+    expect:
+      route: SQL
+      intent: average_age
+
+  # ── emp-076: average age by contract type ────────────────────────────────
+
+  - id: emp-076v1
+    question: "میانگین سنی هر نوع قرارداد چنده؟"
+    category: employment_type
+    expect:
+      route: SQL
+      intent: average_age
+
+  - id: emp-076v2
+    question: "متوسط سن کارکنان به تفکیک نوع قرارداد؟"
+    category: employment_type
+    expect:
+      route: SQL
+      intent: average_age
+
+  - id: emp-076v3
+    question: "کارکنان هر نوع قرارداد به طور میانگین چند سالشونه؟"
+    category: employment_type
+    expect:
+      route: SQL
+      intent: average_age
+
+  # ── emp-077: employees 60+ by employment type ────────────────────────────
+
+  - id: emp-077v1
+    question: "کارکنان بالای ۶۰ سال چه نوع استخدامی دارن؟"
+    category: employment_type
+    expect:
+      route: SQL
+      intent: employee_count_by_employment_type
+
+  - id: emp-077v2
+    question: "چند نفر بالای ۶۰ سال به تفکیک نوع استخدام داریم؟"
+    category: employment_type
+    expect:
+      route: SQL
+      intent: employee_count_by_employment_type
+
+  - id: emp-077v3
+    question: "نیروهای مسن (۶۰ به بالا) بیشتر رسمین یا قراردادی؟"
+    category: employment_type
+    expect:
+      route: SQL
+      intent: employee_count_by_employment_type
+
+  # ── emp-078: employees under 30 by employment type ────────────────────────
+
+  - id: emp-078v1
+    question: "کارکنان زیر ۳۰ سال چه نوع استخدامی دارن؟"
+    category: employment_type
+    expect:
+      route: SQL
+      intent: employee_count_by_employment_type
+
+  - id: emp-078v2
+    question: "چند نفر زیر ۳۰ سال به تفکیک نوع استخدام داریم؟"
+    category: employment_type
+    expect:
+      route: SQL
+      intent: employee_count_by_employment_type
+
+  - id: emp-078v3
+    question: "جوون‌ها (زیر ۳۰) بیشتر چه نوع استخدامی دارن؟"
+    category: employment_type
+    expect:
+      route: SQL
+      intent: employee_count_by_employment_type

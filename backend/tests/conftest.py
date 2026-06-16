@@ -8,6 +8,7 @@ import pytest
 
 from app.hr_analytics.use_cases.orchestrator import LLMOrchestrator
 from app.hr_analytics.use_cases.steps.intent_parser import IntentParser
+from app.hr_analytics.use_cases.steps.question_validator import QuestionValidator
 from app.infrastructure.metadata.service import get_metadata_service
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
@@ -38,6 +39,7 @@ def orchestrator(metadata_service):
     return LLMOrchestrator(
         metadata_service=metadata_service,
         intent_parser=IntentParser(metadata_service=metadata_service),
+        question_validator=QuestionValidator(),
         default_execute_sql=False,
         strict_metadata=True,
     )

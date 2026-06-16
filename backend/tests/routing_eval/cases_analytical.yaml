@@ -1,0 +1,331 @@
+cases:
+  # ---------------------------------------------------------------------------
+  # Analytical — colloquial & paraphrase robustness variants
+  # 3-4 informal/spoken variants per question (anl-201 to anl-214)
+  # anl-211 is xfail (deeper pipeline bug); variants inherit xfail
+  # ---------------------------------------------------------------------------
+
+  # ── anl-201: headcount balance vs org chart ───────────────────────────────
+
+  - id: anl-201v1
+    question: "آیا تعداد نیروهای واقعی با چارت سازمانی جور درمیاد؟"
+    category: analytical
+    expect:
+      route: SQL
+      intent: headcount_gap_by_department
+
+  - id: anl-201v2
+    question: "چارت سازمانی با واقعیت نیروی انسانی همخوانی داره؟"
+    category: analytical
+    expect:
+      route: SQL
+      intent: headcount_gap_by_department
+
+  - id: anl-201v3
+    question: "فاصله نیروی انسانی واقعی با چارت مصوب چقدره؟"
+    category: analytical
+    expect:
+      route: SQL
+      intent: headcount_gap_by_department
+
+  # ── anl-202: balanced distribution between service domains ───────────────
+
+  - id: anl-202v1
+    question: "توزیع نیرو بین حوزه‌ها متعادله؟"
+    category: analytical
+    expect:
+      route: SQL
+      intent: headcount_gap_by_service_domain
+
+  - id: anl-202v2
+    question: "نیروها بین حوزه‌های مختلف یکنواخت توزیع شدن؟"
+    category: analytical
+    expect:
+      route: SQL
+      intent: headcount_gap_by_service_domain
+
+  - id: anl-202v3
+    question: "آیا پراکندگی نیروی انسانی بین حوزه‌ها متوازنه؟"
+    category: analytical
+    expect:
+      route: SQL
+      intent: headcount_gap_by_service_domain
+
+  # ── anl-203: aging workforce trend → ANALYTICAL_GAP ─────────────────────
+
+  - id: anl-203v1
+    question: "آیا سازمان داره پیر میشه؟"
+    category: analytical
+    expect:
+      route: GAP
+      status: ANALYTICAL_GAP
+
+  - id: anl-203v2
+    question: "ساختار سنی کارکنان به سمت سالخوردگی میره؟"
+    category: analytical
+    expect:
+      route: GAP
+      status: ANALYTICAL_GAP
+
+  - id: anl-203v3
+    question: "آیا روند پیری نیروی انسانی در سازمان وجود داره؟"
+    category: analytical
+    expect:
+      route: GAP
+      status: ANALYTICAL_GAP
+
+  # ── anl-204: risk from female employee average age → ANALYTICAL_GAP ───────
+
+  - id: anl-204v1
+    question: "میانگین سن خانم‌ها چه ریسکی برای سازمان ایجاد می‌کنه؟"
+    category: analytical
+    expect:
+      route: GAP
+      status: ANALYTICAL_GAP
+
+  - id: anl-204v2
+    question: "سن متوسط کارکنان زن چه تهدیدی برای سازمان داره؟"
+    category: analytical
+    expect:
+      route: GAP
+      status: ANALYTICAL_GAP
+
+  - id: anl-204v3
+    question: "آیا میانگین سن زنان سازمان نگران‌کننده است؟"
+    category: analytical
+    expect:
+      route: GAP
+      status: ANALYTICAL_GAP
+
+  # ── anl-205: risk from contractor share → ANALYTICAL_GAP ─────────────────
+
+  - id: anl-205v1
+    question: "سهم زیاد پیمانکاری چه ریسکی برای سازمان داره؟"
+    category: analytical
+    expect:
+      route: GAP
+      status: ANALYTICAL_GAP
+
+  - id: anl-205v2
+    question: "وابستگی به نیروهای پیمانکاری چه خطری ایجاد می‌کنه؟"
+    category: analytical
+    expect:
+      route: GAP
+      status: ANALYTICAL_GAP
+
+  - id: anl-205v3
+    question: "آیا سهم پیمانکاری برای سازمان ریسک داره؟"
+    category: analytical
+    expect:
+      route: GAP
+      status: ANALYTICAL_GAP
+
+  # ── anl-206: education mix showing training need → ANALYTICAL_GAP ─────────
+
+  - id: anl-206v1
+    question: "آیا ترکیب تحصیلات کارکنان نشون‌دهنده نیاز آموزشیه؟"
+    category: analytical
+    expect:
+      route: GAP
+      status: ANALYTICAL_GAP
+
+  - id: anl-206v2
+    question: "مدرک تحصیلی کارکنان نشون‌دهنده چه نیاز آموزشیه؟"
+    category: analytical
+    expect:
+      route: GAP
+      status: ANALYTICAL_GAP
+
+  - id: anl-206v3
+    question: "آیا تحصیلات کارکنان با نیاز سازمان همخوانی داره؟"
+    category: analytical
+    expect:
+      route: GAP
+      status: ANALYTICAL_GAP
+
+  # ── anl-207: hiring aligned with workload growth → ANALYTICAL_GAP ─────────
+
+  - id: anl-207v1
+    question: "جذب نیرو با رشد حجم کار سازمان هماهنگ بوده؟"
+    category: analytical
+    expect:
+      route: GAP
+      status: ANALYTICAL_GAP
+
+  - id: anl-207v2
+    question: "آیا استخدام‌ها متناسب با گسترش سازمان بوده؟"
+    category: analytical
+    expect:
+      route: GAP
+      status: ANALYTICAL_GAP
+
+  - id: anl-207v3
+    question: "روند جذب نیرو با نیاز سازمان همگام بوده؟"
+    category: analytical
+    expect:
+      route: GAP
+      status: ANALYTICAL_GAP
+
+  # ── anl-208: contractor productivity measurable → ANALYTICAL_GAP ──────────
+
+  - id: anl-208v1
+    question: "میشه بهره‌وری نیروهای پیمانکاری رو ارزیابی کرد؟"
+    category: analytical
+    expect:
+      route: GAP
+      status: ANALYTICAL_GAP
+
+  - id: anl-208v2
+    question: "آیا عملکرد پیمانکاران قابل سنجشه؟"
+    category: analytical
+    expect:
+      route: GAP
+      status: ANALYTICAL_GAP
+
+  - id: anl-208v3
+    question: "بهره‌وری نیروی پیمانکاری رو چطور می‌شه اندازه گرفت؟"
+    category: analytical
+    expect:
+      route: GAP
+      status: ANALYTICAL_GAP
+
+  # ── anl-209: domain needing management attention → ANALYTICAL_GAP ──────────
+
+  - id: anl-209v1
+    question: "کدوم حوزه از نظر سن و تحصیلات نیاز به توجه داره؟"
+    category: analytical
+    expect:
+      route: GAP
+      status: ANALYTICAL_GAP
+
+  - id: anl-209v2
+    question: "در کدوم حوزه ترکیب سنی و تحصیلی نگران‌کننده‌ست؟"
+    category: analytical
+    expect:
+      route: GAP
+      status: ANALYTICAL_GAP
+
+  - id: anl-209v3
+    question: "آیا حوزه‌ای از نظر سن و مدرک کارکنانش چالش داره؟"
+    category: analytical
+    expect:
+      route: GAP
+      status: ANALYTICAL_GAP
+
+  # ── anl-210: shortage in younger age groups ───────────────────────────────
+
+  - id: anl-210v1
+    question: "آیا کمبود نیروی جوون در سازمان وجود داره؟"
+    category: analytical
+    expect:
+      route: SQL
+      intent: headcount_gap_by_department
+
+  - id: anl-210v2
+    question: "کارکنان جوان‌تر کمبود دارن؟"
+    category: analytical
+    expect:
+      route: SQL
+      intent: headcount_gap_by_department
+
+  - id: anl-210v3
+    question: "آیا در گروه‌های سنی پایین کمبود نیرو داریم؟"
+    category: analytical
+    expect:
+      route: SQL
+      intent: headcount_gap_by_department
+
+  # ── anl-211: gender imbalance in age groups → xfail (intent_parser bug) ───
+
+  - id: anl-211v1
+    xfail: true
+    xfail_reason: "intent_parser maps gender-age distribution to individual_employee_info causing ACCESS_DENIED"
+    question: "در بعضی گروه‌های سنی توزیع جنسیتی نامتعادله؟"
+    category: analytical
+    expect:
+      route: SQL
+
+  - id: anl-211v2
+    xfail: true
+    xfail_reason: "intent_parser maps gender-age distribution to individual_employee_info causing ACCESS_DENIED"
+    question: "آیا نسبت زن و مرد در همه گروه‌های سنی یکسانه؟"
+    category: analytical
+    expect:
+      route: SQL
+
+  - id: anl-211v3
+    xfail: true
+    xfail_reason: "intent_parser maps gender-age distribution to individual_employee_info causing ACCESS_DENIED"
+    question: "تعادل جنسیتی در گروه‌های سنی مختلف چطوره؟"
+    category: analytical
+    expect:
+      route: SQL
+
+  # ── anl-212: high near-retirement headcount ───────────────────────────────
+
+  - id: anl-212v1
+    question: "آیا کارکنان نزدیک به بازنشستگی زیادن؟"
+    category: analytical
+    expect:
+      route: SQL
+      intent: near_retirement_analysis
+
+  - id: anl-212v2
+    question: "چقدر نیرو در شرف بازنشستگی داریم؟"
+    category: analytical
+    expect:
+      route: SQL
+      intent: near_retirement_analysis
+
+  - id: anl-212v3
+    question: "آیا موج بازنشستگی در راهه؟"
+    category: analytical
+    expect:
+      route: SQL
+      intent: near_retirement_analysis
+
+  # ── anl-213: count of near-retirement employees ───────────────────────────
+
+  - id: anl-213v1
+    question: "چند نفر نزدیک بازنشستگیه؟"
+    category: analytical
+    expect:
+      route: SQL
+      intent: near_retirement_analysis
+
+  - id: anl-213v2
+    question: "تعداد کارکنانی که زود بازنشسته میشن؟"
+    category: analytical
+    expect:
+      route: SQL
+      intent: near_retirement_analysis
+
+  - id: anl-213v3
+    question: "چند نفر در شرف بازنشستگی هستن؟"
+    category: analytical
+    expect:
+      route: SQL
+      intent: near_retirement_analysis
+
+  # ── anl-214: near-retirement employees by service domain ─────────────────
+
+  - id: anl-214v1
+    question: "هر حوزه چند نفر نزدیک بازنشستگی داره؟"
+    category: analytical
+    expect:
+      route: SQL
+      intent: near_retirement_analysis
+
+  - id: anl-214v2
+    question: "کارکنان در شرف بازنشستگی به تفکیک حوزه؟"
+    category: analytical
+    expect:
+      route: SQL
+      intent: near_retirement_analysis
+
+  - id: anl-214v3
+    question: "توزیع نیروهای نزدیک بازنشستگی در هر حوزه خدمت؟"
+    category: analytical
+    expect:
+      route: SQL
+      intent: near_retirement_analysis

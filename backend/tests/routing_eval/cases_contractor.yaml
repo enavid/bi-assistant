@@ -1,0 +1,373 @@
+cases:
+  # ---------------------------------------------------------------------------
+  # Contractor — colloquial & paraphrase robustness variants
+  # 3-4 informal/spoken variants per question (ctr-079 to ctr-094)
+  # ---------------------------------------------------------------------------
+
+  # ── ctr-079: contractor share in the whole org ────────────────────────────
+
+  - id: ctr-079v1
+    question: "چند درصد از کل سازمان پیمانکاریه؟"
+    category: contractor
+    expect:
+      route: SQL
+      intent: contractor_share
+
+  - id: ctr-079v2
+    question: "سهم نیروهای پیمانکاری در سازمان چقدره؟"
+    category: contractor
+    expect:
+      route: SQL
+      intent: contractor_share
+
+  - id: ctr-079v3
+    question: "نسبت پیمانکارها به کل کارکنان چنده؟"
+    category: contractor
+    expect:
+      route: SQL
+      intent: contractor_share
+
+  # ── ctr-080: contractor share per service domain ──────────────────────────
+
+  - id: ctr-080v1
+    question: "هر حوزه خدمتی چند درصد پیمانکاریه؟"
+    category: contractor
+    expect:
+      route: SQL
+      intent: contractor_share_by_service_domain
+
+  - id: ctr-080v2
+    question: "سهم پیمانکاری در هر حوزه چقدره؟"
+    category: contractor
+    expect:
+      route: SQL
+      intent: contractor_share_by_service_domain
+
+  - id: ctr-080v3
+    question: "نسبت پیمانکار به کل نیرو در هر حوزه؟"
+    category: contractor
+    expect:
+      route: SQL
+      intent: contractor_share_by_service_domain
+
+  # ── ctr-081: domain with highest contractor share ─────────────────────────
+
+  - id: ctr-081v1
+    question: "کدوم حوزه بیشترین پیمانکار داره؟"
+    category: contractor
+    expect:
+      route: SQL
+      intent: contractor_share_by_service_domain
+
+  - id: ctr-081v2
+    question: "پیمانکاری‌ترین حوزه کدومه؟"
+    category: contractor
+    expect:
+      route: SQL
+      intent: contractor_share_by_service_domain
+
+  - id: ctr-081v3
+    question: "بیشترین سهم پیمانکاری توی کدوم حوزه است؟"
+    category: contractor
+    expect:
+      route: SQL
+      intent: contractor_share_by_service_domain
+
+  # ── ctr-082: domain with lowest contractor share ──────────────────────────
+
+  - id: ctr-082v1
+    question: "کدوم حوزه کمترین پیمانکار داره؟"
+    category: contractor
+    expect:
+      route: SQL
+      intent: contractor_share_by_service_domain
+
+  - id: ctr-082v2
+    question: "کمترین سهم پیمانکاری توی کدوم حوزه است؟"
+    category: contractor
+    expect:
+      route: SQL
+      intent: contractor_share_by_service_domain
+
+  - id: ctr-082v3
+    question: "کدوم حوزه خدمتی کمتر پیمانکار داره؟"
+    category: contractor
+    expect:
+      route: SQL
+      intent: contractor_share_by_service_domain
+
+  # ── ctr-083: contractor headcount per service domain ─────────────────────
+
+  - id: ctr-083v1
+    question: "هر حوزه چند نفر پیمانکار داره؟"
+    category: contractor
+    expect:
+      route: SQL
+      intent: contractor_share_by_service_domain
+
+  - id: ctr-083v2
+    question: "تعداد نیروهای پیمانکاری در هر حوزه خدمت؟"
+    category: contractor
+    expect:
+      route: SQL
+      intent: contractor_share_by_service_domain
+
+  - id: ctr-083v3
+    question: "پیمانکاران هر حوزه چند نفرن؟"
+    category: contractor
+    expect:
+      route: SQL
+      intent: contractor_share_by_service_domain
+
+  # ── ctr-084: non-contractor headcount per service domain ──────────────────
+
+  - id: ctr-084v1
+    question: "هر حوزه چند نفر غیرپیمانکار داره؟"
+    category: contractor
+    expect:
+      route: SQL
+      intent: contractor_share_by_service_domain
+
+  - id: ctr-084v2
+    question: "تعداد نیروهای غیرپیمانکاری در هر حوزه خدمت؟"
+    category: contractor
+    expect:
+      route: SQL
+      intent: contractor_share_by_service_domain
+
+  - id: ctr-084v3
+    question: "کارکنان غیر پیمانکاری هر حوزه چند نفرن؟"
+    category: contractor
+    expect:
+      route: SQL
+      intent: contractor_share_by_service_domain
+
+  # ── ctr-085: ratio of contractor to total per domain ─────────────────────
+
+  - id: ctr-085v1
+    question: "پیمانکارها چند درصد کارکنان هر حوزه‌ان؟"
+    category: contractor
+    expect:
+      route: SQL
+      intent: contractor_share_by_service_domain
+
+  - id: ctr-085v2
+    question: "نسبت پیمانکار به کل نیرو در هر حوزه؟"
+    category: contractor
+    expect:
+      route: SQL
+      intent: contractor_share_by_service_domain
+
+  - id: ctr-085v3
+    question: "در هر حوزه چه سهمی پیمانکاریه؟"
+    category: contractor
+    expect:
+      route: SQL
+      intent: contractor_share_by_service_domain
+
+  # ── ctr-086: ratio of permanent to contractor per domain ──────────────────
+
+  - id: ctr-086v1
+    question: "نسبت رسمی‌ها به پیمانکارها در هر حوزه چنده؟"
+    category: contractor
+    expect:
+      route: SQL
+      intent: contractor_share_by_service_domain
+
+  - id: ctr-086v2
+    question: "هر حوزه به ازای هر پیمانکار چند تا رسمی داره؟"
+    category: contractor
+    expect:
+      route: SQL
+      intent: contractor_share_by_service_domain
+
+  - id: ctr-086v3
+    question: "تناسب نیروی رسمی و پیمانکاری در هر حوزه؟"
+    category: contractor
+    expect:
+      route: SQL
+      intent: contractor_share_by_service_domain
+
+  # ── ctr-087: female contractor employee count ─────────────────────────────
+
+  - id: ctr-087v1
+    question: "چند تا خانم پیمانکاری داریم؟"
+    category: contractor
+    expect:
+      route: SQL
+      intent: contractor_share
+
+  - id: ctr-087v2
+    question: "تعداد زنان پیمانکار سازمان چنده؟"
+    category: contractor
+    expect:
+      route: SQL
+      intent: contractor_share
+
+  - id: ctr-087v3
+    question: "کارکنان پیمانکاری خانم چند نفرن؟"
+    category: contractor
+    expect:
+      route: SQL
+      intent: contractor_share
+
+  # ── ctr-088: male contractor employee count ───────────────────────────────
+
+  - id: ctr-088v1
+    question: "چند تا آقا پیمانکاری داریم؟"
+    category: contractor
+    expect:
+      route: SQL
+      intent: contractor_share
+
+  - id: ctr-088v2
+    question: "تعداد مردان پیمانکار سازمان چنده؟"
+    category: contractor
+    expect:
+      route: SQL
+      intent: contractor_share
+
+  - id: ctr-088v3
+    question: "کارکنان پیمانکاری آقا چند نفرن؟"
+    category: contractor
+    expect:
+      route: SQL
+      intent: contractor_share
+
+  # ── ctr-089: female percentage among contractors ──────────────────────────
+
+  - id: ctr-089v1
+    question: "چند درصد از پیمانکارها خانمن؟"
+    category: contractor
+    expect:
+      route: SQL
+      intent: contractor_share
+
+  - id: ctr-089v2
+    question: "سهم زنان در بین نیروهای پیمانکاری چقدره؟"
+    category: contractor
+    expect:
+      route: SQL
+      intent: contractor_share
+
+  - id: ctr-089v3
+    question: "نسبت خانم‌ها در کارکنان پیمانکاری؟"
+    category: contractor
+    expect:
+      route: SQL
+      intent: contractor_share
+
+  # ── ctr-090: male percentage among contractors ────────────────────────────
+
+  - id: ctr-090v1
+    question: "چند درصد از پیمانکارها آقان؟"
+    category: contractor
+    expect:
+      route: SQL
+      intent: contractor_share
+
+  - id: ctr-090v2
+    question: "سهم مردان در بین نیروهای پیمانکاری چقدره؟"
+    category: contractor
+    expect:
+      route: SQL
+      intent: contractor_share
+
+  - id: ctr-090v3
+    question: "نسبت آقاها در کارکنان پیمانکاری؟"
+    category: contractor
+    expect:
+      route: SQL
+      intent: contractor_share
+
+  # ── ctr-091: average age of contractor employees ──────────────────────────
+
+  - id: ctr-091v1
+    question: "میانگین سنی پیمانکارها چنده؟"
+    category: contractor
+    expect:
+      route: SQL
+      intent: average_age
+
+  - id: ctr-091v2
+    question: "نیروهای پیمانکاری به طور متوسط چند سالشونه؟"
+    category: contractor
+    expect:
+      route: SQL
+      intent: average_age
+
+  - id: ctr-091v3
+    question: "متوسط سن کارکنان پیمانکاری سازمان؟"
+    category: contractor
+    expect:
+      route: SQL
+      intent: average_age
+
+  # ── ctr-092: average age of non-contractor employees ─────────────────────
+
+  - id: ctr-092v1
+    question: "میانگین سنی غیرپیمانکارها چنده؟"
+    category: contractor
+    expect:
+      route: SQL
+      intent: average_age
+
+  - id: ctr-092v2
+    question: "نیروهای غیرپیمانکاری به طور متوسط چند سالشونه؟"
+    category: contractor
+    expect:
+      route: SQL
+      intent: average_age
+
+  - id: ctr-092v3
+    question: "متوسط سن کارکنان غیر پیمانکاری سازمان؟"
+    category: contractor
+    expect:
+      route: SQL
+      intent: average_age
+
+  # ── ctr-093: contractor employees by education level ─────────────────────
+
+  - id: ctr-093v1
+    question: "پیمانکارها چه مدرکی دارن؟"
+    category: contractor
+    expect:
+      route: SQL
+      intent: employee_count_by_education
+
+  - id: ctr-093v2
+    question: "تعداد نیروهای پیمانکاری به تفکیک مدرک تحصیلی؟"
+    category: contractor
+    expect:
+      route: SQL
+      intent: employee_count_by_education
+
+  - id: ctr-093v3
+    question: "توزیع تحصیلات کارکنان پیمانکاری؟"
+    category: contractor
+    expect:
+      route: SQL
+      intent: employee_count_by_education
+
+  # ── ctr-094: most common education level among contractors ────────────────
+
+  - id: ctr-094v1
+    question: "بیشتر پیمانکارها چه مدرکی دارن؟"
+    category: contractor
+    expect:
+      route: SQL
+      intent: contractor_share
+
+  - id: ctr-094v2
+    question: "رایج‌ترین مدرک تحصیلی در بین نیروهای پیمانکاری؟"
+    category: contractor
+    expect:
+      route: SQL
+      intent: contractor_share
+
+  - id: ctr-094v3
+    question: "کدوم مدرک در پیمانکارها بیشتر دیده میشه؟"
+    category: contractor
+    expect:
+      route: SQL
+      intent: contractor_share

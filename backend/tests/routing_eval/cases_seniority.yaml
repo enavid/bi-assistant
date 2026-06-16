@@ -1,0 +1,212 @@
+cases:
+  # ---------------------------------------------------------------------------
+  # Seniority — colloquial & paraphrase robustness variants
+  # 3-4 informal/spoken variants per question (sen-158 to sen-166)
+  # ---------------------------------------------------------------------------
+
+  # ── sen-158: employees with no service years ──────────────────────────────
+
+  - id: sen-158v1
+    question: "چند نفر سابقه ندارن؟"
+    category: seniority
+    expect:
+      route: SQL
+      intent: employee_count_without_service_years
+
+  - id: sen-158v2
+    question: "تعداد کارکنان بدون سابقه کاری چنده؟"
+    category: seniority
+    expect:
+      route: SQL
+      intent: employee_count_without_service_years
+
+  - id: sen-158v3
+    question: "کارکنانی که سابقه‌شون صفره چند نفرن؟"
+    category: seniority
+    expect:
+      route: SQL
+      intent: employee_count_without_service_years
+
+  # ── sen-159: employees with less than 1 year service ─────────────────────
+
+  - id: sen-159v1
+    question: "چند نفر کمتر از یه سال سابقه دارن؟"
+    category: seniority
+    expect:
+      route: SQL
+      intent: employee_count_by_service_years_filter
+
+  - id: sen-159v2
+    question: "تعداد کارکنان با سابقه زیر یک سال؟"
+    category: seniority
+    expect:
+      route: SQL
+      intent: employee_count_by_service_years_filter
+
+  - id: sen-159v3
+    question: "کارکنانی که تازه وارد شدن (زیر یه سال) چند نفرن؟"
+    category: seniority
+    expect:
+      route: SQL
+      intent: employee_count_by_service_years_filter
+
+  # ── sen-160: employees with more than 20 years service ───────────────────
+
+  - id: sen-160v1
+    question: "چند نفر بیشتر از ۲۰ سال سابقه دارن؟"
+    category: seniority
+    expect:
+      route: SQL
+      intent: employee_count_by_service_years_filter
+
+  - id: sen-160v2
+    question: "تعداد کارکنان با سابقه بالای بیست سال؟"
+    category: seniority
+    expect:
+      route: SQL
+      intent: employee_count_by_service_years_filter
+
+  - id: sen-160v3
+    question: "کارکنان باسابقه (بالای ۲۰ سال) چند نفرن؟"
+    category: seniority
+    expect:
+      route: SQL
+      intent: employee_count_by_service_years_filter
+
+  # ── sen-161: overall average service years ────────────────────────────────
+
+  - id: sen-161v1
+    question: "به طور میانگین کارکنان چند سال سابقه دارن؟"
+    category: seniority
+    expect:
+      route: SQL
+      intent: average_service_years
+
+  - id: sen-161v2
+    question: "متوسط سابقه کاری کارکنان سازمان چنده؟"
+    category: seniority
+    expect:
+      route: SQL
+      intent: average_service_years
+
+  - id: sen-161v3
+    question: "میانگین سنوات کارکنان چقدره؟"
+    category: seniority
+    expect:
+      route: SQL
+      intent: average_service_years
+
+  # ── sen-162: average service years by gender ──────────────────────────────
+
+  - id: sen-162v1
+    question: "میانگین سابقه خانم‌ها و آقاها چنده؟"
+    category: seniority
+    expect:
+      route: SQL
+      intent: average_service_years
+
+  - id: sen-162v2
+    question: "متوسط سابقه کاری زنان و مردان چقدره؟"
+    category: seniority
+    expect:
+      route: SQL
+      intent: average_service_years
+
+  - id: sen-162v3
+    question: "کارکنان زن بیشتر سابقه دارن یا مرد؟"
+    category: seniority
+    expect:
+      route: SQL
+      intent: average_service_years
+
+  # ── sen-163: average service years by employment type ────────────────────
+
+  - id: sen-163v1
+    question: "میانگین سابقه به تفکیک نوع استخدام چنده؟"
+    category: seniority
+    expect:
+      route: SQL
+      intent: employee_count_by_employment_type
+
+  - id: sen-163v2
+    question: "رسمی‌ها بیشتر سابقه دارن یا قراردادی‌ها؟"
+    category: seniority
+    expect:
+      route: SQL
+      intent: employee_count_by_employment_type
+
+  - id: sen-163v3
+    question: "متوسط سنوات هر نوع استخدام چقدره؟"
+    category: seniority
+    expect:
+      route: SQL
+      intent: employee_count_by_employment_type
+
+  # ── sen-164: average service years by service domain ─────────────────────
+
+  - id: sen-164v1
+    question: "میانگین سابقه در هر حوزه خدمت چنده؟"
+    category: seniority
+    expect:
+      route: SQL
+      intent: average_service_years
+
+  - id: sen-164v2
+    question: "متوسط سابقه کارکنان هر حوزه چقدره؟"
+    category: seniority
+    expect:
+      route: SQL
+      intent: average_service_years
+
+  - id: sen-164v3
+    question: "کارکنان کدوم حوزه بیشترین سابقه دارن؟"
+    category: seniority
+    expect:
+      route: SQL
+      intent: average_service_years
+
+  # ── sen-165: employees with zero service years by domain ──────────────────
+
+  - id: sen-165v1
+    question: "هر حوزه چند نفر سابقه صفر داره؟"
+    category: seniority
+    expect:
+      route: SQL
+      intent: employee_count_by_service_domain
+
+  - id: sen-165v2
+    question: "تعداد کارکنان بدون سابقه در هر حوزه؟"
+    category: seniority
+    expect:
+      route: SQL
+      intent: employee_count_by_service_domain
+
+  - id: sen-165v3
+    question: "توزیع کارکنان صفر سابقه بین حوزه‌ها؟"
+    category: seniority
+    expect:
+      route: SQL
+      intent: employee_count_by_service_domain
+
+  # ── sen-166: domain with most employees without service years ─────────────
+
+  - id: sen-166v1
+    question: "کدوم حوزه بیشترین کارمند بی‌سابقه داره؟"
+    category: seniority
+    expect:
+      route: SQL
+      intent: employee_count_without_service_years
+
+  - id: sen-166v2
+    question: "بیشترین نیروی صفر سابقه توی کدوم حوزه‌ست؟"
+    category: seniority
+    expect:
+      route: SQL
+      intent: employee_count_without_service_years
+
+  - id: sen-166v3
+    question: "کدوم حوزه خدمت بیشترین سهم کارکنان بدون سابقه رو داره؟"
+    category: seniority
+    expect:
+      route: SQL
+      intent: employee_count_without_service_years

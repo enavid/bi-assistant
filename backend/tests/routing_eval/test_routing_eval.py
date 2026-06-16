@@ -1,8 +1,8 @@
 """
 Routing Evaluation — Golden Test Suite
 =======================================
-Loads cases from cases.yaml and verifies that each question is routed to
-the correct route/status/intent by the orchestrator.
+Loads cases from all cases*.yaml files in this directory and verifies that
+each question is routed to the correct route/status/intent by the orchestrator.
 
 Run via:  make eval
 """
@@ -15,7 +15,7 @@ from typing import Any
 import pytest
 import yaml
 
-CASES_FILE = Path(__file__).parent / "cases.yaml"
+CASES_DIR = Path(__file__).parent
 
 
 # ---------------------------------------------------------------------------
@@ -24,9 +24,12 @@ CASES_FILE = Path(__file__).parent / "cases.yaml"
 
 
 def _load_cases() -> list[dict[str, Any]]:
-    with open(CASES_FILE, encoding="utf-8") as f:
-        data = yaml.safe_load(f)
-    return data["cases"]
+    cases: list[dict[str, Any]] = []
+    for path in sorted(CASES_DIR.glob("cases*.yaml")):
+        with open(path, encoding="utf-8") as f:
+            data = yaml.safe_load(f)
+        cases.extend(data.get("cases", []))
+    return cases
 
 
 _CASES = _load_cases()

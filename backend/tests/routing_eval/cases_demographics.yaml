@@ -1,0 +1,635 @@
+cases:
+  # ---------------------------------------------------------------------------
+  # Demographics — colloquial & paraphrase robustness variants
+  # 3-4 colloquial / short / typo variants per question
+  # ---------------------------------------------------------------------------
+
+  # ── dem-001: total employee count ──────────────────────────────────────────
+
+  - id: dem-001v1
+    question: "کل کارکنانمون چنتان؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: total_employee_count
+
+  - id: dem-001v2
+    xfail: true
+    xfail_reason: "کارمند داریم without explicit count request → NEEDS_CLARIFICATION"
+    question: "چند نفر کارمند داریم؟"
+    category: demographics
+    expect:
+      route: SQL
+
+  - id: dem-001v3
+    xfail: true
+    xfail_reason: "جمع نیروهای سازمان — جمع ambiguous → NEEDS_CLARIFICATION"
+    question: "جمع نیروهای سازمان چقدره؟"
+    category: demographics
+    expect:
+      route: SQL
+
+  - id: dem-001v4
+    question: "تعداد کارکنان سازمان چنده؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: total_employee_count
+
+  # ── dem-002: male/female headcount ─────────────────────────────────────────
+
+  - id: dem-002v1
+    question: "چند تا خانم و چند تا آقا داریم؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: employee_count_by_gender
+
+  - id: dem-002v2
+    question: "تعداد نیروی زن و مرد چنتاست؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: employee_count_by_gender
+
+  - id: dem-002v3
+    question: "خانما و آقایون سازمان چند نفرن؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: employee_count_by_gender
+
+  # ── dem-003: female percentage ─────────────────────────────────────────────
+
+  - id: dem-003v1
+    question: "چن درصد از نیروها خانمن؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: gender_percentage
+
+  - id: dem-003v2
+    question: "درصد زن‌ها توی سازمان چقدره؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: gender_percentage
+
+  - id: dem-003v3
+    question: "سهم خانم‌ها چنده؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: gender_percentage
+
+  # ── dem-004: male percentage ───────────────────────────────────────────────
+
+  - id: dem-004v1
+    xfail: true
+    xfail_reason: "مردن دوپهلوست — به معنی 'are men' یا 'died' هر دو می‌شه → NEEDS_CLARIFICATION"
+    question: "چن درصد از کارمندا مردن؟"
+    category: demographics
+    expect:
+      route: SQL
+
+  - id: dem-004v2
+    xfail: true
+    xfail_reason: "آقایون به‌تنهایی HR term نیست → domain classifier OUT_OF_SCOPE"
+    question: "درصد آقایون چقدره؟"
+    category: demographics
+    expect:
+      route: SQL
+
+  - id: dem-004v3
+    xfail: true
+    xfail_reason: "مردا در سازمان — مردا HR term شناسایی نمی‌شه → OUT_OF_SCOPE"
+    question: "سهم مردا در سازمان چنده؟"
+    category: demographics
+    expect:
+      route: SQL
+
+  - id: dem-004v4
+    question: "چند درصد از کارکنان مرد هستن؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: gender_percentage
+
+  # ── dem-005: overall average age ───────────────────────────────────────────
+
+  - id: dem-005v1
+    question: "متوسط سن کارکنانمون چنده؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: average_age
+
+  - id: dem-005v2
+    xfail: true
+    xfail_reason: "چند سالشونه informal ترکیب — NEEDS_CLARIFICATION"
+    question: "کارمندا به طور میانگین چند سالشونه؟"
+    category: demographics
+    expect:
+      route: SQL
+
+  - id: dem-005v3
+    question: "میانگین سنی سازمان چقدره؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: average_age
+
+  - id: dem-005v4
+    question: "سن متوسط نیروهای سازمان چنده؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: average_age
+
+  # ── dem-006: female average age ────────────────────────────────────────────
+
+  - id: dem-006v1
+    question: "خانم‌ها چند سالشونه به طور میانگین؟"
+    category: demographics
+    expect:
+      route: SQL
+
+  - id: dem-006v2
+    question: "متوسط سن زن‌های سازمان چنده؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: average_age
+
+  - id: dem-006v3
+    question: "میانگین سن کارکنان زن چقدره؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: average_age
+
+  # ── dem-007: male average age ──────────────────────────────────────────────
+
+  - id: dem-007v1
+    xfail: true
+    xfail_reason: "آقایون به‌تنهایی HR term نیست → domain classifier OUT_OF_SCOPE"
+    question: "آقایون به طور میانگین چند سالشونه؟"
+    category: demographics
+    expect:
+      route: SQL
+
+  - id: dem-007v2
+    question: "متوسط سن مردهای سازمان چنده؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: average_age
+
+  - id: dem-007v3
+    question: "میانگین سن کارکنان مرد چقدره؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: average_age
+
+  # ── dem-008: age gap between male and female ────────────────────────────────
+
+  - id: dem-008v1
+    question: "مردا چند سال از زنا مسن‌ترن؟"
+    category: demographics
+    expect:
+      route: SQL
+
+  - id: dem-008v2
+    question: "فرق سنی بین زن و مرد توی سازمان چقدره؟"
+    category: demographics
+    expect:
+      route: SQL
+
+  - id: dem-008v3
+    question: "اختلاف سن زنا و مردا چنده؟"
+    category: demographics
+    expect:
+      route: SQL
+
+  # ── dem-009: employees under 30 ────────────────────────────────────────────
+
+  - id: dem-009v1
+    question: "چند نفر زیر ۳۰ سالمون داریم؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: employee_count_by_age_filter
+
+  - id: dem-009v2
+    question: "نیروهای جوون زیر ۳۰ سال چنتان؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: employee_count_by_age_filter
+
+  - id: dem-009v3
+    question: "چنتا کارمند داریم که زیر ۳۰ سالشونه؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: employee_count_by_age_filter
+
+  - id: dem-009v4
+    xfail: true
+    xfail_reason: "جوانای سازمان — بدون عدد سن، intent_parser به NEEDS_CLARIFICATION می‌رسه"
+    question: "تعداد جوانای سازمان چنده؟"
+    category: demographics
+    expect:
+      route: SQL
+
+  # ── dem-010: employees aged 60+ ────────────────────────────────────────────
+
+  - id: dem-010v1
+    question: "چند نفر بالای ۶۰ سال داریم؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: employee_count_by_age_filter
+
+  - id: dem-010v2
+    question: "کارکنان ۶۰ سال به بالا چنتان؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: employee_count_by_age_filter
+
+  - id: dem-010v3
+    question: "چنتا کارمند بالای ۶۰ سال داریم؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: employee_count_by_age_filter
+
+  # ── dem-011: age group distribution ────────────────────────────────────────
+
+  - id: dem-011v1
+    xfail: true
+    xfail_reason: "توزیع سنی چطوره — چطوره informal بدون عدد/گروه → NEEDS_CLARIFICATION"
+    question: "توزیع سنی کارکنانمون چطوره؟"
+    category: demographics
+    expect:
+      route: SQL
+
+  - id: dem-011v2
+    question: "هر گروه سنی چند نفر داره؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: employee_count_by_age_group
+
+  - id: dem-011v3
+    xfail: true
+    xfail_reason: "ترکیب سنی چطوریه — informal → NEEDS_CLARIFICATION"
+    question: "ترکیب سنی نیروها چطوریه؟"
+    category: demographics
+    expect:
+      route: SQL
+
+  # ── dem-012: largest age group ─────────────────────────────────────────────
+
+  - id: dem-012v1
+    question: "کدوم گروه سنی پرتعدادتره؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: employee_count_by_age_group
+
+  - id: dem-012v2
+    xfail: true
+    xfail_reason: "بیشترین کارمندا چند سالشونه — intent_parser گیج می‌شه → NEEDS_CLARIFICATION"
+    question: "بیشترین کارمندا چند سالشونه؟"
+    category: demographics
+    expect:
+      route: SQL
+
+  - id: dem-012v3
+    xfail: true
+    xfail_reason: "رنج سنی — واژه رنج (range) بدون کارکنان/نیرو → NEEDS_CLARIFICATION"
+    question: "کدوم رنج سنی نیروی بیشتری داره؟"
+    category: demographics
+    expect:
+      route: SQL
+
+  # ── dem-013: smallest age group ────────────────────────────────────────────
+
+  - id: dem-013v1
+    question: "کدوم گروه سنی کم‌نفرتره؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: employee_count_by_age_group
+
+  - id: dem-013v2
+    question: "کمترین نیرو توی کدوم رنج سنیه؟"
+    category: demographics
+    expect:
+      route: SQL
+
+  - id: dem-013v3
+    question: "کدوم گروه سنی از همه کمتره؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: employee_count_by_age_group
+
+  # ── dem-014: percentage share of each age group ────────────────────────────
+
+  - id: dem-014v1
+    question: "درصد هر گروه سنی چنده؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: employee_count_by_age_group
+
+  - id: dem-014v2
+    xfail: true
+    xfail_reason: "ترکیب سنی به درصد — بدون کارکنان/نیرو → NEEDS_CLARIFICATION"
+    question: "ترکیب سنی کارکنان به درصد چقدره؟"
+    category: demographics
+    expect:
+      route: SQL
+
+  - id: dem-014v3
+    xfail: true
+    xfail_reason: "رنج سنی بدون کارکنان/نیرو + سهم مبهم → OUT_OF_SCOPE"
+    question: "سهم هر رنج سنی از کل چنده؟"
+    category: demographics
+    expect:
+      route: SQL
+
+  # ── dem-015: married vs single count ───────────────────────────────────────
+
+  - id: dem-015v1
+    question: "چند نفر متاهل و چند نفر مجرد داریم؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: employee_count_by_marital_status
+
+  - id: dem-015v2
+    question: "تعداد متاهلا و مجردا چنتاست؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: employee_count_by_marital_status
+
+  - id: dem-015v3
+    question: "کارکنان متاهل چنتان و مجرد چنتان؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: employee_count_by_marital_status
+
+  # ── dem-016: married percentage ────────────────────────────────────────────
+
+  - id: dem-016v1
+    question: "چن درصد از کارمندا متاهلن؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: employee_count_by_marital_status
+
+  - id: dem-016v2
+    question: "سهم متاهل‌ها چقدره؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: employee_count_by_marital_status
+
+  - id: dem-016v3
+    question: "درصد متاهل بودن کارکنانمون چنده؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: employee_count_by_marital_status
+
+  # ── dem-017: single percentage ─────────────────────────────────────────────
+
+  - id: dem-017v1
+    question: "چن درصد مجردن؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: employee_count_by_marital_status
+
+  - id: dem-017v2
+    question: "نسبت مجردا توی سازمان چنده؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: employee_count_by_marital_status
+
+  - id: dem-017v3
+    question: "کارکنان مجرد چند درصدن؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: employee_count_by_marital_status
+
+  # ── dem-018: married female employees ──────────────────────────────────────
+
+  - id: dem-018v1
+    question: "چند تا خانم متاهل داریم؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: employee_count_by_marital_status
+
+  - id: dem-018v2
+    question: "زن‌های متاهل چنتان؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: employee_count_by_marital_status
+
+  - id: dem-018v3
+    question: "تعداد خانم‌های متاهل سازمان چنده؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: employee_count_by_marital_status
+
+  # ── dem-019: married male employees ────────────────────────────────────────
+
+  - id: dem-019v1
+    question: "آقایون متاهل چنتان؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: employee_count_by_marital_status
+
+  - id: dem-019v2
+    question: "چند تا مرد متاهل داریم؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: employee_count_by_marital_status
+
+  - id: dem-019v3
+    question: "تعداد آقایون متاهل چنده؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: employee_count_by_marital_status
+
+  # ── dem-020: female employees under 30 ─────────────────────────────────────
+
+  - id: dem-020v1
+    question: "خانم‌های زیر ۳۰ سال چنتان؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: employee_count_by_age_filter
+
+  - id: dem-020v2
+    question: "چند نفر زن زیر ۳۰ سال داریم؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: employee_count_by_age_filter
+
+  - id: dem-020v3
+    question: "تعداد زنان جوان زیر ۳۰ سال چنده؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: employee_count_by_age_filter
+
+  # ── dem-021: male employees under 30 ───────────────────────────────────────
+
+  - id: dem-021v1
+    question: "آقایون زیر ۳۰ سال چنتان؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: employee_count_by_age_filter
+
+  - id: dem-021v2
+    question: "مردای جوون زیر ۳۰ سال چند نفرن؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: employee_count_by_age_filter
+
+  - id: dem-021v3
+    question: "چند تا مرد زیر ۳۰ سال داریم؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: employee_count_by_age_filter
+
+  # ── dem-022: female employees aged 60+ ─────────────────────────────────────
+
+  - id: dem-022v1
+    question: "خانم‌های بالای ۶۰ سال چنتان؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: employee_count_by_age_filter
+
+  - id: dem-022v2
+    question: "زن‌های ۶۰ سال به بالا چند نفرن؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: employee_count_by_age_filter
+
+  - id: dem-022v3
+    question: "چند نفر خانم بالای ۶۰ سال داریم؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: employee_count_by_age_filter
+
+  # ── dem-023: male employees aged 60+ ───────────────────────────────────────
+
+  - id: dem-023v1
+    question: "آقایون بالای ۶۰ سال چنتان؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: employee_count_by_age_filter
+
+  - id: dem-023v2
+    question: "مردهای ۶۰ سال به بالا چند نفرن؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: employee_count_by_age_filter
+
+  - id: dem-023v3
+    question: "چند تا مرد بالای ۶۰ سال داریم؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: employee_count_by_age_filter
+
+  # ── dem-024: gender distribution by age group ───────────────────────────────
+
+  - id: dem-024v1
+    question: "ترکیب جنسیتی هر گروه سنی چطوره؟"
+    category: demographics
+    expect:
+      route: SQL
+
+  - id: dem-024v2
+    question: "نسبت زن و مرد در هر رنج سنی چقدره؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: employee_count_by_gender
+
+  - id: dem-024v3
+    question: "توزیع زن و مرد بین گروه‌های سنی چطوریه؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: employee_count_by_gender
+
+  # ── dem-025: age group with most female employees ───────────────────────────
+
+  - id: dem-025v1
+    question: "زن‌ها بیشتر توی کدوم گروه سنی هستن؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: employee_count_by_age_group
+
+  - id: dem-025v2
+    question: "کدوم رنج سنی بیشترین خانم رو داره؟"
+    category: demographics
+    expect:
+      route: SQL
+
+  - id: dem-025v3
+    question: "بیشترین تعداد زنان در کدوم گروه سنیه؟"
+    category: demographics
+    expect:
+      route: SQL
+
+  # ── dem-026: age group with most male employees ─────────────────────────────
+
+  - id: dem-026v1
+    question: "مردا بیشتر توی کدوم گروه سنی هستن؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: employee_count_by_age_group
+
+  - id: dem-026v2
+    question: "کدوم رنج سنی بیشترین آقا رو داره؟"
+    category: demographics
+    expect:
+      route: SQL
+
+  - id: dem-026v3
+    question: "بیشترین تعداد مردان در کدوم گروه سنیه؟"
+    category: demographics
+    expect:
+      route: SQL

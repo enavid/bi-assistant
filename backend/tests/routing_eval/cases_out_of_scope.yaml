@@ -1,0 +1,97 @@
+cases:
+  # ---------------------------------------------------------------------------
+  # Out of Scope — colloquial & paraphrase robustness variants
+  # 3-4 informal/spoken variants per question (oos-237 to oos-240)
+  # ---------------------------------------------------------------------------
+
+  # ── oos-237: dollar exchange rate ────────────────────────────────────────
+
+  - id: oos-237v1
+    question: "الان دلار چنده؟"
+    category: out_of_scope
+    expect:
+      route: REJECT
+      status: OUT_OF_SCOPE
+
+  - id: oos-237v2
+    question: "نرخ دلار امروز چقدره؟"
+    category: out_of_scope
+    expect:
+      route: REJECT
+      status: OUT_OF_SCOPE
+
+  - id: oos-237v3
+    question: "قیمت ارز رو بهم بگو"
+    category: out_of_scope
+    expect:
+      route: REJECT
+      status: OUT_OF_SCOPE
+
+  # ── oos-238: weather in Tehran ────────────────────────────────────────────
+
+  - id: oos-238v1
+    question: "هوای تهران امروز چطوره؟"
+    category: out_of_scope
+    expect:
+      route: REJECT
+      status: OUT_OF_SCOPE
+
+  - id: oos-238v2
+    question: "آب‌وهوای تهران چطوریه؟"
+    category: out_of_scope
+    expect:
+      route: REJECT
+      status: OUT_OF_SCOPE
+
+  - id: oos-238v3
+    question: "تهران بارون میاد؟"
+    category: out_of_scope
+    expect:
+      route: REJECT
+      status: OUT_OF_SCOPE
+
+  # ── oos-239: stock market status ─────────────────────────────────────────
+
+  - id: oos-239v1
+    question: "بورس امروز چطوره؟"
+    category: out_of_scope
+    expect:
+      route: REJECT
+      status: OUT_OF_SCOPE
+
+  - id: oos-239v2
+    question: "وضعیت بازار سهام چطوریه؟"
+    category: out_of_scope
+    expect:
+      route: REJECT
+      status: OUT_OF_SCOPE
+
+  - id: oos-239v3
+    question: "شاخص بورس الان چنده؟"
+    category: out_of_scope
+    expect:
+      route: REJECT
+      status: OUT_OF_SCOPE
+
+  # ── oos-240: phone recommendation ────────────────────────────────────────
+
+  - id: oos-240v1
+    question: "چه گوشی بخرم؟"
+    category: out_of_scope
+    expect:
+      route: REJECT
+      status: OUT_OF_SCOPE
+
+  - id: oos-240v2
+    question: "کدوم موبایل رو پیشنهاد میدی؟"
+    category: out_of_scope
+    expect:
+      route: REJECT
+      status: OUT_OF_SCOPE
+
+  - id: oos-240v3
+    question: "بهترین گوشی برای خرید الان کدومه؟"
+    category: out_of_scope
+    expect:
+      route: REJECT
+      status: OUT_OF_SCOPE

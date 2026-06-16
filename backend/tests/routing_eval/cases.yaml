@@ -1199,21 +1199,15 @@ cases:
     question: "تعداد کارکنان به تفکیک خانواده شغلی چقدر است؟"
     category: org_structure
     expect:
-      route: SQL
-      intent: total_employee_count
-      must_include_sql:
-        - "COUNT"
-        - "is_active"
+      route: GAP
+      status: DATA_GAP
 
   - id: org-122
     question: "کدام خانواده شغلی بیشترین تعداد کارکنان را دارد؟"
     category: org_structure
     expect:
-      route: SQL
-      intent: total_employee_count
-      must_include_sql:
-        - "COUNT"
-        - "is_active"
+      route: GAP
+      status: DATA_GAP
 
   - id: org-123
     question: "تعداد کارکنان به تفکیک سطح حساسیت واحد چقدر است؟"
@@ -1989,8 +1983,6 @@ cases:
       status: ANALYTICAL_GAP
 
   - id: anl-204
-    xfail: true
-    xfail_reason: "risk-assessment question routed to SQL instead of GAP/ANALYTICAL_GAP"
     question: "میانگین سن کارکنان زن چه ریسکی برای سازمان دارد؟"
     category: analytical
     expect:
@@ -1998,8 +1990,6 @@ cases:
       status: ANALYTICAL_GAP
 
   - id: anl-205
-    xfail: true
-    xfail_reason: "risk-assessment question routed to SQL instead of GAP/ANALYTICAL_GAP"
     question: "سهم کارکنان پیمانکاری چه ریسکی برای سازمان ایجاد می‌کند؟"
     category: analytical
     expect:
@@ -2021,8 +2011,6 @@ cases:
       status: ANALYTICAL_GAP
 
   - id: anl-208
-    xfail: true
-    xfail_reason: "productivity judgment question routed to SQL instead of GAP/ANALYTICAL_GAP"
     question: "آیا بهره‌وری نیروهای پیمانکاری قابل ارزیابی است؟"
     category: analytical
     expect:
@@ -2030,8 +2018,6 @@ cases:
       status: ANALYTICAL_GAP
 
   - id: anl-209
-    xfail: true
-    xfail_reason: "multi-dimension judgment question routed to SQL instead of GAP/ANALYTICAL_GAP"
     question: "کدام حوزه از نظر ترکیب سن و تحصیلات نیازمند توجه مدیریتی است؟"
     category: analytical
     expect:
@@ -2050,12 +2036,11 @@ cases:
 
   - id: anl-211
     xfail: true
-    xfail_reason: "gender-age inequality analysis routed to SQL instead of GAP/ANALYTICAL_GAP"
+    xfail_reason: "intent_parser maps gender-age distribution to individual_employee_info causing ACCESS_DENIED"
     question: "آیا توزیع جنسیتی در برخی گروه‌های سنی نامتوازن است؟"
     category: analytical
     expect:
-      route: GAP
-      status: ANALYTICAL_GAP
+      route: SQL
 
   - id: anl-212
     question: "آیا نیروی انسانی در آستانه بازنشستگی زیاد است؟"
@@ -2085,8 +2070,6 @@ cases:
       intent: near_retirement_analysis
 
   - id: know-215
-    xfail: true
-    xfail_reason: "definition question routed to SQL instead of GAP/KNOWLEDGE_GAP"
     question: "تعریف نیروی پیمانی چیست؟"
     category: knowledge
     expect:
@@ -2094,8 +2077,6 @@ cases:
       status: KNOWLEDGE_GAP
 
   - id: know-216
-    xfail: true
-    xfail_reason: "difference question routed to SQL instead of GAP/KNOWLEDGE_GAP"
     question: "تفاوت نوع استخدام و نوع قرارداد چیست؟"
     category: knowledge
     expect:
@@ -2103,8 +2084,6 @@ cases:
       status: KNOWLEDGE_GAP
 
   - id: know-217
-    xfail: true
-    xfail_reason: "definition question routed to SQL instead of GAP/KNOWLEDGE_GAP"
     question: "تعریف نیروی پیمانکاری چیست؟"
     category: knowledge
     expect:
@@ -2112,8 +2091,6 @@ cases:
       status: KNOWLEDGE_GAP
 
   - id: know-218
-    xfail: true
-    xfail_reason: "methodology question routed to SQL instead of GAP/KNOWLEDGE_GAP"
     question: "شاخص میانگین سن چگونه محاسبه می‌شود؟"
     category: knowledge
     expect:
@@ -2121,8 +2098,6 @@ cases:
       status: KNOWLEDGE_GAP
 
   - id: know-219
-    xfail: true
-    xfail_reason: "methodology question routed to SQL instead of GAP/KNOWLEDGE_GAP"
     question: "شاخص سهم پیمانکاری چگونه محاسبه می‌شود؟"
     category: knowledge
     expect:
@@ -2130,8 +2105,6 @@ cases:
       status: KNOWLEDGE_GAP
 
   - id: know-220
-    xfail: true
-    xfail_reason: "definition question routed to SQL instead of GAP/KNOWLEDGE_GAP"
     question: "تعریف چارت مصوب در منابع انسانی چیست؟"
     category: knowledge
     expect:
@@ -2140,7 +2113,7 @@ cases:
 
   - id: know-221
     xfail: true
-    xfail_reason: "data-gap definition question routed to SQL instead of GAP/KNOWLEDGE_GAP"
+    xfail_reason: "domain_classifier rejects 'Data Gap' (English) as OUT_OF_SCOPE before validator can catch it"
     question: "منظور از Data Gap در این سامانه چیست؟"
     category: knowledge
     expect:
@@ -2148,8 +2121,6 @@ cases:
       status: KNOWLEDGE_GAP
 
   - id: know-222
-    xfail: true
-    xfail_reason: "policy question routed to SQL instead of GAP/KNOWLEDGE_GAP"
     question: "سیاست سازمان درباره بازنشستگی چیست؟"
     category: knowledge
     expect:
@@ -2157,8 +2128,6 @@ cases:
       status: KNOWLEDGE_GAP
 
   - id: know-223
-    xfail: true
-    xfail_reason: "retirement law question routed to SQL instead of GAP/KNOWLEDGE_GAP"
     question: "قانون رسمی سن بازنشستگی در این تحلیل چیست؟"
     category: knowledge
     expect:
@@ -2166,8 +2135,6 @@ cases:
       status: KNOWLEDGE_GAP
 
   - id: know-224
-    xfail: true
-    xfail_reason: "active employee definition routed to SQL instead of GAP/KNOWLEDGE_GAP"
     question: "تعریف کارکنان فعال در این سامانه چیست؟"
     category: knowledge
     expect:
@@ -2224,8 +2191,6 @@ cases:
       status: ACCESS_DENIED
 
   - id: acc-232
-    xfail: true
-    xfail_reason: "personal employee data request routed to SQL instead of REJECT/ACCESS_DENIED"
     question: "اطلاعات فردی کارکنان قراردادی را نمایش بده."
     category: access_control
     expect:

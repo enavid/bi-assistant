@@ -1,0 +1,629 @@
+cases:
+  # ---------------------------------------------------------------------------
+  # Education — colloquial & paraphrase robustness variants
+  # 3-4 variants per original question (edu-027 to edu-054)
+  # ---------------------------------------------------------------------------
+
+  # -- edu-027: employee count by education level ----------------------------
+
+  - id: edu-027v1
+    question: "کارکنان به تفکیک مدرک تحصیلی چند نفرن؟"
+    category: education
+    expect:
+      route: SQL
+      intent: employee_count_by_education
+
+  - id: edu-027v2
+    question: "توزیع مدرک تحصیلی کارکنانمون چطوره؟"
+    category: education
+    expect:
+      route: SQL
+
+  - id: edu-027v3
+    question: "چند تا کارمند دیپلمه، چند تا لیسانسه، چند تا فوق‌لیسانسه؟"
+    category: education
+    expect:
+      route: SQL
+      intent: employee_count_by_education
+
+  - id: edu-027v4
+    question: "تفکیک تحصیلی نیروها چطوریه؟"
+    category: education
+    expect:
+      route: SQL
+
+  # -- edu-028: education share percentage -----------------------------------
+
+  - id: edu-028v1
+    question: "سهم هر مدرک تحصیلی چنده؟"
+    category: education
+    expect:
+      route: SQL
+      intent: employee_count_by_education
+
+  - id: edu-028v2
+    question: "درصد هر مدرک توی سازمان چقدره؟"
+    category: education
+    expect:
+      route: SQL
+      intent: employee_count_by_education
+
+  - id: edu-028v3
+    question: "نسبت مدارک مختلف در سازمان چقدره؟"
+    category: education
+    expect:
+      route: SQL
+      intent: employee_count_by_education
+
+  # -- edu-029: most common education ----------------------------------------
+
+  - id: edu-029v1
+    question: "بیشترین مدرک تو سازمانمون چیه؟"
+    category: education
+    expect:
+      route: SQL
+      intent: most_common_education
+
+  - id: edu-029v2
+    question: "کدوم مدرک تحصیلی بیشتر داریم؟"
+    category: education
+    expect:
+      route: SQL
+      intent: most_common_education
+
+  - id: edu-029v3
+    question: "رایج‌ترین مدرک کارکنانمون چیه؟"
+    category: education
+    expect:
+      route: SQL
+      intent: most_common_education
+
+  - id: edu-029v4
+    question: "اکثر کارمندا چه مدرکی دارن؟"
+    category: education
+    expect:
+      route: SQL
+      intent: most_common_education
+
+  # -- edu-030: least common education ---------------------------------------
+
+  - id: edu-030v1
+    question: "کمترین مدرک تو سازمانمون چیه؟"
+    category: education
+    expect:
+      route: SQL
+
+  - id: edu-030v2
+    question: "کدوم مدرک تحصیلی کمتر داریم؟"
+    category: education
+    expect:
+      route: SQL
+
+  - id: edu-030v3
+    question: "کمیاب‌ترین مدرک کارکنان چیه؟"
+    category: education
+    expect:
+      route: SQL
+
+  # -- edu-031: diploma count ------------------------------------------------
+
+  - id: edu-031v1
+    question: "چند نفر دیپلمه داریم؟"
+    category: education
+    expect:
+      route: SQL
+      intent: employee_count_by_education
+
+  - id: edu-031v2
+    question: "تعداد کارکنان دیپلمه چنتاست؟"
+    category: education
+    expect:
+      route: SQL
+      intent: employee_count_by_education
+
+  - id: edu-031v3
+    question: "چنتا کارمند داریم که فقط دیپلم دارن؟"
+    category: education
+    expect:
+      route: SQL
+      intent: employee_count_by_education
+
+  # -- edu-032: bachelor count -----------------------------------------------
+
+  - id: edu-032v1
+    question: "چند نفر لیسانسه داریم؟"
+    category: education
+    expect:
+      route: SQL
+      intent: employee_count_by_education
+
+  - id: edu-032v2
+    question: "تعداد کارمندایی که لیسانس دارن چنتاست؟"
+    category: education
+    expect:
+      route: SQL
+      intent: employee_count_by_education
+
+  - id: edu-032v3
+    question: "کارکنان با مدرک کارشناسی چند نفرن؟"
+    category: education
+    expect:
+      route: SQL
+      intent: employee_count_by_education
+
+  # -- edu-033: master count -------------------------------------------------
+
+  - id: edu-033v1
+    question: "چند نفر فوق‌لیسانسه داریم؟"
+    category: education
+    expect:
+      route: SQL
+      intent: employee_count_by_education
+
+  - id: edu-033v2
+    question: "تعداد کارمندایی که ارشد دارن چنتاست؟"
+    category: education
+    expect:
+      route: SQL
+      intent: employee_count_by_education
+
+  - id: edu-033v3
+    question: "کارکنان با مدرک کارشناسی ارشد چند نفرن؟"
+    category: education
+    expect:
+      route: SQL
+      intent: employee_count_by_education
+
+  # -- edu-034: PhD count ----------------------------------------------------
+
+  - id: edu-034v1
+    question: "چند نفر دکترا داریم؟"
+    category: education
+    expect:
+      route: SQL
+      intent: employee_count_by_education
+
+  - id: edu-034v2
+    question: "تعداد کارکنانی که دکتری دارن چنتاست؟"
+    category: education
+    expect:
+      route: SQL
+      intent: employee_count_by_education
+
+  - id: edu-034v3
+    question: "دکتراهای سازمان چند نفرن؟"
+    category: education
+    expect:
+      route: SQL
+      intent: employee_count_by_education
+
+  # -- edu-035: bachelor percentage ------------------------------------------
+
+  - id: edu-035v1
+    question: "چن درصد کارکنان لیسانسن؟"
+    category: education
+    expect:
+      route: SQL
+      intent: employee_count_by_education
+
+  - id: edu-035v2
+    question: "سهم کارشناسا توی سازمان چقدره؟"
+    category: education
+    expect:
+      route: SQL
+      intent: employee_count_by_education
+
+  - id: edu-035v3
+    question: "درصد مدرک کارشناسی چقدره؟"
+    category: education
+    expect:
+      route: SQL
+      intent: employee_count_by_education
+
+  # -- edu-036: master percentage --------------------------------------------
+
+  - id: edu-036v1
+    question: "چن درصد کارکنان ارشد دارن؟"
+    category: education
+    expect:
+      route: SQL
+      intent: employee_count_by_education
+
+  - id: edu-036v2
+    question: "سهم فوق‌لیسانسا چقدره؟"
+    category: education
+    expect:
+      route: SQL
+      intent: employee_count_by_education
+
+  - id: edu-036v3
+    question: "درصد کارشناسی ارشد در سازمان چنده؟"
+    category: education
+    expect:
+      route: SQL
+      intent: employee_count_by_education
+
+  # -- edu-037: diploma or below percentage ----------------------------------
+
+  - id: edu-037v1
+    question: "چن درصد کارمندا دیپلم یا زیردیپلمن؟"
+    category: education
+    expect:
+      route: SQL
+      intent: employee_count_by_education
+
+  - id: edu-037v2
+    question: "سهم نیروهای با تحصیلات پایین چقدره؟"
+    category: education
+    expect:
+      route: SQL
+
+  - id: edu-037v3
+    question: "درصد کارکنان با مدرک دیپلم یا پایین‌تر چنده؟"
+    category: education
+    expect:
+      route: SQL
+      intent: employee_count_by_education
+
+  # -- edu-038: below diploma count ------------------------------------------
+
+  - id: edu-038v1
+    question: "چند نفر زیر دیپلم داریم؟"
+    category: education
+    expect:
+      route: SQL
+      intent: employee_count_by_education
+
+  - id: edu-038v2
+    question: "تعداد کارکنان با تحصیلات کمتر از دیپلم چنده؟"
+    category: education
+    expect:
+      route: SQL
+      intent: employee_count_by_education
+
+  - id: edu-038v3
+    question: "کارمندایی که زیر دیپلمن چنتان؟"
+    category: education
+    expect:
+      route: SQL
+      intent: employee_count_by_education
+
+  # -- edu-039: university educated count ------------------------------------
+
+  - id: edu-039v1
+    question: "چند نفر تحصیلات دانشگاهی دارن؟"
+    category: education
+    expect:
+      route: SQL
+      intent: employee_count_by_education
+
+  - id: edu-039v2
+    question: "کارکنان دانشگاه‌رفته چنتان؟"
+    category: education
+    expect:
+      route: SQL
+
+  - id: edu-039v3
+    question: "تعداد نیروهای با مدرک دانشگاهی چنده؟"
+    category: education
+    expect:
+      route: SQL
+      intent: employee_count_by_education
+
+  # -- edu-040: university educated percentage --------------------------------
+
+  - id: edu-040v1
+    question: "چن درصد کارکنان تحصیلات دانشگاهی دارن؟"
+    category: education
+    expect:
+      route: SQL
+      intent: employee_count_by_education
+
+  - id: edu-040v2
+    question: "سهم دانشگاه‌دیده‌ها در سازمان چقدره؟"
+    category: education
+    expect:
+      route: SQL
+
+  - id: edu-040v3
+    question: "درصد نیروهای دانشگاه‌رفته چنده؟"
+    category: education
+    expect:
+      route: SQL
+
+  # -- edu-041: female education breakdown ------------------------------------
+
+  - id: edu-041v1
+    question: "مدرک تحصیلی خانم‌های سازمان چطوره؟"
+    category: education
+    expect:
+      route: SQL
+
+  - id: edu-041v2
+    question: "توزیع مدرک تحصیلی کارکنان زن چقدره؟"
+    category: education
+    expect:
+      route: SQL
+      intent: employee_count_by_education
+
+  - id: edu-041v3
+    question: "زن‌ها به تفکیک مدرک چند نفرن؟"
+    category: education
+    expect:
+      route: SQL
+      intent: employee_count_by_education
+
+  # -- edu-042: male education breakdown -------------------------------------
+
+  - id: edu-042v1
+    question: "مدرک تحصیلی آقایون سازمان چطوره؟"
+    category: education
+    expect:
+      route: SQL
+
+  - id: edu-042v2
+    question: "توزیع مدرک تحصیلی کارکنان مرد چقدره؟"
+    category: education
+    expect:
+      route: SQL
+      intent: employee_count_by_education
+
+  - id: edu-042v3
+    question: "مردا به تفکیک مدرک چند نفرن؟"
+    category: education
+    expect:
+      route: SQL
+      intent: employee_count_by_education
+
+  # -- edu-043: most common education among women ----------------------------
+
+  - id: edu-043v1
+    question: "خانم‌ها بیشتر چه مدرکی دارن؟"
+    category: education
+    expect:
+      route: SQL
+      intent: most_common_education
+
+  - id: edu-043v2
+    question: "رایج‌ترین مدرک بین زنان سازمان چیه؟"
+    category: education
+    expect:
+      route: SQL
+      intent: most_common_education
+
+  - id: edu-043v3
+    question: "اکثر خانم‌های کارکنان چه مدرکی دارن؟"
+    category: education
+    expect:
+      route: SQL
+      intent: most_common_education
+
+  # -- edu-044: most common education among men ------------------------------
+
+  - id: edu-044v1
+    question: "آقایون بیشتر چه مدرکی دارن؟"
+    category: education
+    expect:
+      route: SQL
+      intent: most_common_education
+
+  - id: edu-044v2
+    question: "رایج‌ترین مدرک بین مردان سازمان چیه؟"
+    category: education
+    expect:
+      route: SQL
+      intent: most_common_education
+
+  - id: edu-044v3
+    question: "اکثر آقایون کارکنان چه مدرکی دارن؟"
+    category: education
+    expect:
+      route: SQL
+      intent: most_common_education
+
+  # -- edu-045: average age by education -------------------------------------
+
+  - id: edu-045v1
+    question: "کارکنان با مدارک مختلف به طور میانگین چند سالشونه؟"
+    category: education
+    expect:
+      route: SQL
+      intent: average_age
+
+  - id: edu-045v2
+    question: "میانگین سن هر گروه تحصیلی چنده؟"
+    category: education
+    expect:
+      route: SQL
+      intent: average_age
+
+  - id: edu-045v3
+    question: "متوسط سن کارکنان به تفکیک مدرک چقدره؟"
+    category: education
+    expect:
+      route: SQL
+      intent: average_age
+
+  # -- edu-046: age 60+ by education -----------------------------------------
+
+  - id: edu-046v1
+    question: "کارکنان بالای ۶۰ سال چه مدرکی دارن؟"
+    category: education
+    expect:
+      route: SQL
+      intent: employee_count_by_education
+
+  - id: edu-046v2
+    question: "تعداد نیروهای ۶۰ به بالا به تفکیک مدرک چنده؟"
+    category: education
+    expect:
+      route: SQL
+      intent: employee_count_by_education
+
+  - id: edu-046v3
+    question: "ترکیب مدرک تحصیلی کارمندای مسن‌تر چطوره؟"
+    category: education
+    expect:
+      route: SQL
+
+  # -- edu-047: under 30 by education ----------------------------------------
+
+  - id: edu-047v1
+    question: "جوونای زیر ۳۰ سال چه مدرکی دارن؟"
+    category: education
+    expect:
+      route: SQL
+      intent: employee_count_by_education
+
+  - id: edu-047v2
+    question: "تعداد کارکنان زیر ۳۰ سال به تفکیک مدرک چنده؟"
+    category: education
+    expect:
+      route: SQL
+      intent: employee_count_by_education
+
+  - id: edu-047v3
+    question: "ترکیب مدرک کارمندای جوون چطوره؟"
+    category: education
+    expect:
+      route: SQL
+
+  # -- edu-048: education share by age group ---------------------------------
+
+  - id: edu-048v1
+    question: "توی هر گروه سنی چه مدرکی بیشتره؟"
+    category: education
+    expect:
+      route: SQL
+
+  - id: edu-048v2
+    question: "سهم هر مدرک در هر گروه سنی چنده؟"
+    category: education
+    expect:
+      route: SQL
+
+  - id: edu-048v3
+    question: "مدرک تحصیلی کارکنان به تفکیک سن چطوره؟"
+    category: education
+    expect:
+      route: SQL
+
+  # -- edu-049: below required education count --------------------------------
+
+  - id: edu-049v1
+    question: "چند نفر مدرکشون از نیاز پستشون کمتره؟"
+    category: education
+    expect:
+      route: SQL
+
+  - id: edu-049v2
+    question: "چنتا کارمند زیر سطح تحصیلی پستشون هستن؟"
+    category: education
+    expect:
+      route: SQL
+
+  - id: edu-049v3
+    question: "تعداد کارکنان با مدرک ناکافی برای پستشون چنده؟"
+    category: education
+    expect:
+      route: SQL
+
+  # -- edu-050: below required education by domain ---------------------------
+
+  - id: edu-050v1
+    question: "کدوم حوزه بیشتر نیرو با مدرک ناکافی داره؟"
+    category: education
+    expect:
+      route: SQL
+
+  - id: edu-050v2
+    question: "نیروهای زیرسطح تحصیلی به تفکیک حوزه چند نفرن؟"
+    category: education
+    expect:
+      route: SQL
+
+  - id: edu-050v3
+    question: "توزیع کارکنان با مدرک کمتر از نیاز پست بین حوزه‌ها چطوره؟"
+    category: education
+    expect:
+      route: SQL
+
+  # -- edu-051: below required education by role -----------------------------
+
+  - id: edu-051v1
+    question: "کدوم پست بیشترین نیرو با مدرک ناکافی داره؟"
+    category: education
+    expect:
+      route: SQL
+
+  - id: edu-051v2
+    question: "نیروهای زیرسطح تحصیلی به تفکیک پست چند نفرن؟"
+    category: education
+    expect:
+      route: SQL
+
+  - id: edu-051v3
+    question: "توزیع کارکنان زیرسطح تحصیلی بین پست‌ها چطوره؟"
+    category: education
+    expect:
+      route: SQL
+
+  # -- edu-052: below required education percentage --------------------------
+
+  - id: edu-052v1
+    question: "چن درصد کارکنان مدرکشون از نیاز پستشون کمتره؟"
+    category: education
+    expect:
+      route: SQL
+
+  - id: edu-052v2
+    question: "سهم نیروهای زیرسطح تحصیلی چقدره؟"
+    category: education
+    expect:
+      route: SQL
+
+  - id: edu-052v3
+    question: "درصد کارمندایی که مدرک کافی برای پستشون ندارن چنده؟"
+    category: education
+    expect:
+      route: SQL
+
+  # -- edu-053: domain with most under-qualified employees -------------------
+
+  - id: edu-053v1
+    question: "کدوم حوزه مشکل مدرک ناکافی بیشتری داره؟"
+    category: education
+    expect:
+      route: SQL
+
+  - id: edu-053v2
+    question: "بیشترین کارکنان زیرسطح تحصیلی توی کدوم حوزه‌ست؟"
+    category: education
+    expect:
+      route: SQL
+
+  - id: edu-053v3
+    question: "کدوم بخش بیشترین نیروی با مدرک پایین‌تر از نیاز پست رو داره؟"
+    category: education
+    expect:
+      route: SQL
+
+  # -- edu-054: role with most under-qualified employees ---------------------
+
+  - id: edu-054v1
+    question: "کدوم پست مشکل مدرک ناکافی بیشتری داره؟"
+    category: education
+    expect:
+      route: SQL
+
+  - id: edu-054v2
+    question: "بیشترین کارکنان زیرسطح تحصیلی توی کدوم پستن؟"
+    category: education
+    expect:
+      route: SQL
+
+  - id: edu-054v3
+    question: "کدوم شغل بیشترین نیرو با مدرک پایین‌تر از نیاز رو داره؟"
+    category: education
+    expect:
+      route: SQL

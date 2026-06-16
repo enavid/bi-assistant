@@ -1,0 +1,449 @@
+cases:
+  # ---------------------------------------------------------------------------
+  # Recruitment — colloquial & paraphrase robustness variants
+  # 3-4 informal/spoken variants per question (rec-139 to rec-157)
+  # ---------------------------------------------------------------------------
+
+  # ── rec-139: annual hiring trend ─────────────────────────────────────────
+
+  - id: rec-139v1
+    question: "روند جذب نیرو در طول سال‌ها چطور بوده؟"
+    category: recruitment
+    expect:
+      route: SQL
+      intent: hiring_trend_annual
+
+  - id: rec-139v2
+    question: "جذب نیرو سالانه چه تغییراتی داشته؟"
+    category: recruitment
+    expect:
+      route: SQL
+      intent: hiring_trend_annual
+
+  - id: rec-139v3
+    question: "سال به سال چقدر جذب کردیم؟"
+    category: recruitment
+    expect:
+      route: SQL
+      intent: hiring_trend_annual
+
+  # ── rec-140: number of hires per year ────────────────────────────────────
+
+  - id: rec-140v1
+    question: "هر سال چند نفر جذب کردیم؟"
+    category: recruitment
+    expect:
+      route: SQL
+      intent: hiring_trend_annual
+
+  - id: rec-140v2
+    question: "تعداد استخدام‌های هر سال چنده؟"
+    category: recruitment
+    expect:
+      route: SQL
+      intent: hiring_trend_annual
+
+  - id: rec-140v3
+    question: "آمار جذب سالانه رو بده"
+    category: recruitment
+    expect:
+      route: SQL
+      intent: hiring_trend_annual
+
+  - id: rec-140v4
+    question: "هر سال چقدر نیرو گرفتیم؟"
+    category: recruitment
+    expect:
+      route: SQL
+      intent: hiring_trend_annual
+
+  # ── rec-141: year with most hires ────────────────────────────────────────
+
+  - id: rec-141v1
+    question: "کدوم سال بیشترین جذب نیرو داشتیم؟"
+    category: recruitment
+    expect:
+      route: SQL
+      intent: most_or_least_hiring_year
+
+  - id: rec-141v2
+    question: "پر جذب‌ترین سال کدوم بوده؟"
+    category: recruitment
+    expect:
+      route: SQL
+      intent: most_or_least_hiring_year
+
+  - id: rec-141v3
+    question: "بیشترین استخدام رو توی کدوم سال داشتیم؟"
+    category: recruitment
+    expect:
+      route: SQL
+      intent: most_or_least_hiring_year
+
+  # ── rec-142: year with fewest hires ──────────────────────────────────────
+
+  - id: rec-142v1
+    question: "کدوم سال کمترین جذب نیرو داشتیم؟"
+    category: recruitment
+    expect:
+      route: SQL
+      intent: most_or_least_hiring_year
+
+  - id: rec-142v2
+    question: "کم جذب‌ترین سال کدوم بوده؟"
+    category: recruitment
+    expect:
+      route: SQL
+      intent: most_or_least_hiring_year
+
+  - id: rec-142v3
+    question: "کمترین استخدام رو توی کدوم سال داشتیم؟"
+    category: recruitment
+    expect:
+      route: SQL
+      intent: most_or_least_hiring_year
+
+  # ── rec-143: number of hires in last 15 years ────────────────────────────
+
+  - id: rec-143v1
+    question: "۱۵ سال اخیر چند نفر جذب کردیم؟"
+    category: recruitment
+    expect:
+      route: SQL
+      intent: hiring_last_15_years
+
+  - id: rec-143v2
+    question: "تعداد استخدام در ۱۵ سال گذشته چنده؟"
+    category: recruitment
+    expect:
+      route: SQL
+      intent: hiring_last_15_years
+
+  - id: rec-143v3
+    question: "آمار جذب پانزده سال اخیر؟"
+    category: recruitment
+    expect:
+      route: SQL
+      intent: hiring_last_15_years
+
+  # ── rec-144: hiring trend in last 15 years ───────────────────────────────
+
+  - id: rec-144v1
+    question: "روند جذب نیرو در ۱۵ سال اخیر چطور بوده؟"
+    category: recruitment
+    expect:
+      route: SQL
+      intent: hiring_last_15_years
+
+  - id: rec-144v2
+    question: "۱۵ سال گذشته جذب چه روندی داشته؟"
+    category: recruitment
+    expect:
+      route: SQL
+      intent: hiring_last_15_years
+
+  - id: rec-144v3
+    question: "تغییرات جذب نیرو طی پانزده سال اخیر؟"
+    category: recruitment
+    expect:
+      route: SQL
+      intent: hiring_last_15_years
+
+  # ── rec-145: number of hires this year ───────────────────────────────────
+
+  - id: rec-145v1
+    question: "امسال چند نفر جذب کردیم؟"
+    category: recruitment
+    expect:
+      route: SQL
+      intent: hiring_by_contract_type_recent_year
+
+  - id: rec-145v2
+    question: "تعداد استخدام سال جاری چنده؟"
+    category: recruitment
+    expect:
+      route: SQL
+      intent: hiring_by_contract_type_recent_year
+
+  - id: rec-145v3
+    question: "امسال چقدر نیرو گرفتیم؟"
+    category: recruitment
+    expect:
+      route: SQL
+      intent: hiring_by_contract_type_recent_year
+
+  # ── rec-146: number of hires last year ───────────────────────────────────
+
+  - id: rec-146v1
+    question: "پارسال چند نفر جذب کردیم؟"
+    category: recruitment
+    expect:
+      route: SQL
+      intent: hiring_trend_annual
+
+  - id: rec-146v2
+    question: "تعداد استخدام سال گذشته چنده؟"
+    category: recruitment
+    expect:
+      route: SQL
+      intent: hiring_trend_annual
+
+  - id: rec-146v3
+    question: "سال قبل چقدر نیرو گرفتیم؟"
+    category: recruitment
+    expect:
+      route: SQL
+      intent: hiring_trend_annual
+
+  # ── rec-147: compare this year vs last year hiring ────────────────────────
+
+  - id: rec-147v1
+    question: "جذب امسال با پارسال چه فرقی داره؟"
+    category: recruitment
+    expect:
+      route: SQL
+      intent: hiring_by_contract_type_recent_year
+
+  - id: rec-147v2
+    question: "امسال بیشتر جذب کردیم یا پارسال؟"
+    category: recruitment
+    expect:
+      route: SQL
+      intent: hiring_by_contract_type_recent_year
+
+  - id: rec-147v3
+    question: "مقایسه استخدام سال جاری و سال گذشته؟"
+    category: recruitment
+    expect:
+      route: SQL
+      intent: hiring_by_contract_type_recent_year
+
+  # ── rec-148: hires by gender per year ────────────────────────────────────
+
+  - id: rec-148v1
+    question: "هر سال چند تا خانم و آقا جذب کردیم؟"
+    category: recruitment
+    expect:
+      route: SQL
+      intent: hiring_trend_annual
+
+  - id: rec-148v2
+    question: "آمار جذب سالانه به تفکیک جنسیت؟"
+    category: recruitment
+    expect:
+      route: SQL
+      intent: hiring_trend_annual
+
+  - id: rec-148v3
+    question: "روند جذب زنان و مردان در طول سال‌ها؟"
+    category: recruitment
+    expect:
+      route: SQL
+      intent: hiring_trend_annual
+
+  # ── rec-149: hires by employment type per year ────────────────────────────
+
+  - id: rec-149v1
+    question: "هر سال جذب به تفکیک نوع استخدام چقدر بوده؟"
+    category: recruitment
+    expect:
+      route: SQL
+      intent: hiring_trend_annual
+
+  - id: rec-149v2
+    question: "آمار استخدام سالانه به تفکیک رسمی قراردادی پیمانی؟"
+    category: recruitment
+    expect:
+      route: SQL
+      intent: hiring_trend_annual
+
+  - id: rec-149v3
+    question: "هر سال چند رسمی چند قراردادی جذب کردیم؟"
+    category: recruitment
+    expect:
+      route: SQL
+      intent: hiring_trend_annual
+
+  # ── rec-150: hires by contract type per year ──────────────────────────────
+
+  - id: rec-150v1
+    question: "جذب به تفکیک نوع قرارداد هر سال چقدر بوده؟"
+    category: recruitment
+    expect:
+      route: SQL
+      intent: hiring_by_contract_type_recent_year
+
+  - id: rec-150v2
+    question: "آمار استخدام سالانه بر اساس نوع قرارداد؟"
+    category: recruitment
+    expect:
+      route: SQL
+      intent: hiring_by_contract_type_recent_year
+
+  - id: rec-150v3
+    question: "هر سال چه نوع قراردادهایی بسته شده؟"
+    category: recruitment
+    expect:
+      route: SQL
+      intent: hiring_by_contract_type_recent_year
+
+  # ── rec-151: contractor hires per year ───────────────────────────────────
+
+  - id: rec-151v1
+    question: "هر سال چند نفر پیمانکاری جذب کردیم؟"
+    category: recruitment
+    expect:
+      route: SQL
+      intent: hiring_trend_annual
+
+  - id: rec-151v2
+    question: "آمار جذب پیمانکار سالانه چنده؟"
+    category: recruitment
+    expect:
+      route: SQL
+      intent: hiring_trend_annual
+
+  - id: rec-151v3
+    question: "روند جذب نیروهای پیمانکاری در طول سال‌ها؟"
+    category: recruitment
+    expect:
+      route: SQL
+      intent: hiring_trend_annual
+
+  # ── rec-152: contractor share of annual hires ─────────────────────────────
+
+  - id: rec-152v1
+    question: "هر سال چند درصد از جذب‌ها پیمانکاری بودن؟"
+    category: recruitment
+    expect:
+      route: SQL
+      intent: contractor_share
+
+  - id: rec-152v2
+    question: "سهم پیمانکارها از استخدام سالانه چقدره؟"
+    category: recruitment
+    expect:
+      route: SQL
+      intent: contractor_share
+
+  - id: rec-152v3
+    question: "نسبت جذب پیمانکاری به کل جذب سالانه؟"
+    category: recruitment
+    expect:
+      route: SQL
+      intent: contractor_share
+
+  # ── rec-153: year with most contractor hires ──────────────────────────────
+
+  - id: rec-153v1
+    question: "کدوم سال بیشترین پیمانکار جذب کردیم؟"
+    category: recruitment
+    expect:
+      route: SQL
+      intent: most_or_least_hiring_year
+
+  - id: rec-153v2
+    question: "پر جذب‌ترین سال برای پیمانکاری کدوم بوده؟"
+    category: recruitment
+    expect:
+      route: SQL
+      intent: most_or_least_hiring_year
+
+  - id: rec-153v3
+    question: "بیشترین جذب پیمانکاری توی کدوم سال بوده؟"
+    category: recruitment
+    expect:
+      route: SQL
+      intent: most_or_least_hiring_year
+
+  # ── rec-154: year with fewest contractor hires ────────────────────────────
+
+  - id: rec-154v1
+    question: "کدوم سال کمترین پیمانکار جذب کردیم؟"
+    category: recruitment
+    expect:
+      route: SQL
+      intent: most_or_least_hiring_year
+
+  - id: rec-154v2
+    question: "کم جذب‌ترین سال برای پیمانکاری کدوم بوده؟"
+    category: recruitment
+    expect:
+      route: SQL
+      intent: most_or_least_hiring_year
+
+  - id: rec-154v3
+    question: "کمترین جذب پیمانکاری توی کدوم سال بوده؟"
+    category: recruitment
+    expect:
+      route: SQL
+      intent: most_or_least_hiring_year
+
+  # ── rec-155: hires by service domain per year ─────────────────────────────
+
+  - id: rec-155v1
+    question: "هر سال در هر حوزه چند نفر جذب کردیم؟"
+    category: recruitment
+    expect:
+      route: SQL
+      intent: hiring_trend_annual
+
+  - id: rec-155v2
+    question: "آمار جذب سالانه به تفکیک حوزه خدمت؟"
+    category: recruitment
+    expect:
+      route: SQL
+      intent: hiring_trend_annual
+
+  - id: rec-155v3
+    question: "روند جذب نیرو در هر حوزه طول سال‌ها؟"
+    category: recruitment
+    expect:
+      route: SQL
+      intent: hiring_trend_annual
+
+  # ── rec-156: domain with most hires in last 15 years ─────────────────────
+
+  - id: rec-156v1
+    question: "توی ۱۵ سال اخیر کدوم حوزه بیشترین جذب داشته؟"
+    category: recruitment
+    expect:
+      route: SQL
+      intent: hiring_last_15_years
+
+  - id: rec-156v2
+    question: "پر جذب‌ترین حوزه در پانزده سال گذشته کدومه؟"
+    category: recruitment
+    expect:
+      route: SQL
+      intent: hiring_last_15_years
+
+  - id: rec-156v3
+    question: "کدوم حوزه خدمت ۱۵ سال اخیر بیشترین نیرو گرفته؟"
+    category: recruitment
+    expect:
+      route: SQL
+      intent: hiring_last_15_years
+
+  # ── rec-157: average age of hired employees per year ─────────────────────
+
+  - id: rec-157v1
+    question: "کارکنانی که جذب شدن به طور میانگین چند سالشون بوده؟"
+    category: recruitment
+    expect:
+      route: SQL
+      intent: average_age
+
+  - id: rec-157v2
+    question: "متوسط سن نیروهای جذب‌شده در هر سال؟"
+    category: recruitment
+    expect:
+      route: SQL
+      intent: average_age
+
+  - id: rec-157v3
+    question: "میانگین سنی استخدام‌های هر سال چنده؟"
+    category: recruitment
+    expect:
+      route: SQL
+      intent: average_age

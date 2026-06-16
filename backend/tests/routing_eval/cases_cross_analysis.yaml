@@ -1,0 +1,580 @@
+cases:
+  # ---------------------------------------------------------------------------
+  # Cross Analysis — colloquial & paraphrase robustness variants
+  # 3-4 informal/spoken variants per question (cross-167 to cross-191)
+  # ---------------------------------------------------------------------------
+
+  # ── cross-167: female contract employees per service domain ───────────────
+
+  - id: cross-167v1
+    question: "در هر حوزه چند تا خانم قراردادی داریم؟"
+    category: cross_analysis
+    expect:
+      route: SQL
+      intent: employee_count_by_service_domain
+
+  - id: cross-167v2
+    question: "تعداد زنان قراردادی به تفکیک حوزه خدمت؟"
+    category: cross_analysis
+    expect:
+      route: SQL
+      intent: employee_count_by_service_domain
+
+  - id: cross-167v3
+    question: "هر حوزه چند خانم قراردادی داره؟"
+    category: cross_analysis
+    expect:
+      route: SQL
+      intent: employee_count_by_service_domain
+
+  # ── cross-168: male permanent employees per service domain ────────────────
+
+  - id: cross-168v1
+    question: "در هر حوزه چند تا آقا رسمی داریم؟"
+    category: cross_analysis
+    expect:
+      route: SQL
+      intent: employee_count_by_service_domain
+
+  - id: cross-168v2
+    question: "تعداد مردان رسمی به تفکیک حوزه خدمت؟"
+    category: cross_analysis
+    expect:
+      route: SQL
+      intent: employee_count_by_service_domain
+
+  - id: cross-168v3
+    question: "هر حوزه چند آقای رسمی داره؟"
+    category: cross_analysis
+    expect:
+      route: SQL
+      intent: employee_count_by_service_domain
+
+  # ── cross-169: contractor employees 60+ per service domain ────────────────
+
+  - id: cross-169v1
+    question: "پیمانکارهای بالای ۶۰ سال در هر حوزه چند نفرن؟"
+    category: cross_analysis
+    expect:
+      route: SQL
+      intent: contractor_share_by_service_domain
+
+  - id: cross-169v2
+    question: "چند نفر کارکنان پیمانکاری ۶۰ ساله به بالا در هر حوزه داریم؟"
+    category: cross_analysis
+    expect:
+      route: SQL
+      intent: contractor_share_by_service_domain
+
+  - id: cross-169v3
+    question: "نیروهای پیمانکاری مسن (بالای ۶۰) هر حوزه چند نفرن؟"
+    category: cross_analysis
+    expect:
+      route: SQL
+      intent: contractor_share_by_service_domain
+
+  # ── cross-170: employees under 30 with bachelor's degree per domain ────────
+
+  - id: cross-170v1
+    question: "جوون‌های زیر ۳۰ با مدرک لیسانس در هر حوزه چند نفرن؟"
+    category: cross_analysis
+    expect:
+      route: SQL
+      intent: education_distribution_by_service_domain
+
+  - id: cross-170v2
+    question: "کارکنان زیر ۳۰ سال لیسانسه هر حوزه چند نفره؟"
+    category: cross_analysis
+    expect:
+      route: SQL
+      intent: education_distribution_by_service_domain
+
+  - id: cross-170v3
+    question: "چند نفر زیر ۳۰ با مدرک کارشناسی در هر حوزه خدمت داریم؟"
+    category: cross_analysis
+    expect:
+      route: SQL
+      intent: education_distribution_by_service_domain
+
+  # ── cross-171: female employees with master's degree per domain ───────────
+
+  - id: cross-171v1
+    question: "خانم‌های ارشد خونده هر حوزه چند نفرن؟"
+    category: cross_analysis
+    expect:
+      route: SQL
+      intent: education_distribution_by_service_domain
+
+  - id: cross-171v2
+    question: "تعداد زنان با مدرک ارشد در هر حوزه خدمت؟"
+    category: cross_analysis
+    expect:
+      route: SQL
+      intent: education_distribution_by_service_domain
+
+  - id: cross-171v3
+    question: "کارکنان زن کارشناسی ارشد هر حوزه چند نفرن؟"
+    category: cross_analysis
+    expect:
+      route: SQL
+      intent: education_distribution_by_service_domain
+
+  # ── cross-172: male contractor employees with diploma ─────────────────────
+
+  - id: cross-172v1
+    question: "چند تا آقای پیمانکاری دیپلم داریم؟"
+    category: cross_analysis
+    expect:
+      route: SQL
+      intent: employee_count_by_education
+
+  - id: cross-172v2
+    question: "مردان پیمانکار با مدرک دیپلم چند نفرن؟"
+    category: cross_analysis
+    expect:
+      route: SQL
+      intent: employee_count_by_education
+
+  - id: cross-172v3
+    question: "تعداد کارکنان مرد پیمانکاری دیپلمه؟"
+    category: cross_analysis
+    expect:
+      route: SQL
+      intent: employee_count_by_education
+
+  # ── cross-173: permanent employees aged 60+ ───────────────────────────────
+
+  - id: cross-173v1
+    question: "کارمندای رسمی بالای ۶۰ سال چند نفرن؟"
+    category: cross_analysis
+    expect:
+      route: SQL
+      intent: employee_count_by_age_filter
+
+  - id: cross-173v2
+    question: "چند نفر رسمی ۶۰ ساله به بالا داریم؟"
+    category: cross_analysis
+    expect:
+      route: SQL
+      intent: employee_count_by_age_filter
+
+  - id: cross-173v3
+    question: "تعداد کارکنان رسمی مسن (۶۰ به بالا)؟"
+    category: cross_analysis
+    expect:
+      route: SQL
+      intent: employee_count_by_age_filter
+
+  # ── cross-174: contract employees under 30 ────────────────────────────────
+
+  - id: cross-174v1
+    question: "کارمندای قراردادی زیر ۳۰ سال چند نفرن؟"
+    category: cross_analysis
+    expect:
+      route: SQL
+      intent: employee_count_by_age_filter
+
+  - id: cross-174v2
+    question: "چند نفر قراردادی جوون (زیر ۳۰) داریم؟"
+    category: cross_analysis
+    expect:
+      route: SQL
+      intent: employee_count_by_age_filter
+
+  - id: cross-174v3
+    question: "تعداد کارکنان قراردادی زیر سی سال؟"
+    category: cross_analysis
+    expect:
+      route: SQL
+      intent: employee_count_by_age_filter
+
+  # ── cross-175: share of contractor employees with diploma per domain ───────
+
+  - id: cross-175v1
+    question: "پیمانکارهای دیپلمه هر حوزه چند درصدن؟"
+    category: cross_analysis
+    expect:
+      route: SQL
+      intent: contractor_share_by_service_domain
+
+  - id: cross-175v2
+    question: "سهم پیمانکاران دیپلم از هر حوزه چقدره؟"
+    category: cross_analysis
+    expect:
+      route: SQL
+      intent: contractor_share_by_service_domain
+
+  - id: cross-175v3
+    question: "نسبت کارکنان پیمانکاری دیپلمه در هر حوزه خدمت؟"
+    category: cross_analysis
+    expect:
+      route: SQL
+      intent: contractor_share_by_service_domain
+
+  # ── cross-176: female contractor employees per province ───────────────────
+
+  - id: cross-176v1
+    question: "خانم‌های پیمانکاری در هر استان چند نفرن؟"
+    category: cross_analysis
+    expect:
+      route: SQL
+      intent: contractor_share
+
+  - id: cross-176v2
+    question: "تعداد زنان پیمانکار به تفکیک استان؟"
+    category: cross_analysis
+    expect:
+      route: SQL
+      intent: contractor_share
+
+  - id: cross-176v3
+    question: "هر استان چند نفر کارکنان زن پیمانکاری داره؟"
+    category: cross_analysis
+    expect:
+      route: SQL
+      intent: contractor_share
+
+  # ── cross-177: male permanent employees per province ─────────────────────
+
+  - id: cross-177v1
+    question: "آقاهای رسمی در هر استان چند نفرن؟"
+    category: cross_analysis
+    expect:
+      route: SQL
+      intent: employee_count_by_province
+
+  - id: cross-177v2
+    question: "تعداد مردان رسمی به تفکیک استان؟"
+    category: cross_analysis
+    expect:
+      route: SQL
+      intent: employee_count_by_province
+
+  - id: cross-177v3
+    question: "هر استان چند نفر کارکنان مرد رسمی داره؟"
+    category: cross_analysis
+    expect:
+      route: SQL
+      intent: employee_count_by_province
+
+  # ── cross-178: employees with under-qualified education and 10+ years ──────
+
+  - id: cross-178v1
+    question: "چند نفر مدرکشون زیر نیاز پست ولی سابقه‌شون بالای ۱۰ ساله؟"
+    category: cross_analysis
+    expect:
+      route: SQL
+      intent: employee_count_by_service_years_filter
+
+  - id: cross-178v2
+    question: "کارکنان با تحصیلات کمتر از نیاز پست و سابقه بیشتر از ۱۰ سال چند نفرن؟"
+    category: cross_analysis
+    expect:
+      route: SQL
+      intent: employee_count_by_service_years_filter
+
+  - id: cross-178v3
+    question: "تعداد نیروهایی که مدرکشون به پستشون نمی‌رسه ولی سابقه بالای ۱۰ دارن؟"
+    category: cross_analysis
+    expect:
+      route: SQL
+      intent: employee_count_by_service_years_filter
+
+  # ── cross-179: employees over 50 with diploma or lower ────────────────────
+
+  - id: cross-179v1
+    question: "کارکنان بالای ۵۰ سال با مدرک دیپلم یا پایین‌تر چند نفرن؟"
+    category: cross_analysis
+    expect:
+      route: SQL
+      intent: employee_count_by_age_filter
+
+  - id: cross-179v2
+    question: "چند نفر بالای ۵۰ داریم که مدرکشون دیپلم یا کمتره؟"
+    category: cross_analysis
+    expect:
+      route: SQL
+      intent: employee_count_by_age_filter
+
+  - id: cross-179v3
+    question: "نیروهای مسن (بالای ۵۰) با تحصیلات دیپلمه یا پایین‌تر چند نفرن؟"
+    category: cross_analysis
+    expect:
+      route: SQL
+      intent: employee_count_by_age_filter
+
+  # ── cross-180: employees under 30 with contract employment type ───────────
+
+  - id: cross-180v1
+    question: "جوون‌های زیر ۳۰ با استخدام قراردادی چند نفرن؟"
+    category: cross_analysis
+    expect:
+      route: SQL
+      intent: employee_count_by_employment_type
+
+  - id: cross-180v2
+    question: "چند نفر زیر ۳۰ سال قراردادی داریم؟"
+    category: cross_analysis
+    expect:
+      route: SQL
+      intent: employee_count_by_employment_type
+
+  - id: cross-180v3
+    question: "کارکنان جوان قراردادی (زیر ۳۰ سال) چند نفرن؟"
+    category: cross_analysis
+    expect:
+      route: SQL
+      intent: employee_count_by_employment_type
+
+  # ── cross-181: employees with PhD per service domain ─────────────────────
+
+  - id: cross-181v1
+    question: "دکتراها در هر حوزه خدمت چند نفرن؟"
+    category: cross_analysis
+    expect:
+      route: SQL
+      intent: education_distribution_by_service_domain
+
+  - id: cross-181v2
+    question: "تعداد کارکنان دکترا به تفکیک حوزه؟"
+    category: cross_analysis
+    expect:
+      route: SQL
+      intent: education_distribution_by_service_domain
+
+  - id: cross-181v3
+    question: "هر حوزه چند نفر مدرک دکترا داره؟"
+    category: cross_analysis
+    expect:
+      route: SQL
+      intent: education_distribution_by_service_domain
+
+  # ── cross-182: female share among permanent employees per domain ───────────
+
+  - id: cross-182v1
+    question: "در کارکنان رسمی هر حوزه چند درصد خانمن؟"
+    category: cross_analysis
+    expect:
+      route: SQL
+      intent: employee_count_by_service_domain
+
+  - id: cross-182v2
+    question: "سهم زنان در نیروهای رسمی هر حوزه چقدره؟"
+    category: cross_analysis
+    expect:
+      route: SQL
+      intent: employee_count_by_service_domain
+
+  - id: cross-182v3
+    question: "نسبت خانم‌ها در کارکنان رسمی هر حوزه خدمت؟"
+    category: cross_analysis
+    expect:
+      route: SQL
+      intent: employee_count_by_service_domain
+
+  # ── cross-183: female share among contractor employees per domain ──────────
+
+  - id: cross-183v1
+    question: "در پیمانکاران هر حوزه چند درصد خانمن؟"
+    category: cross_analysis
+    expect:
+      route: SQL
+      intent: contractor_share_by_service_domain
+
+  - id: cross-183v2
+    question: "سهم زنان در نیروهای پیمانکاری هر حوزه چقدره؟"
+    category: cross_analysis
+    expect:
+      route: SQL
+      intent: contractor_share_by_service_domain
+
+  - id: cross-183v3
+    question: "نسبت خانم‌ها در کارکنان پیمانکاری هر حوزه خدمت؟"
+    category: cross_analysis
+    expect:
+      route: SQL
+      intent: contractor_share_by_service_domain
+
+  # ── cross-184: share of employees 60+ per service domain ─────────────────
+
+  - id: cross-184v1
+    question: "کارکنان بالای ۶۰ سال در هر حوزه چند درصدن؟"
+    category: cross_analysis
+    expect:
+      route: SQL
+      intent: employee_count_by_age_filter
+
+  - id: cross-184v2
+    question: "سهم نیروهای مسن (۶۰ به بالا) در هر حوزه چقدره؟"
+    category: cross_analysis
+    expect:
+      route: SQL
+      intent: employee_count_by_age_filter
+
+  - id: cross-184v3
+    question: "نسبت کارکنان بالای شصت سال در هر حوزه خدمت؟"
+    category: cross_analysis
+    expect:
+      route: SQL
+      intent: employee_count_by_age_filter
+
+  # ── cross-185: share of employees under 30 per service domain ─────────────
+
+  - id: cross-185v1
+    question: "کارکنان زیر ۳۰ سال در هر حوزه چند درصدن؟"
+    category: cross_analysis
+    expect:
+      route: SQL
+      intent: employee_count_by_age_filter
+
+  - id: cross-185v2
+    question: "سهم نیروهای جوون (زیر ۳۰) در هر حوزه چقدره؟"
+    category: cross_analysis
+    expect:
+      route: SQL
+      intent: employee_count_by_age_filter
+
+  - id: cross-185v3
+    question: "نسبت کارکنان جوان در هر حوزه خدمت؟"
+    category: cross_analysis
+    expect:
+      route: SQL
+      intent: employee_count_by_age_filter
+
+  # ── cross-186: share of university-educated employees per domain ───────────
+
+  - id: cross-186v1
+    question: "کارکنان دانشگاه رفته هر حوزه چند درصدن؟"
+    category: cross_analysis
+    expect:
+      route: SQL
+      intent: education_distribution_by_service_domain
+
+  - id: cross-186v2
+    question: "سهم نیروهای با تحصیلات دانشگاهی در هر حوزه؟"
+    category: cross_analysis
+    expect:
+      route: SQL
+      intent: education_distribution_by_service_domain
+
+  - id: cross-186v3
+    question: "نسبت کارکنان لیسانس به بالا در هر حوزه خدمت؟"
+    category: cross_analysis
+    expect:
+      route: SQL
+      intent: education_distribution_by_service_domain
+
+  # ── cross-187: share of diploma-or-lower employees per domain ─────────────
+
+  - id: cross-187v1
+    question: "کارکنان دیپلمه یا پایین‌تر هر حوزه چند درصدن؟"
+    category: cross_analysis
+    expect:
+      route: SQL
+      intent: education_distribution_by_service_domain
+
+  - id: cross-187v2
+    question: "سهم نیروهای با مدرک دیپلم و کمتر در هر حوزه؟"
+    category: cross_analysis
+    expect:
+      route: SQL
+      intent: education_distribution_by_service_domain
+
+  - id: cross-187v3
+    question: "نسبت کارکنان زیر دیپلم در هر حوزه خدمت؟"
+    category: cross_analysis
+    expect:
+      route: SQL
+      intent: education_distribution_by_service_domain
+
+  # ── cross-188: domain with highest share of employees 60+ ────────────────
+
+  - id: cross-188v1
+    question: "کدوم حوزه بیشترین درصد کارکنان مسن (بالای ۶۰) رو داره؟"
+    category: cross_analysis
+    expect:
+      route: SQL
+      intent: employee_count_by_age_filter
+
+  - id: cross-188v2
+    question: "پیرترین حوزه از نظر کارکنان کدومه؟"
+    category: cross_analysis
+    expect:
+      route: SQL
+      intent: employee_count_by_age_filter
+
+  - id: cross-188v3
+    question: "کدوم حوزه خدمت بیشترین سهم نیروهای ۶۰ به بالا داره؟"
+    category: cross_analysis
+    expect:
+      route: SQL
+      intent: employee_count_by_age_filter
+
+  # ── cross-189: domain with highest share of employees under 30 ────────────
+
+  - id: cross-189v1
+    question: "کدوم حوزه بیشترین درصد کارکنان جوون (زیر ۳۰) رو داره؟"
+    category: cross_analysis
+    expect:
+      route: SQL
+      intent: employee_count_by_age_filter
+
+  - id: cross-189v2
+    question: "جوون‌ترین حوزه از نظر کارکنان کدومه؟"
+    category: cross_analysis
+    expect:
+      route: SQL
+      intent: employee_count_by_age_filter
+
+  - id: cross-189v3
+    question: "کدوم حوزه خدمت بیشترین سهم نیروهای زیر سی سال داره؟"
+    category: cross_analysis
+    expect:
+      route: SQL
+      intent: employee_count_by_age_filter
+
+  # ── cross-190: domain with highest share of university-educated ───────────
+
+  - id: cross-190v1
+    question: "کدوم حوزه بیشترین درصد کارکنان دانشگاه رفته رو داره؟"
+    category: cross_analysis
+    expect:
+      route: SQL
+      intent: education_distribution_by_service_domain
+
+  - id: cross-190v2
+    question: "تحصیل‌کرده‌ترین حوزه کدومه؟"
+    category: cross_analysis
+    expect:
+      route: SQL
+      intent: education_distribution_by_service_domain
+
+  - id: cross-190v3
+    question: "کدوم حوزه خدمت بیشترین سهم کارکنان با تحصیلات دانشگاهی داره؟"
+    category: cross_analysis
+    expect:
+      route: SQL
+      intent: education_distribution_by_service_domain
+
+  # ── cross-191: domain with highest share of under-qualified employees ──────
+
+  - id: cross-191v1
+    question: "کدوم حوزه بیشترین کارکنان با مدرک کمتر از نیاز پست رو داره؟"
+    category: cross_analysis
+    expect:
+      route: SQL
+      intent: education_distribution_by_service_domain
+
+  - id: cross-191v2
+    question: "در کدوم حوزه بیشتر آدم مدرکشون به پستشون نمی‌رسه؟"
+    category: cross_analysis
+    expect:
+      route: SQL
+      intent: education_distribution_by_service_domain
+
+  - id: cross-191v3
+    question: "کدوم حوزه خدمت بیشترین سهم نیروهای کمتر از مدرک پست داره؟"
+    category: cross_analysis
+    expect:
+      route: SQL
+      intent: education_distribution_by_service_domain

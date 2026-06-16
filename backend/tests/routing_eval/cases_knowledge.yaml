@@ -1,0 +1,238 @@
+cases:
+  # ---------------------------------------------------------------------------
+  # Knowledge — colloquial & paraphrase robustness variants
+  # 3-4 informal/spoken variants per question (know-215 to know-224)
+  # know-221 is xfail (domain_classifier rejects English "Data Gap" as OUT_OF_SCOPE)
+  # ---------------------------------------------------------------------------
+
+  # ── know-215: definition of provisional employee ──────────────────────────
+
+  - id: know-215v1
+    question: "نیروی پیمانی یعنی چی؟"
+    category: knowledge
+    expect:
+      route: GAP
+      status: KNOWLEDGE_GAP
+
+  - id: know-215v2
+    question: "کارمند پیمانی کیه؟"
+    category: knowledge
+    expect:
+      route: GAP
+      status: KNOWLEDGE_GAP
+
+  - id: know-215v3
+    question: "منظور از استخدام پیمانی چیه؟"
+    category: knowledge
+    expect:
+      route: GAP
+      status: KNOWLEDGE_GAP
+
+  # ── know-216: difference between employment type and contract type ─────────
+
+  - id: know-216v1
+    question: "نوع استخدام با نوع قرارداد چه فرقی دارن؟"
+    category: knowledge
+    expect:
+      route: GAP
+      status: KNOWLEDGE_GAP
+
+  - id: know-216v2
+    question: "فرق استخدام و قرارداد چیه؟"
+    category: knowledge
+    expect:
+      route: GAP
+      status: KNOWLEDGE_GAP
+
+  - id: know-216v3
+    question: "نوع قرارداد همونه نوع استخدامه یا فرق دارن؟"
+    category: knowledge
+    expect:
+      route: GAP
+      status: KNOWLEDGE_GAP
+
+  # ── know-217: definition of contractor employee ───────────────────────────
+
+  - id: know-217v1
+    question: "نیروی پیمانکاری یعنی چی؟"
+    category: knowledge
+    expect:
+      route: GAP
+      status: KNOWLEDGE_GAP
+
+  - id: know-217v2
+    question: "کارمند پیمانکاری کیه؟"
+    category: knowledge
+    expect:
+      route: GAP
+      status: KNOWLEDGE_GAP
+
+  - id: know-217v3
+    question: "تفاوت پیمانی و پیمانکاری چیه؟"
+    category: knowledge
+    expect:
+      route: GAP
+      status: KNOWLEDGE_GAP
+
+  # ── know-218: how average age is calculated ───────────────────────────────
+
+  - id: know-218v1
+    question: "میانگین سن چطوری حساب میشه؟"
+    category: knowledge
+    expect:
+      route: GAP
+      status: KNOWLEDGE_GAP
+
+  - id: know-218v2
+    question: "شاخص میانگین سنی رو چطور محاسبه می‌کنن؟"
+    category: knowledge
+    expect:
+      route: GAP
+      status: KNOWLEDGE_GAP
+
+  - id: know-218v3
+    question: "فرمول محاسبه میانگین سن کارکنان چیه؟"
+    category: knowledge
+    expect:
+      route: GAP
+      status: KNOWLEDGE_GAP
+
+  # ── know-219: how contractor share is calculated ──────────────────────────
+
+  - id: know-219v1
+    question: "سهم پیمانکاری چطوری حساب میشه؟"
+    category: knowledge
+    expect:
+      route: GAP
+      status: KNOWLEDGE_GAP
+
+  - id: know-219v2
+    question: "شاخص سهم پیمانکاری رو چطور محاسبه می‌کنن؟"
+    category: knowledge
+    expect:
+      route: GAP
+      status: KNOWLEDGE_GAP
+
+  - id: know-219v3
+    question: "فرمول محاسبه نسبت پیمانکاری چیه؟"
+    category: knowledge
+    expect:
+      route: GAP
+      status: KNOWLEDGE_GAP
+
+  # ── know-220: definition of approved org chart ────────────────────────────
+
+  - id: know-220v1
+    question: "چارت مصوب یعنی چی؟"
+    category: knowledge
+    expect:
+      route: GAP
+      status: KNOWLEDGE_GAP
+
+  - id: know-220v2
+    question: "منظور از چارت مصوب در منابع انسانی چیه؟"
+    category: knowledge
+    expect:
+      route: GAP
+      status: KNOWLEDGE_GAP
+
+  - id: know-220v3
+    question: "چارت مصوب سازمانی چه مفهومیه؟"
+    category: knowledge
+    expect:
+      route: GAP
+      status: KNOWLEDGE_GAP
+
+  # ── know-221: definition of Data Gap → xfail (English term rejected by domain_classifier) ──
+
+  - id: know-221v1
+    xfail: true
+    xfail_reason: "domain_classifier rejects English 'Data Gap' as OUT_OF_SCOPE before validator can catch it"
+    question: "وقتی سیستم میگه Data Gap یعنی چی؟"
+    category: knowledge
+    expect:
+      route: GAP
+      status: KNOWLEDGE_GAP
+
+  - id: know-221v2
+    question: "پیام گپ داده یعنی چی؟"
+    category: knowledge
+    expect:
+      route: GAP
+      status: KNOWLEDGE_GAP
+
+  - id: know-221v3
+    question: "وقتی جواب داده میشه که اطلاعات وجود نداره یعنی چی؟"
+    category: knowledge
+    expect:
+      route: GAP
+      status: KNOWLEDGE_GAP
+
+  # ── know-222: organization retirement policy ─────────────────────────────
+
+  - id: know-222v1
+    question: "سیاست بازنشستگی سازمان چیه؟"
+    category: knowledge
+    expect:
+      route: GAP
+      status: KNOWLEDGE_GAP
+
+  - id: know-222v2
+    question: "قانون بازنشستگی در این سازمان چطوریه؟"
+    category: knowledge
+    expect:
+      route: GAP
+      status: KNOWLEDGE_GAP
+
+  - id: know-222v3
+    question: "رویه بازنشستگی کارکنان در سازمان چیه؟"
+    category: knowledge
+    expect:
+      route: GAP
+      status: KNOWLEDGE_GAP
+
+  # ── know-223: official retirement age rule ────────────────────────────────
+
+  - id: know-223v1
+    question: "سن بازنشستگی در این سیستم چند ساله؟"
+    category: knowledge
+    expect:
+      route: GAP
+      status: KNOWLEDGE_GAP
+
+  - id: know-223v2
+    question: "ملاک سنی بازنشستگی در این تحلیل چیه؟"
+    category: knowledge
+    expect:
+      route: GAP
+      status: KNOWLEDGE_GAP
+
+  - id: know-223v3
+    question: "از چند سالگی به بازنشستگی نزدیک حساب میشه؟"
+    category: knowledge
+    expect:
+      route: GAP
+      status: KNOWLEDGE_GAP
+
+  # ── know-224: definition of active employees ─────────────────────────────
+
+  - id: know-224v1
+    question: "کارکنان فعال یعنی چی؟"
+    category: knowledge
+    expect:
+      route: GAP
+      status: KNOWLEDGE_GAP
+
+  - id: know-224v2
+    question: "توی این سیستم کارمند فعال کیه؟"
+    category: knowledge
+    expect:
+      route: GAP
+      status: KNOWLEDGE_GAP
+
+  - id: know-224v3
+    question: "منظور از کارکنان فعال در این سامانه چیه؟"
+    category: knowledge
+    expect:
+      route: GAP
+      status: KNOWLEDGE_GAP

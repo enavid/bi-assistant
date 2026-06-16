@@ -1,0 +1,465 @@
+cases:
+  # ---------------------------------------------------------------------------
+  # Frequent HR questions — golden test suite
+  # ---------------------------------------------------------------------------
+
+  # ── Education ────────────────────────────────────────────────────────────
+
+  - id: frq-301
+    question: "نسبت کارکنان با تحصیلات مختلف (دیپلم، فوق‌دیپلم، لیسانس، فوق‌لیسانس) سازمان چه مقدار است؟"
+    category: education
+    expect:
+      route: SQL
+      intent: employee_count_by_education
+
+  - id: frq-302
+    question: "کدام مدرک تحصیلی بیشترین سهم را در سازمان دارد؟"
+    category: education
+    expect:
+      route: SQL
+      intent: most_common_education
+
+  - id: frq-303
+    question: "چند درصد افراد با تحصیلات پایین‌تر (مثل دیپلم) در پست‌های کارشناسی هستند؟"
+    category: education
+    expect:
+      route: SQL
+      intent: low_education_in_expert_roles
+
+  - id: frq-304
+    question: "آیا توزیع تحصیلات نشان‌دهنده احتمال افزایش نیاز به آموزش یا دوره‌های تخصصی است؟"
+    category: analytical
+    expect:
+      route: GAP
+      status: ANALYTICAL_GAP
+
+  - id: frq-316
+    question: "تعداد کارکنان با مدرک کارشناسی چند نفر است؟"
+    category: education
+    expect:
+      route: SQL
+      intent: employee_count_by_education
+
+  - id: frq-317
+    question: "چند نفر مدرک فوق‌دیپلم دارند؟"
+    category: education
+    expect:
+      route: SQL
+      intent: employee_count_by_education
+
+  - id: frq-318
+    question: "سهم کارکنان با مدرک دکتری چند نفر یا چند درصد است؟"
+    category: education
+    expect:
+      route: SQL
+      intent: employee_count_by_education
+
+  - id: frq-323
+    question: "بیشترین مدرک تحصیلی موجود چیست؟"
+    category: education
+    expect:
+      route: SQL
+      intent: most_common_education
+
+  - id: frq-324
+    question: "کمترین مدرک تحصیلی کدام است و آیا این نشان‌دهنده کمبود تخصص است؟"
+    category: analytical
+    expect:
+      route: GAP
+      status: ANALYTICAL_GAP
+
+  # ── Age & Gender mix ─────────────────────────────────────────────────────
+
+  - id: frq-305
+    question: "کدام گروه سنی بیشترین نیروی انسانی را دارد؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: employee_count_by_age_group
+
+  - id: frq-306
+    question: "آیا نیروی انسانی در آستانه بازنشستگی زیاد است؟"
+    category: seniority
+    expect:
+      route: SQL
+      intent: near_retirement_analysis
+
+  - id: frq-307
+    question: "آیا کمبود نیرو در گروه‌های سنی جوان‌تر وجود دارد؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: headcount_gap_by_department
+
+  - id: frq-308
+    xfail: true
+    xfail_reason: "intent_parser maps gender-age distribution to individual_employee_info causing ACCESS_DENIED"
+    question: "آیا توزیع جنسیتی در برخی گروه‌های سنی نامتوازن است؟"
+    category: demographics
+    expect:
+      route: SQL
+
+  - id: frq-311
+    question: "در بازه سنی مختلف چند مرد حضور دارند؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: employee_count_by_age_group
+
+  - id: frq-312
+    question: "در بازه سنی مختلف چند زن حضور دارند؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: employee_count_by_age_group
+
+  - id: frq-313
+    question: "تعداد کارکنان زیر ۲۰ سال چند نفر است؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: employee_count_by_age_filter
+
+  - id: frq-314
+    question: "تعداد کارکنان ۶۰ سال به بالا چقدر است؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: employee_count_by_age_filter
+
+  - id: frq-319
+    question: "اختلاف میانگین سن مردان و زنان چقدر است؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: average_age
+
+  - id: frq-320
+    question: "آیا ساختار کلی کارکنان به سمت سالخوردگی در حال حرکت است؟"
+    category: analytical
+    expect:
+      route: GAP
+      status: ANALYTICAL_GAP
+
+  - id: frq-325
+    question: "چه درصدی از کارکنان زن هستند و آیا تعادل جنسیتی برقرار است؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: gender_percentage
+
+  - id: frq-331
+    question: "میانگین سن کارکنان زن و مرد چقدر است؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: average_age
+
+  - id: frq-332
+    question: "تعداد کل کارکنان زن و مرد چقدر است؟"
+    category: demographics
+    expect:
+      route: SQL
+
+  # ── Org Structure ────────────────────────────────────────────────────────
+
+  - id: frq-309
+    question: "کدام حوزه خدمت بیشترین تعداد کارکنان را دارد؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: employee_count_by_service_domain
+
+  - id: frq-310
+    question: "کدام حوزه کمبود نیرو دارد و باید تقویت شود؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: headcount_gap_by_service_domain
+
+  - id: frq-315
+    question: "سهم کارکنان به تفکیک حوزه خدمت چقدر است؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: employee_count_by_service_domain
+
+  - id: frq-321
+    question: "کدام بخش بیشترین کارکنان را دارد؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: employee_count_by_department
+
+  - id: frq-322
+    question: "آیا نیروی انسانی بین بخش‌ها متوازن است؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: headcount_gap_by_department
+
+  # ── Employment & Contract Type ───────────────────────────────────────────
+
+  - id: frq-333
+    question: "تعداد کارکنان رسمی و قراردادی چقدر است؟"
+    category: employment_type
+    expect:
+      route: SQL
+      intent: employee_count_by_employment_type
+
+  - id: frq-334
+    question: "تعداد کارکنان بدون سابقه چقدر است؟"
+    category: employment_type
+    expect:
+      route: SQL
+      intent: employee_count_without_service_years
+
+  - id: frq-335
+    question: "تعداد کارکنان به تفکیک نوع استخدام چقدر است؟"
+    category: employment_type
+    expect:
+      route: SQL
+      intent: employee_count_by_employment_type
+
+  - id: frq-336
+    question: "تعداد کارکنان بر اساس نوع قرارداد چقدر است؟"
+    category: employment_type
+    expect:
+      route: SQL
+      intent: employee_count_by_contract_type
+
+  # ── Contractor ───────────────────────────────────────────────────────────
+
+  - id: frq-326
+    question: "سهم کارکنان شاغل در پیمانکاری در هر حوزه چند درصد است؟"
+    category: contractor
+    expect:
+      route: SQL
+      intent: contractor_share_by_service_domain
+
+  # ── Recruitment ──────────────────────────────────────────────────────────
+
+  - id: frq-327
+    question: "تعداد جذب سالانه چه روندی را طی کرده (افزایشی، کاهشی، نوسانی)؟"
+    category: recruitment
+    expect:
+      route: SQL
+      intent: hiring_trend_annual
+
+  - id: frq-328
+    question: "نوع قراردادهای جذب سال اخیر چقدر بوده است و در هر نوع قرارداد چند نفر جذب شده‌اند؟"
+    category: recruitment
+    expect:
+      route: SQL
+      intent: hiring_by_contract_type_recent_year
+
+  - id: frq-329
+    question: "کدوم سال بیشترین جذب نیرو داشتیم و کدوم سال کمترین؟"
+    category: recruitment
+    expect:
+      route: SQL
+      intent: most_or_least_hiring_year
+
+  - id: frq-337
+    question: "تعداد جذب ۱۵ سال اخیر چقدر بوده است؟"
+    category: recruitment
+    expect:
+      route: SQL
+      intent: hiring_last_15_years
+
+  # ── Geography ────────────────────────────────────────────────────────────
+
+  - id: frq-330
+    question: "کدام محل خدمت بیشترین نیرو را دارد؟"
+    category: geography
+    expect:
+      route: SQL
+      intent: employee_count_by_work_location
+
+  # ── Analytical ───────────────────────────────────────────────────────────
+
+  - id: frq-338
+    question: "آیا تعادل بین چارت سازمانی و واقعیت نیروی انسانی برقرار است؟"
+    category: analytical
+    expect:
+      route: SQL
+      intent: headcount_gap_by_department
+
+  - id: frq-339
+    xfail: true
+    xfail_reason: "plural ریسک‌هایی not matched by QVAL_GAP_ANALYTICAL_RISK_ASSESSMENT (only catches singular ریسکی)"
+    question: "میانگین سن کارکنان زن (۴۱ سال) چه ریسک‌هایی برای سازمان دارد؟"
+    category: analytical
+    expect:
+      route: GAP
+      status: ANALYTICAL_GAP
+
+  - id: frq-340
+    xfail: true
+    xfail_reason: "organizational stability impact question routed to SQL instead of GAP/ANALYTICAL_GAP"
+    question: "سهم کارکنان رسمی و پیمانی چگونه بر ثبات سازمان تأثیر می‌گذارد؟"
+    category: analytical
+    expect:
+      route: GAP
+      status: ANALYTICAL_GAP
+
+  - id: frq-341
+    question: "سهم کارکنان شاغل در پیمانکاری چه ریسکی در بهره‌وری و حفظ نیرو ایجاد می‌کند؟"
+    category: analytical
+    expect:
+      route: GAP
+      status: ANALYTICAL_GAP
+
+  - id: frq-342
+    question: "آیا جذب نیرو با افزایش کار سازمان هماهنگ بوده؟"
+    category: analytical
+    expect:
+      route: GAP
+      status: ANALYTICAL_GAP
+
+  # ---------------------------------------------------------------------------
+  # Robustness variants — colloquial, typos, different verb forms
+  # Goal: verify the pipeline handles natural colloquial phrasing
+  # ---------------------------------------------------------------------------
+
+  # ── Recruitment — most/least hiring year ─────────────────────────────────
+  # "hiring" keyword variants — all should pass
+
+  - id: frq-343
+    question: "در کدام سال بیشترین نیرو جذب شده؟"
+    category: recruitment
+    expect:
+      route: SQL
+      intent: most_or_least_hiring_year
+
+  - id: frq-344
+    question: "کمترین جذب نیرو در کدوم سال بوده؟"
+    category: recruitment
+    expect:
+      route: SQL
+      intent: most_or_least_hiring_year
+
+  - id: frq-345
+    question: "سال بیشترین جذب نیرو کدومه؟"
+    category: recruitment
+    expect:
+      route: SQL
+      intent: most_or_least_hiring_year
+
+  - id: frq-346
+    question: "کدوم سال رکورد بیشترین جذب نیروی انسانی رو داشتیم؟"
+    category: recruitment
+    expect:
+      route: SQL
+      intent: most_or_least_hiring_year
+
+  # "employment" keyword variants — domain passes but intent_parser gets confused (xfail)
+
+  - id: frq-347
+    xfail: true
+    xfail_reason: "استخدام without جذب نیرو context → intent_parser returns NEEDS_CLARIFICATION"
+    question: "بیشترین استخدام توی کدوم سال بوده؟"
+    category: recruitment
+    expect:
+      route: SQL
+
+  - id: frq-348
+    xfail: true
+    xfail_reason: "استخدام without جذب نیرو context → intent_parser returns NEEDS_CLARIFICATION"
+    question: "کدوم سال کمترین استخدام داشتیم؟"
+    category: recruitment
+    expect:
+      route: SQL
+
+  # "hire" without "manpower" keyword — domain classifier score too low (DomainClassifier bug)
+
+  - id: frq-349
+    xfail: true
+    xfail_reason: "جذب alone scores 1.60 in DomainClassifier — below HR threshold, routed OUT_OF_SCOPE in production"
+    question: "سالی که بیشترین و کمترین جذب انجام شده کدام است؟"
+    category: recruitment
+    expect:
+      route: SQL
+
+  # ── Hiring trend — colloquial variants ───────────────────────────────────
+
+  - id: frq-350
+    question: "روند استخدام سالانه افزایشیه یا کاهشی؟"
+    category: recruitment
+    expect:
+      route: SQL
+      intent: hiring_trend_annual
+
+  - id: frq-351
+    question: "جذب نیرو هر سال زیاد شده یا کم؟"
+    category: recruitment
+    expect:
+      route: SQL
+      intent: hiring_trend_annual
+
+  - id: frq-352
+    question: "جذب نیرو در طول سال‌ها چه ترندی داشته؟"
+    category: recruitment
+    expect:
+      route: SQL
+      intent: hiring_trend_annual
+
+  # ── Male/Female count — short & colloquial variants ──────────────────────
+
+  - id: frq-353
+    question: "کل کارکنان مرد چنده؟"
+    category: demographics
+    expect:
+      route: SQL
+
+  - id: frq-354
+    question: "چند تا کارمند زن داریم؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: employee_count_by_gender
+
+  - id: frq-355
+    question: "نسبت زن و مرد توی سازمان چقدره؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: employee_count_by_gender
+
+  # ── Under-qualified in expert roles — colloquial variants ────────────────
+
+  - id: frq-356
+    question: "چن درصد از کارمندا دیپلمه هستن ولی پست کارشناسی دارن؟"
+    category: education
+    expect:
+      route: SQL
+      intent: low_education_in_expert_roles
+
+  - id: frq-357
+    question: "سهم افراد با مدرک دیپلم در مشاغل کارشناسی چقدره؟"
+    category: education
+    expect:
+      route: SQL
+
+  # ── Org units — short variants ───────────────────────────────────────────
+
+  - id: frq-358
+    question: "کدوم حوزه بیشترین نیرو رو داره؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: employee_count_by_service_domain
+
+  - id: frq-359
+    question: "پرکارمندترین بخش کدومه؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: employee_count_by_department
+
+  - id: frq-360
+    question: "کدوم دپارتمان کمبود نیرو داره؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: headcount_gap_by_department
