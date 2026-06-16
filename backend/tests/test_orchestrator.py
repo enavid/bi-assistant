@@ -1982,3 +1982,105 @@ async def test_orchestrator_skips_controlled_dynamic_when_flag_false(metadata_se
     with patch("app.hr_analytics.use_cases.orchestrator.apply_controlled_dynamic") as mock_cd:
         await orch.arun("تعداد کارکنان زن")
     mock_cd.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# LLM Fallback — default_model gate
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_llm_fallback_called_when_default_model_set(metadata_service):
+    """When default_model is set and plan status is NO_TEMPLATE, LLM must be invoked."""
+    import uuid
+    from unittest.mock import AsyncMock, patch
+
+    from app.hr_analytics.use_cases.orchestrator import RequestContext
+
+    from app.hr_analytics.domain.entities import GenerationResult as LLMGenResult
+
+    mock_ollama = AsyncMock()
+    mock_ollama.generate = AsyncMock(
+        return_value=LLMGenResult(
+            sql="SELECT COUNT(*) FROM hr_mvp.vw_hr_employee_analytics v WHERE v.is_active = TRUE",
+            success=True,
+        )
+    )
+
+    orchestrator = LLMOrchestrator(
+        metadata_service=metadata_service,
+        default_execute_sql=False,
+        ollama_client=mock_ollama,
+        default_model="llama3.1:8b",
+    )
+
+    context = RequestContext(request_id=str(uuid.uuid4()), question="سوالی که template ندارد")
+    context.runtime_params = {"current_shamsi_year": 1404}
+    context.intent_result = {"filters": [], "group_by": [], "metrics": [], "params": {}}
+
+    no_template_plan = {"status": "NO_TEMPLATE", "route": "SQL", "sql": None}
+
+    with patch.object(orchestrator, "_fallback_sql_template_engine", return_value=no_template_plan):
+        await orchestrator._plan_sql(context)
+
+    mock_ollama.generate.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_llm_fallback_not_called_when_no_default_model(metadata_service):
+    """When default_model is None and runtime_params has no model, LLM must NOT be called."""
+    import uuid
+    from unittest.mock import AsyncMock, patch
+
+    from app.hr_analytics.use_cases.orchestrator import RequestContext
+
+    mock_ollama = AsyncMock()
+
+    orchestrator = LLMOrchestrator(
+        metadata_service=metadata_service,
+        default_execute_sql=False,
+        ollama_client=mock_ollama,
+        default_model=None,
+    )
+
+    context = RequestContext(request_id=str(uuid.uuid4()), question="سوال بدون مدل")
+    context.runtime_params = {"current_shamsi_year": 1404}
+    context.intent_result = {"filters": [], "group_by": [], "metrics": [], "params": {}}
+
+    no_template_plan = {"status": "NO_TEMPLATE", "route": "SQL", "sql": None}
+
+    with patch.object(orchestrator, "_fallback_sql_template_engine", return_value=no_template_plan):
+        await orchestrator._plan_sql(context)
+
+    mock_ollama.generate.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_fallback_skipped_reason_in_trace_when_model_not_configured(metadata_service):
+    """When LLM trigger fires but no model configured, trace must record fallback_skipped_reason."""
+    import uuid
+    from unittest.mock import patch
+
+    from app.hr_analytics.use_cases.orchestrator import RequestContext
+
+    orchestrator = LLMOrchestrator(
+        metadata_service=metadata_service,
+        default_execute_sql=False,
+        ollama_client=None,
+        default_model=None,
+    )
+
+    context = RequestContext(request_id=str(uuid.uuid4()), question="سوال بدون مدل و ollama")
+    context.runtime_params = {"current_shamsi_year": 1404}
+    context.intent_result = {"filters": [], "group_by": [], "metrics": [], "params": {}}
+
+    no_template_plan = {"status": "NO_TEMPLATE", "route": "SQL", "sql": None}
+
+    with patch.object(orchestrator, "_fallback_sql_template_engine", return_value=no_template_plan):
+        await orchestrator._plan_sql(context)
+
+    planner_trace = next((t for t in context.traces if t.step == "sql_planner"), None)
+    assert planner_trace is not None
+    assert "fallback_skipped_reason" in planner_trace.details, (
+        f"Expected fallback_skipped_reason in trace, got: {planner_trace.details}"
+    )

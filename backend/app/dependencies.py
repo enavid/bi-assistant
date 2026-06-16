@@ -83,6 +83,7 @@ def get_hr_bi_orchestrator():
         gap_service=GapService(metadata_service=metadata),
         response_builder=ResponseBuilder(metadata_service=metadata),
         ollama_client=ollama_client,
+        default_model=settings.default_model,
         default_execute_sql=settings.default_execute_sql,
         current_shamsi_year=settings.current_shamsi_year,
         strict_metadata=True,

@@ -37,6 +37,7 @@ class Settings(BaseSettings):
     use_template_engine: bool = True
     use_controlled_dynamic: bool = True
     force_llm_for_incomplete_template: bool = False
+    default_model: str | None = None
 
     @field_validator("cors_origins", mode="before")
     @classmethod

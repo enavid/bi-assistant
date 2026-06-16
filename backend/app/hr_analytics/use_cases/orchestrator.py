@@ -204,6 +204,7 @@ class LLMOrchestrator:
         gap_service: Any | None = None,
         response_builder: Any | None = None,
         ollama_client: Any | None = None,
+        default_model: str | None = None,
         default_user_role: str = "demo_user",
         default_execute_sql: bool = True,
         current_shamsi_year: int = 1404,
@@ -231,6 +232,7 @@ class LLMOrchestrator:
         self.gap_service = gap_service
         self.response_builder = response_builder
         self.ollama_client = ollama_client
+        self.default_model = default_model
 
         self.default_user_role = default_user_role
         self.default_execute_sql = default_execute_sql
@@ -623,7 +625,7 @@ class LLMOrchestrator:
             else:
                 plan.setdefault("controlled_dynamic_reason", _cd.get("reason"))
 
-        model = context.runtime_params.get("model")
+        model = context.runtime_params.get("model") or self.default_model
         _plan_status = str(plan.get("status") or "").upper()
         _llm_trigger_reason: str | None = (
             _plan_status if _plan_status in self._LLM_TRIGGER_STATUSES else None
@@ -631,6 +633,12 @@ class LLMOrchestrator:
         should_call_llm = (
             model is not None and self.ollama_client is not None and _llm_trigger_reason is not None
         )
+        _fallback_skipped_reason: str | None = None
+        if _llm_trigger_reason is not None and not should_call_llm:
+            if self.ollama_client is None:
+                _fallback_skipped_reason = "ollama_not_configured"
+            elif model is None:
+                _fallback_skipped_reason = "model_not_configured"
         _model_called: str | None = None
 
         if should_call_llm:
@@ -700,6 +708,7 @@ class LLMOrchestrator:
                 "template_status": plan.get("status"),
                 "unused_filters": list(plan.get("unused_params") or []),
                 "model_reason": _llm_trigger_reason,
+                "fallback_skipped_reason": _fallback_skipped_reason,
                 "coverage_status": _cov.get("status"),
                 "missing_filters": list(_cov.get("missing") or []),
                 "model_called": _model_called,
