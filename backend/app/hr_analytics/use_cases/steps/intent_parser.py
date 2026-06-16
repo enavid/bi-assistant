@@ -1431,9 +1431,7 @@ class IntentParser:
             if query_features.get("explicit_province"):
                 province_val = self._extract_province_value(question)
                 if province_val:
-                    filters.append(
-                        {"column": "province", "operator": "=", "value": province_val}
-                    )
+                    filters.append({"column": "province", "operator": "=", "value": province_val})
                     required_columns.extend(["province"])
                     group_by = [col for col in group_by if col != "province"]
             required_columns.extend(["service_domain", "employee_id", "is_active"])
@@ -1756,7 +1754,24 @@ class IntentParser:
         return self._extract_allowed_value(question, service, "contract_type")
 
     _PROVINCE_STOP_WORDS: frozenset[str] = frozenset(
-        {"به", "در", "از", "با", "برای", "که", "تا", "یا", "و", "را", "ها", "های", "بر", "این", "آن", "هر"}
+        {
+            "به",
+            "در",
+            "از",
+            "با",
+            "برای",
+            "که",
+            "تا",
+            "یا",
+            "و",
+            "را",
+            "ها",
+            "های",
+            "بر",
+            "این",
+            "آن",
+            "هر",
+        }
     )
 
     def _extract_province_value(self, question: str) -> str | None:
