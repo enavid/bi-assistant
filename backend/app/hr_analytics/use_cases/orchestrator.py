@@ -1677,8 +1677,12 @@ class LLMOrchestrator:
         _knowledge_difference_triggers = [" تفاوت ", "تفاوت "]
         _data_question_excludes = ["تعداد", "چند نفر", "چقدر", "چند درصد", "کدام"]
 
-        _has_knowledge_prefix = any(question.startswith(p) or p in question for p in _knowledge_prefixes)
-        _has_knowledge_suffix = any(question.endswith(s) or s in question for s in _knowledge_suffixes)
+        _has_knowledge_prefix = any(
+            question.startswith(p) or p in question for p in _knowledge_prefixes
+        )
+        _has_knowledge_suffix = any(
+            question.endswith(s) or s in question for s in _knowledge_suffixes
+        )
         _is_difference_question = (
             any(t in question for t in _knowledge_difference_triggers)
             and _has_knowledge_suffix

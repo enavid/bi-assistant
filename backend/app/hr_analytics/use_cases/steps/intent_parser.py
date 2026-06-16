@@ -986,8 +986,7 @@ class IntentParser:
             "به زودی بازنشسته",
         ]
         if self._has_any(question, _terminated_terms) or (
-            "بازنشسته" in question
-            and not self._has_any(question, _near_retirement_indicators)
+            "بازنشسته" in question and not self._has_any(question, _near_retirement_indicators)
         ):
             add(("terminated_employee_analysis", 200, "terminated_employee_data_gap"))
         if self._has_any(
@@ -995,7 +994,9 @@ class IntentParser:
             ["آستانه بازنشستگی", "نزدیک بازنشستگی", "در شرف بازنشستگی", "بازنشستگی قریب"],
         ):
             add(("near_retirement_analysis", 300, "near_future_retirement_keywords"))
-        if self._has_any(question, ["بازنشستگی", "بازنشسته می‌شوند", "بازنشسته میشوند", "بازنشسته خواهند"]):
+        if self._has_any(
+            question, ["بازنشستگی", "بازنشسته می‌شوند", "بازنشسته میشوند", "بازنشسته خواهند"]
+        ):
             add(("near_retirement_analysis", 90, "retirement_keywords"))
         if self._has_any(question, ["بهره وری پیمانکار", "بهره وری پیمانکاری", "عملکرد پیمانکار"]):
             add(("contractor_productivity_analysis", 90, "contractor_productivity_gap"))
