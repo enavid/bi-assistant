@@ -1222,7 +1222,18 @@ def _build_data_gap_rules() -> list[JsonDict]:
         {
             "rule_id": "QVAL_GAP_CITY",
             "gap_key": "city_level_analysis",
-            "terms": ["شهر", "شهری", "هر شهر", "سطح شهر", "تهران", "مشهد", "اصفهان", "شیراز", "تبریز", "کرج"],
+            "terms": [
+                "شهر",
+                "شهری",
+                "هر شهر",
+                "سطح شهر",
+                "تهران",
+                "مشهد",
+                "اصفهان",
+                "شیراز",
+                "تبریز",
+                "کرج",
+            ],
             "excluded_any": ["استان"],
             "severity": "medium",
             "message_fa": "در داده MVP فعلی، اطلاعات شهر قابل اتکا نیست و باید به عنوان Data Gap ثبت شود.",
@@ -1288,7 +1299,15 @@ def _build_data_gap_rules() -> list[JsonDict]:
         {
             "rule_id": "QVAL_GAP_AGING_STRUCTURE",
             "gap_key": "workforce_aging_trend_analysis",
-            "terms": ["سالخوردگی", "پیر شدن", "پیر میشه", "پیر میشود", "پیر می‌شود", "به سمت سالخوردگی", "ساختار کلی کارکنان به سمت"],
+            "terms": [
+                "سالخوردگی",
+                "پیر شدن",
+                "پیر میشه",
+                "پیر میشود",
+                "پیر می‌شود",
+                "به سمت سالخوردگی",
+                "ساختار کلی کارکنان به سمت",
+            ],
             "severity": "medium",
             "gap_type": "analytical",
             "message_fa": "تحلیل سالخوردگی نیروی انسانی نیازمند تعریف آستانه و منطق تحلیلی رسمی است.",
@@ -1343,7 +1362,14 @@ def _build_data_gap_rules() -> list[JsonDict]:
             "gap_key": "hr_employee_type_definition",
             "terms": ["کیه", "کیست"],
             "required_any": [
-                "پیمانی", "پیمانکاری", "رسمی", "قراردادی", "کارمند", "نیرو", "فعال", "استخدام",
+                "پیمانی",
+                "پیمانکاری",
+                "رسمی",
+                "قراردادی",
+                "کارمند",
+                "نیرو",
+                "فعال",
+                "استخدام",
             ],
             "severity": "medium",
             "gap_type": "knowledge",
@@ -1517,9 +1543,12 @@ def _has_education_hr_signals(question: str) -> bool:
     about employee education distribution.
     """
     specific_edu = [
-        "فوق‌لیسانس", "فوق لیسانس",   # master's degree (also matches فوق‌لیسانسا)
-        "دانشگاه‌دیده", "دانشگاه دیده", # university-educated
-        "دانشگاه‌رفته", "دانشگاه رفته", # went to university
+        "فوق‌لیسانس",
+        "فوق لیسانس",  # master's degree (also matches فوق‌لیسانسا)
+        "دانشگاه‌دیده",
+        "دانشگاه دیده",  # university-educated
+        "دانشگاه‌رفته",
+        "دانشگاه رفته",  # went to university
     ]
     if any(t in question for t in specific_edu):
         return True

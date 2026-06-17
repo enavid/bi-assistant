@@ -310,7 +310,9 @@ class LLMOrchestrator:
             if self._is_terminal(context.domain_result):
                 # Degree-level vocabulary (فوق‌لیسانس, دانشگاه‌دیده, etc.) is
                 # unambiguously HR — bypass a NON_HR verdict from the domain classifier.
-                if self._education_domain_override(context.normalized_question, context.domain_result):
+                if self._education_domain_override(
+                    context.normalized_question, context.domain_result
+                ):
                     context.domain_result = {}
                 else:
                     logger.info(
@@ -2157,10 +2159,14 @@ class LLMOrchestrator:
         if str(domain_result.get("status") or "").upper() != ValidationStatus.OUT_OF_SCOPE.value:
             return False
         specific_edu = [
-            "فوق لیسانس", "فوق‌لیسانس",
-            "دانشگاه دیده", "دانشگاه‌دیده",
-            "دانشگاه رفته", "دانشگاه‌رفته",
-            "دکترا", "دکتری",  # doctorate requests blocked by validator if individual
+            "فوق لیسانس",
+            "فوق‌لیسانس",
+            "دانشگاه دیده",
+            "دانشگاه‌دیده",
+            "دانشگاه رفته",
+            "دانشگاه‌رفته",
+            "دکترا",
+            "دکتری",  # doctorate requests blocked by validator if individual
         ]
         if any(t in question for t in specific_edu):
             return True
