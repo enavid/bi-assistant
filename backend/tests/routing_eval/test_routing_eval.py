@@ -58,6 +58,11 @@ def _mismatches(payload: dict, expect: dict) -> list[str]:
         got = payload.get("status")
         if got != expect["status"]:
             errors.append(f"status     expected={expect['status']!r:20s}  got={got!r}")
+    elif expect.get("route") == "SQL" and payload.get("status") == "SQL_VALIDATION_FAILED":
+        # When no explicit status is asserted, a SQL route must not silently fail validation.
+        errors.append(
+            "status     expected=<valid SQL>         got='SQL_VALIDATION_FAILED' (implicit check)"
+        )
 
     if "intent" in expect:
         got = payload.get("detected_intent") or payload.get("intent")
