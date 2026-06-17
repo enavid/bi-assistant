@@ -406,6 +406,33 @@ class QuestionValidator:
         raw_table_matches = _find_terms(lower_question, self.raw_table_terms, case_sensitive=False)
         direct_sql_match = self._looks_like_direct_sql(lower_question)
 
+        # A question that asks about access *policy* ("is it possible?") rather than requesting
+        # raw data should be clarified, not denied. Only applies when raw_table is the sole hit.
+        _permission_markers = ["ممکنه", "ممکن است", "امکانپذیره", "آیا اجازه", "آیا مجاز"]
+        if (
+            raw_table_matches
+            and not prompt_matches
+            and not dangerous_sql_matches
+            and not direct_sql_match
+            and any(m in lower_question for m in _permission_markers)
+        ):
+            return QuestionValidationResult(
+                route=ROUTE_REJECT,
+                status=STATUS_NEEDS_CLARIFICATION,
+                is_valid=False,
+                reason="Question asks about raw-data access policy rather than requesting data.",
+                confidence=0.85,
+                normalized_question=question,
+                detected_output_level="clarification",
+                detected_question_type="access_policy_inquiry",
+                matched_rules=[],
+                violations=[],
+                safety_flags=[],
+                policy_hints=policy_hints,
+                suggested_next_step="Ask user what specific aggregate information they need.",
+                details=base_details,
+            )
+
         if prompt_matches or dangerous_sql_matches or raw_table_matches or direct_sql_match:
             matches: list[JsonDict] = []
             if prompt_matches:

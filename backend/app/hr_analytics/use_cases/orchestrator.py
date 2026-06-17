@@ -1466,16 +1466,22 @@ class LLMOrchestrator:
         if not template and template_id:
             template = self.metadata.get_sql_template(str(template_id)) or {}
 
-        # For education count: intent_parser may select a VALUE template (filtered by one
-        # education level) while the catalog default is the GROUP BY template. Re-fetch
-        # to use the specific template the intent_parser chose.
-        _education_value_templates = {"TPL_EMPLOYEE_COUNT_BY_EDUCATION_VALUE"}
-        if template_id and template_id in _education_value_templates and template_id != template.get(
-            "template_id"
-        ):
-            specific = self.metadata.get_sql_template(str(template_id))
-            if specific:
-                template = specific
+        # For certain intents the catalog provides a generic default template, but intent_parser
+        # selects a more specific breakdown template based on group_by parameters. In these cases
+        # prefer the specific template chosen by intent_parser over the catalog default.
+        # Use an explicit allowlist to avoid breaking intents where the catalog default is correct
+        # (e.g. employee_count_by_employment_type correctly uses the GROUP BY catalog template).
+        _prefer_specific_template_intents = {"average_age", "near_retirement_analysis"}
+        _prefer_specific_template_ids = {"TPL_EMPLOYEE_COUNT_BY_EDUCATION_VALUE"}
+        if template_id and template_id != template.get("template_id"):
+            should_override = (
+                str(intent_id) in _prefer_specific_template_intents
+                or template_id in _prefer_specific_template_ids
+            )
+            if should_override:
+                specific = self.metadata.get_sql_template(str(template_id))
+                if specific:
+                    template = specific
 
         # Some intents intentionally do not carry sql_template_id in early metadata
         # drafts. In that case, find a ready template by its intent field.
@@ -1690,6 +1696,12 @@ class LLMOrchestrator:
                 "aging_workforce_analysis",
                 ["سالخوردگی", "پیر شدن", "ساختار سنی"],
                 "برای تحلیل سالخوردگی باید آستانه و قاعده تحلیلی تعریف شود.",
+                True,
+            ),
+            (
+                "org_growth_hiring_alignment",
+                ["گسترش سازمان", "رشد سازمان", "توسعه سازمان"],
+                "داده حجم و رشد سازمان در MVP فعلی برای مقایسه با جذب وجود ندارد.",
                 True,
             ),
         ]
@@ -2196,6 +2208,13 @@ class LLMOrchestrator:
         # Colloquial workforce-aging idiom requires org context.
         if "پیر میشه" in question and "سازمان" in question:
             return True
+        # HR meta-questions (asking what a system message or term means) should reach
+        # the question_validator which catches "یعنی چی/چه" and returns KNOWLEDGE_GAP.
+        # Only bypass when the question has no strong non-HR business terms.
+        non_hr_terms = ["فروش", "درآمد", "سود", "زیان", "مارکتینگ", "مشتری", "فاکتور"]
+        if any(m in question for m in [" یعنی چی", " یعنی چه", "یعنی چی؟", "یعنی چه؟"]):
+            if not any(t in question for t in non_hr_terms):
+                return True
         return False
 
 

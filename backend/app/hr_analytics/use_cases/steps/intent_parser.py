@@ -142,7 +142,7 @@ DATA_GAP_INTENT_KEYWORDS: list[tuple[str, list[str]]] = [
         "contractor_productivity_analysis",
         ["بهره وری پیمانکار", "بهره وری پیمانکاری", "عملکرد پیمانکار"],
     ),
-    ("hiring_business_growth_alignment", ["افزایش کار", "رشد کار", "حجم کار", "هماهنگ بوده"]),
+    ("hiring_business_growth_alignment", ["افزایش کار", "رشد کار", "حجم کار", "هماهنگ بوده", "گسترش سازمان", "رشد سازمان"]),
     ("education_training_need_analysis", ["نیاز آموزشی", "دوره تخصصی", "آموزش", "کمبود تخصص"]),
     ("workforce_aging_trend_analysis", ["سالخوردگی", "پیر شدن", "ساختار سنی", "به سمت سالخوردگی"]),
     (
@@ -1138,8 +1138,10 @@ class IntentParser:
             add(("near_retirement_analysis", 90, "retirement_keywords"))
         if self._has_any(question, ["بهره وری پیمانکار", "بهره وری پیمانکاری", "عملکرد پیمانکار"]):
             add(("contractor_productivity_analysis", 90, "contractor_productivity_gap"))
-        if self._has_any(question, ["افزایش کار", "رشد کار", "حجم کار"]):
+        if self._has_any(question, ["افزایش کار", "رشد کار", "حجم کار", "گسترش سازمان", "رشد سازمان", "توسعه سازمان"]):
             add(("hiring_business_growth_alignment", 80, "business_growth_data_gap"))
+        if "متناسب" in question and self._has_any(question, ["جذب", "استخدام"]):
+            add(("hiring_business_growth_alignment", 75, "growth_alignment_gap"))
         if self._has_any(question, ["سالخوردگی", "پیر شدن", "به سمت سالخوردگی"]):
             add(("workforce_aging_trend_analysis", 80, "aging_analysis_gap"))
         if self._has_any(question, ["نیاز آموزشی", "دوره تخصصی", "کمبود تخصص"]):
@@ -2122,9 +2124,11 @@ class IntentParser:
         # Avoid returning a single gender for "male and female" distribution questions.
         if "زن و مرد" in question or "مرد و زن" in question:
             return None
-        if re.search(r"(?<!\S)(زن|زنان|خانم|خانم ها)(?!\S)", question):
+        # Allow trailing punctuation (e.g. "خانمن؟") by using a lookahead that only
+        # rejects continuation with another Persian/Arabic letter.
+        if re.search(r"(?<!\S)(زن|زنان|خانم(?:ن|‌ها| ها)?)(?![؀-ۿ])", question):
             return "زن"
-        if re.search(r"(?<!\S)(مرد|مردان|آقا|آقایان)(?!\S)", question):
+        if re.search(r"(?<!\S)(مرد|مردان|آقا(?:یان)?)(?![؀-ۿ])", question):
             return "مرد"
         return None
 
