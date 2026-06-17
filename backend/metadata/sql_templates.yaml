@@ -846,11 +846,16 @@ templates:
   - site_name
   - province
   - is_active
+  parameters:
+  - name: result_limit
+    type: integer
+    required: false
+    default: 'NULL'
   business_rules_fa: در MVP محل خدمت بر اساس site_name و در صورت نبود آن بر اساس province گزارش می‌شود؛ تحلیل سطح شهر Data
     Gap است.
   sql: "SELECT\n    COALESCE(v.site_name, v.province) AS work_location,\n    COUNT(v.employee_id) AS employee_count\nFROM\
     \ hr_mvp.vw_hr_employee_analytics v\nWHERE v.is_active = TRUE\nGROUP BY COALESCE(v.site_name, v.province)\nORDER BY employee_count\
-    \ DESC;\n"
+    \ DESC\nLIMIT {result_limit};\n"
 - template_id: TPL_HIRING_TREND_ANNUAL
   report_id: RPT_HR_010
   intent: hiring_trend_annual

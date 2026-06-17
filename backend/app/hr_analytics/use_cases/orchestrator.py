@@ -874,10 +874,19 @@ class LLMOrchestrator:
             return []
         section = m.group(1)
         cols: list[str] = []
-        for part in section.split(","):
-            col = self._normalize_column_name(part)
+        # Extract qualified v.col references first — handles COALESCE(v.a, v.b) and similar
+        for match in re.finditer(
+            r"\bv\s*\.\s*([A-Za-z_][A-Za-z0-9_]*)\b", section, flags=re.IGNORECASE
+        ):
+            col = match.group(1)
             if col and col not in cols:
                 cols.append(col)
+        # Fallback for unqualified column references (no v. prefix)
+        if not cols:
+            for part in section.split(","):
+                col = self._normalize_column_name(part)
+                if col and col not in cols:
+                    cols.append(col)
         return cols
 
     @staticmethod
