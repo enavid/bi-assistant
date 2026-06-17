@@ -13,6 +13,22 @@ from app.hr_analytics.use_cases.steps.question_validator import QuestionValidato
 from app.hr_analytics.use_cases.steps.semantic_mapper import SemanticMapper
 
 
+class _SpySQLGenerator:
+    """Minimal sql_generator stub that records calls and returns a fixed SQL."""
+
+    def __init__(self, sql: str = "SELECT 1 AS spy_result;"):
+        self.called = False
+        self.sql = sql
+
+    def run(self, **_kwargs):
+        self.called = True
+        return {"status": "OK", "sql": self.sql, "can_execute_sql": True, "source": "spy_generator"}
+
+    # support call_component's multi-name lookup
+    generate = run
+    __call__ = run
+
+
 def _run(orchestrator, question: str) -> dict:
     result = orchestrator.run(question)
     return result.to_dict() if hasattr(result, "to_dict") else result
@@ -596,3 +612,43 @@ def test_q8_near_retirement_sql_has_age_filter_and_domain(metadata_service):
     sql = (payload.get("generated_sql") or "").upper()
     assert "AGE" in sql, "SQL must reference age column"
     assert "SERVICE_DOMAIN" in sql, "SQL must group by service_domain"
+
+
+# ---------------------------------------------------------------------------
+# Roadmap item 1: LLM Fallback — PARAMETER_VALIDATION_FAILED and
+# COVERAGE_INCOMPLETE must reach the sql_generator when LLM is absent.
+# ---------------------------------------------------------------------------
+
+
+def _orch_with_spy_generator(metadata_service) -> tuple[LLMOrchestrator, _SpySQLGenerator]:
+    spy = _SpySQLGenerator()
+    orch = LLMOrchestrator(
+        metadata_service=metadata_service,
+        question_validator=QuestionValidator(),
+        semantic_mapper=SemanticMapper(metadata_service=metadata_service),
+        intent_parser=IntentParser(metadata_service=metadata_service),
+        router=DecisionRouter(metadata_service=metadata_service),
+        sql_template_engine=SQLTemplateEngine(metadata_service=metadata_service),
+        sql_generator=spy,
+        sql_validator=SQLValidator(metadata_service=metadata_service),
+        gap_service=GapService(metadata_service=metadata_service),
+        response_builder=ResponseBuilder(metadata_service=metadata_service),
+        default_execute_sql=False,
+    )
+    return orch, spy
+
+
+@pytest.mark.integration
+def test_parameter_validation_failed_reaches_sql_generator(metadata_service):
+    """When template fails with PARAMETER_VALIDATION_FAILED, sql_generator must be called."""
+    orch, spy = _orch_with_spy_generator(metadata_service)
+    _run(orch, "تعداد زنان متأهل چند نفر است؟")
+    assert spy.called, "sql_generator was not called for PARAMETER_VALIDATION_FAILED question"
+
+
+@pytest.mark.integration
+def test_coverage_incomplete_reaches_sql_generator_when_controlled_dynamic_fails(metadata_service):
+    """When controlled_dynamic cannot patch COVERAGE_INCOMPLETE, sql_generator must be called."""
+    orch, spy = _orch_with_spy_generator(metadata_service)
+    _run(orch, "تعداد کارکنان زن قراردادی با تحصیلات لیسانس در هر استان چند نفر است؟")
+    assert spy.called, "sql_generator was not called for COVERAGE_INCOMPLETE question"

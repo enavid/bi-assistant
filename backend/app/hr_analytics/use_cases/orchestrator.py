@@ -185,7 +185,13 @@ class LLMOrchestrator:
     """
 
     _LLM_TRIGGER_STATUSES: frozenset[str] = frozenset(
-        {"NO_TEMPLATE", "TEMPLATE_INCOMPLETE", "COVERAGE_INCOMPLETE", "TEMPLATE_RENDER_FAILED"}
+        {
+            "NO_TEMPLATE",
+            "TEMPLATE_INCOMPLETE",
+            "COVERAGE_INCOMPLETE",
+            "TEMPLATE_RENDER_FAILED",
+            "PARAMETER_VALIDATION_FAILED",
+        }
     )
 
     def __init__(
@@ -657,8 +663,7 @@ class LLMOrchestrator:
             )
             _model_called = model
         else:
-            _hard_stop_statuses = {"COVERAGE_INCOMPLETE", "PARAMETER_VALIDATION_FAILED"}
-            should_generate = _plan_status not in _hard_stop_statuses and (
+            should_generate = (
                 not plan.get("sql")
                 or _plan_status
                 in {
