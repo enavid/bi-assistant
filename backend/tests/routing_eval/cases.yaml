@@ -311,7 +311,6 @@ cases:
       intent: employee_count_by_education
       must_include_sql:
         - "education"
-        - "GROUP BY"
 
   - id: edu-032
     question: "تعداد کارکنان دارای مدرک کارشناسی چند نفر است؟"
@@ -321,7 +320,6 @@ cases:
       intent: employee_count_by_education
       must_include_sql:
         - "education"
-        - "GROUP BY"
 
   - id: edu-033
     question: "تعداد کارکنان دارای مدرک کارشناسی ارشد چند نفر است؟"
@@ -331,7 +329,6 @@ cases:
       intent: employee_count_by_education
       must_include_sql:
         - "education"
-        - "GROUP BY"
 
   - id: edu-034
     question: "تعداد کارکنان دارای مدرک دکترا چند نفر است؟"
@@ -340,8 +337,7 @@ cases:
       route: SQL
       intent: employee_count_by_education
       must_include_sql:
-        - "education"
-        - "GROUP BY"
+        - "دکترای تخصصی PHD"
 
   - id: edu-035
     question: "چند درصد کارکنان مدرک کارشناسی دارند؟"
@@ -1181,7 +1177,6 @@ cases:
       intent: employee_count_by_education
       must_include_sql:
         - "education"
-        - "GROUP BY"
 
   - id: org-120
     question: "سهم پست‌های کارشناسی از کل کارکنان چقدر است؟"
@@ -1680,7 +1675,6 @@ cases:
       intent: employee_count_by_education
       must_include_sql:
         - "education"
-        - "GROUP BY"
 
   - id: cross-173
     question: "تعداد کارکنان رسمی ۶۰ سال به بالا چند نفر است؟"

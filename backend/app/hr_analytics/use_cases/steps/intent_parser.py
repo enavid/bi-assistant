@@ -1731,7 +1731,7 @@ class IntentParser:
             required_columns.extend(["age", "employee_id", "is_active"])
 
         elif best_intent_id == "employee_count_by_education":
-            if education_value:
+            if education_value and not query_features.get("asks_percentage"):
                 params["education_title"] = education_value
                 filters.append(
                     {"column": "education_title", "operator": "=", "value": education_value}
@@ -1982,6 +1982,12 @@ class IntentParser:
             )
 
         metrics = self._infer_metrics(best_intent_id, intent, query_features)
+
+        # When filtering to a single value (e.g. specific education level), percentage metrics
+        # using window SUM are meaningless and break coverage validation for VALUE templates.
+        if best_intent_id == "employee_count_by_education" and params.get("education_title"):
+            metrics = [m for m in metrics if "SUM" not in str(m.get("expression", ""))]
+
         output_type = self._infer_output_type(best_intent_id, intent, group_by, query_features)
         recommended_visualization = self._infer_visualization(
             best_intent_id, intent, output_type, group_by, query_features
@@ -2126,8 +2132,8 @@ class IntentParser:
                 "فوق لیسانس": "کارشناسی ارشد",
                 "فوق‌لیسانس": "کارشناسی ارشد",
                 "ارشد": "کارشناسی ارشد",
-                "دکتری": "دکترای تخصصی / حرفه‌ای",
-                "دکترا": "دکترای تخصصی / حرفه‌ای",
+                "دکتری": "دکترای تخصصی PHD / دکترای حرفه ای",
+                "دکترا": "دکترای تخصصی PHD / دکترای حرفه ای",
             }
             for alias, canonical in alias_map.items():
                 if alias in question:

@@ -1457,6 +1457,17 @@ class LLMOrchestrator:
         if not template and template_id:
             template = self.metadata.get_sql_template(str(template_id)) or {}
 
+        # For education count: intent_parser may select a VALUE template (filtered by one
+        # education level) while the catalog default is the GROUP BY template. Re-fetch
+        # to use the specific template the intent_parser chose.
+        _education_value_templates = {"TPL_EMPLOYEE_COUNT_BY_EDUCATION_VALUE"}
+        if template_id and template_id in _education_value_templates and template_id != template.get(
+            "template_id"
+        ):
+            specific = self.metadata.get_sql_template(str(template_id))
+            if specific:
+                template = specific
+
         # Some intents intentionally do not carry sql_template_id in early metadata
         # drafts. In that case, find a ready template by its intent field.
         if not template and intent_id:

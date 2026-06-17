@@ -182,6 +182,8 @@ cases:
     expect:
       route: SQL
       intent: employee_count_by_education
+      must_include_sql:
+        - "دکترای تخصصی PHD"
 
   - id: edu-034v2
     question: "تعداد کارکنانی که دکتری دارن چنتاست؟"
@@ -189,6 +191,8 @@ cases:
     expect:
       route: SQL
       intent: employee_count_by_education
+      must_include_sql:
+        - "دکترای تخصصی PHD"
 
   - id: edu-034v3
     question: "دکتراهای سازمان چند نفرن؟"
@@ -196,6 +200,8 @@ cases:
     expect:
       route: SQL
       intent: employee_count_by_education
+      must_include_sql:
+        - "دکترای تخصصی PHD"
 
   # -- edu-035: bachelor percentage ------------------------------------------
 
