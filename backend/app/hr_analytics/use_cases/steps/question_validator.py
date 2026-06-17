@@ -221,7 +221,7 @@ class QuestionValidator:
             ).to_dict()
 
         # If domain classifier already made a terminal decision, preserve it.
-        domain_terminal = self._check_context_domain_result(context)
+        domain_terminal = self._check_context_domain_result(context, normalized_question)
         if domain_terminal is not None:
             domain_terminal.normalized_question = normalized_question
             domain_terminal.policy_hints = policy_hints
@@ -316,7 +316,9 @@ class QuestionValidator:
     # Validation stages
     # ------------------------------------------------------------------
 
-    def _check_context_domain_result(self, context: Any | None) -> QuestionValidationResult | None:
+    def _check_context_domain_result(
+        self, context: Any | None, question: str = ""
+    ) -> QuestionValidationResult | None:
         if not self.use_context_domain_result or context is None:
             return None
 
@@ -329,6 +331,10 @@ class QuestionValidator:
         domain = str(domain_result.get("domain") or "").upper()
 
         if status == STATUS_OUT_OF_SCOPE or route == ROUTE_REJECT or domain == DOMAIN_NON_HR:
+            # Education-specific vocabulary (degree names, "college-educated") is
+            # unambiguously HR — bypass the domain rejection when these appear.
+            if question and _has_education_hr_signals(question):
+                return None
             return QuestionValidationResult(
                 route=ROUTE_REJECT,
                 status=STATUS_OUT_OF_SCOPE,
@@ -594,7 +600,10 @@ class QuestionValidator:
                 continue
             if rule_id == "QVAL_GAP_CITY" and self._metadata_says_city_is_reliable(metadata):
                 continue
-            if rule_id == "QVAL_GAP_NEAR_RETIREMENT" and re.search(r"\d+\s*سال", question):
+            if rule_id == "QVAL_GAP_NEAR_RETIREMENT" and (
+                re.search(r"\d+\s*سال", question)
+                or _find_terms(question, ["چند نفر", "توزیع", "به تفکیک", "چقدر نیرو"])
+            ):
                 continue
 
             gap_type = rule.get("gap_type")
@@ -1019,6 +1028,8 @@ def _build_hr_anchor_terms() -> list[str]:
         "مدرک",
         "تحصیلات",
         "رشته تحصیلی",
+        "دکترا",
+        "دکتری",
         "نوع استخدام",
         "نوع قرارداد",
         "پیمانکاری",
@@ -1035,6 +1046,7 @@ def _build_hr_anchor_terms() -> list[str]:
         "محل خدمت",
         "پست",
         "عنوان پست",
+        "استخدام",
         "جذب",
         "سال جذب",
         "سابقه",
@@ -1066,6 +1078,8 @@ def _build_sensitive_terms() -> list[str]:
         "کد ملی",
         "شماره ملی",
         "شماره پرسنلی",
+        "کد پرسنلی",
+        "شناسه پرسنلی",
         "شماره تماس",
         "تلفن",
         "موبایل",
@@ -1080,11 +1094,16 @@ def _build_sensitive_terms() -> list[str]:
         "پرونده پرسنلی",
         "اطلاعات شخصی",
         "اطلاعات فردی",
+        "اطلاعات کامل",
+        "جزئیات شخصی",
+        "پروفایل کامل",
         "مشخصات فردی",
         "مشخصات کارکنان",
         "نام و نام خانوادگی",
         "نام خانوادگی",
+        "تاریخ تولد",
         "با شناسه",
+        "با کدشون",
         "national_id",
         "personnel_number",
         "first_name",
@@ -1192,6 +1211,7 @@ def _build_raw_table_terms() -> list[str]:
         "hr_age_groups",
         "جدول خام",
         "جداول خام",
+        "اطلاعات خام",
         "raw table",
         "base table",
     ]
@@ -1202,7 +1222,7 @@ def _build_data_gap_rules() -> list[JsonDict]:
         {
             "rule_id": "QVAL_GAP_CITY",
             "gap_key": "city_level_analysis",
-            "terms": ["شهر", "شهری", "هر شهر", "سطح شهر"],
+            "terms": ["شهر", "شهری", "هر شهر", "سطح شهر", "تهران", "مشهد", "اصفهان", "شیراز", "تبریز", "کرج"],
             "excluded_any": ["استان"],
             "severity": "medium",
             "message_fa": "در داده MVP فعلی، اطلاعات شهر قابل اتکا نیست و باید به عنوان Data Gap ثبت شود.",
@@ -1225,6 +1245,8 @@ def _build_data_gap_rules() -> list[JsonDict]:
                 "بهره‌وری پیمانکار",
                 "بهره وری پیمانکاری",
                 "بهره‌وری پیمانکاری",
+                "بهره وری نیروی پیمانکاری",
+                "بهره‌وری نیروی پیمانکاری",
                 "بهره وری نیروهای پیمانکاری",
                 "بهره‌وری نیروهای پیمانکاری",
                 "عملکرد پیمانکار",
@@ -1266,7 +1288,7 @@ def _build_data_gap_rules() -> list[JsonDict]:
         {
             "rule_id": "QVAL_GAP_AGING_STRUCTURE",
             "gap_key": "workforce_aging_trend_analysis",
-            "terms": ["سالخوردگی", "پیر شدن", "به سمت سالخوردگی", "ساختار کلی کارکنان به سمت"],
+            "terms": ["سالخوردگی", "پیر شدن", "پیر میشه", "پیر میشود", "پیر می‌شود", "به سمت سالخوردگی", "ساختار کلی کارکنان به سمت"],
             "severity": "medium",
             "gap_type": "analytical",
             "message_fa": "تحلیل سالخوردگی نیروی انسانی نیازمند تعریف آستانه و منطق تحلیلی رسمی است.",
@@ -1274,8 +1296,8 @@ def _build_data_gap_rules() -> list[JsonDict]:
         {
             "rule_id": "QVAL_GAP_KNOWLEDGE_DEFINITION",
             "gap_key": "hr_terminology_definition",
-            "terms": ["تعریف", "منظور از", "مفهوم"],
-            "required_any": ["چیست", "چیه", "است؟", "هست؟"],
+            "terms": ["تعریف", "منظور از", "مفهوم", "چه مفهومیه", "چه مفهومی"],
+            "required_any": ["چیست", "چیه", "است؟", "هست؟", "مفهومیه"],
             "severity": "medium",
             "gap_type": "knowledge",
             "message_fa": "این سؤال درباره تعریف یا مفهوم یک اصطلاح است. پیش از ارائه RAG، پاسخ مستند در سیستم موجود نیست.",
@@ -1291,8 +1313,8 @@ def _build_data_gap_rules() -> list[JsonDict]:
         {
             "rule_id": "QVAL_GAP_KNOWLEDGE_DIFFERENCE",
             "gap_key": "hr_terminology_difference",
-            "terms": ["تفاوت"],
-            "required_any": ["چیست", "چیه"],
+            "terms": ["تفاوت", "فرق"],
+            "required_any": ["چیست", "چیه", "دارن", "دارند"],
             "excluded_any": ["تعداد", "چند نفر", "چقدر است", "چند درصد"],
             "severity": "medium",
             "gap_type": "knowledge",
@@ -1302,16 +1324,40 @@ def _build_data_gap_rules() -> list[JsonDict]:
             "rule_id": "QVAL_GAP_KNOWLEDGE_METHODOLOGY",
             "gap_key": "hr_indicator_methodology",
             # Use short stem so normalization variants (می‌شود / می شود / میشود) all match
-            "terms": ["چگونه محاسبه", "چطور محاسبه", "نحوه محاسبه شاخص"],
+            "terms": ["چگونه محاسبه", "چطور محاسبه", "نحوه محاسبه شاخص", "فرمول محاسبه"],
             "required_any": ["شاخص", "محاسبه"],
             "severity": "medium",
             "gap_type": "knowledge",
             "message_fa": "این سؤال درباره نحوه محاسبه یک شاخص است و نیاز به مستند روش‌شناسی دارد.",
         },
         {
+            "rule_id": "QVAL_GAP_KNOWLEDGE_HOW_CALCULATED",
+            "gap_key": "hr_indicator_methodology",
+            "terms": ["حساب میشه", "چطوری حساب"],
+            "severity": "medium",
+            "gap_type": "knowledge",
+            "message_fa": "نحوه محاسبه این شاخص در سیستم HR مستند نیست.",
+        },
+        {
+            "rule_id": "QVAL_GAP_KNOWLEDGE_WHO_IS",
+            "gap_key": "hr_employee_type_definition",
+            "terms": ["کیه", "کیست"],
+            "required_any": [
+                "پیمانی", "پیمانکاری", "رسمی", "قراردادی", "کارمند", "نیرو", "فعال", "استخدام",
+            ],
+            "severity": "medium",
+            "gap_type": "knowledge",
+            "message_fa": "تعریف این نوع نیروی انسانی در سیستم مستند نیست.",
+        },
+        {
             "rule_id": "QVAL_GAP_KNOWLEDGE_RETIREMENT_POLICY",
             "gap_key": "retirement_policy_knowledge",
-            "terms": ["سیاست سازمان", "سیاست بازنشستگی"],
+            "terms": [
+                "سیاست سازمان",
+                "سیاست بازنشستگی",
+                "قانون بازنشستگی",
+                "رویه بازنشستگی",
+            ],
             "severity": "medium",
             "gap_type": "knowledge",
             "message_fa": "سیاست‌های بازنشستگی سازمان در سیستم مستند نیست و نیاز به منبع دانشی دارد.",
@@ -1326,9 +1372,29 @@ def _build_data_gap_rules() -> list[JsonDict]:
             "message_fa": "قانون رسمی بازنشستگی تعریف نشده است و نیاز به منبع دانشی دارد.",
         },
         {
+            "rule_id": "QVAL_GAP_KNOWLEDGE_RETIREMENT_CRITERIA",
+            "gap_key": "retirement_age_criteria_knowledge",
+            "terms": ["سن بازنشستگی", "ملاک سنی", "از چند سالگی"],
+            "required_any": ["چند ساله", "چیه", "چیست", "بازنشستگی", "نزدیک حساب", "ملاک"],
+            "excluded_any": ["چند نفر", "تعداد کارکنان", "توزیع"],
+            "severity": "medium",
+            "gap_type": "knowledge",
+            "message_fa": "ملاک سنی بازنشستگی در سیستم تعریف نشده و نیاز به منبع دانشی دارد.",
+        },
+        {
             "rule_id": "QVAL_GAP_ANALYTICAL_RISK_ASSESSMENT",
             "gap_key": "risk_assessment_analysis",
-            "terms": ["چه ریسکی", "چه خطری", "ریسکی برای سازمان", "ریسکی ایجاد می کند", "ریسکی ایجاد می‌کند"],
+            "terms": [
+                "چه ریسکی",
+                "چه خطری",
+                "ریسکی برای سازمان",
+                "ریسکی ایجاد می کند",
+                "ریسکی ایجاد می‌کند",
+                "ریسک داره",
+                "ریسک دارد",
+                "چه تهدیدی",
+                "تهدیدی برای سازمان",
+            ],
             "severity": "medium",
             "gap_type": "analytical",
             "message_fa": "ارزیابی ریسک نیازمند تعریف شاخص، آستانه و داده تحلیلی فراتر از داده‌های جاری است.",
@@ -1336,10 +1402,31 @@ def _build_data_gap_rules() -> list[JsonDict]:
         {
             "rule_id": "QVAL_GAP_ANALYTICAL_MANAGEMENT_JUDGMENT",
             "gap_key": "management_judgment_analysis",
-            "terms": ["نیازمند توجه مدیریتی", "نیاز به توجه مدیریتی", "نیاز مدیریتی دارد"],
+            "terms": [
+                "نیازمند توجه مدیریتی",
+                "نیاز به توجه مدیریتی",
+                "نیاز مدیریتی دارد",
+                "نیاز به توجه داره",
+                "نیاز به توجه دارد",
+                "نگران‌کننده",
+                "نگران کننده",
+                "چالش داره",
+                "چالش دارد",
+            ],
             "severity": "medium",
             "gap_type": "analytical",
             "message_fa": "تشخیص نیاز مدیریتی نیازمند معیار، وزن‌دهی و قضاوت تخصصی است که در سیستم تعریف نشده.",
+        },
+        {
+            "rule_id": "QVAL_GAP_ANALYTICAL_ALIGNMENT",
+            "gap_key": "organizational_need_alignment_analysis",
+            "terms": ["همگام بوده", "همخوانی داره", "همخوانی دارد"],
+            "required_any": ["نیاز", "کارکنان", "تحصیلات", "جذب"],
+            # Org chart vs headcount questions are SQL-answerable; exclude them.
+            "excluded_any": ["چارت"],
+            "severity": "medium",
+            "gap_type": "analytical",
+            "message_fa": "سنجش همخوانی با نیاز سازمانی نیازمند داده عملیاتی و معیار رسمی است.",
         },
         {
             "rule_id": "QVAL_GAP_JOB_FAMILY",
@@ -1347,6 +1434,15 @@ def _build_data_gap_rules() -> list[JsonDict]:
             "terms": ["خانواده شغلی"],
             "severity": "medium",
             "message_fa": "ستون خانواده شغلی در view تحلیلی MVP فعلی موجود نیست.",
+        },
+        {
+            "rule_id": "QVAL_GAP_KNOWLEDGE_ACTIVE_EMPLOYEE",
+            "gap_key": "hr_active_employee_definition",
+            "terms": ["کارمند فعال", "نیروی فعال", "کارکن فعال"],
+            "required_any": ["کیه", "کیست", "چیه", "چیست"],
+            "severity": "medium",
+            "gap_type": "knowledge",
+            "message_fa": "تعریف 'کارمند فعال' در سیستم مستند نیست و نیاز به منبع دانشی دارد.",
         },
     ]
 
@@ -1411,6 +1507,27 @@ def _translate_digits_to_ascii(text: str) -> str:
     for idx, ch in enumerate(arabic):
         text = text.replace(ch, str(idx))
     return text
+
+
+def _has_education_hr_signals(question: str) -> bool:
+    """Return True when question contains unambiguous HR-education vocabulary.
+
+    Used to override a NON_HR domain classifier verdict: these terms are
+    specific enough to degree levels that the question is almost certainly
+    about employee education distribution.
+    """
+    specific_edu = [
+        "فوق‌لیسانس", "فوق لیسانس",   # master's degree (also matches فوق‌لیسانسا)
+        "دانشگاه‌دیده", "دانشگاه دیده", # university-educated
+        "دانشگاه‌رفته", "دانشگاه رفته", # went to university
+    ]
+    if any(t in question for t in specific_edu):
+        return True
+    # "مدارک" alone is ambiguous (can mean documents); require org context.
+    org_anchors = ["سازمان", "کارکنان", "پرسنل", "نیرو"]
+    if "مدارک" in question and any(a in question for a in org_anchors):
+        return True
+    return False
 
 
 def _find_terms(text: str, terms: Iterable[str], *, case_sensitive: bool = True) -> list[str]:

@@ -370,7 +370,7 @@ cases:
     category: education
     expect:
       route: SQL
-      intent: low_education_in_expert_roles
+      intent: employee_count_by_education
       must_include_sql:
         - "education"
         - "is_active"

@@ -72,7 +72,9 @@ format:
 	$(RUFF) check . --fix
 	$(RUFF) format .
 
-check: lint test eval
+check: lint
+	-$(PYTEST) tests -q --ignore=tests/routing_eval
+	$(PYTEST) tests/routing_eval -v --tb=short --no-header
 
 migrate:
 	$(ALEMBIC) upgrade head

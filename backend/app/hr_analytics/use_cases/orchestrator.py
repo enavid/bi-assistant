@@ -302,12 +302,17 @@ class LLMOrchestrator:
             await self._normalize_question(context)
             await self._classify_domain(context)
             if self._is_terminal(context.domain_result):
-                logger.info(
-                    "pipeline early-exit step=domain_classifier request_id=%s status=%s",
-                    context.request_id,
-                    context.domain_result.get("status"),
-                )
-                return await self._finalize(context, context.domain_result)
+                # Degree-level vocabulary (فوق‌لیسانس, دانشگاه‌دیده, etc.) is
+                # unambiguously HR — bypass a NON_HR verdict from the domain classifier.
+                if self._education_domain_override(context.normalized_question, context.domain_result):
+                    context.domain_result = {}
+                else:
+                    logger.info(
+                        "pipeline early-exit step=domain_classifier request_id=%s status=%s",
+                        context.request_id,
+                        context.domain_result.get("status"),
+                    )
+                    return await self._finalize(context, context.domain_result)
 
             await self._validate_question(context)
             if self._is_terminal(context.validation_result):
@@ -2136,6 +2141,31 @@ class LLMOrchestrator:
             ValidationStatus.SQL_VALIDATION_FAILED.value,
             ValidationStatus.METADATA_ERROR.value,
         }
+
+    @staticmethod
+    def _education_domain_override(question: str, domain_result: JsonDict) -> bool:
+        """Return True when domain said NON_HR but question has unambiguous HR signals.
+
+        Education degree names and workforce-aging idioms are specific enough that
+        a NON_HR verdict is almost certainly wrong in an HR BI context.
+        """
+        if str(domain_result.get("status") or "").upper() != ValidationStatus.OUT_OF_SCOPE.value:
+            return False
+        specific_edu = [
+            "فوق لیسانس", "فوق‌لیسانس",
+            "دانشگاه دیده", "دانشگاه‌دیده",
+            "دانشگاه رفته", "دانشگاه‌رفته",
+            "دکترا", "دکتری",  # doctorate requests blocked by validator if individual
+        ]
+        if any(t in question for t in specific_edu):
+            return True
+        org_anchors = ["سازمان", "کارکنان", "پرسنل", "نیرو"]
+        if "مدارک" in question and any(a in question for a in org_anchors):
+            return True
+        # Colloquial workforce-aging idiom requires org context.
+        if "پیر میشه" in question and "سازمان" in question:
+            return True
+        return False
 
 
 # ---------------------------------------------------------------------------

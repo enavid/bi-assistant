@@ -74,6 +74,7 @@ PERSIAN_NUMBER_WORDS: dict[str, int] = {
     "صفر": 0,
     "یک": 1,
     "يه": 1,
+    "یه": 1,
     "دو": 2,
     "سه": 3,
     "چهار": 4,
@@ -788,13 +789,16 @@ class IntentParser:
                         "بالاترین",
                         "حداکثر",
                         "کدام بیشتر",
+                        "کدوم بیشتر",
                         "بیشترين",
-                        "رایج‌ترین",
                         "رایج ترین",
+                        "رایج‌ترین",
+                        "پر جذب ترین",
+                        "اکثر",
                     ],
                 ),
                 "asks_least": self._has_any(
-                    question, ["کمترین", "پایین ترین", "حداقل", "کدام کمتر"]
+                    question, ["کمترین", "پایین ترین", "حداقل", "کدام کمتر", "کم جذب ترین"]
                 ),
                 "asks_trend": self._has_any(
                     question,
@@ -814,32 +818,73 @@ class IntentParser:
                 ),
                 "asks_gap_or_shortage": self._has_any(
                     question,
-                    ["کمبود نیرو", "اختلاف", "چارت مصوب", "نیروی موجود", "تعادل", "متوازن"],
+                    [
+                        "کمبود نیرو", "اختلاف", "چارت مصوب", "نیروی موجود", "تعادل", "متوازن",
+                        "کمبود", "کم نیرو", "مازاد نیرو",
+                        "چارتش", "چارتشون",
+                        "تکمیل چارت", "تحقق چارت", "نسبت به چارت", "پر شدن چارت",
+                        "کم داره", "کم دارن", "کم داریم",
+                        "یکنواخت",
+                    ],
                 ),
-                "explicit_contract_type": "نوع قرارداد" in question,
-                "explicit_employment_type": "نوع استخدام" in question
-                or "وضعیت استخدام" in question,
+                "explicit_contract_type": (
+                    "نوع قرارداد" in question or "انواع قرارداد" in question
+                    or "هر قرارداد" in question
+                    or (
+                        "قرارداد" in question
+                        and self._has_any(question, ["نوعیه", "چه نوعی", "چه انواعی"])
+                    )
+                ),
+                "explicit_employment_type": (
+                    "نوع استخدام" in question
+                    or "وضعیت استخدام" in question
+                    or "استخدام قراردادی" in question
+                    or "استخدام رسمی" in question
+                    or "انواع استخدام" in question
+                ),
                 "explicit_contractor": "پیمانکاری" in question or "پیمانکار" in question,
                 "explicit_service_domain": "حوزه" in question,
                 "explicit_department": self._has_any(
                     question, ["بخش", "واحد", "اداره", "دپارتمان"]
                 ),
                 "explicit_province": "استان" in question,
-                "explicit_city": "شهر" in question,
-                "explicit_work_location": "محل خدمت" in question or "سایت" in question,
+                "explicit_work_location": self._has_any(question, ["محل خدمت", "سایت", "کجا خدمت"]),
                 "explicit_gender": any(
                     self._term_in_question(question, t)
-                    for t in ["جنسیت", "زن", "مرد", "خانم", "آقا"]
+                    for t in ["جنسیت", "زن", "مرد", "خانم", "آقا", "آقای", "زنان", "مردان", "خانم ها"]
                 ),
-                "explicit_age": self._has_any(
-                    question, ["سن", "سنی", "سال به بالا", "زیر", "بالای"]
+                "explicit_age": (
+                    self._term_in_question(question, "سن")  # boundary check: avoid matching inside "سنوات"
+                    or self._has_any(
+                        question,
+                        ["سنی", "سال به بالا", "ساله", "زیر", "بالای", "سالشون", "سالشونه", "سالشه", "سالته", "سالشان"],
+                    )
                 ),
                 "explicit_education": self._has_any(
                     question,
-                    ["مدرک", "تحصیلات", "تحصیلی", "دیپلم", "کاردانی", "کارشناسی", "ارشد", "دکترا"],
+                    [
+                        "مدرک", "مدارک", "تحصیلات", "تحصیلی", "دیپلم", "کاردانی", "کارشناسی",
+                        "ارشد", "دکترا", "دکتری", "لیسانس", "فوق‌لیسانس", "فوق لیسانس",
+                        "دانشگاه رفته", "دانشگاه‌رفته", "تحصیل‌کرده", "تحصیل کرده",
+                        "دانشگاه‌دیده", "دانشگاه دیده", "کارشناس",
+                    ],
                 ),
-                "explicit_hiring": self._has_any(question, ["جذب", "استخدام سال", "سال جذب"]),
-                "explicit_service_years": self._has_any(question, ["سابقه", "سنوات", "بدون سابقه"]),
+                "explicit_age_demographic": self._has_any(
+                    question,
+                    [
+                        "مسن", "جوون", "جوان", "پیرتر", "پیرترین",
+                        "جوان‌ترین", "جوانترین", "جوون‌ترین", "جوون‌تر", "جوان‌تر",
+                        "مسن‌تر", "مسن ترین",
+                    ],
+                ),
+                "explicit_age_lt": self._has_any(question, ["زیر", "کمتر از", "پایین تر از"]),
+                "explicit_hiring": self._has_any(
+                    question,
+                    ["جذب", "استخدام سال", "سال جذب", "نیرو گرفتیم", "نیرو گرفته", "نیرو گرفتن"],
+                ),
+                "explicit_service_years": self._has_any(
+                    question, ["سابقه", "سنوات", "بدون سابقه", "تازه وارد"]
+                ),
                 "explicit_marital": self._has_any(
                     question, ["تاهل", "تأهل", "مجرد", "متاهل", "متأهل"]
                 ),
@@ -855,12 +900,19 @@ class IntentParser:
                     ],
                 ),
                 "asks_zero_service": self._has_any(
-                    question, ["بدون سابقه", "سابقه صفر", "0 سال سابقه"]
+                    question,
+                    [
+                        "بدون سابقه", "سابقه صفر", "0 سال سابقه",
+                        "سابقه ندارن", "سابقه ندارند", "سابقه ندارد",
+                        "سابقه شون صفر", "سابقه اش صفر", "صفر سابقه",
+                        "بی سابقه",
+                    ],
                 ),
                 "asks_individual": self._has_any(
                     question,
                     [
                         "نام",
+                        "اسم",
                         "کد ملی",
                         "شماره پرسنلی",
                         "مشخصات",
@@ -869,6 +921,22 @@ class IntentParser:
                         "افراد را نمایش",
                         "با شناسه",
                     ],
+                ),
+                "explicit_city": self._has_any(
+                    question,
+                    ["شهر", "تهران", "مشهد", "اصفهان", "شیراز", "تبریز", "کرج"],
+                ),
+                "explicit_org_level": self._has_any(
+                    question,
+                    ["سطح سازمانی", "سطح حساسیت", "سطح دپارتمان", "سطح واحد"],
+                ),
+                "explicit_specific_org_level": self._has_any(
+                    question,
+                    ["سطح 1", "سطح 2", "سطح 3", "سطح یک", "سطح دو", "سطح سه"],
+                ),
+                "explicit_job_position": self._has_any(
+                    question,
+                    ["پست سازمانی", "سطح پست", "هر پست", "کدوم پست", "پر متصدی"],
                 ),
             }
         )
@@ -1047,8 +1115,31 @@ class IntentParser:
         if f.get("explicit_age") and f.get("age_filter"):
             if f.get("explicit_department"):
                 add(("employee_count_by_age_filter_by_department", 85, "age_filter_by_dept"))
+            elif (
+                f.get("explicit_education")
+                and not f.get("explicit_service_domain")
+                and not f.get("explicit_service_years")
+                and not self._has_any(question, ["به تفکیک مدرک", "چه مدرکی", "به تفکیک تحصیل"])
+            ):
+                # age_filter + education without domain: age is the primary filter dimension.
+                # Guard: education-as-grouping phrases or service_years context → education wins.
+                add(("employee_count_by_age_filter", 80, "age_filter_with_education"))
             else:
                 add(("employee_count_by_age_filter", 60, "age_filter"))
+
+        # Age demographic vocabulary + extracted age_filter (no service_domain/employment_type):
+        # demographic label ("مسن"/"جوان") makes age the primary dimension.
+        # Guards: education-grouping phrases → education is the answer, age is just a filter.
+        #         province without "under" direction → province is the primary dimension.
+        if (
+            f.get("explicit_age_demographic")
+            and f.get("age_filter")
+            and not f.get("explicit_service_domain")
+            and not f.get("explicit_employment_type")
+            and not self._has_any(question, ["چه مدرکی", "به تفکیک مدرک", "به تفکیک تحصیل"])
+            and not (f.get("explicit_province") and not f.get("explicit_age_lt"))
+        ):
+            add(("employee_count_by_age_filter", 80, "age_demographic_filter"))
         if f.get("explicit_age") and self._has_any(
             question, ["گروه سنی", "کدام گروه سنی", "بازه سنی"]
         ):
@@ -1059,12 +1150,22 @@ class IntentParser:
                 add(("employee_count_by_department_education", 88, "department_education_2d"))
             elif f.get("explicit_service_domain"):
                 add(("education_distribution_by_service_domain", 82, "education_by_service_domain"))
-            elif f.get("asks_most"):
+            elif f.get("asks_most") or self._has_any(
+                question, ["بیشتر داریم", "بیشتره", "بیشتر دیده", "بیشتر چه مدرک", "بیشتر چه تحصیل"]
+            ) or ("بیشتر" in question and "چه مدرک" in question):
                 add(("most_common_education", 70, "most_common_education"))
-            elif f.get("asks_least"):
+            elif (f.get("asks_least") or self._has_any(question, ["کمتر داریم", "کمتره"])) and not f.get("age_filter"):
                 add(("least_common_education", 70, "least_common_education"))
-            elif self._has_any(
-                question, ["پست کارشناسی", "تحصیلات پایین", "پایین تر", "حداقل مدرک"]
+            elif (
+                self._has_any(question, ["نیاز پست", "مدرک لازم", "تحصیلات پایین"])
+                or (
+                    "پایین تر" in question
+                    and self._has_any(question, ["نیاز", "پست", "کارشناسی"])
+                )
+                or (
+                    "پست کارشناسی" in question
+                    and self._has_any(question, ["ولی", "اما", "دیپلم", "پایین"])
+                )
             ):
                 add(("low_education_in_expert_roles", 60, "low_education_expert_roles"))
             else:
@@ -1077,7 +1178,11 @@ class IntentParser:
             else:
                 add(("employee_count_by_employment_type", 70, "employment_type"))
         if f.get("explicit_contract_type"):
-            if f.get("explicit_hiring") or f.get("asks_recent_year"):
+            if (
+                f.get("explicit_hiring")
+                or f.get("asks_recent_year")
+                or self._has_any(question, ["هر سال", "بسته شده", "سالانه"])
+            ):
                 add(("hiring_by_contract_type_recent_year", 70, "recent_hiring_contract_type"))
             else:
                 add(("employee_count_by_contract_type", 70, "contract_type"))
@@ -1118,8 +1223,56 @@ class IntentParser:
         # Only add province distribution when not already covered by a service_domain or dept filter
         if f.get("explicit_province") and not f.get("explicit_service_domain"):
             add(("employee_count_by_province", 60, "province_distribution"))
+
+        # Age context (demographic label, numeric filter, or explicit_age) + service_domain:
+        # the age dimension is the primary focus, service_domain is used for grouping.
+        _age_ctx = (
+            f.get("explicit_age_demographic")
+            or (f.get("age_filter") and not f.get("explicit_service_years"))
+            or (f.get("explicit_age") and not f.get("explicit_service_years"))
+        )
+        if (
+            _age_ctx
+            and f.get("explicit_service_domain")
+            and not f.get("explicit_employment_type")
+            and not f.get("explicit_education")
+            and not f.get("explicit_contractor")
+        ):
+            add(("employee_count_by_age_filter", 80, "age_context_service_domain"))
+
+        # "Under N" + province: young-worker filter wins over province grouping.
+        if (
+            f.get("explicit_age_lt")
+            and f.get("explicit_province")
+            and (f.get("age_filter") or f.get("explicit_age"))
+            and not f.get("explicit_service_years")
+            and not f.get("explicit_employment_type")
+        ):
+            add(("employee_count_by_age_filter", 75, "age_lt_province"))
+
         if f.get("explicit_work_location"):
             add(("employee_count_by_work_location", 55, "work_location_distribution"))
+
+        # Org chart alignment question → headcount gap vs approved chart.
+        if self._has_any(question, ["چارت سازمانی"]):
+            add(("headcount_gap_by_department", 70, "org_chart_alignment"))
+
+        # Specific org sensitivity level (e.g. "سطح ۱") → filtered total count.
+        if f.get("explicit_specific_org_level"):
+            add(("total_employee_count", 65, "specific_org_level_filter"))
+
+        # Org-level grouping dimension: ranking → total_employee_count; distribution → by_department.
+        if f.get("explicit_org_level"):
+            if "کدوم" in question or f.get("asks_most") or f.get("asks_least"):
+                add(("total_employee_count", 65, "org_level_ranking"))
+            elif self._has_any(question, ["به کل", "از کل", "نسبت", "درصد"]):
+                add(("total_employee_count", 75, "org_level_ratio"))
+            else:
+                add(("employee_count_by_department", 65, "org_level_distribution"))
+
+        # Job position context (پست سازمانی, سطح پست, etc.) → grouped by position.
+        if f.get("explicit_job_position") and not f.get("explicit_education"):
+            add(("total_employee_count", 60, "job_position_distribution"))
 
         if f.get("hire_year_filter") is not None:
             add(("employee_count_by_hire_year", 85, "hire_year_exact_filter"))
@@ -1140,9 +1293,24 @@ class IntentParser:
             if f.get("service_years_filter"):
                 add(("employee_count_by_service_years_filter", 80, "service_years_range_filter"))
             elif f.get("asks_zero_service"):
-                add(("employee_count_without_service_years", 65, "without_service_years"))
-            elif f.get("asks_average"):
-                add(("average_service_years", 65, "average_service_years"))
+                if f.get("explicit_service_domain") or f.get("explicit_department"):
+                    # "which domain has the most zero-service employees?" → rank by zero-service
+                    if f.get("asks_most") or f.get("asks_least"):
+                        add(("employee_count_without_service_years", 85, "zero_service_most_by_domain"))
+                    # else: service_domain/department intent handles the breakdown (rec-152 pattern)
+                else:
+                    add(("employee_count_without_service_years", 80, "without_service_years"))
+            elif f.get("asks_average") and not f.get("explicit_employment_type"):
+                add(("average_service_years", 85, "average_service_years"))
+            elif f.get("asks_most") or f.get("asks_least"):
+                # "which domain has the most/least service years?" → average to rank
+                add(("average_service_years", 80, "service_years_most_least"))
+            elif f.get("explicit_gender"):
+                # gender comparison on service years → average service years per group
+                add(("average_service_years", 75, "service_years_gender_comparison"))
+            elif f.get("age_filter") and not f.get("explicit_age") and not f.get("explicit_age_demographic"):
+                # numeric filter extracted but age context absent → treat as service_years filter
+                add(("employee_count_by_service_years_filter", 85, "service_years_via_numeric_filter"))
             else:
                 add(("average_service_years", 25, "service_years_default"))
 
@@ -1151,6 +1319,81 @@ class IntentParser:
 
         if f.get("asks_gap_or_shortage") and not f.get("explicit_department"):
             add(("headcount_gap_by_department", 35, "general_headcount_gap"))
+
+        # High-confidence chart-based headcount gap phrases dominate catalog triggers.
+        _chart_gap_phrases = [
+            "چارت مصوب", "نسبت به چارت", "تکمیل چارت", "تحقق چارت",
+            "پر شدن چارت", "چارتش", "چارتشون",
+        ]
+        if self._has_any(question, _chart_gap_phrases):
+            if f.get("explicit_service_domain"):
+                add(("headcount_gap_by_service_domain", 95, "chart_gap_service_domain"))
+            else:
+                add(("headcount_gap_by_department", 95, "chart_gap_department"))
+
+        # Colloquial age comparison ("they are younger/older") → average_age.
+        # Only verb/copula forms (ن suffix) to avoid matching filter adjectives
+        # like "جوان‌تر از ۳۰ سال" or "کارکنان جوان‌تر".
+        if self._has_any(question, ["جوون ترن", "جوان ترن", "مسن ترن"]):
+            add(("average_age", 80, "age_comparison_colloquial"))
+
+        # Colloquial zero-service phrasing with copula "صفره" or negation "ندارن/ندارند".
+        # Yield to service_domain/department context — those intents apply the zero-service filter.
+        if (
+            f.get("explicit_service_years")
+            and self._has_any(question, ["صفره", "ندارن", "ندارند", "ندارد", "بی سابقه"])
+            and not f.get("service_years_filter")
+            and not f.get("explicit_service_domain")
+            and not f.get("explicit_department")
+        ):
+            add(("employee_count_without_service_years", 88, "zero_service_colloquial"))
+
+        # When explicit_service_years is set and an age-like numeric filter was extracted
+        # but no service_years_filter was found, the numeric threshold is a seniority filter.
+        # This handles "باسابقه (بالای ۲۰ سال)" where extractor sees age but context is seniority.
+        if (
+            f.get("explicit_service_years")
+            and f.get("age_filter")
+            and not f.get("service_years_filter")
+        ):
+            add(("employee_count_by_service_years_filter", 88, "service_years_via_age_filter"))
+
+        # "تازه وارد" (newly joined) implies a very short service_years window → service_years_filter.
+        if "تازه وارد" in question:
+            add(("employee_count_by_service_years_filter", 85, "newly_joined_service_filter"))
+
+        # contractor + education + gender OR "به تفکیک" → education distribution, not contractor share.
+        if f.get("explicit_contractor") and f.get("explicit_education") and (
+            f.get("explicit_gender") or "به تفکیک" in question
+        ):
+            add(("employee_count_by_education", 88, "contractor_education_by_gender_or_breakdown"))
+
+        # contractor + explicit hiring context → prefer hiring intents over contractor_share.
+        # Exception: "سهم/نسبت/درصد" phrases ask for contractor SHARE of hiring → keep contractor_share.
+        _is_share_query = self._has_any(question, ["سهم", "نسبت", "درصد"])
+        if f.get("explicit_contractor") and f.get("explicit_hiring") and not _is_share_query:
+            if f.get("asks_last_15_years"):
+                add(("hiring_last_15_years", 90, "contractor_hiring_last_15"))
+            elif f.get("asks_most") or f.get("asks_least"):
+                add(("most_or_least_hiring_year", 90, "contractor_most_least_hiring_year"))
+            elif f.get("explicit_monthly"):
+                add(("monthly_hiring_trend", 88, "contractor_monthly_hiring"))
+            else:
+                add(("hiring_trend_annual", 88, "contractor_annual_hiring_trend"))
+
+        # "استخدام" keyword in non-employment-type context → hiring intents.
+        # Skip when contractor+share context: those are contractor_share questions, not hiring trends.
+        if "استخدام" in question and not f.get("explicit_employment_type") and not (
+            f.get("explicit_contractor") and _is_share_query
+        ):
+            if f.get("asks_most") or f.get("asks_least"):
+                add(("most_or_least_hiring_year", 75, "hiring_year_from_استخدام"))
+            elif f.get("asks_last_15_years"):
+                add(("hiring_last_15_years", 80, "last15_from_استخدام"))
+            elif self._has_any(question, ["هر سال", "سالانه", "روند"]):
+                add(("hiring_trend_annual", 75, "trend_from_استخدام"))
+            elif f.get("asks_recent_year") or "امسال" in question:
+                add(("hiring_by_contract_type_recent_year", 72, "recent_year_from_استخدام"))
 
         return rules
 
@@ -1186,6 +1429,35 @@ class IntentParser:
             and not self._has_any(question, ["زن و مرد", "تفکیک جنسیت"])
         ):
             self._penalize(scores, "employee_count_by_gender", 8, "gender_percentage_specificity")
+
+        # When explicit hiring context coexists with contractor → contractor_share is wrong intent.
+        # Exception: share/percentage queries ("سهم پیمانکاری از جذب") do map to contractor_share.
+        if f.get("explicit_contractor") and f.get("explicit_hiring") and not self._has_any(
+            question, ["سهم", "نسبت", "درصد"]
+        ):
+            self._penalize(scores, "contractor_share", 20, "hiring_context_over_contractor_share")
+            self._penalize(
+                scores, "contractor_share_by_department", 20, "hiring_context_over_contractor_share"
+            )
+            self._penalize(
+                scores, "contractor_share_by_service_domain", 20, "hiring_context_over_contractor_share"
+            )
+
+        # Age is the primary filter, education appears as a value filter (not a grouping dimension):
+        # demote education so age_filter wins over catalog-trigger inflation.
+        if (
+            f.get("explicit_age")
+            and f.get("age_filter")
+            and f.get("explicit_education")
+            and not f.get("explicit_service_years")
+            and not self._has_any(question, ["به تفکیک مدرک", "چه مدرکی", "به تفکیک تحصیل"])
+        ):
+            self._penalize(scores, "employee_count_by_education", 12, "age_primary_education_as_filter")
+
+        # Province + numeric age filter (above/elderly direction): province is the primary dimension.
+        # "Under N" direction (age_lt) means youth filter → age_filter wins; skip penalty there.
+        if f.get("age_filter") and f.get("explicit_province") and not f.get("explicit_age_lt"):
+            self._penalize(scores, "employee_count_by_age_filter", 15, "province_primary_over_age")
 
         # City is a hard data gap in current MVP.
         if f.get("explicit_city"):
@@ -1787,15 +2059,18 @@ class IntentParser:
         return first_word
 
     def _extract_age_filter(self, question: str) -> JsonDict | None:
-        # age 60 and above
-        m = re.search(r"(?:بالای|بالاتر از|بیشتر از)\s*(\d{1,3})\s*سال?", question)
+        # age 60 and above: "بالای N سال", "N ساله به بالا", "N به بالا"
+        m = re.search(r"(?:بالای|بالاتر از|بیشتر از|مسن‌تر از|مسن تر از|سالخورده‌تر از)\s*(\d{1,3})\s*(?:سال)?", question)
         if m:
             return {"column": "age", "operator": ">=", "value": int(m.group(1))}
-        m = re.search(r"(\d{1,3})\s*سال\s*(?:به بالا|و بالاتر|بیشتر)", question)
+        m = re.search(r"(\d{1,3})\s*(?:سال|ساله)\s*(?:به بالا|و بالاتر|بیشتر)", question)
         if m:
             return {"column": "age", "operator": ">=", "value": int(m.group(1))}
-        # under 30 years old
-        m = re.search(r"(?:زیر|کمتر از|پایین تر از)\s*(\d{1,3})\s*سال?", question)
+        m = re.search(r"(\d{1,3})\s*به بالا", question)
+        if m:
+            return {"column": "age", "operator": ">=", "value": int(m.group(1))}
+        # under 30 years old: "زیر N سال", "زیر N" (سال implicit)
+        m = re.search(r"(?:زیر|کمتر از|پایین تر از)\s*(\d{1,3})\s*(?:سال)?", question)
         if m:
             return {"column": "age", "operator": "<", "value": int(m.group(1))}
         # between 30 and 40 years old
@@ -1809,7 +2084,7 @@ class IntentParser:
         m = re.search(r"(?:بیش از|بالای|بالاتر از|بیشتر از)\s*(\d{1,3})\s*سال\s*سابقه", question)
         if m:
             return {"column": "service_years", "operator": ">=", "value": int(m.group(1))}
-        m = re.search(r"سابقه\s+(?:بالای|بیش از|بیشتر از|بالاتر از)\s*(\d{1,3})\s*سال", question)
+        m = re.search(r"سابقه\s+(?:بالای|بیش از|بیشتر از|بالاتر از)\s*(\d{1,3})\s*(?:سال)?", question)
         if m:
             return {"column": "service_years", "operator": ">=", "value": int(m.group(1))}
         m = re.search(r"(\d{1,3})\s*سال\s*سابقه\s*(?:به بالا|و بالاتر|بیشتر)", question)
