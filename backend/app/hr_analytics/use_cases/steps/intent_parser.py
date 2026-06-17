@@ -1820,9 +1820,21 @@ class IntentParser:
 
         elif best_intent_id == "employee_count_by_service_domain":
             group_by = self._ensure_group_by(group_by, "service_domain")
-            if query_features.get("explicit_gender"):
-                group_by = self._ensure_group_by(group_by, "gender")
-                required_columns.extend(["gender"])
+            # Gender as WHERE filter (not group_by) so controlled_dynamic can inject it
+            if gender_value:
+                filters.append({"column": "gender", "operator": "=", "value": gender_value})
+                required_columns.append("gender")
+            # Employment/contract type as WHERE filters
+            if employment_value:
+                filters.append(
+                    {"column": "employment_type", "operator": "=", "value": employment_value}
+                )
+                required_columns.append("employment_type")
+            elif contract_value:
+                filters.append(
+                    {"column": "contract_type", "operator": "=", "value": contract_value}
+                )
+                required_columns.append("contract_type")
             if query_features.get("explicit_province"):
                 province_val = self._extract_province_value(question)
                 if province_val:
