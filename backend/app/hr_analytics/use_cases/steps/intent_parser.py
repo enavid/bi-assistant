@@ -142,7 +142,10 @@ DATA_GAP_INTENT_KEYWORDS: list[tuple[str, list[str]]] = [
         "contractor_productivity_analysis",
         ["بهره وری پیمانکار", "بهره وری پیمانکاری", "عملکرد پیمانکار"],
     ),
-    ("hiring_business_growth_alignment", ["افزایش کار", "رشد کار", "حجم کار", "هماهنگ بوده", "گسترش سازمان", "رشد سازمان"]),
+    (
+        "hiring_business_growth_alignment",
+        ["افزایش کار", "رشد کار", "حجم کار", "هماهنگ بوده", "گسترش سازمان", "رشد سازمان"],
+    ),
     ("education_training_need_analysis", ["نیاز آموزشی", "دوره تخصصی", "آموزش", "کمبود تخصص"]),
     ("workforce_aging_trend_analysis", ["سالخوردگی", "پیر شدن", "ساختار سنی", "به سمت سالخوردگی"]),
     (
@@ -1138,7 +1141,10 @@ class IntentParser:
             add(("near_retirement_analysis", 90, "retirement_keywords"))
         if self._has_any(question, ["بهره وری پیمانکار", "بهره وری پیمانکاری", "عملکرد پیمانکار"]):
             add(("contractor_productivity_analysis", 90, "contractor_productivity_gap"))
-        if self._has_any(question, ["افزایش کار", "رشد کار", "حجم کار", "گسترش سازمان", "رشد سازمان", "توسعه سازمان"]):
+        if self._has_any(
+            question,
+            ["افزایش کار", "رشد کار", "حجم کار", "گسترش سازمان", "رشد سازمان", "توسعه سازمان"],
+        ):
             add(("hiring_business_growth_alignment", 80, "business_growth_data_gap"))
         if "متناسب" in question and self._has_any(question, ["جذب", "استخدام"]):
             add(("hiring_business_growth_alignment", 75, "growth_alignment_gap"))
