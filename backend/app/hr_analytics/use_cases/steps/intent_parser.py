@@ -108,6 +108,8 @@ DEFAULT_TEMPLATE_BY_INTENT: dict[str, str] = {
     "gender_percentage": "TPL_GENDER_PERCENTAGE",
     "employee_count_by_age_filter": "TPL_EMPLOYEE_COUNT_BY_AGE_FILTER",
     "employee_count_by_age_group": "TPL_EMPLOYEE_COUNT_BY_AGE_GROUP",
+    "most_populated_age_group": "TPL_MOST_POPULATED_AGE_GROUP",
+    "least_populated_age_group": "TPL_LEAST_POPULATED_AGE_GROUP",
     "employee_count_by_gender_age_filter": "TPL_GENDER_BY_AGE_GROUP",
     "most_common_education": "TPL_MOST_COMMON_EDUCATION",
     "least_common_education": "TPL_LEAST_COMMON_EDUCATION",
@@ -1107,9 +1109,15 @@ class IntentParser:
                 # Boost to beat contractor_share (75) when question asks avg age of contractors
                 add(("average_age", 92, "average_age"))
         if f.get("asks_most") and f.get("explicit_age") and not f.get("age_filter"):
-            add(("max_age", 75, "max_age"))
+            if self._has_any(question, ["گروه سنی", "رنج سنی", "بازه سنی"]):
+                add(("most_populated_age_group", 90, "most_age_group"))
+            else:
+                add(("max_age", 75, "max_age"))
         if f.get("asks_least") and f.get("explicit_age") and not f.get("age_filter"):
-            add(("min_age", 75, "min_age"))
+            if self._has_any(question, ["گروه سنی", "رنج سنی", "بازه سنی"]):
+                add(("least_populated_age_group", 90, "least_age_group"))
+            else:
+                add(("min_age", 75, "min_age"))
         if f.get("asks_stddev") and f.get("explicit_age"):
             add(("stddev_age", 80, "stddev_age"))
         if f.get("explicit_age") and f.get("age_filter"):
@@ -1143,7 +1151,14 @@ class IntentParser:
         if f.get("explicit_age") and self._has_any(
             question, ["گروه سنی", "کدام گروه سنی", "بازه سنی"]
         ):
-            add(("employee_count_by_age_group", 60, "age_group"))
+            if f.get("asks_most") or self._has_any(question, ["پرتعداد", "پر تعداد", "پرنفر"]):
+                add(("most_populated_age_group", 90, "most_age_group_vocab"))
+            elif f.get("asks_least") or self._has_any(
+                question, ["کم‌نفر", "کم نفر", "از همه کمتر", "کمترین نیرو"]
+            ):
+                add(("least_populated_age_group", 90, "least_age_group_vocab"))
+            else:
+                add(("employee_count_by_age_group", 60, "age_group"))
 
         if f.get("explicit_education"):
             if f.get("explicit_department"):
@@ -1578,6 +1593,10 @@ class IntentParser:
             required_columns.extend(["gender", "age", "employee_id", "is_active"])
 
         elif best_intent_id == "employee_count_by_age_group":
+            group_by = self._ensure_group_by(group_by, "age_group_title")
+            required_columns.extend(["age_group_title", "employee_id", "is_active"])
+
+        elif best_intent_id in {"most_populated_age_group", "least_populated_age_group"}:
             group_by = self._ensure_group_by(group_by, "age_group_title")
             required_columns.extend(["age_group_title", "employee_id", "is_active"])
 

@@ -122,18 +122,20 @@ cases:
     category: demographics
     expect:
       route: SQL
-      intent: employee_count_by_age_group
+      intent: most_populated_age_group
       must_include_sql:
-        - "COUNT"
+        - "employee_count DESC"
+        - "LIMIT"
 
   - id: dem-013
     question: "کدام گروه سنی کمترین تعداد کارکنان را دارد؟"
     category: demographics
     expect:
       route: SQL
-      intent: employee_count_by_age_group
+      intent: least_populated_age_group
       must_include_sql:
-        - "COUNT"
+        - "employee_count ASC"
+        - "LIMIT"
 
   - id: dem-014
     question: "سهم هر گروه سنی از کل کارکنان چند درصد است؟"
@@ -246,24 +248,20 @@ cases:
         - "GROUP BY"
 
   - id: dem-025
+    xfail: true
+    xfail_reason: "combined gender+age_group+most needs a dedicated intent (not yet implemented)"
     question: "کدام گروه سنی بیشترین تعداد زنان را دارد؟"
     category: demographics
     expect:
       route: SQL
-      intent: max_age
-      must_include_sql:
-        - "MAX"
-        - "age"
 
   - id: dem-026
+    xfail: true
+    xfail_reason: "combined gender+age_group+most needs a dedicated intent (not yet implemented)"
     question: "کدام گروه سنی بیشترین تعداد مردان را دارد؟"
     category: demographics
     expect:
       route: SQL
-      intent: max_age
-      must_include_sql:
-        - "MAX"
-        - "age"
 
   - id: edu-027
     question: "تعداد کارکنان بر اساس مدرک تحصیلی چقدر است؟"

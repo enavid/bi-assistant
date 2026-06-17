@@ -124,6 +124,10 @@ template_index:
     - TPL_AVERAGE_AGE_BY_SERVICE_DOMAIN
     employee_count_by_age_group:
     - TPL_EMPLOYEE_COUNT_BY_AGE_GROUP
+    most_populated_age_group:
+    - TPL_MOST_POPULATED_AGE_GROUP
+    least_populated_age_group:
+    - TPL_LEAST_POPULATED_AGE_GROUP
     employee_count_by_age_filter:
     - TPL_EMPLOYEE_COUNT_BY_AGE_FILTER
     - TPL_EMPLOYEES_AGE_60_PLUS
@@ -348,6 +352,42 @@ templates:
   sql: "SELECT\n    v.age_group_title,\n    COUNT(v.employee_id) AS employee_count,\n    ROUND(\n        COUNT(v.employee_id)\
     \ * 100.0\n        / NULLIF(SUM(COUNT(v.employee_id)) OVER (), 0),\n        2\n    ) AS percentage\nFROM hr_mvp.vw_hr_employee_analytics\
     \ v\nWHERE v.is_active = TRUE\nGROUP BY v.age_group_title\nORDER BY MIN(v.age) ASC;\n"
+- template_id: TPL_MOST_POPULATED_AGE_GROUP
+  intent: most_populated_age_group
+  title_fa: پرجمعیت‌ترین گروه سنی
+  route: SQL
+  status: ready_for_demo
+  output_type: kpi_card
+  required_columns:
+  - employee_id
+  - age_group_title
+  - is_active
+  result_columns:
+  - name: age_group_title
+    type: text
+    title_fa: گروه سنی
+  - name: employee_count
+    type: integer
+    title_fa: تعداد کارکنان
+  sql: "SELECT\n    v.age_group_title,\n    COUNT(v.employee_id) AS employee_count\nFROM hr_mvp.vw_hr_employee_analytics v\nWHERE v.is_active = TRUE\nGROUP BY v.age_group_title\nORDER BY employee_count DESC\nLIMIT 1;\n"
+- template_id: TPL_LEAST_POPULATED_AGE_GROUP
+  intent: least_populated_age_group
+  title_fa: کم‌جمعیت‌ترین گروه سنی
+  route: SQL
+  status: ready_for_demo
+  output_type: kpi_card
+  required_columns:
+  - employee_id
+  - age_group_title
+  - is_active
+  result_columns:
+  - name: age_group_title
+    type: text
+    title_fa: گروه سنی
+  - name: employee_count
+    type: integer
+    title_fa: تعداد کارکنان
+  sql: "SELECT\n    v.age_group_title,\n    COUNT(v.employee_id) AS employee_count\nFROM hr_mvp.vw_hr_employee_analytics v\nWHERE v.is_active = TRUE\nGROUP BY v.age_group_title\nORDER BY employee_count ASC\nLIMIT 1;\n"
 - template_id: TPL_MAX_AGE
   intent: max_age
   title_fa: بیشترین سن کارکنان

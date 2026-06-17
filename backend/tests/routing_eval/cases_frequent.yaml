@@ -75,7 +75,7 @@ cases:
     category: demographics
     expect:
       route: SQL
-      intent: employee_count_by_age_group
+      intent: most_populated_age_group
 
   - id: frq-306
     question: "آیا نیروی انسانی در آستانه بازنشستگی زیاد است؟"

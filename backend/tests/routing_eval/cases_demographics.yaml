@@ -298,7 +298,7 @@ cases:
     category: demographics
     expect:
       route: SQL
-      intent: employee_count_by_age_group
+      intent: most_populated_age_group
 
   - id: dem-012v2
     xfail: true
@@ -323,20 +323,21 @@ cases:
     category: demographics
     expect:
       route: SQL
-      intent: employee_count_by_age_group
+      intent: least_populated_age_group
 
   - id: dem-013v2
     question: "کمترین نیرو توی کدوم رنج سنیه؟"
     category: demographics
     expect:
       route: SQL
+      intent: least_populated_age_group
 
   - id: dem-013v3
     question: "کدوم گروه سنی از همه کمتره؟"
     category: demographics
     expect:
       route: SQL
-      intent: employee_count_by_age_group
+      intent: least_populated_age_group
 
   # ── dem-014: percentage share of each age group ────────────────────────────
 
