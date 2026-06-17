@@ -130,3 +130,46 @@ def test_validator_result_has_required_fields(metadata_service):
     result = validate(sql, metadata_service)
     for field in ("is_valid", "status", "can_execute_sql"):
         assert field in result, f"Missing field: {field}"
+
+
+# ---------------------------------------------------------------------------
+# Active filter auto-repair
+# ---------------------------------------------------------------------------
+
+
+def test_validator_repairs_missing_is_active_with_existing_where(metadata_service):
+    """SQL with WHERE but missing v.is_active = TRUE must be repaired, not rejected."""
+    sql = """
+    SELECT v.gender, COUNT(v.employee_id) AS cnt
+    FROM hr_mvp.vw_hr_employee_analytics v
+    WHERE v.marital_status = 'متأهل'
+    GROUP BY v.gender;
+    """
+    result = validate(sql, metadata_service)
+    assert result["is_valid"] is True, f"Expected repair, got: {result.get('status')}"
+    assert "IS_ACTIVE" in result.get("sql", "").upper()
+
+
+def test_validator_repairs_missing_is_active_no_where_clause(metadata_service):
+    """SQL with no WHERE clause at all must have is_active injected."""
+    sql = """
+    SELECT v.employment_type, COUNT(v.employee_id) AS cnt
+    FROM hr_mvp.vw_hr_employee_analytics v
+    GROUP BY v.employment_type;
+    """
+    result = validate(sql, metadata_service)
+    assert result["is_valid"] is True, f"Expected repair, got: {result.get('status')}"
+    assert "IS_ACTIVE" in result.get("sql", "").upper()
+
+
+def test_validator_does_not_duplicate_is_active_when_already_present(metadata_service):
+    """SQL that already has v.is_active = TRUE must not get a second copy."""
+    sql = """
+    SELECT COUNT(v.employee_id) AS cnt
+    FROM hr_mvp.vw_hr_employee_analytics v
+    WHERE v.is_active = TRUE AND v.gender = 'F'
+    GROUP BY v.gender;
+    """
+    result = validate(sql, metadata_service)
+    assert result["is_valid"] is True
+    assert result.get("sql", "").upper().count("IS_ACTIVE") == 1

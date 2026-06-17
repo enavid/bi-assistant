@@ -331,7 +331,15 @@ class SQLValidator:
         )
 
         # 4) Business / semantic rules.
-        issues.extend(self._validate_active_filter(normalized_sql))
+        # If is_active filter is missing, attempt to inject it before failing.
+        active_issues = self._validate_active_filter(normalized_sql)
+        if active_issues:
+            repaired = self._inject_active_filter(normalized_sql)
+            if repaired is not None:
+                normalized_sql = repaired
+                sql_text = repaired
+                active_issues = []
+        issues.extend(active_issues)
         issues.extend(self._validate_semantic_rules(normalized_sql, question_text))
         issues.extend(self._validate_data_gap_rules(normalized_sql, question_text))
         issues.extend(self._validate_limit(normalized_sql))
@@ -723,6 +731,38 @@ class SQLValidator:
                 evidence="v.is_active = TRUE",
             )
         ]
+
+    @staticmethod
+    def _inject_active_filter(sql: str) -> str | None:
+        """Inject v.is_active = TRUE into SQL that is missing it.
+
+        Returns the patched SQL, or None if the structure is too complex to patch safely
+        (e.g. CTEs with multiple SELECT blocks where injection point is ambiguous).
+        """
+        # Do not touch CTEs — too risky to inject in the right place.
+        if re.search(r"\bWITH\b", sql, flags=re.IGNORECASE):
+            return None
+
+        active_clause = "v.is_active = TRUE"
+
+        # SQL already has a WHERE clause — append with AND.
+        where_match = re.search(r"\bWHERE\b", sql, flags=re.IGNORECASE)
+        if where_match:
+            insert_pos = where_match.end()
+            return sql[:insert_pos] + f" {active_clause} AND" + sql[insert_pos:]
+
+        # No WHERE clause — insert before GROUP BY / ORDER BY / LIMIT / HAVING, or at end.
+        for keyword in ("GROUP BY", "ORDER BY", "HAVING", "LIMIT"):
+            kw_match = re.search(rf"\b{keyword}\b", sql, flags=re.IGNORECASE)
+            if kw_match:
+                insert_pos = kw_match.start()
+                return sql[:insert_pos] + f"WHERE {active_clause}\n" + sql[insert_pos:]
+
+        # Append before trailing semicolon or at end.
+        sql_stripped = sql.rstrip()
+        if sql_stripped.endswith(";"):
+            return sql_stripped[:-1] + f"\nWHERE {active_clause};"
+        return sql_stripped + f"\nWHERE {active_clause}"
 
     def _validate_semantic_rules(self, sql: str, question: str | None) -> list[SQLValidationIssue]:
         issues: list[SQLValidationIssue] = []
