@@ -94,14 +94,18 @@ cases:
     category: org_structure
     expect:
       route: SQL
-      intent: employee_count_by_service_domain
+      intent: least_populated_service_domain
+      must_include_sql:
+        - "ASC"
 
   - id: org-098v3
     question: "حوزه‌ای که کمترین نیرو داره کدومه؟"
     category: org_structure
     expect:
       route: SQL
-      intent: employee_count_by_service_domain
+      intent: least_populated_service_domain
+      must_include_sql:
+        - "ASC"
 
   # ── org-099: male/female count per service domain ────────────────────────
 
@@ -331,7 +335,9 @@ cases:
     category: org_structure
     expect:
       route: SQL
-      intent: employee_count_by_department
+      intent: least_populated_department
+      must_include_sql:
+        - "ASC"
 
   - id: org-108v3
     question: "کوچیک‌ترین دپارتمان از نظر تعداد نیرو؟"

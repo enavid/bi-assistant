@@ -235,6 +235,44 @@ def test_age_filter_comparison_between_employment_statuses_groups_by_employment_
     assert _has_filter(result, "age"), f"Expected age filter, got: {_filters_for(result)}"
 
 
+def test_least_populated_department_question_is_ranked_not_plain_distribution(
+    metadata_service,
+):
+    """"کمترین" (least) on department must rank ascending to a single answer,
+    not fall back to the plain distribution template (which is ORDER BY
+    employee_count DESC — the opposite direction, useless for "least")."""
+    result = IntentParser(metadata_service=metadata_service).parse(
+        "کدام دپارتمان کمترین کارمند را دارد؟"
+    )
+    assert result.get("intent") == "least_populated_department", (
+        f"Expected least_populated_department, got: {result.get('intent')}"
+    )
+
+
+def test_least_populated_service_domain_question_is_ranked_not_plain_distribution(
+    metadata_service,
+):
+    result = IntentParser(metadata_service=metadata_service).parse(
+        "کدام حوزه خدمت کمترین کارمند را دارد؟"
+    )
+    assert result.get("intent") == "least_populated_service_domain", (
+        f"Expected least_populated_service_domain, got: {result.get('intent')}"
+    )
+
+
+def test_service_years_distribution_question_is_gap_not_silent_average(metadata_service):
+    """No bucketed service_years dimension exists in the MVP view. A question
+    asking for a distribution/breakdown must not silently fall back to
+    average_service_years — that answers a different question."""
+    result = IntentParser(metadata_service=metadata_service).parse(
+        "توزیع سابقه خدمت کارکنان به چه صورته؟"
+    )
+    assert result.get("intent") == "service_years_distribution_analysis", (
+        f"Expected service_years_distribution_analysis (GAP), got: {result.get('intent')}"
+    )
+    assert result.get("route") == "GAP"
+
+
 def test_average_age_female_with_masters_includes_both_filters(metadata_service):
     result = IntentParser(metadata_service=metadata_service).parse(
         "میانگین سن کارمندان زن با مدرک کارشناسی ارشد چقدر است؟"

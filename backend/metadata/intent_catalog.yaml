@@ -2163,6 +2163,31 @@ intents:
   report_id: RPT_HR_043
   sql_template_id: TPL_DATA_GAP
   gap_reason: در MVP فعلی ماه شمسی/تقویم قابل اتکا برای تحلیل ماهانه تعریف نشده است.
+- intent_id: service_years_distribution_analysis
+  title_fa: توزیع سابقه خدمت
+  description_fa: تحلیل توزیع/تفکیک سابقه خدمت کارکنان در بازه‌های مشخص؛ در MVP فعلی به دلیل نبود ابعاد گروه‌بندی سابقه خدمت (مشابه گروه سنی) به عنوان Data Gap ثبت می‌شود.
+  route: GAP
+  status: data_gap
+  question_type: distribution
+  priority: medium
+  supported_in_phase2: true
+  demo_ready: false
+  user_examples:
+  - توزیع سابقه خدمت کارکنان به چه صورته؟
+  - تفکیک سابقه خدمت کارکنان چطوره؟
+  trigger_terms_fa:
+  - توزیع سابقه
+  - تفکیک سابقه خدمت
+  - توزیع سابقه خدمت
+  metrics: []
+  required_columns:
+  - service_years
+  default_filters: []
+  group_by: []
+  output_type: status_message
+  recommended_visualization: status_message
+  sql_template_id: TPL_DATA_GAP
+  gap_reason: در MVP فعلی بُعد گروه‌بندی سابقه خدمت (مشابه گروه سنی) تعریف نشده است.
 router_rules:
 - rule_id: R001_OUT_OF_SCOPE
   condition: question_is_not_hr_related

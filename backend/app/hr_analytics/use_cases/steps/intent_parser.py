@@ -119,6 +119,8 @@ DEFAULT_TEMPLATE_BY_INTENT: dict[str, str] = {
     "employee_count_by_position": "TPL_EMPLOYEE_COUNT_BY_POSITION",
     "most_populated_position": "TPL_MOST_POPULATED_POSITION",
     "employee_count_by_position_level": "TPL_EMPLOYEE_COUNT_BY_POSITION_LEVEL",
+    "least_populated_department": "TPL_LEAST_POPULATED_DEPARTMENT",
+    "least_populated_service_domain": "TPL_LEAST_POPULATED_SERVICE_DOMAIN",
     "hiring_by_contract_type_recent_year": "TPL_HIRING_BY_CONTRACT_TYPE_RECENT_YEAR",
     "average_service_years": "TPL_AVERAGE_SERVICE_YEARS",
     "employee_count_without_service_years": "TPL_EMPLOYEE_COUNT_WITHOUT_SERVICE_YEARS",
@@ -1311,11 +1313,17 @@ class IntentParser:
             elif f.get("explicit_gender"):
                 # Gender breakdown by service domain — boost to beat gender_percentage (65)
                 add(("employee_count_by_service_domain", 85, "gender_by_service_domain"))
+            elif f.get("asks_least"):
+                # "least" must rank ascending to a single answer — the plain distribution
+                # template is ORDER BY employee_count DESC, the wrong direction for "least".
+                add(("least_populated_service_domain", 90, "least_service_domain"))
             else:
                 add(("employee_count_by_service_domain", 60, "service_domain_distribution"))
         if f.get("explicit_department"):
             if f.get("asks_gap_or_shortage"):
                 add(("headcount_gap_by_department", 75, "headcount_gap_department"))
+            elif f.get("asks_least"):
+                add(("least_populated_department", 90, "least_department"))
             else:
                 add(("employee_count_by_department", 55, "department_distribution"))
         # Only add province distribution when not already covered by a service_domain or dept filter
@@ -1431,6 +1439,12 @@ class IntentParser:
                         "service_years_via_numeric_filter",
                     )
                 )
+            elif self._has_any(
+                question, ["توزیع سابقه", "توزیع سابقه خدمت", "تفکیک سابقه خدمت"]
+            ):
+                # No bucketed service_years dimension exists in the MVP view — answering
+                # with average_service_years would silently mismatch what was asked.
+                add(("service_years_distribution_analysis", 90, "service_years_distribution_gap"))
             else:
                 add(("average_service_years", 25, "service_years_default"))
 

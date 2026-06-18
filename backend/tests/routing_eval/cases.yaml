@@ -976,10 +976,11 @@ cases:
     category: org_structure
     expect:
       route: SQL
-      intent: employee_count_by_service_domain
+      intent: least_populated_service_domain
       must_include_sql:
         - "service_domain"
         - "GROUP BY"
+        - "ASC"
 
   - id: org-099
     question: "تعداد کارکنان زن و مرد در هر حوزه چقدر است؟"
@@ -1064,10 +1065,11 @@ cases:
     category: org_structure
     expect:
       route: SQL
-      intent: employee_count_by_department
+      intent: least_populated_department
       must_include_sql:
         - "department_name"
         - "GROUP BY"
+        - "ASC"
 
   - id: org-109
     question: "تعداد کارکنان هر دپارتمان به تفکیک جنسیت چقدر است؟"
