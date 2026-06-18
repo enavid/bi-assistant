@@ -655,6 +655,7 @@ class SemanticMapper:
                     confidence += 0.12
 
                 # Disambiguation: employment status terms with explicit contract context map to contract_type.
+                disambiguated_from_employment_type = False
                 if (
                     mapped_column == "employment_type"
                     and question_mentions_contract_type
@@ -666,6 +667,7 @@ class SemanticMapper:
                         f"v.contract_type = '{str(canonical).replace(chr(39), chr(39) * 2)}'"
                     )
                     confidence += 0.08
+                    disambiguated_from_employment_type = True
 
                 # Disambiguation: "karshenas" in position context maps to expert role, not education title.
                 if (
@@ -687,8 +689,33 @@ class SemanticMapper:
                         "source": "value_aliases",
                         "matched_terms": matched_aliases[:5],
                         "confidence": round(min(confidence, 0.98), 4),
+                        "_disambiguated_from_employment_type": disambiguated_from_employment_type,
                     }
                 )
+        return self._resolve_employment_contract_conflicts(filters)
+
+    @staticmethod
+    def _resolve_employment_contract_conflicts(filters: list[JsonDict]) -> list[JsonDict]:
+        """An employment_type value (e.g. رسمی) gets disambiguated into
+        contract_type when "نوع قرارداد" appears anywhere in the question. If a
+        distinct, genuinely-matched contract_type value is also present, that
+        disambiguation produces two conflicting values on the same column
+        (an impossible AND). Revert the disambiguated one back to
+        employment_type so both dimensions stay as separate filters."""
+        contract_values = {
+            f.get("value") for f in filters if f.get("column") == "contract_type"
+        }
+        if len(contract_values) > 1:
+            for f in filters:
+                if f.get("column") == "contract_type" and f.pop(
+                    "_disambiguated_from_employment_type", False
+                ):
+                    f["column"] = "employment_type"
+                    f["filter_sql"] = (
+                        f"v.employment_type = '{str(f['value']).replace(chr(39), chr(39) * 2)}'"
+                    )
+        for f in filters:
+            f.pop("_disambiguated_from_employment_type", None)
         return filters
 
     def _detect_numeric_filters(self, normalized_question: str) -> list[JsonDict]:

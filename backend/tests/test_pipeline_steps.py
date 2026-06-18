@@ -171,6 +171,27 @@ def test_average_age_contractor_includes_contractor_filter(metadata_service):
     )
 
 
+def test_employment_type_and_contract_type_kept_as_separate_filters(metadata_service):
+    """A question naming a distinct employment_type value (رسمی) and a distinct
+    contract_type value (امور پشتیبانی اداری) must produce one filter per
+    column, not two conflicting filters both forced onto contract_type."""
+    result = SemanticMapper(metadata_service=metadata_service).map(
+        "تعداد کارکنان رسمی با قرارداد امور پشتیبانی اداری چقدره؟"
+    )
+    assert _has_filter(result, "employment_type", "رسمی"), (
+        f"Expected employment_type=رسمی filter, got filters: {_filters_for(result)}"
+    )
+    assert _has_filter(result, "contract_type", "امور پشتیبانی اداری"), (
+        f"Expected contract_type=امور پشتیبانی اداری filter, got filters: {_filters_for(result)}"
+    )
+    contract_values = {
+        f.get("value") for f in _filters_for(result) if f.get("column") == "contract_type"
+    }
+    assert contract_values == {"امور پشتیبانی اداری"}, (
+        f"contract_type should only carry the genuinely matched value, got: {contract_values}"
+    )
+
+
 def test_average_age_female_with_masters_includes_both_filters(metadata_service):
     result = IntentParser(metadata_service=metadata_service).parse(
         "میانگین سن کارمندان زن با مدرک کارشناسی ارشد چقدر است؟"

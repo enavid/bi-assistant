@@ -116,6 +116,9 @@ DEFAULT_TEMPLATE_BY_INTENT: dict[str, str] = {
     "low_education_in_expert_roles": "TPL_LOW_EDUCATION_IN_EXPERT_ROLES",
     "employee_count_by_department": "TPL_EMPLOYEE_COUNT_BY_DEPARTMENT",
     "employee_count_by_work_location": "TPL_EMPLOYEE_COUNT_BY_WORK_LOCATION",
+    "employee_count_by_position": "TPL_EMPLOYEE_COUNT_BY_POSITION",
+    "most_populated_position": "TPL_MOST_POPULATED_POSITION",
+    "employee_count_by_position_level": "TPL_EMPLOYEE_COUNT_BY_POSITION_LEVEL",
     "hiring_by_contract_type_recent_year": "TPL_HIRING_BY_CONTRACT_TYPE_RECENT_YEAR",
     "average_service_years": "TPL_AVERAGE_SERVICE_YEARS",
     "employee_count_without_service_years": "TPL_EMPLOYEE_COUNT_WITHOUT_SERVICE_YEARS",
@@ -1365,9 +1368,15 @@ class IntentParser:
             else:
                 add(("employee_count_by_department", 65, "org_level_distribution"))
 
-        # Job position context (پست سازمانی, سطح پست, etc.) → grouped by position.
+        # Job position context (پست سازمانی, سطح پست, etc.) → grouped by position, not total count.
         if f.get("explicit_job_position") and not f.get("explicit_education"):
-            add(("total_employee_count", 60, "job_position_distribution"))
+            is_ranking = "کدوم" in question or f.get("asks_most") or f.get("asks_least")
+            if "سطح پست" in question:
+                add(("employee_count_by_position_level", 65, "position_level_distribution"))
+            elif is_ranking:
+                add(("most_populated_position", 65, "job_position_ranking"))
+            else:
+                add(("employee_count_by_position", 60, "job_position_distribution"))
 
         if f.get("hire_year_filter") is not None:
             add(("employee_count_by_hire_year", 85, "hire_year_exact_filter"))

@@ -111,6 +111,9 @@ template_index:
     RPT_HR_040: TPL_CONTRACTOR_SHARE_BY_DEPARTMENT
     RPT_HR_041: TPL_HEADCOUNT_GAP_BY_SERVICE_DOMAIN
     RPT_HR_042: TPL_EDUCATION_BY_SERVICE_DOMAIN
+    RPT_HR_043: TPL_EMPLOYEE_COUNT_BY_POSITION
+    RPT_HR_044: TPL_MOST_POPULATED_POSITION
+    RPT_HR_045: TPL_EMPLOYEE_COUNT_BY_POSITION_LEVEL
   by_intent:
     total_employee_count:
     - TPL_TOTAL_EMPLOYEE_COUNT
@@ -183,6 +186,12 @@ template_index:
     education_distribution_by_service_domain: TPL_EDUCATION_BY_SERVICE_DOMAIN
     education_by_service_domain: TPL_EDUCATION_BY_SERVICE_DOMAIN
     monthly_hiring_trend: TPL_DATA_GAP
+    employee_count_by_position:
+    - TPL_EMPLOYEE_COUNT_BY_POSITION
+    most_populated_position:
+    - TPL_MOST_POPULATED_POSITION
+    employee_count_by_position_level:
+    - TPL_EMPLOYEE_COUNT_BY_POSITION_LEVEL
 templates:
 - template_id: TPL_TOTAL_EMPLOYEE_COUNT
   report_id: RPT_HR_001
@@ -1349,6 +1358,58 @@ status_templates:
   sql: 'SELECT ''NEEDS_CLARIFICATION'' AS status;
 
     '
+- template_id: TPL_EMPLOYEE_COUNT_BY_POSITION
+  report_id: RPT_HR_043
+  intent: employee_count_by_position
+  title_fa: تعداد کارکنان به تفکیک پست سازمانی
+  route: SQL
+  status: ready_for_demo
+  output_type: table_or_horizontal_bar_chart
+  required_columns:
+  - employee_id
+  - position_title
+  - is_active
+  business_rules_fa: برای تفکیک پست از GROUP BY v.position_title استفاده می‌شود.
+  parameters:
+  - name: result_limit
+    type: integer_or_NULL
+    required: false
+    default: 'NULL'
+  sql: "SELECT\n    v.position_title,\n    COUNT(v.employee_id) AS employee_count\nFROM hr_mvp.vw_hr_employee_analytics\
+    \ v\nWHERE v.is_active = TRUE\nGROUP BY v.position_title\nORDER BY employee_count DESC\nLIMIT {result_limit};\n"
+- template_id: TPL_MOST_POPULATED_POSITION
+  report_id: RPT_HR_044
+  intent: most_populated_position
+  title_fa: پرمتصدی‌ترین پست سازمانی
+  route: SQL
+  status: ready_for_demo
+  output_type: kpi_card
+  required_columns:
+  - employee_id
+  - position_title
+  - is_active
+  result_columns:
+  - name: position_title
+    type: text
+    title_fa: پست سازمانی
+  - name: employee_count
+    type: integer
+    title_fa: تعداد کارکنان
+  sql: "SELECT\n    v.position_title,\n    COUNT(v.employee_id) AS employee_count\nFROM hr_mvp.vw_hr_employee_analytics v\nWHERE v.is_active = TRUE\nGROUP BY v.position_title\nORDER BY employee_count DESC\nLIMIT 1;\n"
+- template_id: TPL_EMPLOYEE_COUNT_BY_POSITION_LEVEL
+  report_id: RPT_HR_045
+  intent: employee_count_by_position_level
+  title_fa: تعداد کارکنان به تفکیک سطح پست
+  route: SQL
+  status: ready_for_demo
+  output_type: table_or_horizontal_bar_chart
+  required_columns:
+  - employee_id
+  - position_level
+  - is_active
+  business_rules_fa: برای تفکیک سطح پست از GROUP BY v.position_level استفاده می‌شود.
+  sql: "SELECT\n    v.position_level,\n    COUNT(v.employee_id) AS employee_count\nFROM hr_mvp.vw_hr_employee_analytics\
+    \ v\nWHERE v.is_active = TRUE\nGROUP BY v.position_level\nORDER BY v.position_level;\n"
 gap_and_reject_mapping:
   city_level_analysis: TPL_DATA_GAP
 

@@ -508,21 +508,21 @@ cases:
     category: org_structure
     expect:
       route: SQL
-      intent: total_employee_count
+      intent: employee_count_by_position
 
   - id: org-116v2
     question: "توزیع نیروها به تفکیک پست سازمانی؟"
     category: org_structure
     expect:
       route: SQL
-      intent: total_employee_count
+      intent: employee_count_by_position
 
   - id: org-116v3
     question: "تعداد پرسنل در هر پست؟"
     category: org_structure
     expect:
       route: SQL
-      intent: total_employee_count
+      intent: employee_count_by_position
 
   # ── org-117: position with most employees ────────────────────────────────
 
@@ -531,21 +531,21 @@ cases:
     category: org_structure
     expect:
       route: SQL
-      intent: total_employee_count
+      intent: most_populated_position
 
   - id: org-117v2
     question: "پر متصدی‌ترین پست سازمانی کدومه؟"
     category: org_structure
     expect:
       route: SQL
-      intent: total_employee_count
+      intent: most_populated_position
 
   - id: org-117v3
     question: "بیشترین تعداد آدم رو کدوم پست داره؟"
     category: org_structure
     expect:
       route: SQL
-      intent: total_employee_count
+      intent: most_populated_position
 
   # ── org-118: employee count by position level ─────────────────────────────
 
@@ -554,21 +554,21 @@ cases:
     category: org_structure
     expect:
       route: SQL
-      intent: total_employee_count
+      intent: employee_count_by_position_level
 
   - id: org-118v2
     question: "توزیع کارکنان بر اساس سطح پست سازمانی؟"
     category: org_structure
     expect:
       route: SQL
-      intent: total_employee_count
+      intent: employee_count_by_position_level
 
   - id: org-118v3
     question: "تعداد نیروها به تفکیک سطح پست؟"
     category: org_structure
     expect:
       route: SQL
-      intent: total_employee_count
+      intent: employee_count_by_position_level
 
   # ── org-119: employees in expert positions ────────────────────────────────
 

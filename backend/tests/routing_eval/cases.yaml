@@ -1164,7 +1164,7 @@ cases:
     category: org_structure
     expect:
       route: SQL
-      intent: total_employee_count
+      intent: employee_count_by_position_level
       must_include_sql:
         - "COUNT"
         - "is_active"
