@@ -60,6 +60,11 @@ class HRBIOrchestrationUseCase:
         template_id = sql_plan.get("template_id") or sql_plan.get("report_id")
         llm_meta = sql_plan.get("metadata") or {}
         model_called = llm_meta.get("model") if isinstance(llm_meta, dict) else None
+        if model_called is None:
+            for t in traces:
+                if t.get("step") == "sql_planner":
+                    model_called = (t.get("details") or {}).get("model_called")
+                    break
         llm_prompt = llm_meta.get("prompt") if isinstance(llm_meta, dict) else None
         prompt_tokens_val = llm_meta.get("prompt_tokens") if isinstance(llm_meta, dict) else None
         context_window_val = llm_meta.get("context_window") if isinstance(llm_meta, dict) else None

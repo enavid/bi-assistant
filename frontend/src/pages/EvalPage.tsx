@@ -16,6 +16,7 @@ import {
   useSeedEvalDefaults,
   useTriggerEvalRun,
 } from '@/hooks'
+import { TracePanel } from '@/components/trace/TracePanel'
 import type { EvalQuestion, EvalRun, EvalRunResult } from '@/types'
 
 // ---------------------------------------------------------------------------
@@ -95,130 +96,6 @@ const EVAL_STATUS_LABEL: Record<string, string> = {
   OUT_OF_SCOPE:   'Out of Scope',
 }
 
-const DECISION_STYLE: Record<string, { color: string; bg: string; border: string }> = {
-  rule:      { color: 'var(--text-3)',      bg: 'var(--bg-raised)',   border: 'var(--border-subtle)' },
-  policy:    { color: 'var(--red)',         bg: 'var(--red-bg)',      border: 'var(--red-border)' },
-  template:  { color: 'var(--accent-text)', bg: 'var(--accent-bg)',   border: 'var(--accent-border)' },
-  llm:       { color: 'var(--amber)',       bg: 'var(--amber-bg)',    border: 'var(--amber-border)' },
-  db:        { color: 'var(--text-2)',      bg: 'var(--bg-raised)',   border: 'var(--border-default)' },
-  component: { color: 'var(--text-2)',      bg: 'var(--bg-raised)',   border: 'var(--border-default)' },
-}
-
-function traceStatusColor(status: string): string {
-  const s = status.toLowerCase()
-  if (s.includes('fail') || s.includes('error') || s.includes('invalid') || s.includes('denied') || s.includes('blocked'))
-    return 'var(--red)'
-  if (s === 'warning' || s === 'not_configured' || s === 'unknown')
-    return 'var(--amber)'
-  return 'var(--text-3)'
-}
-
-// ---------------------------------------------------------------------------
-// Trace panel (same richness as ChatPage)
-// ---------------------------------------------------------------------------
-
-function isComplex(v: unknown): boolean {
-  if (v === null || v === undefined) return false
-  if (Array.isArray(v)) return v.length > 0
-  if (typeof v === 'object') return Object.keys(v as object).length > 0
-  return false
-}
-
-function TraceDetails({ details }: { details: Record<string, unknown> }) {
-  const entries = Object.entries(details).filter(([k]) => k !== 'decision_by')
-  if (entries.length === 0) return null
-  const simple  = entries.filter(([, v]) => !isComplex(v))
-  const complex = entries.filter(([, v]) => isComplex(v))
-  return (
-    <div className="text-[10px] font-mono"
-      style={{ borderTop: '1px solid var(--border-subtle)', background: 'var(--bg-base)', borderLeft: '3px solid var(--accent-border)' }}>
-      {simple.length > 0 && (
-        <div className="grid px-3 py-2 gap-x-4 gap-y-[3px]"
-          style={{ gridTemplateColumns: 'minmax(100px, max-content) 1fr' }}>
-          {simple.map(([k, v]) => (
-            <React.Fragment key={k}>
-              <span style={{ color: 'var(--text-3)' }}>{k}</span>
-              <span className="break-all" style={{ color: 'var(--text-2)' }}>
-                {v === null || v === undefined ? '—' : String(v)}
-              </span>
-            </React.Fragment>
-          ))}
-        </div>
-      )}
-      {complex.length > 0 && (
-        <div className="flex flex-col gap-2 px-3 pb-2.5"
-          style={{ borderTop: simple.length > 0 ? '1px solid var(--border-subtle)' : undefined, paddingTop: '8px' }}>
-          {complex.map(([k, v]) => (
-            <div key={k}>
-              <div className="mb-0.5 font-semibold" style={{ color: 'var(--text-3)' }}>{k}</div>
-              <pre className="px-2.5 py-2 rounded-[4px] text-[9.5px] overflow-x-auto leading-relaxed"
-                style={{ background: 'var(--bg-raised)', color: 'var(--text-2)', border: '1px solid var(--border-subtle)' }}>
-                {JSON.stringify(v, null, 2)}
-              </pre>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
-
-function EvalTracePanel({ steps }: { steps: NonNullable<EvalRunResult['trace_steps']> }) {
-  const [expandedRow, setExpandedRow] = useState<number | null>(null)
-  return (
-    <div className="mt-1.5 rounded-[6px] overflow-hidden text-[10px] font-mono overflow-x-auto"
-      style={{ border: '1px solid var(--border-subtle)', background: 'var(--bg-raised)' }}>
-      <div className="grid" style={{ gridTemplateColumns: 'minmax(110px, 1.8fr) minmax(80px, 1fr) 44px 88px', gap: 0, minWidth: 320 }}>
-        {(['step', 'status', 'ms', 'decision'] as const).map((h) => (
-          <div key={h} className="px-2.5 py-1.5 font-semibold uppercase tracking-wide text-[9px]"
-            style={{ color: 'var(--text-3)', borderBottom: '1px solid var(--border-subtle)' }}>
-            {h}
-          </div>
-        ))}
-        {steps.map((t, i) => {
-          const isLast       = i === steps.length - 1
-          const isExpanded   = expandedRow === i
-          const details      = t.details ?? {}
-          const hasDetails   = Object.keys(details).filter((k) => k !== 'decision_by').length > 0
-          const decision     = (details.decision_by as string | undefined) ?? '—'
-          const ds           = DECISION_STYLE[decision]
-          const status       = t.status ?? ''
-          const statusColor  = traceStatusColor(status)
-          const rowBorder    = (!isLast || isExpanded) ? '1px solid var(--border-subtle)' : undefined
-          return (
-            <React.Fragment key={i}>
-              <div
-                className={hasDetails ? 'px-2.5 py-[5px] cursor-pointer hover:opacity-70' : 'px-2.5 py-[5px]'}
-                style={{ color: 'var(--text-2)', borderBottom: rowBorder }}
-                onClick={() => hasDetails && setExpandedRow(isExpanded ? null : i)}>
-                {hasDetails && <span className="mr-1" style={{ color: 'var(--text-3)' }}>{isExpanded ? '▾' : '▸'}</span>}
-                {t.step ?? '—'}
-              </div>
-              <div className="px-2.5 py-[5px]" style={{ borderBottom: rowBorder }}>
-                <span style={{ color: statusColor, fontWeight: statusColor === 'var(--red)' ? 600 : undefined }}>{status || '—'}</span>
-              </div>
-              <div className="px-2.5 py-[5px] tabular-nums text-right" style={{ color: 'var(--text-3)', borderBottom: rowBorder }}>
-                {t.duration_ms != null ? t.duration_ms.toFixed(1) : '—'}
-              </div>
-              <div className="px-2.5 py-[5px]" style={{ borderBottom: rowBorder }}>
-                <span className="px-1.5 py-[2px] rounded-[3px] whitespace-nowrap"
-                  style={{ color: ds?.color ?? 'var(--text-3)', background: ds?.bg ?? 'transparent', border: `1px solid ${ds?.border ?? 'var(--border-subtle)'}` }}>
-                  {decision}
-                </span>
-              </div>
-              {isExpanded && (
-                <div className="col-span-4" style={{ borderBottom: isLast ? undefined : '1px solid var(--border-subtle)' }}>
-                  <TraceDetails details={details} />
-                </div>
-              )}
-            </React.Fragment>
-          )
-        })}
-      </div>
-    </div>
-  )
-}
-
 // ---------------------------------------------------------------------------
 // Inline result panel (expandable, chat-style)
 // ---------------------------------------------------------------------------
@@ -278,7 +155,7 @@ function InlineResultPanel({ result, modelName }: { result: EvalRunResult; model
         )}
       </div>
 
-      {traceOpen && hasTrace && <EvalTracePanel steps={result.trace_steps!} />}
+      {traceOpen && hasTrace && <TracePanel traces={result.trace_steps!} />}
     </div>
   )
 }

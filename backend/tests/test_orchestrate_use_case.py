@@ -105,6 +105,30 @@ async def test_generate_extracts_traces():
 
 
 @pytest.mark.asyncio
+async def test_generate_model_called_from_trace_when_sql_plan_metadata_empty():
+    """sql_plan.metadata is empty when the final plan came from a template,
+    even though the LLM was consulted earlier (logged on the sql_planner
+    trace step). model_called must still surface it, matching the eval
+    extraction in app/evaluation/api/routes.py."""
+    payload = _base_payload(
+        context={
+            "traces": [
+                {
+                    "step": "sql_planner",
+                    "status": "ok",
+                    "details": {"model_called": "qwen2.5:14b"},
+                },
+            ],
+            "sql_plan": {"source": "sql_template", "template_id": "tmpl_001"},
+            "query_result": {},
+        }
+    )
+    uc = HRBIOrchestrationUseCase(_make_orchestrator(payload))
+    result = await uc.generate("سوال")
+    assert result.model_called == "qwen2.5:14b"
+
+
+@pytest.mark.asyncio
 async def test_generate_source_from_sql_plan():
     uc = HRBIOrchestrationUseCase(_make_orchestrator(_base_payload()))
     result = await uc.generate("سوال")
