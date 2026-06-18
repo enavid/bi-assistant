@@ -66,6 +66,11 @@ def _extract(response: Any, elapsed_ms: float, case: dict[str, Any]) -> dict[str
     template_id = sql_plan.get("template_id") or sql_plan.get("report_id") or ""
     llm_meta = sql_plan.get("metadata") or {}
     model_called = llm_meta.get("model") if isinstance(llm_meta, dict) else None
+    if model_called is None:
+        for t in traces_raw:
+            if t.get("step") == "sql_planner":
+                model_called = (t.get("details") or {}).get("model_called")
+                break
 
     sql_validator_status = sql_validation.get("status") or ""
     if not sql_validator_status:

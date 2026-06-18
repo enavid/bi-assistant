@@ -103,6 +103,22 @@ def test_extract_category_none_when_missing() -> None:
     assert result["category"] is None
 
 
+def test_extract_model_called_from_trace_when_template_source() -> None:
+    """The orchestrator logs model_called on the sql_planner trace step even
+    when the final sql_plan.source is "sql_template" (LLM ran earlier in the
+    pipeline, e.g. as a fallback that was later superseded by a template)."""
+    response = _make_mock_response()
+    response.to_dict.return_value["context"]["sql_plan"] = {"source": "sql_template"}
+    response.to_dict.return_value["context"]["traces"] = [
+        {"step": "sql_planner", "status": "ok", "details": {"model_called": "qwen2.5:14b"}},
+    ]
+    case = {"question_id": "q001", "question": "سوال"}
+
+    result = _extract(response, elapsed_ms=100, case=case)
+
+    assert result["model_called"] == "qwen2.5:14b"
+
+
 # ---------------------------------------------------------------------------
 # _CSV_FIELDS
 # ---------------------------------------------------------------------------
