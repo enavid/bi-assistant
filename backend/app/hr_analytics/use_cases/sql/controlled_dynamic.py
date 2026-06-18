@@ -75,8 +75,16 @@ def _inject_into_where(sql: str, clauses: list[str]) -> str | None:
         if 0 < pos < inject_pos:
             inject_pos = pos
 
+    head = sql[:inject_pos].rstrip()
+    trailing_semicolon = head.endswith(";")
+    if trailing_semicolon:
+        head = head[:-1].rstrip()
+
     and_block = "\n  AND ".join(clauses)
-    return sql[:inject_pos].rstrip() + f"\n  AND {and_block}\n" + sql[inject_pos:]
+    tail = sql[inject_pos:]
+    if trailing_semicolon and not tail.strip():
+        return head + f"\n  AND {and_block};\n"
+    return head + f"\n  AND {and_block}\n" + tail
 
 
 def apply_controlled_dynamic(

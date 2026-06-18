@@ -147,6 +147,32 @@ def test_fails_when_no_base_sql():
     assert result["source"] == "controlled_dynamic"
 
 
+def test_injects_before_trailing_semicolon_not_after():
+    """When base_sql has no GROUP BY/ORDER BY/LIMIT and ends with a trailing
+    semicolon (a single-statement template), the patched clause must go
+    before that semicolon — not appended as a dangling clause after it,
+    which would produce two malformed statements."""
+    base_sql = (
+        "SELECT COUNT(v.employee_id) AS employee_count\n"
+        "FROM hr_mvp.vw_hr_employee_analytics v\n"
+        "WHERE v.is_active = TRUE\n"
+        "  AND (NULL IS NULL OR v.age < NULL);\n"
+    )
+    intent = {
+        "filters": [
+            {"column": "is_active", "operator": "=", "value": True, "source": "default_rule"},
+            {"column": "employment_type", "operator": "=", "value": "قراردادی"},
+        ]
+    }
+    result = apply_controlled_dynamic(base_sql, intent)
+
+    assert result["status"] == "OK", f"Expected OK, got: {result}"
+    sql = result["sql"]
+    assert sql.count(";") == 1, f"Expected exactly one statement terminator, got: {sql!r}"
+    assert sql.rstrip().endswith(";"), f"Expected SQL to end with ';', got: {sql!r}"
+    assert "v.employment_type = 'قراردادی'" in sql
+
+
 def test_fails_when_sql_has_no_where_clause():
     """SQL without WHERE → cannot inject safely → FAILED."""
     no_where_sql = "SELECT COUNT(*) FROM hr_mvp.vw_hr_employee_analytics v"

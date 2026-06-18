@@ -192,6 +192,49 @@ def test_employment_type_and_contract_type_kept_as_separate_filters(metadata_ser
     )
 
 
+def test_age_filter_with_bare_employment_value_keeps_both_filters(metadata_service):
+    """employee_count_by_age_filter must not silently drop a bare employment-
+    status value (رسمی/قراردادی/پیمانی) mentioned alongside an age filter —
+    both conditions are needed for a correct answer."""
+    result = IntentParser(metadata_service=metadata_service).parse(
+        "چند نفر زیر ۳۰ سال قراردادی داریم؟"
+    )
+    assert result.get("intent") == "employee_count_by_age_filter"
+    assert _has_filter(result, "age"), f"Expected age filter, got: {_filters_for(result)}"
+    assert _has_filter(result, "employment_type", "قراردادی"), (
+        f"Expected employment_type=قراردادی filter, got: {_filters_for(result)}"
+    )
+
+
+def test_employment_type_intent_with_age_filter_keeps_both_filters(metadata_service):
+    """When the employment_type intent wins via an explicit phrase (e.g.
+    "استخدام قراردادی"), an accompanying age filter must still be applied,
+    not dropped."""
+    result = IntentParser(metadata_service=metadata_service).parse(
+        "جوون‌های زیر ۳۰ با استخدام قراردادی چند نفرن؟"
+    )
+    assert result.get("intent") == "employee_count_by_employment_type"
+    assert _has_filter(result, "employment_type", "قراردادی"), (
+        f"Expected employment_type=قراردادی filter, got: {_filters_for(result)}"
+    )
+    assert _has_filter(result, "age"), f"Expected age filter, got: {_filters_for(result)}"
+
+
+def test_age_filter_comparison_between_employment_statuses_groups_by_employment_type(
+    metadata_service,
+):
+    """A comparison question ("بیشتر رسمین یا قراردادی؟") names two employment
+    statuses — it needs a GROUP BY breakdown, not a single filtered count."""
+    result = IntentParser(metadata_service=metadata_service).parse(
+        "نیروهای مسن (۶۰ به بالا) بیشتر رسمین یا قراردادی؟"
+    )
+    assert result.get("intent") == "employee_count_by_age_filter"
+    assert "employment_type" in (result.get("group_by") or []), (
+        f"Expected group_by to include employment_type, got: {result.get('group_by')}"
+    )
+    assert _has_filter(result, "age"), f"Expected age filter, got: {_filters_for(result)}"
+
+
 def test_average_age_female_with_masters_includes_both_filters(metadata_service):
     result = IntentParser(metadata_service=metadata_service).parse(
         "میانگین سن کارمندان زن با مدرک کارشناسی ارشد چقدر است؟"

@@ -1288,6 +1288,106 @@ templates:
     \ IS NULL OR v.age >= {age_min})\n  AND ({age_max_exclusive} IS NULL OR v.age\
     \ < {age_max_exclusive})\n  AND ({age_max_inclusive} IS NULL OR v.age <= {age_max_inclusive})\n\
     GROUP BY v.service_domain\nORDER BY employee_count DESC;\n"
+- template_id: TPL_EMPLOYEE_COUNT_BY_AGE_FILTER_AND_EMPLOYMENT_TYPE
+  intent: employee_count_by_age_filter
+  title_fa: تعداد کارکنان با فیلتر سنی و نوع استخدام
+  route: SQL
+  status: ready_for_demo
+  output_type: kpi_card
+  required_columns:
+  - employee_id
+  - age
+  - employment_type
+  - is_active
+  parameters:
+  - name: age_min
+    type: integer_or_NULL
+    required: false
+    default: 'NULL'
+  - name: age_max_exclusive
+    type: integer_or_NULL
+    required: false
+    default: 'NULL'
+  - name: age_max_inclusive
+    type: integer_or_NULL
+    required: false
+    default: 'NULL'
+  - name: employment_type
+    type: string
+    required: true
+    allowed_values_source: data_dictionary.employment_type.allowed_values
+  sql: "SELECT\n    COUNT(v.employee_id) AS employee_count\nFROM hr_mvp.vw_hr_employee_analytics\
+    \ v\nWHERE v.is_active = TRUE\n  AND ({age_min} IS NULL OR v.age >= {age_min})\n\
+    \  AND ({age_max_exclusive} IS NULL OR v.age < {age_max_exclusive})\n  AND ({age_max_inclusive}\
+    \ IS NULL OR v.age <= {age_max_inclusive})\n  AND v.employment_type = '{employment_type}';\n"
+- template_id: TPL_EMPLOYEE_COUNT_BY_AGE_FILTER_AND_CONTRACT_TYPE
+  intent: employee_count_by_age_filter
+  title_fa: تعداد کارکنان با فیلتر سنی و نوع قرارداد
+  route: SQL
+  status: ready_for_demo
+  output_type: kpi_card
+  required_columns:
+  - employee_id
+  - age
+  - contract_type
+  - is_active
+  parameters:
+  - name: age_min
+    type: integer_or_NULL
+    required: false
+    default: 'NULL'
+  - name: age_max_exclusive
+    type: integer_or_NULL
+    required: false
+    default: 'NULL'
+  - name: age_max_inclusive
+    type: integer_or_NULL
+    required: false
+    default: 'NULL'
+  - name: contract_type
+    type: string
+    required: true
+    allowed_values_source: data_dictionary.contract_type.allowed_values
+  sql: "SELECT\n    COUNT(v.employee_id) AS employee_count\nFROM hr_mvp.vw_hr_employee_analytics\
+    \ v\nWHERE v.is_active = TRUE\n  AND ({age_min} IS NULL OR v.age >= {age_min})\n\
+    \  AND ({age_max_exclusive} IS NULL OR v.age < {age_max_exclusive})\n  AND ({age_max_inclusive}\
+    \ IS NULL OR v.age <= {age_max_inclusive})\n  AND v.contract_type = '{contract_type}';\n"
+- template_id: TPL_EMPLOYMENT_TYPE_BY_AGE_FILTER
+  intent: employee_count_by_age_filter
+  title_fa: توزیع نوع استخدام در فیلتر سنی
+  route: SQL
+  status: ready_for_demo
+  output_type: table_or_bar_chart
+  required_columns:
+  - employee_id
+  - age
+  - employment_type
+  - is_active
+  parameters:
+  - name: age_min
+    type: integer_or_NULL
+    required: false
+    default: 'NULL'
+  - name: age_max_exclusive
+    type: integer_or_NULL
+    required: false
+    default: 'NULL'
+  - name: age_max_inclusive
+    type: integer_or_NULL
+    required: false
+    default: 'NULL'
+  result_columns:
+  - name: employment_type
+    type: text
+    title_fa: نوع استخدام
+  - name: employee_count
+    type: integer
+    title_fa: تعداد کارکنان
+  sql: "SELECT\n    v.employment_type,\n    COUNT(v.employee_id) AS employee_count\nFROM\
+    \ hr_mvp.vw_hr_employee_analytics v\nWHERE v.is_active = TRUE\n  AND ({age_min}\
+    \ IS NULL OR v.age >= {age_min})\n  AND ({age_max_exclusive} IS NULL OR v.age\
+    \ < {age_max_exclusive})\n  AND ({age_max_inclusive} IS NULL OR v.age <= {age_max_inclusive})\n\
+    GROUP BY v.employment_type\nORDER BY employee_count DESC;\n"
 - template_id: TPL_NEAR_RETIREMENT_5_YEARS
   route: SQL
   status: ready_for_demo

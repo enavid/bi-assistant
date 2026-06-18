@@ -150,6 +150,9 @@ cases:
     expect:
       route: SQL
       intent: employee_count_by_age_filter
+      must_include_sql:
+        - "age"
+        - "employment_type"
 
   - id: cross-173v2
     question: "چند نفر رسمی ۶۰ ساله به بالا داریم؟"
@@ -157,6 +160,9 @@ cases:
     expect:
       route: SQL
       intent: employee_count_by_age_filter
+      must_include_sql:
+        - "age"
+        - "employment_type"
 
   - id: cross-173v3
     question: "تعداد کارکنان رسمی مسن (۶۰ به بالا)؟"
@@ -164,6 +170,9 @@ cases:
     expect:
       route: SQL
       intent: employee_count_by_age_filter
+      must_include_sql:
+        - "age"
+        - "employment_type"
 
   # ── cross-174: contract employees under 30 ────────────────────────────────
 
@@ -173,6 +182,9 @@ cases:
     expect:
       route: SQL
       intent: employee_count_by_age_filter
+      must_include_sql:
+        - "age"
+        - "employment_type"
 
   - id: cross-174v2
     question: "چند نفر قراردادی جوون (زیر ۳۰) داریم؟"
@@ -180,6 +192,9 @@ cases:
     expect:
       route: SQL
       intent: employee_count_by_age_filter
+      must_include_sql:
+        - "age"
+        - "employment_type"
 
   - id: cross-174v3
     question: "تعداد کارکنان قراردادی زیر سی سال؟"
@@ -187,6 +202,9 @@ cases:
     expect:
       route: SQL
       intent: employee_count_by_age_filter
+      must_include_sql:
+        - "age"
+        - "employment_type"
 
   # ── cross-175: share of contractor employees with diploma per domain ───────
 
@@ -317,14 +335,22 @@ cases:
     category: cross_analysis
     expect:
       route: SQL
-      intent: employee_count_by_employment_type
+      intent: employee_count_by_age_filter
+      must_include_sql:
+        - "age"
+        - "employment_type"
+        - "is_active"
 
   - id: cross-180v3
     question: "کارکنان جوان قراردادی (زیر ۳۰ سال) چند نفرن؟"
     category: cross_analysis
     expect:
       route: SQL
-      intent: employee_count_by_employment_type
+      intent: employee_count_by_age_filter
+      must_include_sql:
+        - "age"
+        - "employment_type"
+        - "is_active"
 
   # ── cross-181: employees with PhD per service domain ─────────────────────
 

@@ -1471,7 +1471,11 @@ class LLMOrchestrator:
         # prefer the specific template chosen by intent_parser over the catalog default.
         # Use an explicit allowlist to avoid breaking intents where the catalog default is correct
         # (e.g. employee_count_by_employment_type correctly uses the GROUP BY catalog template).
-        _prefer_specific_template_intents = {"average_age", "near_retirement_analysis"}
+        _prefer_specific_template_intents = {
+            "average_age",
+            "near_retirement_analysis",
+            "employee_count_by_age_filter",
+        }
         _prefer_specific_template_ids = {"TPL_EMPLOYEE_COUNT_BY_EDUCATION_VALUE"}
         if template_id and template_id != template.get("template_id"):
             should_override = (

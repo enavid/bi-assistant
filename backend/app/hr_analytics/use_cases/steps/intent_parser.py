@@ -1697,14 +1697,31 @@ class IntentParser:
         elif best_intent_id == "employee_count_by_age_filter":
             age_params = self._age_filter_to_params(age_filter)
             params.update(age_params)
-            for key, value in age_params.items():
-                if value is not None:
-                    pass
             if age_filter:
                 filters.append(age_filter)
             if query_features.get("explicit_service_domain"):
                 group_by = self._ensure_group_by(group_by, "service_domain")
                 required_columns.extend(["service_domain"])
+            # A bare employment-status value (رسمی/قراردادی/پیمانی) alongside an
+            # age filter must not be silently dropped. Two such values present
+            # ("بیشتر رسمین یا قراردادی") means a comparison — group by instead
+            # of picking one as a filter.
+            _status_terms = [t for t in ("رسمی", "قراردادی", "پیمانی") if t in question]
+            if len(_status_terms) >= 2:
+                group_by = self._ensure_group_by(group_by, "employment_type")
+                required_columns.append("employment_type")
+            elif employment_value:
+                params["employment_type"] = employment_value
+                filters.append(
+                    {"column": "employment_type", "operator": "=", "value": employment_value}
+                )
+                required_columns.append("employment_type")
+            elif contract_value:
+                params["contract_type"] = contract_value
+                filters.append(
+                    {"column": "contract_type", "operator": "=", "value": contract_value}
+                )
+                required_columns.append("contract_type")
             required_columns.extend(["age", "employee_id", "is_active"])
 
         elif best_intent_id == "employee_count_by_gender_age_filter":
@@ -1792,6 +1809,14 @@ class IntentParser:
                 # "درصد زنان در هر نوع استخدام" — gender as a percentage dimension, not a filter
                 filters.append({"column": "gender", "operator": "=", "value": gender_value})
                 required_columns.append("gender")
+            # An age filter alongside an explicit employment_type phrase
+            # ("استخدام قراردادی زیر ۳۰ سال") must not be dropped just because
+            # the employment_type phrase won the intent race.
+            if age_filter and employment_value:
+                age_params = self._age_filter_to_params(age_filter)
+                params.update(age_params)
+                filters.append(age_filter)
+                required_columns.append("age")
             required_columns.extend(["employment_type", "employee_id", "is_active"])
 
         elif best_intent_id == "employee_count_by_contract_type":
@@ -2076,6 +2101,32 @@ class IntentParser:
                 service, "TPL_EMPLOYEE_COUNT_BY_AGE_FILTER_AND_SERVICE_DOMAIN"
             ):
                 return "TPL_EMPLOYEE_COUNT_BY_AGE_FILTER_AND_SERVICE_DOMAIN"
+            if "employment_type" in group_by and self._template_exists(
+                service, "TPL_EMPLOYMENT_TYPE_BY_AGE_FILTER"
+            ):
+                return "TPL_EMPLOYMENT_TYPE_BY_AGE_FILTER"
+
+        # Compound age + employment/contract status filter — must not lose either
+        # condition by falling back to an age-only or employment-only template.
+        _params_now = extraction.get("params", {}) or {}
+        _has_age_param = any(
+            _params_now.get(k) is not None
+            for k in ("age_min", "age_max_exclusive", "age_max_inclusive")
+        )
+        if (
+            intent_id in {"employee_count_by_age_filter", "employee_count_by_employment_type"}
+            and _has_age_param
+            and _params_now.get("employment_type")
+            and self._template_exists(service, "TPL_EMPLOYEE_COUNT_BY_AGE_FILTER_AND_EMPLOYMENT_TYPE")
+        ):
+            return "TPL_EMPLOYEE_COUNT_BY_AGE_FILTER_AND_EMPLOYMENT_TYPE"
+        if (
+            intent_id in {"employee_count_by_age_filter", "employee_count_by_contract_type"}
+            and _has_age_param
+            and _params_now.get("contract_type")
+            and self._template_exists(service, "TPL_EMPLOYEE_COUNT_BY_AGE_FILTER_AND_CONTRACT_TYPE")
+        ):
+            return "TPL_EMPLOYEE_COUNT_BY_AGE_FILTER_AND_CONTRACT_TYPE"
 
         if intent_id == "near_retirement_analysis":
             group_by = set(extraction.get("group_by", []) or [])

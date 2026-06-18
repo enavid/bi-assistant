@@ -538,7 +538,11 @@ cases:
     category: employment_type
     expect:
       route: SQL
-      intent: employee_count_by_employment_type
+      intent: employee_count_by_age_filter
+      must_include_sql:
+        - "age"
+        - "employment_type"
+        - "GROUP BY"
 
   # ── emp-078: employees under 30 by employment type ────────────────────────
 
