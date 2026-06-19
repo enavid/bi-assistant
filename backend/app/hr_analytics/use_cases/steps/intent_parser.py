@@ -1000,7 +1000,7 @@ class IntentParser:
                         "با شناسه",
                     ],
                 ),
-                "explicit_city": self._has_any(
+                "explicit_city": self._has_unqualified_city_term(
                     question,
                     ["شهر", "تهران", "مشهد", "اصفهان", "شیراز", "تبریز", "کرج"],
                 ),
@@ -1027,6 +1027,23 @@ class IntentParser:
     @staticmethod
     def _has_any(text: str, terms: Iterable[str]) -> bool:
         return any(term in text for term in terms)
+
+    @staticmethod
+    def _has_unqualified_city_term(text: str, terms: Iterable[str]) -> bool:
+        """Like _has_any, but a city name immediately qualified by "استان"
+        (e.g. "استان تهران" = Tehran PROVINCE) does not count — province-level
+        analysis is supported in the MVP, only city-level analysis is a gap."""
+        for term in terms:
+            if term == "شهر":
+                if term in text:
+                    return True
+                continue
+            idx = text.find(term)
+            while idx != -1:
+                if not text[:idx].rstrip().endswith("استان"):
+                    return True
+                idx = text.find(term, idx + 1)
+        return False
 
     # ------------------------------------------------------------------
     # Intent scoring
@@ -1879,6 +1896,11 @@ class IntentParser:
             # Gender as WHERE filter (not group_by) so controlled_dynamic can inject it
             if gender_value:
                 filters.append({"column": "gender", "operator": "=", "value": gender_value})
+                required_columns.append("gender")
+            elif query_features.get("explicit_gender"):
+                # "ترکیب جنسیتی هر حوزه" — no specific gender value named, so this
+                # is a composition/breakdown request, not a filter.
+                group_by = self._ensure_group_by(group_by, "gender")
                 required_columns.append("gender")
             # Employment/contract type as WHERE filters
             if employment_value:

@@ -273,6 +273,31 @@ def test_service_years_distribution_question_is_gap_not_silent_average(metadata_
     assert result.get("route") == "GAP"
 
 
+def test_province_qualified_city_name_does_not_trigger_city_gap(metadata_service):
+    """"استان تهران" (Tehran PROVINCE) must not be misread as a city-level
+    (unsupported) question just because "تهران" also happens to be a city
+    name — province-level analysis is supported in the MVP."""
+    result = IntentParser(metadata_service=metadata_service).parse(
+        "تعداد کارکنان استان تهران به تفکیک حوزه سازمانی چقدر است؟"
+    )
+    assert result.get("route") == "SQL", (
+        f"Expected SQL route, got {result.get('route')} / {result.get('status')}"
+    )
+    assert result.get("intent") != "city_level_analysis"
+
+
+def test_gender_composition_by_service_domain_groups_by_both(metadata_service):
+    """"ترکیب جنسیتی هر حوزه" asks for a gender BREAKDOWN per domain (no
+    specific gender value named) — must group by both gender and
+    service_domain, not just service_domain."""
+    result = IntentParser(metadata_service=metadata_service).parse(
+        "ترکیب جنسیتی هر حوزه سازمانی به درصد چگونه است؟"
+    )
+    group_by = result.get("group_by") or []
+    assert "service_domain" in group_by, f"Expected service_domain in group_by, got: {group_by}"
+    assert "gender" in group_by, f"Expected gender in group_by, got: {group_by}"
+
+
 def test_average_age_female_with_masters_includes_both_filters(metadata_service):
     result = IntentParser(metadata_service=metadata_service).parse(
         "میانگین سن کارمندان زن با مدرک کارشناسی ارشد چقدر است؟"

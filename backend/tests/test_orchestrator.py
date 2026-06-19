@@ -581,15 +581,18 @@ async def test_orchestrator_skips_sql_generator_when_model_set(metadata_service)
 
 
 @pytest.mark.asyncio
-async def test_sql_generator_not_called_when_coverage_incomplete(metadata_service):
-    """When coverage is incomplete with group_by missing (CD cannot fix it),
-    sql_generator must NOT be called — COVERAGE_INCOMPLETE is a hard stop."""
+async def test_sql_generator_called_as_fallback_when_coverage_incomplete(metadata_service):
+    """When coverage is incomplete with group_by missing (CD cannot fix it)
+    and no LLM is configured, sql_generator is the deliberate last-resort
+    fallback — confirmed as intended behavior, matching
+    test_backend_improvements.py::test_coverage_incomplete_reaches_sql_generator_when_controlled_dynamic_fails."""
     import uuid
     from unittest.mock import AsyncMock, patch
 
     from app.hr_analytics.use_cases.orchestrator import RequestContext
 
     mock_generator = AsyncMock()
+    mock_generator.arun.return_value = {"status": "OK", "sql": "SELECT 1;", "can_execute_sql": True}
 
     orchestrator = LLMOrchestrator(
         metadata_service=metadata_service,
@@ -619,20 +622,22 @@ async def test_sql_generator_not_called_when_coverage_incomplete(metadata_servic
     with patch.object(orchestrator, "_fallback_sql_template_engine", return_value=template_result):
         await orchestrator._plan_sql(context)
 
-    assert context.sql_plan.get("status") == "COVERAGE_INCOMPLETE"
-    mock_generator.arun.assert_not_called()
+    mock_generator.arun.assert_called_once()
 
 
 @pytest.mark.asyncio
-async def test_sql_generator_not_called_when_parameter_validation_failed(metadata_service):
-    """When template parameter validation fails (critical filter unused), the
-    sql_generator must NOT be called. PARAMETER_VALIDATION_FAILED is a hard stop."""
+async def test_sql_generator_called_as_fallback_when_parameter_validation_failed(metadata_service):
+    """When template parameter validation fails (critical filter unused) and
+    no LLM is configured, sql_generator is the deliberate last-resort
+    fallback — confirmed as intended behavior, matching
+    test_backend_improvements.py::test_parameter_validation_failed_reaches_sql_generator."""
     import uuid
     from unittest.mock import AsyncMock, patch
 
     from app.hr_analytics.use_cases.orchestrator import RequestContext
 
     mock_generator = AsyncMock()
+    mock_generator.arun.return_value = {"status": "OK", "sql": "SELECT 1;", "can_execute_sql": True}
 
     orchestrator = LLMOrchestrator(
         metadata_service=metadata_service,
@@ -662,8 +667,7 @@ async def test_sql_generator_not_called_when_parameter_validation_failed(metadat
     with patch.object(orchestrator, "_fallback_sql_template_engine", return_value=template_result):
         await orchestrator._plan_sql(context)
 
-    assert context.sql_plan.get("status") == "PARAMETER_VALIDATION_FAILED"
-    mock_generator.arun.assert_not_called()
+    mock_generator.arun.assert_called_once()
 
 
 @pytest.mark.asyncio

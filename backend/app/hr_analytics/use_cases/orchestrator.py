@@ -1475,6 +1475,7 @@ class LLMOrchestrator:
             "average_age",
             "near_retirement_analysis",
             "employee_count_by_age_filter",
+            "employee_count_by_service_domain",
         }
         _prefer_specific_template_ids = {"TPL_EMPLOYEE_COUNT_BY_EDUCATION_VALUE"}
         if template_id and template_id != template.get("template_id"):
