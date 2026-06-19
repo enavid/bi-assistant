@@ -3,7 +3,7 @@ import {
   BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, Tooltip, ResponsiveContainer,
   LineChart, Line, AreaChart, Area, CartesianGrid,
-  LabelList,
+  LabelList, Legend,
 } from 'recharts'
 import { Icon } from '@/components/ui/Icon'
 import type { QueryResult } from '@/types'
@@ -41,12 +41,77 @@ function hasPersian(s: string): boolean {
   return /[؀-ۿ]/.test(s)
 }
 
+// Simple layout: one text label column + one numeric value column
 function detectCols(result: QueryResult): { labelCol: number; valueCol: number } | null {
   if (result.columns.length < 2 || result.rows.length === 0) return null
   const labelCol = result.columns.findIndex((_, ci) => !isNumericVal(result.rows[0][ci]))
   const valueCol = result.columns.findIndex((_, ci) => isNumericVal(result.rows[0][ci]))
   if (labelCol === -1 || valueCol === -1 || labelCol === valueCol) return null
   return { labelCol, valueCol }
+}
+
+// Grouped layout: 2 categorical columns × 1 numeric column (e.g. DOMAIN × GENDER × COUNT)
+type GroupedLayout = {
+  groupCol: number    // X-axis groups (e.g. SERVICE_DOMAIN)
+  seriesCol: number   // series/legend key (e.g. GENDER)
+  valueCol: number    // numeric value (e.g. EMPLOYEE_COUNT)
+  seriesKeys: string[]
+}
+
+type GroupedRow = Record<string, string | number>
+
+function detectGroupedCols(result: QueryResult): GroupedLayout | null {
+  const { rows } = result
+  if (rows.length === 0 || result.columns.length < 3) return null
+
+  const textCols: number[] = []
+  const numericCols: number[] = []
+  for (let ci = 0; ci < result.columns.length; ci++) {
+    if (rows.every(row => isNumericVal(row[ci]))) numericCols.push(ci)
+    else textCols.push(ci)
+  }
+
+  if (textCols.length < 2 || numericCols.length < 1) return null
+
+  const uniqueCounts = textCols.map(ci => new Set(rows.map(r => String(r[ci] ?? ''))).size)
+  const maxUniq = Math.max(...uniqueCounts)
+  const minUniq = Math.min(...uniqueCounts)
+
+  // Series must have 2-8 distinct values to be renderable as grouped chart
+  if (minUniq === maxUniq || minUniq < 2 || minUniq > 8) return null
+
+  const seriesColIdx = textCols[uniqueCounts.indexOf(minUniq)]
+  const groupColIdx  = textCols[uniqueCounts.indexOf(maxUniq)]
+  const valueCol     = numericCols[0]
+
+  // Confirm cross-product pattern: rows ≈ groups × series
+  const expectedRows = maxUniq * minUniq
+  if (Math.abs(expectedRows - rows.length) > Math.max(2, rows.length * 0.2)) return null
+
+  const seriesKeys = [...new Set(rows.map(r => String(r[seriesColIdx] ?? '')))]
+  return { groupCol: groupColIdx, seriesCol: seriesColIdx, valueCol, seriesKeys }
+}
+
+function buildGroupedData(result: QueryResult, layout: GroupedLayout): GroupedRow[] {
+  const { rows } = result
+  const { groupCol, seriesCol, valueCol } = layout
+
+  const seen = new Set<string>()
+  const groupOrder: string[] = []
+  for (const row of rows) {
+    const g = String(row[groupCol] ?? '')
+    if (!seen.has(g)) { seen.add(g); groupOrder.push(g) }
+  }
+
+  const map: Record<string, Record<string, number>> = {}
+  for (const g of groupOrder) map[g] = {}
+  for (const row of rows) {
+    const g = String(row[groupCol] ?? '')
+    const s = String(row[seriesCol] ?? '')
+    map[g][s] = Number(row[valueCol])
+  }
+
+  return groupOrder.map(g => ({ name: g, ...map[g] }))
 }
 
 function looksLikeTimeSeries(labels: string[]): boolean {
@@ -94,26 +159,53 @@ const TABS: { id: ViewMode; label: string; icon: Parameters<typeof Icon>[0]['nam
 export function QueryResultView({ result }: { result: QueryResult }) {
   const gradId = useId().replace(/:/g, 'g')
 
-  const cols = useMemo(() => detectCols(result), [result])
+  const cols          = useMemo(() => detectCols(result), [result])
+  const groupedLayout = useMemo(() => detectGroupedCols(result), [result])
 
+  // --- Simple flat data (no grouping) ---
   const sortedData = useMemo(() => {
-    if (!cols) return []
+    if (!cols || groupedLayout) return []
     return result.rows
       .map((row) => ({ name: String(row[cols.labelCol] ?? ''), value: Number(row[cols.valueCol]) }))
       .sort((a, b) => b.value - a.value)
-  }, [result, cols])
+  }, [result, cols, groupedLayout])
 
   const originalData = useMemo(() => {
-    if (!cols) return []
+    if (!cols || groupedLayout) return []
     return result.rows.map((row) => ({
       name: String(row[cols.labelCol] ?? ''),
       value: Number(row[cols.valueCol]),
     }))
-  }, [result, cols])
+  }, [result, cols, groupedLayout])
 
   const timeSeries = useMemo(() => looksLikeTimeSeries(originalData.map((d) => d.name)), [originalData])
 
-  // Always default to table
+  // --- Grouped multi-series data ---
+  const groupedData = useMemo(() => {
+    if (!groupedLayout) return []
+    return buildGroupedData(result, groupedLayout)
+  }, [result, groupedLayout])
+
+  const groupedBarData = useMemo(() => {
+    if (!groupedLayout) return []
+    return [...groupedData].sort((a, b) => {
+      const sumA = groupedLayout.seriesKeys.reduce((s, k) => s + ((a[k] as number) ?? 0), 0)
+      const sumB = groupedLayout.seriesKeys.reduce((s, k) => s + ((b[k] as number) ?? 0), 0)
+      return sumB - sumA
+    })
+  }, [groupedData, groupedLayout])
+
+  // Donut in grouped mode: aggregate each series key across all groups
+  const groupedDonutData = useMemo(() => {
+    if (!groupedLayout) return []
+    return groupedLayout.seriesKeys.map(key => ({
+      name: key,
+      value: result.rows
+        .filter(row => String(row[groupedLayout.seriesCol] ?? '') === key)
+        .reduce((s, row) => s + Number(row[groupedLayout.valueCol]), 0),
+    }))
+  }, [result, groupedLayout])
+
   const [view, setView] = useState<ViewMode>('table')
 
   const barData = sortedData.slice(0, BAR_TOP)
@@ -125,12 +217,14 @@ export function QueryResultView({ result }: { result: QueryResult }) {
     return [...top, { name: 'سایر', value: otherVal }]
   }, [sortedData])
 
-  const total = sortedData.reduce((s, d) => s + d.value, 0)
+  const total        = sortedData.reduce((s, d) => s + d.value, 0)
+  const groupedTotal = groupedDonutData.reduce((s, d) => s + d.value, 0)
 
-  const lineData = timeSeries ? originalData : originalData.slice(0, LINE_MAX)
+  const lineData      = timeSeries ? originalData : originalData.slice(0, LINE_MAX)
   const showLineLimit = !timeSeries && originalData.length > LINE_MAX
 
-  const visibleTabs = cols ? TABS : TABS.filter((t) => t.id === 'table')
+  const hasChartData = !!(cols || groupedLayout)
+  const visibleTabs  = hasChartData ? TABS : TABS.filter((t) => t.id === 'table')
 
   if (!result.success) {
     return (
@@ -217,8 +311,8 @@ export function QueryResultView({ result }: { result: QueryResult }) {
         </div>
       )}
 
-      {/* ── HORIZONTAL BAR ── */}
-      {view === 'bar' && cols && (
+      {/* ── BAR: simple (flat) ── */}
+      {view === 'bar' && cols && !groupedLayout && (
         <div style={{ padding: '8px 16px 8px 0' }}>
           {sortedData.length > BAR_TOP && (
             <p className="text-right text-[10px] px-3 mb-1" style={{ color: 'var(--text-3)' }}>
@@ -263,10 +357,46 @@ export function QueryResultView({ result }: { result: QueryResult }) {
         </div>
       )}
 
-      {/* ── DONUT ── */}
-      {view === 'donut' && cols && (
+      {/* ── BAR: grouped (multi-series) ── */}
+      {view === 'bar' && groupedLayout && (
+        <div style={{ padding: '8px 16px 8px 0' }}>
+          <div style={{ height: Math.max(120, Math.min(CHART_H, groupedBarData.length * groupedLayout.seriesKeys.length * 26 + 80)) }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={groupedBarData} layout="vertical" margin={{ top: 4, right: 52, left: 8, bottom: 4 }}>
+                <XAxis
+                  type="number"
+                  tick={{ fontSize: 10, fill: 'var(--text-3)' }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <YAxis
+                  type="category"
+                  dataKey="name"
+                  tick={{ fontSize: 11, fill: 'var(--text-2)' }}
+                  axisLine={false}
+                  tickLine={false}
+                  width={155}
+                />
+                <Tooltip contentStyle={TOOLTIP_STYLE} cursor={{ fill: 'var(--bg-raised)' }} />
+                <Legend wrapperStyle={{ fontSize: 11, color: 'var(--text-2)', paddingTop: 8 }} />
+                {groupedLayout.seriesKeys.map((key, i) => (
+                  <Bar key={key} dataKey={key} fill={PALETTE[i % PALETTE.length]} maxBarSize={18} radius={[0, 4, 4, 0]}>
+                    <LabelList
+                      dataKey={key}
+                      position="right"
+                      style={{ fontSize: 10, fill: 'var(--text-2)', fontVariantNumeric: 'tabular-nums' }}
+                    />
+                  </Bar>
+                ))}
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
+
+      {/* ── DONUT: simple ── */}
+      {view === 'donut' && cols && !groupedLayout && (
         <div className="flex flex-col sm:flex-row sm:items-center">
-          {/* Chart + center label */}
           <div className="w-full sm:w-[280px] sm:flex-shrink-0 relative" style={{ height: 260 }}>
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
@@ -291,7 +421,6 @@ export function QueryResultView({ result }: { result: QueryResult }) {
                 />
               </PieChart>
             </ResponsiveContainer>
-            {/* Center total */}
             <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
               <span style={{ fontSize: 20, fontWeight: 600, color: 'var(--text-1)', fontVariantNumeric: 'tabular-nums' }}>
                 {total.toLocaleString()}
@@ -299,8 +428,6 @@ export function QueryResultView({ result }: { result: QueryResult }) {
               <span style={{ fontSize: 10, color: 'var(--text-3)', marginTop: 2 }}>total</span>
             </div>
           </div>
-
-          {/* Legend */}
           <div className="flex-1 overflow-y-auto py-3 px-3 sm:pr-4 sm:pl-1" style={{ maxHeight: CHART_H }}>
             {donutData.map((d, i) => {
               const pct = total > 0 ? ((d.value / total) * 100).toFixed(1) : '0'
@@ -326,8 +453,67 @@ export function QueryResultView({ result }: { result: QueryResult }) {
         </div>
       )}
 
-      {/* ── LINE ── */}
-      {view === 'line' && cols && (
+      {/* ── DONUT: grouped (aggregate by series key) ── */}
+      {view === 'donut' && groupedLayout && (
+        <div className="flex flex-col sm:flex-row sm:items-center">
+          <div className="w-full sm:w-[280px] sm:flex-shrink-0 relative" style={{ height: 260 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={groupedDonutData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={72}
+                  outerRadius={108}
+                  dataKey="value"
+                  paddingAngle={2}
+                  startAngle={90}
+                  endAngle={-270}
+                >
+                  {groupedDonutData.map((_, i) => (
+                    <Cell key={i} fill={PALETTE[i % PALETTE.length]} stroke="none" />
+                  ))}
+                </Pie>
+                <Tooltip
+                  contentStyle={TOOLTIP_STYLE}
+                  formatter={(v) => [Number(v).toLocaleString(), '']}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+            <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
+              <span style={{ fontSize: 20, fontWeight: 600, color: 'var(--text-1)', fontVariantNumeric: 'tabular-nums' }}>
+                {groupedTotal.toLocaleString()}
+              </span>
+              <span style={{ fontSize: 10, color: 'var(--text-3)', marginTop: 2 }}>total</span>
+            </div>
+          </div>
+          <div className="flex-1 overflow-y-auto py-3 px-3 sm:pr-4 sm:pl-1" style={{ maxHeight: CHART_H }}>
+            {groupedDonutData.map((d, i) => {
+              const pct = groupedTotal > 0 ? ((d.value / groupedTotal) * 100).toFixed(1) : '0'
+              return (
+                <div key={i} className="flex items-center gap-2 py-1.5 border-b last:border-0" style={{ borderColor: 'var(--border-subtle)' }}>
+                  <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: PALETTE[i % PALETTE.length] }} />
+                  <span
+                    className="flex-1 text-[12px] truncate"
+                    style={{ color: 'var(--text-1)', direction: hasPersian(d.name) ? 'rtl' : 'ltr' }}
+                  >
+                    {d.name}
+                  </span>
+                  <span className="text-[12px] tabular-nums flex-shrink-0" style={{ color: 'var(--text-2)' }}>
+                    {d.value.toLocaleString()}
+                  </span>
+                  <span className="text-[11px] tabular-nums w-10 text-right flex-shrink-0" style={{ color: 'var(--text-3)' }}>
+                    {pct}%
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ── LINE: simple ── */}
+      {view === 'line' && cols && !groupedLayout && (
         <div className="p-4" style={{ height: CHART_H }}>
           {showLineLimit && (
             <p className="text-right text-[10px] mb-1" style={{ color: 'var(--text-3)' }}>
@@ -363,8 +549,41 @@ export function QueryResultView({ result }: { result: QueryResult }) {
         </div>
       )}
 
-      {/* ── AREA ── */}
-      {view === 'area' && cols && (
+      {/* ── LINE: grouped (one line per series key) ── */}
+      {view === 'line' && groupedLayout && (
+        <div className="p-4" style={{ height: CHART_H }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={groupedData} margin={{ top: 10, right: 16, left: -10, bottom: 0 }}>
+              <CartesianGrid stroke="var(--border-subtle)" strokeDasharray="4 2" />
+              <XAxis
+                dataKey="name"
+                tick={<XTick />}
+                axisLine={{ stroke: 'var(--border-default)' }}
+                tickLine={false}
+                height={130}
+                interval={0}
+              />
+              <YAxis tick={{ fontSize: 11, fill: 'var(--text-3)' }} axisLine={false} tickLine={false} />
+              <Tooltip contentStyle={TOOLTIP_STYLE} />
+              <Legend wrapperStyle={{ fontSize: 11, color: 'var(--text-2)' }} />
+              {groupedLayout.seriesKeys.map((key, i) => (
+                <Line
+                  key={key}
+                  type="monotone"
+                  dataKey={key}
+                  stroke={PALETTE[i % PALETTE.length]}
+                  strokeWidth={2}
+                  dot={{ fill: PALETTE[i % PALETTE.length], strokeWidth: 0, r: 3 }}
+                  activeDot={{ r: 5 }}
+                />
+              ))}
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+
+      {/* ── AREA: simple ── */}
+      {view === 'area' && cols && !groupedLayout && (
         <div className="p-4" style={{ height: CHART_H }}>
           {showLineLimit && (
             <p className="text-right text-[10px] mb-1" style={{ color: 'var(--text-3)' }}>
@@ -402,6 +621,48 @@ export function QueryResultView({ result }: { result: QueryResult }) {
                 dot={false}
                 activeDot={{ r: 5, fill: 'var(--accent)' }}
               />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+
+      {/* ── AREA: grouped (one area per series key) ── */}
+      {view === 'area' && groupedLayout && (
+        <div className="p-4" style={{ height: CHART_H }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={groupedData} margin={{ top: 10, right: 16, left: -10, bottom: 0 }}>
+              <defs>
+                {groupedLayout.seriesKeys.map((key, i) => (
+                  <linearGradient key={key} id={`${gradId}-${i}`} x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor={PALETTE[i % PALETTE.length]} stopOpacity={0.3} />
+                    <stop offset="95%" stopColor={PALETTE[i % PALETTE.length]} stopOpacity={0.02} />
+                  </linearGradient>
+                ))}
+              </defs>
+              <CartesianGrid stroke="var(--border-subtle)" strokeDasharray="4 2" />
+              <XAxis
+                dataKey="name"
+                tick={<XTick />}
+                axisLine={{ stroke: 'var(--border-default)' }}
+                tickLine={false}
+                height={130}
+                interval={0}
+              />
+              <YAxis tick={{ fontSize: 11, fill: 'var(--text-3)' }} axisLine={false} tickLine={false} />
+              <Tooltip contentStyle={TOOLTIP_STYLE} />
+              <Legend wrapperStyle={{ fontSize: 11, color: 'var(--text-2)' }} />
+              {groupedLayout.seriesKeys.map((key, i) => (
+                <Area
+                  key={key}
+                  type="monotone"
+                  dataKey={key}
+                  stroke={PALETTE[i % PALETTE.length]}
+                  strokeWidth={2}
+                  fill={`url(#${gradId}-${i})`}
+                  dot={false}
+                  activeDot={{ r: 5, fill: PALETTE[i % PALETTE.length] }}
+                />
+              ))}
             </AreaChart>
           </ResponsiveContainer>
         </div>
