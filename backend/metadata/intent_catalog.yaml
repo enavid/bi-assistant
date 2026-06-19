@@ -2163,6 +2163,27 @@ intents:
   report_id: RPT_HR_043
   sql_template_id: TPL_DATA_GAP
   gap_reason: در MVP فعلی ماه شمسی/تقویم قابل اتکا برای تحلیل ماهانه تعریف نشده است.
+- intent_id: public_recruitment_channel_analysis
+  title_fa: تحلیل جذب از طریق آزمون عمومی
+  description_fa: سوال درباره منبع/کانال جذب (جذب عمومی، آزمون استخدامی). ستون hire_source در view وجود ندارد.
+  route: GAP
+  status: data_gap
+  question_type: distribution
+  priority: medium
+  supported_in_phase2: false
+  demo_ready: false
+  user_examples:
+  - جذب عمومی چند درصد از نیروها رو تشکیل میده؟
+  - چه درصدی از کارکنان از طریق آزمون جذب شدن؟
+  trigger_terms_fa:
+  - جذب عمومی
+  - آزمون استخدامی
+  - منبع جذب
+  metrics: []
+  required_columns: []
+  default_filters: []
+  group_by: []
+  output_type: status_message
 - intent_id: service_years_distribution_analysis
   title_fa: توزیع سابقه خدمت
   description_fa: تحلیل توزیع/تفکیک سابقه خدمت کارکنان در بازه‌های مشخص؛ در MVP فعلی به دلیل نبود ابعاد گروه‌بندی سابقه خدمت (مشابه گروه سنی) به عنوان Data Gap ثبت می‌شود.

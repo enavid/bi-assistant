@@ -773,3 +773,94 @@ def test_orchestrator_dept_education_sql_has_two_group_by_columns(metadata_servi
     assert "department_name" in sql, f"SQL must contain department_name, got: {sql[:200]}"
     assert "education" in sql, f"SQL must contain education, got: {sql[:200]}"
     assert "group by" in sql, f"SQL must contain GROUP BY, got: {sql[:200]}"
+
+
+# ---------------------------------------------------------------------------
+# Bug #1: کمترین + employment_type/contract_type must use ASC, not DESC
+# ---------------------------------------------------------------------------
+
+
+def test_least_populated_employment_type_routes_to_dedicated_intent(metadata_service):
+    """'کدوم نوع استخدام کمترین نیرو رو داره؟' must NOT share the same template as the
+    full distribution query, because that template uses ORDER BY DESC — giving the
+    most-populated type, not the least-populated one."""
+    result = IntentParser(metadata_service=metadata_service).parse(
+        "کدوم نوع استخدام کمترین نیرو رو داره؟"
+    )
+    intent = result.get("intent_id") or result.get("intent")
+    assert intent == "least_populated_employment_type", (
+        f"Expected least_populated_employment_type, got: {intent!r}"
+    )
+
+
+def test_least_populated_contract_type_routes_to_dedicated_intent(metadata_service):
+    """Same as above for contract type — template ORDER BY must be ASC."""
+    result = IntentParser(metadata_service=metadata_service).parse(
+        "کدوم نوع قرارداد کمترین نیرو رو داره؟"
+    )
+    intent = result.get("intent_id") or result.get("intent")
+    assert intent == "least_populated_contract_type", (
+        f"Expected least_populated_contract_type, got: {intent!r}"
+    )
+
+
+def test_least_populated_employment_type_sql_uses_asc(metadata_service):
+    """Generated SQL for least employment type must ORDER BY ASC (not DESC)."""
+    orch = LLMOrchestrator(
+        metadata_service=metadata_service,
+        intent_parser=IntentParser(metadata_service=metadata_service),
+        default_execute_sql=False,
+    )
+    result = orch.run("کدوم نوع استخدام کمترین نیرو رو داره؟")
+    d = result.to_dict() if hasattr(result, "to_dict") else result
+    sql = (d.get("generated_sql") or "").upper()
+    assert "ORDER BY" in sql and "ASC" in sql, (
+        f"SQL must ORDER BY ASC for least query, got: {sql[:300]}"
+    )
+    assert "DESC" not in sql, f"SQL must not use DESC for least query, got: {sql[:300]}"
+
+
+# ---------------------------------------------------------------------------
+# Bug #2: سطح حساسیت must route to employee_count_by_criticality_level
+# ---------------------------------------------------------------------------
+
+
+def test_criticality_level_distribution_routes_to_dedicated_intent(metadata_service):
+    """'هر سطح حساسیت واحد چند نفر کارمند داره؟' must route to
+    employee_count_by_criticality_level, not fall back to employee_count_by_department."""
+    result = IntentParser(metadata_service=metadata_service).parse(
+        "هر سطح حساسیت واحد چند نفر کارمند داره؟"
+    )
+    intent = result.get("intent_id") or result.get("intent")
+    assert intent == "employee_count_by_criticality_level", (
+        f"Expected employee_count_by_criticality_level, got: {intent!r}"
+    )
+
+
+def test_criticality_level_most_populated_does_not_route_to_total_count(metadata_service):
+    """'کدوم سطح حساسیت بیشترین نیرو داره؟' must not route to total_employee_count.
+    criticality_level is a real column — the answer should show which level has most staff."""
+    result = IntentParser(metadata_service=metadata_service).parse(
+        "کدوم سطح حساسیت واحد بیشترین نیرو داره؟"
+    )
+    intent = result.get("intent_id") or result.get("intent")
+    assert intent == "employee_count_by_criticality_level", (
+        f"Expected employee_count_by_criticality_level, got: {intent!r}"
+    )
+
+
+# ---------------------------------------------------------------------------
+# Bug #3: جذب عمومی must route to GAP (no hire_source column in view)
+# ---------------------------------------------------------------------------
+
+
+def test_jadbe_omomi_routes_to_gap(metadata_service):
+    """'جذب عمومی' (open public recruitment) refers to a hiring channel that has no
+    column in the view. It must not silently map to service_domain = 'عمومی و ستادی'
+    and return a misleading SQL answer."""
+    result = IntentParser(metadata_service=metadata_service).parse(
+        "جذب عمومی چند درصد از نیروها رو تشکیل میده؟"
+    )
+    assert result.get("route") == "GAP", (
+        f"Expected GAP route for جذب عمومی, got: {result.get('route')!r}"
+    )

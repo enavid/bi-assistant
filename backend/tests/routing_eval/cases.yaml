@@ -621,10 +621,10 @@ cases:
     category: employment_type
     expect:
       route: SQL
-      intent: employee_count_by_employment_type
+      intent: least_populated_employment_type
       must_include_sql:
         - "employment_type"
-        - "GROUP BY"
+        - "ASC"
 
   - id: emp-064
     question: "تعداد کارکنان بر اساس نوع قرارداد چقدر است؟"
@@ -661,10 +661,10 @@ cases:
     category: employment_type
     expect:
       route: SQL
-      intent: employee_count_by_contract_type
+      intent: least_populated_contract_type
       must_include_sql:
         - "contract_type"
-        - "GROUP BY"
+        - "ASC"
 
   - id: emp-068
     question: "تعداد کارکنان رسمی بر اساس نوع قرارداد چقدر است؟"
@@ -1209,9 +1209,9 @@ cases:
     category: org_structure
     expect:
       route: SQL
-      intent: employee_count_by_department
+      intent: employee_count_by_criticality_level
       must_include_sql:
-        - "department_name"
+        - "criticality_level"
         - "GROUP BY"
 
   - id: org-124
@@ -1219,10 +1219,10 @@ cases:
     category: org_structure
     expect:
       route: SQL
-      intent: total_employee_count
+      intent: employee_count_by_criticality_level
       must_include_sql:
-        - "COUNT"
-        - "is_active"
+        - "criticality_level"
+        - "DESC"
 
   - id: geo-125
     question: "تعداد کارکنان به تفکیک استان چقدر است؟"

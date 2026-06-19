@@ -87,7 +87,9 @@ cases:
     category: org_structure
     expect:
       route: SQL
-      intent: employee_count_by_service_domain
+      intent: least_populated_service_domain
+      must_include_sql:
+        - ASC
 
   - id: org-098v2
     question: "کدوم حوزه کمترین کارمند رو داره؟"
@@ -328,7 +330,9 @@ cases:
     category: org_structure
     expect:
       route: SQL
-      intent: employee_count_by_department
+      intent: least_populated_department
+      must_include_sql:
+        - ASC
 
   - id: org-108v2
     question: "کدوم واحد کمترین کارمند داره؟"
@@ -675,21 +679,21 @@ cases:
     category: org_structure
     expect:
       route: SQL
-      intent: employee_count_by_department
+      intent: employee_count_by_criticality_level
 
   - id: org-123v2
     question: "توزیع کارکنان بر اساس حساسیت واحد؟"
     category: org_structure
     expect:
       route: SQL
-      intent: employee_count_by_department
+      intent: employee_count_by_criticality_level
 
   - id: org-123v3
     question: "کارکنان رو به تفکیک سطح حساسیت سازمانی نشون بده"
     category: org_structure
     expect:
       route: SQL
-      intent: employee_count_by_department
+      intent: employee_count_by_criticality_level
 
   # ── org-124: sensitivity level with most employees ────────────────────────
 
@@ -698,18 +702,27 @@ cases:
     category: org_structure
     expect:
       route: SQL
-      intent: total_employee_count
+      intent: employee_count_by_criticality_level
+      must_include_sql:
+        - criticality_level
+        - DESC
 
   - id: org-124v2
     question: "پر نفرترین سطح حساسیت سازمانی کدومه؟"
     category: org_structure
     expect:
       route: SQL
-      intent: total_employee_count
+      intent: employee_count_by_criticality_level
+      must_include_sql:
+        - criticality_level
+        - DESC
 
   - id: org-124v3
     question: "بیشترین کارمند توی کدوم سطح حساسیت هستن؟"
     category: org_structure
     expect:
       route: SQL
-      intent: total_employee_count
+      intent: employee_count_by_criticality_level
+      must_include_sql:
+        - criticality_level
+        - DESC

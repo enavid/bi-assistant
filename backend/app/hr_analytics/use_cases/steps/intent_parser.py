@@ -121,6 +121,9 @@ DEFAULT_TEMPLATE_BY_INTENT: dict[str, str] = {
     "employee_count_by_position_level": "TPL_EMPLOYEE_COUNT_BY_POSITION_LEVEL",
     "least_populated_department": "TPL_LEAST_POPULATED_DEPARTMENT",
     "least_populated_service_domain": "TPL_LEAST_POPULATED_SERVICE_DOMAIN",
+    "least_populated_employment_type": "TPL_LEAST_POPULATED_EMPLOYMENT_TYPE",
+    "least_populated_contract_type": "TPL_LEAST_POPULATED_CONTRACT_TYPE",
+    "employee_count_by_criticality_level": "TPL_EMPLOYEE_COUNT_BY_CRITICALITY_LEVEL",
     "hiring_by_contract_type_recent_year": "TPL_HIRING_BY_CONTRACT_TYPE_RECENT_YEAR",
     "average_service_years": "TPL_AVERAGE_SERVICE_YEARS",
     "employee_count_without_service_years": "TPL_EMPLOYEE_COUNT_WITHOUT_SERVICE_YEARS",
@@ -158,6 +161,10 @@ DATA_GAP_INTENT_KEYWORDS: list[tuple[str, list[str]]] = [
         ["تعادل", "متوازن", "چارت سازمانی و واقعیت", "واقعیت نیروی انسانی"],
     ),
     ("employment_stability_impact_analysis", ["ثبات سازمان", "تاثیر می گذارد", "اثر می گذارد"]),
+    (
+        "public_recruitment_channel_analysis",
+        ["جذب عمومی", "جذب از طریق آزمون", "آزمون استخدامی", "منبع جذب"],
+    ),
     (
         "terminated_employee_analysis",
         [
@@ -808,7 +815,8 @@ class IntentParser:
                     ],
                 ),
                 "asks_least": self._has_any(
-                    question, ["کمترین", "پایین ترین", "حداقل", "کدام کمتر", "کم جذب ترین"]
+                    question,
+                    ["کمترین", "پایین ترین", "حداقل", "کدام کمتر", "کم جذب ترین", "کم نفرترین"],
                 ),
                 "asks_trend": self._has_any(
                     question,
@@ -867,6 +875,9 @@ class IntentParser:
                     or "انواع استخدام" in question
                 ),
                 "explicit_contractor": "پیمانکاری" in question or "پیمانکار" in question,
+                "explicit_criticality_level": self._has_any(
+                    question, ["سطح حساسیت", "حساسیت واحد", "واحد بحرانی"]
+                ),
                 "explicit_service_domain": "حوزه" in question,
                 "explicit_department": self._has_any(
                     question, ["بخش", "واحد", "اداره", "دپارتمان"]
@@ -1123,6 +1134,9 @@ class IntentParser:
 
         if f.get("explicit_city"):
             add(("city_level_analysis", 90, "city_level_data_gap"))
+
+        if self._has_any(question, ["جذب عمومی", "آزمون استخدامی", "منبع جذب"]):
+            add(("public_recruitment_channel_analysis", 92, "no_hire_source_column"))
         _terminated_terms = [
             "اخراج",
             "اخراجی",
@@ -1292,6 +1306,8 @@ class IntentParser:
         if f.get("explicit_employment_type"):
             if f.get("explicit_department"):
                 add(("employment_type_by_department", 85, "employment_type_by_dept"))
+            elif f.get("asks_least"):
+                add(("least_populated_employment_type", 90, "least_employment_type"))
             else:
                 add(("employee_count_by_employment_type", 70, "employment_type"))
         if f.get("explicit_contract_type"):
@@ -1301,6 +1317,8 @@ class IntentParser:
                 or self._has_any(question, ["هر سال", "بسته شده", "سالانه"])
             ):
                 add(("hiring_by_contract_type_recent_year", 70, "recent_hiring_contract_type"))
+            elif f.get("asks_least"):
+                add(("least_populated_contract_type", 90, "least_contract_type"))
             else:
                 add(("employee_count_by_contract_type", 70, "contract_type"))
         if self._has_any(question, ["رسمی", "قراردادی", "پیمانی", "شاغل در پیمانکاری"]):
@@ -1336,7 +1354,10 @@ class IntentParser:
                 add(("least_populated_service_domain", 90, "least_service_domain"))
             else:
                 add(("employee_count_by_service_domain", 60, "service_domain_distribution"))
-        if f.get("explicit_department"):
+        if f.get("explicit_criticality_level"):
+            # criticality_level is a real column — takes priority over generic dept routing
+            add(("employee_count_by_criticality_level", 90, "criticality_level_distribution"))
+        elif f.get("explicit_department"):
             if f.get("asks_gap_or_shortage"):
                 add(("headcount_gap_by_department", 75, "headcount_gap_department"))
             elif f.get("asks_least"):
@@ -1858,6 +1879,16 @@ class IntentParser:
                 group_by = self._ensure_group_by(group_by, "contract_type")
             required_columns.extend(["contract_type", "employee_id", "is_active"])
 
+        elif best_intent_id in {
+            "least_populated_employment_type",
+            "least_populated_contract_type",
+        }:
+            required_columns.extend(["employee_id", "is_active"])
+
+        elif best_intent_id == "employee_count_by_criticality_level":
+            group_by = self._ensure_group_by(group_by, "criticality_level")
+            required_columns.extend(["criticality_level", "employee_id", "is_active"])
+
         elif best_intent_id == "contractor_share":
             filters.append(
                 {"column": "is_contractor", "operator": "=", "value": True, "scope": "numerator"}
@@ -2056,6 +2087,7 @@ class IntentParser:
             "employee_count_by_contract_type",
             "employee_count_by_employment_type",
             "employee_count_by_work_location",
+            "employee_count_by_criticality_level",
         }
         if best_intent_id in _SUPERLATIVE_SORTABLE_INTENTS and (
             query_features.get("asks_most") or query_features.get("asks_least")

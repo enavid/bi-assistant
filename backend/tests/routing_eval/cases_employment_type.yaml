@@ -202,21 +202,27 @@ cases:
     category: employment_type
     expect:
       route: SQL
-      intent: employee_count_by_employment_type
+      intent: least_populated_employment_type
+      must_include_sql:
+        - ASC
 
   - id: emp-063v2
     question: "کم نفرترین نوع استخدام کدومه؟"
     category: employment_type
     expect:
       route: SQL
-      intent: employee_count_by_employment_type
+      intent: least_populated_employment_type
+      must_include_sql:
+        - ASC
 
   - id: emp-063v3
     question: "کمترین کارمند توی کدوم نوع استخدامه؟"
     category: employment_type
     expect:
       route: SQL
-      intent: employee_count_by_employment_type
+      intent: least_populated_employment_type
+      must_include_sql:
+        - ASC
 
   # ── emp-064: employee count by contract type ──────────────────────────────
 
@@ -294,21 +300,27 @@ cases:
     category: employment_type
     expect:
       route: SQL
-      intent: employee_count_by_contract_type
+      intent: least_populated_contract_type
+      must_include_sql:
+        - ASC
 
   - id: emp-067v2
     question: "کم نفرترین نوع قرارداد کدومه؟"
     category: employment_type
     expect:
       route: SQL
-      intent: employee_count_by_contract_type
+      intent: least_populated_contract_type
+      must_include_sql:
+        - ASC
 
   - id: emp-067v3
     question: "کمترین کارمند روی کدوم نوع قراردادن؟"
     category: employment_type
     expect:
       route: SQL
-      intent: employee_count_by_contract_type
+      intent: least_populated_contract_type
+      must_include_sql:
+        - ASC
 
   # ── emp-068: permanent employees by contract type ─────────────────────────
 
