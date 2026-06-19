@@ -36,7 +36,9 @@ def test_education_doctoral_filter_sql_matches_db(metadata_service):
         (e for e in entries if DB_DOCTORAL_VALUE in str(e.get("canonical_value", ""))),
         None,
     )
-    assert doctoral_entry is not None, f"No education entry with canonical_value='{DB_DOCTORAL_VALUE}'"
+    assert doctoral_entry is not None, (
+        f"No education entry with canonical_value='{DB_DOCTORAL_VALUE}'"
+    )
     filter_sql = doctoral_entry.get("filter_sql", "")
     assert DB_DOCTORAL_VALUE in filter_sql, (
         f"filter_sql '{filter_sql}' does not contain correct DB value '{DB_DOCTORAL_VALUE}'"

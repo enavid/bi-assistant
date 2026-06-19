@@ -702,9 +702,7 @@ class SemanticMapper:
         disambiguation produces two conflicting values on the same column
         (an impossible AND). Revert the disambiguated one back to
         employment_type so both dimensions stay as separate filters."""
-        contract_values = {
-            f.get("value") for f in filters if f.get("column") == "contract_type"
-        }
+        contract_values = {f.get("value") for f in filters if f.get("column") == "contract_type"}
         if len(contract_values) > 1:
             for f in filters:
                 if f.get("column") == "contract_type" and f.pop(

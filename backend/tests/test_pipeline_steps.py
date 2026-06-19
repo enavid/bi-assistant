@@ -238,7 +238,7 @@ def test_age_filter_comparison_between_employment_statuses_groups_by_employment_
 def test_least_populated_department_question_is_ranked_not_plain_distribution(
     metadata_service,
 ):
-    """"کمترین" (least) on department must rank ascending to a single answer,
+    """ "کمترین" (least) on department must rank ascending to a single answer,
     not fall back to the plain distribution template (which is ORDER BY
     employee_count DESC — the opposite direction, useless for "least")."""
     result = IntentParser(metadata_service=metadata_service).parse(
@@ -274,7 +274,7 @@ def test_service_years_distribution_question_is_gap_not_silent_average(metadata_
 
 
 def test_province_qualified_city_name_does_not_trigger_city_gap(metadata_service):
-    """"استان تهران" (Tehran PROVINCE) must not be misread as a city-level
+    """ "استان تهران" (Tehran PROVINCE) must not be misread as a city-level
     (unsupported) question just because "تهران" also happens to be a city
     name — province-level analysis is supported in the MVP."""
     result = IntentParser(metadata_service=metadata_service).parse(
@@ -287,7 +287,7 @@ def test_province_qualified_city_name_does_not_trigger_city_gap(metadata_service
 
 
 def test_gender_composition_by_service_domain_groups_by_both(metadata_service):
-    """"ترکیب جنسیتی هر حوزه" asks for a gender BREAKDOWN per domain (no
+    """ "ترکیب جنسیتی هر حوزه" asks for a gender BREAKDOWN per domain (no
     specific gender value named) — must group by both gender and
     service_domain, not just service_domain."""
     result = IntentParser(metadata_service=metadata_service).parse(

@@ -1456,9 +1456,7 @@ class IntentParser:
                         "service_years_via_numeric_filter",
                     )
                 )
-            elif self._has_any(
-                question, ["توزیع سابقه", "توزیع سابقه خدمت", "تفکیک سابقه خدمت"]
-            ):
+            elif self._has_any(question, ["توزیع سابقه", "توزیع سابقه خدمت", "تفکیک سابقه خدمت"]):
                 # No bucketed service_years dimension exists in the MVP view — answering
                 # with average_service_years would silently mismatch what was asked.
                 add(("service_years_distribution_analysis", 90, "service_years_distribution_gap"))
@@ -2153,7 +2151,9 @@ class IntentParser:
             intent_id in {"employee_count_by_age_filter", "employee_count_by_employment_type"}
             and _has_age_param
             and _params_now.get("employment_type")
-            and self._template_exists(service, "TPL_EMPLOYEE_COUNT_BY_AGE_FILTER_AND_EMPLOYMENT_TYPE")
+            and self._template_exists(
+                service, "TPL_EMPLOYEE_COUNT_BY_AGE_FILTER_AND_EMPLOYMENT_TYPE"
+            )
         ):
             return "TPL_EMPLOYEE_COUNT_BY_AGE_FILTER_AND_EMPLOYMENT_TYPE"
         if (

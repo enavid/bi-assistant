@@ -67,6 +67,7 @@ trace-eval:
 
 lint:
 	$(RUFF) check .
+	$(RUFF) format --check .
 
 format:
 	$(RUFF) check . --fix

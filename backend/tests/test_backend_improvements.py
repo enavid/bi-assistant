@@ -340,9 +340,7 @@ def test_sql_planner_trace_has_template_status(metadata_service):
     traces = payload["context"]["traces"]
     planner = next((t for t in traces if t["step"] == "sql_planner"), None)
     assert planner is not None, "sql_planner trace step missing"
-    assert "template_status" in planner["details"], (
-        "sql_planner trace must include template_status"
-    )
+    assert "template_status" in planner["details"], "sql_planner trace must include template_status"
 
 
 @pytest.mark.integration
@@ -352,9 +350,7 @@ def test_sql_planner_trace_has_model_reason(metadata_service):
     traces = payload["context"]["traces"]
     planner = next((t for t in traces if t["step"] == "sql_planner"), None)
     assert planner is not None
-    assert "model_reason" in planner["details"], (
-        "sql_planner trace must include model_reason"
-    )
+    assert "model_reason" in planner["details"], "sql_planner trace must include model_reason"
 
 
 @pytest.mark.integration
@@ -364,9 +360,7 @@ def test_sql_planner_trace_has_unused_filters(metadata_service):
     traces = payload["context"]["traces"]
     planner = next((t for t in traces if t["step"] == "sql_planner"), None)
     assert planner is not None
-    assert "unused_filters" in planner["details"], (
-        "sql_planner trace must include unused_filters"
-    )
+    assert "unused_filters" in planner["details"], "sql_planner trace must include unused_filters"
     assert isinstance(planner["details"]["unused_filters"], list)
 
 
@@ -382,9 +376,7 @@ def test_query_executor_trace_has_sql_executed(metadata_service):
     traces = payload["context"]["traces"]
     executor = next((t for t in traces if t["step"] == "query_executor"), None)
     assert executor is not None, "query_executor trace step missing"
-    assert "sql_executed" in executor["details"], (
-        "query_executor trace must include sql_executed"
-    )
+    assert "sql_executed" in executor["details"], "query_executor trace must include sql_executed"
     assert executor["details"]["sql_executed"] is False
 
 
@@ -395,9 +387,7 @@ def test_query_executor_trace_has_row_count(metadata_service):
     traces = payload["context"]["traces"]
     executor = next((t for t in traces if t["step"] == "query_executor"), None)
     assert executor is not None
-    assert "row_count" in executor["details"], (
-        "query_executor trace must include row_count"
-    )
+    assert "row_count" in executor["details"], "query_executor trace must include row_count"
 
 
 # ---------------------------------------------------------------------------
