@@ -203,6 +203,14 @@ template_index:
     - TPL_MOST_POPULATED_POSITION
     employee_count_by_position_level:
     - TPL_EMPLOYEE_COUNT_BY_POSITION_LEVEL
+    employee_count_contract_ending_soon:
+    - TPL_EMPLOYEE_COUNT_CONTRACT_ENDING_SOON
+    employee_count_by_birth_month:
+    - TPL_EMPLOYEE_COUNT_BY_BIRTH_SHAMSI_MONTH
+    employee_count_by_hire_month:
+    - TPL_EMPLOYEE_COUNT_BY_HIRE_SHAMSI_MONTH
+    contract_ending_trend_annual:
+    - TPL_CONTRACT_ENDING_TREND_ANNUAL
 templates:
 - template_id: TPL_TOTAL_EMPLOYEE_COUNT
   report_id: RPT_HR_001
@@ -1616,6 +1624,84 @@ status_templates:
   business_rules_fa: برای تفکیک سطح پست از GROUP BY v.position_level استفاده می‌شود.
   sql: "SELECT\n    v.position_level,\n    COUNT(v.employee_id) AS employee_count\nFROM hr_mvp.vw_hr_employee_analytics\
     \ v\nWHERE v.is_active = TRUE\nGROUP BY v.position_level\nORDER BY v.position_level;\n"
+- template_id: TPL_EMPLOYEE_COUNT_CONTRACT_ENDING_SOON
+  intent: employee_count_contract_ending_soon
+  title_fa: تعداد کارکنانی که قرارداد آن‌ها تا یک سال آینده پایان می‌یابد
+  route: SQL
+  status: supported
+  output_type: kpi_card
+  required_columns:
+  - employee_id
+  - contract_end_date
+  - is_active
+  notes_fa: contract_end_date فقط به‌صورت فیلتر (نه ستون قابل‌نمایش) استفاده می‌شود؛
+    بازه ۱۲ ماه آینده از تاریخ جاری در نظر گرفته می‌شود (نه سال شمسی، چون تبدیل
+    تقویم شمسی در View وجود ندارد).
+  sql: "SELECT\n    COUNT(v.employee_id) AS employee_count\nFROM hr_mvp.vw_hr_employee_analytics\
+    \ v\nWHERE v.is_active = TRUE\n  AND v.contract_end_date BETWEEN CURRENT_DATE AND CURRENT_DATE + INTERVAL '1 year';\n"
+- template_id: TPL_EMPLOYEE_COUNT_BY_BIRTH_SHAMSI_MONTH
+  intent: employee_count_by_birth_month
+  title_fa: تعداد کارکنان متولد یک ماه/فصل شمسی خاص
+  route: SQL
+  status: supported
+  output_type: kpi_card
+  required_columns:
+  - employee_id
+  - birth_date
+  - is_active
+  parameters:
+  - name: shamsi_month_min
+    type: integer
+    required: true
+    notes_fa: شماره ماه شمسی شروع بازه (۱ تا ۱۲). برای یک ماه خاص برابر shamsi_month_max است.
+  - name: shamsi_month_max
+    type: integer
+    required: true
+    notes_fa: شماره ماه شمسی پایان بازه (۱ تا ۱۲).
+  notes_fa: birth_date فقط به‌صورت فیلتر (نه ستون قابل‌نمایش) از طریق تابع
+    hr_mvp.shamsi_month استفاده می‌شود؛ این تابع تاریخ میلادی را به ماه تقویم شمسی
+    تبدیل می‌کند.
+  sql: "SELECT\n    COUNT(v.employee_id) AS employee_count\nFROM hr_mvp.vw_hr_employee_analytics\
+    \ v\nWHERE v.is_active = TRUE\n  AND hr_mvp.shamsi_month(v.birth_date) BETWEEN {shamsi_month_min} AND {shamsi_month_max};\n"
+- template_id: TPL_EMPLOYEE_COUNT_BY_HIRE_SHAMSI_MONTH
+  intent: employee_count_by_hire_month
+  title_fa: تعداد کارکنان استخدام‌شده در یک ماه/فصل شمسی خاص
+  route: SQL
+  status: supported
+  output_type: kpi_card
+  required_columns:
+  - employee_id
+  - hire_date
+  - is_active
+  parameters:
+  - name: shamsi_month_min
+    type: integer
+    required: true
+    notes_fa: شماره ماه شمسی شروع بازه (۱ تا ۱۲). برای یک ماه خاص برابر shamsi_month_max است.
+  - name: shamsi_month_max
+    type: integer
+    required: true
+    notes_fa: شماره ماه شمسی پایان بازه (۱ تا ۱۲).
+  notes_fa: hire_date فقط به‌صورت فیلتر (نه ستون قابل‌نمایش) از طریق تابع
+    hr_mvp.shamsi_month استفاده می‌شود.
+  sql: "SELECT\n    COUNT(v.employee_id) AS employee_count\nFROM hr_mvp.vw_hr_employee_analytics\
+    \ v\nWHERE v.is_active = TRUE\n  AND hr_mvp.shamsi_month(v.hire_date) BETWEEN {shamsi_month_min} AND {shamsi_month_max};\n"
+- template_id: TPL_CONTRACT_ENDING_TREND_ANNUAL
+  intent: contract_ending_trend_annual
+  title_fa: روند سالانه پایان قرارداد (شمسی)
+  route: SQL
+  status: supported
+  output_type: line_chart
+  required_columns:
+  - employee_id
+  - contract_end_date
+  - is_active
+  notes_fa: تنها سال شمسی پایان قرارداد نمایش داده می‌شود (نه تاریخ دقیق)، از طریق
+    hr_mvp.shamsi_year. این داده فقط شامل قرارداد جاری هر کارمند است؛ تاریخچه‌ی
+    تمدیدهای قبلی نگهداری نمی‌شود، پس روند معمولاً به ۱-۲ سال آینده محدود است.
+  sql: "SELECT\n    hr_mvp.shamsi_year(v.contract_end_date) AS contract_end_shamsi_year,\n\
+    \    COUNT(v.employee_id) AS employee_count\nFROM hr_mvp.vw_hr_employee_analytics\
+    \ v\nWHERE v.is_active = TRUE\n  AND v.contract_end_date IS NOT NULL\nGROUP BY 1\nORDER BY 1 ASC;\n"
 gap_and_reject_mapping:
   city_level_analysis: TPL_DATA_GAP
 

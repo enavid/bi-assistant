@@ -634,3 +634,38 @@ cases:
     category: demographics
     expect:
       route: SQL
+
+  # ── dem-027: birth month/season aggregate filter via hr_mvp.shamsi_month()
+  # (converts the stored Gregorian birth_date to the Shamsi calendar) ────────
+
+  - id: dem-027v1
+    question: "چند نفر متولد خرداد هستن؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: employee_count_by_birth_month
+
+  - id: dem-027v2
+    question: "چند نفر تو تابستون به دنیا اومدن؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: employee_count_by_birth_month
+
+  - id: dem-027v3
+    question: "متولدین فروردین چند نفرن؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: employee_count_by_birth_month
+
+  # dem-027v4: explicitly says "تاریخ تولد" (a sensitive term matched before
+  # intent parsing even runs), so this one stays ACCESS_DENIED regardless of
+  # the new month-filter capability — it asks to expose the date concept
+  # itself, not just an aggregate count.
+  - id: dem-027v4
+    question: "تعداد افرادی که تاریخ تولدشون توی خرداد هست رو بده"
+    category: demographics
+    expect:
+      route: REJECT
+      status: ACCESS_DENIED

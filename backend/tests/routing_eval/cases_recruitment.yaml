@@ -447,3 +447,84 @@ cases:
     expect:
       route: SQL
       intent: average_age
+
+  # ── rec-158: average hire YEAR (not age) — no dedicated metric exists yet;
+  # must safely ask for clarification instead of matching the unrelated
+  # employee_count_by_age_filter template with all-NULL params ──────────────
+
+  - id: rec-158v1
+    question: "میانگین سال استخدام کارمندان چنده؟"
+    category: recruitment
+    expect:
+      route: NEEDS_CLARIFICATION
+      status: NEEDS_CLARIFICATION
+
+  - id: rec-158v2
+    question: "به طور میانگین کارمندا کی استخدام شدن؟"
+    category: recruitment
+    expect:
+      route: NEEDS_CLARIFICATION
+      status: NEEDS_CLARIFICATION
+
+  - id: rec-158v3
+    question: "میانگین سال جذب نیرو چقدره؟"
+    category: recruitment
+    expect:
+      route: SQL
+      must_not_include_sql:
+        - "v.age >="
+
+  - id: rec-158v4
+    question: "نرخ متوسط سال استخدام چیه؟"
+    category: recruitment
+    expect:
+      route: NEEDS_CLARIFICATION
+      status: NEEDS_CLARIFICATION
+
+  - id: rec-158v5
+    question: "میانگین تاریخ ورود کارکنان به سازمان چیه؟"
+    category: recruitment
+    expect:
+      route: NEEDS_CLARIFICATION
+      status: NEEDS_CLARIFICATION
+
+  # ── rec-159: hiring count filtered by a specific Shamsi calendar month
+  # (فروردین/خرداد/...). hr_mvp.shamsi_month(hire_date) converts the stored
+  # Gregorian date, so these now answer with a real aggregate count.
+
+  - id: rec-159v1
+    question: "تعداد جذب نیرو در فروردین امسال چقدره؟"
+    category: recruitment
+    expect:
+      route: SQL
+      intent: employee_count_by_hire_month
+
+  - id: rec-159v2
+    question: "چند نفر خرداد استخدام شدن؟"
+    category: recruitment
+    expect:
+      route: SQL
+      intent: employee_count_by_hire_month
+
+  - id: rec-159v3
+    question: "چند نفر امسال در فروردین استخدام شدن؟"
+    category: recruitment
+    expect:
+      route: SQL
+      intent: employee_count_by_hire_month
+
+  - id: rec-159v4
+    question: "تعداد استخدامی‌های خرداد امسال چقدره؟"
+    category: recruitment
+    expect:
+      route: SQL
+      intent: employee_count_by_hire_month
+
+  # rec-159v5: generic "ماه گذشته" (last month) has no specific Shamsi month
+  # name, so there is still no template for it — stays Data Gap.
+  - id: rec-159v5
+    question: "جذب نیروی ماه گذشته چقدر بوده؟"
+    category: recruitment
+    expect:
+      route: GAP
+      status: DATA_GAP

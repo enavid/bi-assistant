@@ -379,6 +379,7 @@ restricted_visible_columns:
     visible_output_allowed: false
     allowed_usage:
     - filter_only_if_explicit_and_safe
+    - derived_shamsi_year_aggregated_only
     on_fail: ACCESS_DENIED
   department_id:
     visible_output_allowed: false

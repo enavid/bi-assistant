@@ -380,7 +380,6 @@ intents:
   - بالای
   - به بالا
   - بازه سنی
-  - سال
   - سن
   metrics: *id001
   required_columns:
@@ -1041,6 +1040,146 @@ intents:
     GROUP BY v.position_level
 
     ORDER BY v.position_level;
+
+    '
+- intent_id: employee_count_contract_ending_soon
+  title_fa: تعداد کارکنانی که قرارداد آن‌ها به‌زودی پایان می‌یابد
+  description_fa: تعداد کارکنانی که تاریخ پایان قرارداد آن‌ها در یک سال آینده قرار دارد
+  route: SQL
+  status: supported
+  question_type: statistical
+  priority: medium
+  supported_in_phase2: true
+  demo_ready: true
+  user_examples:
+  - چند نفر قراردادشون امسال تموم میشه؟
+  - تعداد کارمندانی که قراردادشون تا پایان سال تمدید میشه چقدره؟
+  - چند نفر قراردادشون به‌زودی تمدید میشه؟
+  trigger_terms_fa:
+  - تموم میشه
+  - تمدید
+  - پایان قرارداد
+  - اتمام قرارداد
+  metrics: *id001
+  required_columns:
+  - employee_id
+  - contract_end_date
+  - is_active
+  default_filters:
+  - column: is_active
+    operator: '='
+    value: true
+  output_type: kpi_card
+  recommended_visualization: kpi_card
+  sql_hint: 'SELECT COUNT(v.employee_id) AS employee_count
+
+    FROM hr_mvp.vw_hr_employee_analytics v
+
+    WHERE v.is_active = TRUE
+
+      AND v.contract_end_date BETWEEN CURRENT_DATE AND CURRENT_DATE + INTERVAL ''1 year'';
+
+    '
+- intent_id: employee_count_by_birth_month
+  title_fa: تعداد کارکنان متولد یک ماه/فصل شمسی خاص
+  description_fa: تعداد کارکنانی که ماه یا فصل تولد آن‌ها (تقویم شمسی) با مقدار درخواستی مطابقت دارد
+  route: SQL
+  status: supported
+  question_type: statistical
+  priority: medium
+  supported_in_phase2: true
+  demo_ready: true
+  user_examples:
+  - چند نفر متولد خرداد هستن؟
+  - متولدین فروردین چند نفرن؟
+  - چند نفر تو تابستون به دنیا اومدن؟
+  metrics: *id001
+  required_columns:
+  - employee_id
+  - birth_date
+  - is_active
+  default_filters:
+  - column: is_active
+    operator: '='
+    value: true
+  output_type: kpi_card
+  recommended_visualization: kpi_card
+  sql_hint: 'SELECT COUNT(v.employee_id) AS employee_count
+
+    FROM hr_mvp.vw_hr_employee_analytics v
+
+    WHERE v.is_active = TRUE
+
+      AND hr_mvp.shamsi_month(v.birth_date) BETWEEN {shamsi_month_min} AND {shamsi_month_max};
+
+    '
+- intent_id: employee_count_by_hire_month
+  title_fa: تعداد کارکنان استخدام‌شده در یک ماه/فصل شمسی خاص
+  description_fa: تعداد کارکنانی که ماه یا فصل استخدام آن‌ها (تقویم شمسی) با مقدار درخواستی مطابقت دارد
+  route: SQL
+  status: supported
+  question_type: statistical
+  priority: medium
+  supported_in_phase2: true
+  demo_ready: true
+  user_examples:
+  - چند نفر خرداد استخدام شدن؟
+  - تعداد جذب نیرو در فروردین چقدره؟
+  metrics: *id001
+  required_columns:
+  - employee_id
+  - hire_date
+  - is_active
+  default_filters:
+  - column: is_active
+    operator: '='
+    value: true
+  output_type: kpi_card
+  recommended_visualization: kpi_card
+  sql_hint: 'SELECT COUNT(v.employee_id) AS employee_count
+
+    FROM hr_mvp.vw_hr_employee_analytics v
+
+    WHERE v.is_active = TRUE
+
+      AND hr_mvp.shamsi_month(v.hire_date) BETWEEN {shamsi_month_min} AND {shamsi_month_max};
+
+    '
+- intent_id: contract_ending_trend_annual
+  title_fa: روند سالانه پایان قرارداد (شمسی)
+  description_fa: شمارش سالانه‌ی کارکنانی که سال شمسی پایان قراردادشان مشخص است
+  route: SQL
+  status: supported
+  question_type: time_series
+  priority: medium
+  supported_in_phase2: true
+  demo_ready: true
+  user_examples:
+  - روند پایان قرارداد در سال‌های گذشته چطور بوده؟
+  - تعداد پایان قراردادها به تفکیک سال چطوره؟
+  metrics: *id001
+  required_columns:
+  - employee_id
+  - contract_end_date
+  - is_active
+  default_filters:
+  - column: is_active
+    operator: '='
+    value: true
+  output_type: line_chart
+  recommended_visualization: line_chart
+  sql_hint: 'SELECT hr_mvp.shamsi_year(v.contract_end_date) AS contract_end_shamsi_year,
+    COUNT(v.employee_id) AS employee_count
+
+    FROM hr_mvp.vw_hr_employee_analytics v
+
+    WHERE v.is_active = TRUE
+
+      AND v.contract_end_date IS NOT NULL
+
+    GROUP BY 1
+
+    ORDER BY 1 ASC;
 
     '
 - intent_id: headcount_gap_by_department

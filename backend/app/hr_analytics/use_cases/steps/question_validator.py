@@ -87,6 +87,46 @@ DOMAIN_HR = "HR"
 DOMAIN_NON_HR = "NON_HR"
 DOMAIN_UNKNOWN = "UNKNOWN"
 
+_PERSIAN_MONTH_NAMES = [
+    "فروردین",
+    "اردیبهشت",
+    "خرداد",
+    "تیر",
+    "مرداد",
+    "شهریور",
+    "مهر",
+    "آبان",
+    "آذر",
+    "دی",
+    "بهمن",
+    "اسفند",
+]
+
+_PERSIAN_SEASON_NAMES = [
+    "بهار",
+    "تابستان",
+    "تابستون",
+    "پاییز",
+    "خزان",
+    "زمستان",
+]
+
+# Matches "کارمند شماره ۵", "کارمند کد ۱۲", "کارمند ۲۰" (digits already
+# normalized to ASCII by this point). Any such reference must be treated
+# as an individual-employee lookup (ACCESS_DENIED) and take priority over
+# generic data-gap rules (e.g. contract-date gaps) that might otherwise
+# match the same wording.
+_SPECIFIC_EMPLOYEE_RE = re.compile(r"کارمند\s+(?:شماره\s+|کد\s+)?\d+")
+
+# Word-boundary match for month/season names. Several month names are short
+# (notably "دی", 2 chars) and unsafe as plain substrings — they appear inside
+# common words like "کردیم", "نزدیک", "قراردادی". Word boundaries here use
+# "not preceded/followed by a non-space char" (consistent with the colloquial
+# verb normalization in persian_normalizer.py).
+_PERSIAN_MONTH_OR_SEASON_RE = re.compile(
+    r"(?<!\S)(?:" + "|".join(_PERSIAN_MONTH_NAMES + _PERSIAN_SEASON_NAMES) + r")(?!\S)"
+)
+
 
 @dataclass(frozen=True)
 class ValidationRuleMatch:
@@ -505,6 +545,9 @@ class QuestionValidator:
         sensitive_matches = _find_terms(question, self.sensitive_terms)
         sensitive_column_matches = self._find_sensitive_columns(question, metadata=metadata)
         asks_for_visible_rows = self._asks_for_employee_level_rows(question)
+        specific_employee_match = _SPECIFIC_EMPLOYEE_RE.search(question)
+        if specific_employee_match:
+            sensitive_matches = [*sensitive_matches, specific_employee_match.group(0)]
 
         # Avoid false positive: "employee count" is valid aggregate. Employee-level terms
         # need either sensitive terms or list/detail/output-level signals.
@@ -619,6 +662,13 @@ class QuestionValidator:
             required_any = list(rule.get("required_any") or [])
             excluded_any = list(rule.get("excluded_any") or [])
             matched = _find_terms(question, terms)
+            if rule_id in ("QVAL_GAP_MONTHLY_HIRING", "QVAL_GAP_BIRTH_MONTH"):
+                # Month/season names are short and substring-unsafe (e.g. "دی" is
+                # contained in "کردیم", "نزدیک", "قراردادی"). Match with Persian
+                # word boundaries instead of plain substring containment.
+                month_match = _PERSIAN_MONTH_OR_SEASON_RE.search(question)
+                if month_match:
+                    matched = [*matched, month_match.group(0)]
             if not matched:
                 continue
             if required_any and not _find_terms(question, required_any):
@@ -1296,10 +1346,59 @@ def _build_data_gap_rules() -> list[JsonDict]:
         {
             "rule_id": "QVAL_GAP_MONTHLY_HIRING",
             "gap_key": "monthly_hiring_trend",
-            "terms": ["ماهانه", "هر ماه", "ماه به ماه", "ماه جذب", "جذب ماه"],
+            "terms": [
+                "ماهانه",
+                "هر ماه",
+                "ماه به ماه",
+                "ماه جذب",
+                "جذب ماه",
+                "ماه گذشته",
+                "ماه پیش",
+            ],
             "required_any": ["جذب", "استخدام", "نیرو"],
+            # Count-style questions naming a specific Shamsi month/season
+            # ("چند نفر خرداد استخدام شدن؟") are answered by
+            # employee_count_by_hire_month via hr_mvp.shamsi_month() — let
+            # those proceed to intent_parser. Generic "ماهانه/هر ماه" trend
+            # requests (no specific month) still have no template and stay GAP.
+            "excluded_any": ["چند نفر", "تعداد"],
             "severity": "medium",
-            "message_fa": "تحلیل ماهانه جذب در MVP فعلی قابل اتکا نیست؛ فعلاً تحلیل جذب بر اساس hire_year انجام می‌شود.",
+            "message_fa": "تحلیل روند ماهانه جذب در MVP فعلی قابل اتکا نیست؛ فقط شمارش بر اساس یک ماه/فصل شمسی خاص پشتیبانی می‌شود.",
+        },
+        {
+            "rule_id": "QVAL_GAP_BIRTH_MONTH",
+            "gap_key": "birth_month_analysis",
+            "terms": [],
+            "required_any": ["متولد", "تولد", "به دنیا"],
+            # See QVAL_GAP_MONTHLY_HIRING above — count-style questions for a
+            # specific month/season are answered by employee_count_by_birth_month.
+            "excluded_any": ["چند نفر", "تعداد"],
+            "severity": "medium",
+            "message_fa": (
+                "روند یا فهرست دقیق تاریخ تولد قابل نمایش نیست؛"
+                " فقط شمارش بر اساس یک ماه/فصل شمسی خاص پشتیبانی می‌شود."
+            ),
+        },
+        {
+            "rule_id": "QVAL_GAP_CONTRACT_DATE",
+            "gap_key": "contract_date_analysis",
+            "terms": [
+                "پایان قرارداد",
+                "اتمام قرارداد",
+                "شروع قرارداد",
+                "تموم میشه",
+                "تموم میشود",
+                "تمدید",
+            ],
+            "required_any": ["قرارداد"],
+            # Count-style questions ("چند نفر"/"تعداد") about contract end/renewal
+            # are answered by employee_count_contract_ending_soon, and annual
+            # trend questions ("روند") by contract_ending_trend_annual — both
+            # expose only an aggregate count or the derived Shamsi year, never
+            # the exact contract_end_date. Let those proceed to intent_parser.
+            "excluded_any": ["چند نفر", "تعداد", "روند"],
+            "severity": "high",
+            "message_fa": "تاریخ شروع/پایان قرارداد به‌صورت تک‌تک قابل نمایش نیست؛ فقط شمارش تجمیعی یا روند سالانه (بر اساس سال شمسی) مجاز است.",
         },
         {
             "rule_id": "QVAL_GAP_WORKLOAD_ALIGNMENT",

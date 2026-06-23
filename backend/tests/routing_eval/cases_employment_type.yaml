@@ -578,3 +578,37 @@ cases:
     expect:
       route: SQL
       intent: employee_count_by_employment_type
+
+  # ── emp-079: contract start/end date aggregate trend — contract_start_date
+  # and contract_end_date are 100% NULL in the current dataset (verified via
+  # direct DB query), so this must be a Data Gap, never a real SQL answer ────
+
+  - id: emp-079v1
+    question: "چند نفر قراردادشون امسال تموم میشه؟"
+    category: employment_type
+    expect:
+      route: SQL
+      intent: employee_count_contract_ending_soon
+      must_not_include_sql:
+        - "GROUP BY"
+
+  - id: emp-079v2
+    question: "تعداد کارمندانی که قراردادشون تا پایان سال تمدید میشه چقدره؟"
+    category: employment_type
+    expect:
+      route: SQL
+      intent: employee_count_contract_ending_soon
+      must_not_include_sql:
+        - "GROUP BY"
+
+  # ── emp-079v3: annual trend via hr_mvp.shamsi_year(contract_end_date) —
+  # only the derived Shamsi year is exposed, never the exact date.
+
+  - id: emp-079v3
+    question: "روند پایان قرارداد در سال‌های گذشته چطور بوده؟"
+    category: employment_type
+    expect:
+      route: SQL
+      intent: contract_ending_trend_annual
+      must_not_include_sql:
+        - "v.contract_end_date AS"

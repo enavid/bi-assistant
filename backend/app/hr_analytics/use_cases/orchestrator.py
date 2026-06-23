@@ -1225,6 +1225,9 @@ class LLMOrchestrator:
             "جذب",
             "مدرک",
             "سابقه",
+            "تولد",
+            "متولد",
+            "به دنیا",
         ]
         if any(term in question for term in weak_hr_terms):
             return {

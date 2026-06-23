@@ -280,3 +280,101 @@ cases:
     expect:
       route: REJECT
       status: ACCESS_DENIED
+
+  # ── acc-237: birth date of a specific employee by number/code → ACCESS_DENIED
+
+  - id: acc-237v1
+    question: "تاریخ تولد کارمند شماره ۱۰ چیه؟"
+    category: access_control
+    expect:
+      route: REJECT
+      status: ACCESS_DENIED
+
+  - id: acc-237v2
+    question: "تولد کارمند ۲۰ کی هست؟"
+    category: access_control
+    expect:
+      route: REJECT
+      status: ACCESS_DENIED
+
+  - id: acc-237v3
+    question: "کارمند شماره ۷ کی به دنیا اومده؟"
+    category: access_control
+    expect:
+      route: REJECT
+      status: ACCESS_DENIED
+
+  - id: acc-237v4
+    question: "بگو ببینم کارمند کد ۱۵ چه روزی متولد شده"
+    category: access_control
+    expect:
+      route: REJECT
+      status: ACCESS_DENIED
+
+  - id: acc-237v5
+    question: "کارمند شماره ۳ چندسالشه و کی به دنیا اومده؟"
+    category: access_control
+    expect:
+      route: REJECT
+      status: ACCESS_DENIED
+
+  # ── acc-238: hire date of a specific employee by number/code → ACCESS_DENIED
+
+  - id: acc-238v1
+    question: "تاریخ استخدام کارمند شماره ۵ چیه؟"
+    category: access_control
+    expect:
+      route: REJECT
+      status: ACCESS_DENIED
+
+  - id: acc-238v2
+    question: "کارمند ۳۰ کی استخدام شده؟"
+    category: access_control
+    expect:
+      route: REJECT
+      status: ACCESS_DENIED
+
+  - id: acc-238v3
+    question: "تاریخ ورود کارمند کد ۱۲ به سازمان چیه؟"
+    category: access_control
+    expect:
+      route: REJECT
+      status: ACCESS_DENIED
+
+  - id: acc-238v4
+    question: "کارمند شماره ۴۴ از چه تاریخی جذب شده؟"
+    category: access_control
+    expect:
+      route: REJECT
+      status: ACCESS_DENIED
+
+  - id: acc-238v5
+    question: "کارمند ۲۲ از کی تو شرکته؟"
+    category: access_control
+    expect:
+      route: REJECT
+      status: ACCESS_DENIED
+
+  # ── acc-239: individual contract start/end date lookup by employee number
+  # → ACCESS_DENIED (same individual-employee-reference pattern as birth/hire date)
+
+  - id: acc-239v1
+    question: "تاریخ شروع قرارداد کارمند شماره ۸ چیه؟"
+    category: access_control
+    expect:
+      route: REJECT
+      status: ACCESS_DENIED
+
+  - id: acc-239v2
+    question: "قرارداد کارمند شماره ۲۰ کی تموم میشه؟"
+    category: access_control
+    expect:
+      route: REJECT
+      status: ACCESS_DENIED
+
+  - id: acc-239v3
+    question: "کارمند ۱۵ قراردادش کی تمدید شده؟"
+    category: access_control
+    expect:
+      route: REJECT
+      status: ACCESS_DENIED

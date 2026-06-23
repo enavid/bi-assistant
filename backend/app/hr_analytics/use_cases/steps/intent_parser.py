@@ -70,6 +70,53 @@ DIGIT_TRANSLATION = str.maketrans(
     }
 )
 
+# Shamsi month name -> month number (1-12).
+_PERSIAN_MONTH_TO_NUM: dict[str, int] = {
+    "فروردین": 1,
+    "اردیبهشت": 2,
+    "خرداد": 3,
+    "تیر": 4,
+    "مرداد": 5,
+    "شهریور": 6,
+    "مهر": 7,
+    "آبان": 8,
+    "آذر": 9,
+    "دی": 10,
+    "بهمن": 11,
+    "اسفند": 12,
+}
+
+# Persian season name -> (min_month, max_month) range.
+_PERSIAN_SEASON_TO_RANGE: dict[str, tuple[int, int]] = {
+    "بهار": (1, 3),
+    "تابستان": (4, 6),
+    "تابستون": (4, 6),
+    "پاییز": (7, 9),
+    "خزان": (7, 9),
+    "زمستان": (10, 12),
+}
+
+# Month names are short and substring-unsafe (e.g. "دی" appears inside
+# "کردیم", "نزدیک"). Match with Persian word boundaries, same approach used
+# in question_validator.py.
+_PERSIAN_MONTH_OR_SEASON_RE = re.compile(
+    r"(?<!\S)(?:" + "|".join([*_PERSIAN_MONTH_TO_NUM, *_PERSIAN_SEASON_TO_RANGE]) + r")(?!\S)"
+)
+
+
+def _extract_shamsi_month_range(question: str) -> tuple[int, int] | None:
+    """Returns (min_month, max_month) for the first Persian month or season
+    name found in the question, or None if none is present."""
+    match = _PERSIAN_MONTH_OR_SEASON_RE.search(question)
+    if not match:
+        return None
+    word = match.group(0)
+    if word in _PERSIAN_MONTH_TO_NUM:
+        month = _PERSIAN_MONTH_TO_NUM[word]
+        return (month, month)
+    return _PERSIAN_SEASON_TO_RANGE[word]
+
+
 PERSIAN_NUMBER_WORDS: dict[str, int] = {
     "صفر": 0,
     "یک": 1,
@@ -132,6 +179,10 @@ DEFAULT_TEMPLATE_BY_INTENT: dict[str, str] = {
     "employee_count_by_department_education": "TPL_EMPLOYEE_COUNT_BY_DEPARTMENT_AND_EDUCATION",
     "employee_count_by_department_gender": "TPL_EMPLOYEE_COUNT_BY_DEPARTMENT_AND_GENDER",
     "employee_count_by_marital_status": "TPL_EMPLOYEE_COUNT_BY_MARITAL_STATUS",
+    "employee_count_contract_ending_soon": "TPL_EMPLOYEE_COUNT_CONTRACT_ENDING_SOON",
+    "contract_ending_trend_annual": "TPL_CONTRACT_ENDING_TREND_ANNUAL",
+    "employee_count_by_birth_month": "TPL_EMPLOYEE_COUNT_BY_BIRTH_SHAMSI_MONTH",
+    "employee_count_by_hire_month": "TPL_EMPLOYEE_COUNT_BY_HIRE_SHAMSI_MONTH",
 }
 
 TERMINAL_STATUS_TO_INTENT: dict[str, tuple[str, str, str]] = {
@@ -997,19 +1048,22 @@ class IntentParser:
                         "بی سابقه",
                     ],
                 ),
-                "asks_individual": self._has_any(
-                    question,
-                    [
-                        "نام",
-                        "اسم",
-                        "کد ملی",
-                        "شماره پرسنلی",
-                        "مشخصات",
-                        "لیست کارکنان",
-                        "لیست افراد",
-                        "افراد را نمایش",
-                        "با شناسه",
-                    ],
+                "asks_individual": (
+                    self._has_any(
+                        question,
+                        [
+                            "نام",
+                            "اسم",
+                            "کد ملی",
+                            "شماره پرسنلی",
+                            "مشخصات",
+                            "لیست کارکنان",
+                            "لیست افراد",
+                            "افراد را نمایش",
+                            "با شناسه",
+                        ],
+                    )
+                    or self._has_specific_employee_reference(question)
                 ),
                 "explicit_city": self._has_unqualified_city_term(
                     question,
@@ -1038,6 +1092,16 @@ class IntentParser:
     @staticmethod
     def _has_any(text: str, terms: Iterable[str]) -> bool:
         return any(term in text for term in terms)
+
+    _SPECIFIC_EMPLOYEE_RE = re.compile(r"کارمند\s+(?:شماره\s+|کد\s+)?\d+")
+
+    @classmethod
+    def _has_specific_employee_reference(cls, text: str) -> bool:
+        """Detects references to a single employee by id/number, e.g.
+        "کارمند شماره ۵", "کارمند کد ۱۲", "کارمند ۲۰" (digits are already
+        normalized to Latin by this point). Such questions must be routed
+        as individual lookups (ACCESS_DENIED), never as aggregate intents."""
+        return bool(cls._SPECIFIC_EMPLOYEE_RE.search(text))
 
     @staticmethod
     def _has_unqualified_city_term(text: str, terms: Iterable[str]) -> bool:
@@ -1131,6 +1195,37 @@ class IntentParser:
 
         if f.get("asks_individual"):
             add(("individual_employee_info", 100, "sensitive_or_individual_request"))
+
+        # Annual trend of contract-end Shamsi years. Only the derived year is
+        # exposed (via hr_mvp.shamsi_year()), never the exact date — checked
+        # before the plain "ending soon" count rule so "روند" wins.
+        if (
+            self._has_any(question, ["قرارداد"])
+            and self._has_any(question, ["روند"])
+            and self._has_any(
+                question, ["پایان قرارداد", "تموم میشه", "تموم میشود", "اتمام قرارداد"]
+            )
+        ):
+            add(("contract_ending_trend_annual", 92, "contract_ending_trend"))
+
+        # Aggregate count of contracts ending soon. contract_end_date is used
+        # only as a WHERE filter (never SELECTed/grouped), so this stays
+        # compliant with the "filter_only_if_explicit_and_safe" validator rule.
+        if self._has_any(question, ["قرارداد"]) and self._has_any(
+            question,
+            ["تموم میشه", "تموم میشود", "تمدید", "پایان قرارداد", "اتمام قرارداد"],
+        ):
+            add(("employee_count_contract_ending_soon", 90, "contract_ending_soon"))
+
+        # Aggregate count by Shamsi birth/hire month or season. hire_date/birth_date
+        # are used only as a WHERE filter (via hr_mvp.shamsi_month()), never
+        # SELECTed or grouped directly.
+        _month_range = _extract_shamsi_month_range(question)
+        if _month_range is not None:
+            if self._has_any(question, ["متولد", "تولد", "به دنیا"]):
+                add(("employee_count_by_birth_month", 90, "birth_month_filter"))
+            elif self._has_any(question, ["استخدام", "جذب"]):
+                add(("employee_count_by_hire_month", 90, "hire_month_filter"))
 
         if f.get("explicit_city"):
             add(("city_level_analysis", 90, "city_level_data_gap"))
@@ -1601,6 +1696,16 @@ class IntentParser:
         if f.get("asks_last_15_years"):
             self._penalize(scores, "hiring_trend_annual", 12, "last_15_years_specificity")
 
+        # "روند" (trend) about contract end should win over the plain
+        # ending-soon count, even though both share catalog trigger terms.
+        if self._has_any(question, ["روند"]) and self._has_any(question, ["قرارداد"]):
+            self._penalize(
+                scores,
+                "employee_count_contract_ending_soon",
+                15,
+                "trend_wording_prefers_annual_breakdown",
+            )
+
         # Percentage of women/men is not a gender distribution if no group distribution phrase exists.
         if (
             f.get("asks_percentage")
@@ -1888,6 +1993,20 @@ class IntentParser:
         elif best_intent_id == "employee_count_by_criticality_level":
             group_by = self._ensure_group_by(group_by, "criticality_level")
             required_columns.extend(["criticality_level", "employee_id", "is_active"])
+
+        elif best_intent_id == "employee_count_contract_ending_soon":
+            required_columns.extend(["contract_end_date", "employee_id", "is_active"])
+
+        elif best_intent_id == "contract_ending_trend_annual":
+            required_columns.extend(["contract_end_date", "employee_id", "is_active"])
+
+        elif best_intent_id in {"employee_count_by_birth_month", "employee_count_by_hire_month"}:
+            month_range = _extract_shamsi_month_range(question) or (1, 12)
+            params["shamsi_month_min"], params["shamsi_month_max"] = month_range
+            date_column = (
+                "birth_date" if best_intent_id == "employee_count_by_birth_month" else "hire_date"
+            )
+            required_columns.extend([date_column, "employee_id", "is_active"])
 
         elif best_intent_id == "contractor_share":
             filters.append(
