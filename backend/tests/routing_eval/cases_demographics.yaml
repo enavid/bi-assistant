@@ -669,3 +669,92 @@ cases:
     expect:
       route: REJECT
       status: ACCESS_DENIED
+
+  # ── dem-028: birth-month RANGE (two months spanning a range, not just one).
+  # _extract_shamsi_month_range used to return only the FIRST month matched
+  # (e.g. "خرداد تا تیر" silently became "BETWEEN 3 AND 3", dropping "تا تیر"
+  # entirely) — fixed to span min..max across every month/season mentioned.
+
+  - id: dem-028v1
+    question: "تعداد متولدین خرداد تا تیر چند نفر است؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: employee_count_by_birth_month
+      must_include_sql:
+        - "BETWEEN 3 AND 4"
+
+  - id: dem-028v2
+    question: "چند نفر بین خرداد و تیر متولد شدن؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: employee_count_by_birth_month
+      must_include_sql:
+        - "BETWEEN 3 AND 4"
+
+  - id: dem-028v3
+    question: "متولدین فروردین تا اردیبهشت چقدرن؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: employee_count_by_birth_month
+      must_include_sql:
+        - "BETWEEN 1 AND 2"
+
+  - id: dem-028v4
+    question: "از خرداد تا مرداد چند نفر به دنیا اومدن؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: employee_count_by_birth_month
+      must_include_sql:
+        - "BETWEEN 3 AND 5"
+
+  - id: dem-028v5
+    question: "تعداد کسانی که بین بهمن و اسفند متولد شدن چقدره؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: employee_count_by_birth_month
+      must_include_sql:
+        - "BETWEEN 11 AND 12"
+
+  # ── dem-029: additional single-month/season birth variants (paraphrase
+  # robustness, mirrors the dem-027 pattern with new wording) ───────────────
+
+  - id: dem-029v1
+    question: "تعداد متولدین پاییز چقدره؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: employee_count_by_birth_month
+      must_include_sql:
+        - "BETWEEN 7 AND 9"
+
+  - id: dem-029v2
+    question: "چند نفر زمستون متولد شدن؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: employee_count_by_birth_month
+      must_include_sql:
+        - "BETWEEN 10 AND 12"
+
+  - id: dem-029v3
+    question: "چند نفر مهر ماه متولد شدن؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: employee_count_by_birth_month
+      must_include_sql:
+        - "BETWEEN 7 AND 7"
+
+  - id: dem-029v4
+    question: "تعداد افراد متولد آبان چنده؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: employee_count_by_birth_month
+      must_include_sql:
+        - "BETWEEN 8 AND 8"

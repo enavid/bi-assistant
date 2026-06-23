@@ -94,6 +94,7 @@ _PERSIAN_SEASON_TO_RANGE: dict[str, tuple[int, int]] = {
     "پاییز": (7, 9),
     "خزان": (7, 9),
     "زمستان": (10, 12),
+    "زمستون": (10, 12),
 }
 
 # Month names are short and substring-unsafe (e.g. "دی" appears inside
@@ -105,16 +106,24 @@ _PERSIAN_MONTH_OR_SEASON_RE = re.compile(
 
 
 def _extract_shamsi_month_range(question: str) -> tuple[int, int] | None:
-    """Returns (min_month, max_month) for the first Persian month or season
-    name found in the question, or None if none is present."""
-    match = _PERSIAN_MONTH_OR_SEASON_RE.search(question)
-    if not match:
+    """Returns (min_month, max_month) for the Persian month/season name(s)
+    found in the question, or None if none is present.
+
+    Range phrasing ("خرداد تا تیر", "بین فروردین و خرداد") is handled by
+    simply collecting every month name mentioned and spanning min..max —
+    this is connector-agnostic (تا/الی/بین...و) and avoids depending on a
+    specific range-wording pattern."""
+    matches = _PERSIAN_MONTH_OR_SEASON_RE.findall(question)
+    if not matches:
         return None
-    word = match.group(0)
-    if word in _PERSIAN_MONTH_TO_NUM:
-        month = _PERSIAN_MONTH_TO_NUM[word]
-        return (month, month)
-    return _PERSIAN_SEASON_TO_RANGE[word]
+    months: list[int] = []
+    for word in matches:
+        if word in _PERSIAN_MONTH_TO_NUM:
+            months.append(_PERSIAN_MONTH_TO_NUM[word])
+        else:
+            lo, hi = _PERSIAN_SEASON_TO_RANGE[word]
+            months.extend([lo, hi])
+    return (min(months), max(months))
 
 
 PERSIAN_NUMBER_WORDS: dict[str, int] = {
@@ -1110,7 +1119,10 @@ class IntentParser:
         analysis is supported in the MVP, only city-level analysis is a gap."""
         for term in terms:
             if term == "شهر":
-                if term in text:
+                # Plain substring is unsafe: "شهریور" (the Shamsi month)
+                # contains "شهر" as a prefix. Exclude only that specific
+                # collision — "شهرها"/"شهری"/"شهر " etc. must still match.
+                if re.search(r"شهر(?!یور)", text):
                     return True
                 continue
             idx = text.find(term)

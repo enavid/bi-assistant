@@ -528,3 +528,81 @@ cases:
     expect:
       route: GAP
       status: DATA_GAP
+
+  # ── rec-160: hire-month RANGE (two months spanning a range) — same fix as
+  # dem-028, applied to hire_date instead of birth_date.
+
+  - id: rec-160v1
+    question: "چند نفر بین فروردین و خرداد استخدام شدن؟"
+    category: recruitment
+    expect:
+      route: SQL
+      intent: employee_count_by_hire_month
+      must_include_sql:
+        - "BETWEEN 1 AND 3"
+
+  - id: rec-160v2
+    question: "تعداد جذب از تیر تا شهریور چقدره؟"
+    category: recruitment
+    expect:
+      route: SQL
+      intent: employee_count_by_hire_month
+      must_include_sql:
+        - "BETWEEN 4 AND 6"
+
+  - id: rec-160v3
+    question: "استخدامی‌های مهر تا آذر چند نفرن؟"
+    category: recruitment
+    expect:
+      route: SQL
+      intent: employee_count_by_hire_month
+      must_include_sql:
+        - "BETWEEN 7 AND 9"
+
+  # ── rec-161: additional single-month/season hiring variants (paraphrase
+  # robustness, mirrors the rec-159 pattern with new wording) ───────────────
+
+  - id: rec-161v1
+    question: "چند نفر زمستان استخدام شدن؟"
+    category: recruitment
+    expect:
+      route: SQL
+      intent: employee_count_by_hire_month
+      must_include_sql:
+        - "BETWEEN 10 AND 12"
+
+  - id: rec-161v2
+    question: "تعداد کارمندانی که بهار جذب شدن چقدره؟"
+    category: recruitment
+    expect:
+      route: SQL
+      intent: employee_count_by_hire_month
+      must_include_sql:
+        - "BETWEEN 1 AND 3"
+
+  - id: rec-161v3
+    question: "چند نفر دی ماه استخدام شدن؟"
+    category: recruitment
+    expect:
+      route: SQL
+      intent: employee_count_by_hire_month
+      must_include_sql:
+        - "BETWEEN 10 AND 10"
+
+  - id: rec-161v4
+    question: "تعداد جذب نیرو در آذر چقدره؟"
+    category: recruitment
+    expect:
+      route: SQL
+      intent: employee_count_by_hire_month
+      must_include_sql:
+        - "BETWEEN 9 AND 9"
+
+  - id: rec-161v5
+    question: "کارمندایی که اسفند استخدام شدن چند نفرن؟"
+    category: recruitment
+    expect:
+      route: SQL
+      intent: employee_count_by_hire_month
+      must_include_sql:
+        - "BETWEEN 12 AND 12"

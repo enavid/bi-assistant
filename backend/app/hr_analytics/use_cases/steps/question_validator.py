@@ -109,6 +109,7 @@ _PERSIAN_SEASON_NAMES = [
     "پاییز",
     "خزان",
     "زمستان",
+    "زمستون",
 ]
 
 # Matches "کارمند شماره ۵", "کارمند کد ۱۲", "کارمند ۲۰" (digits already
@@ -663,12 +664,13 @@ class QuestionValidator:
             excluded_any = list(rule.get("excluded_any") or [])
             matched = _find_terms(question, terms)
             if rule_id in ("QVAL_GAP_MONTHLY_HIRING", "QVAL_GAP_BIRTH_MONTH"):
-                # Month/season names are short and substring-unsafe (e.g. "دی" is
-                # contained in "کردیم", "نزدیک", "قراردادی"). Match with Persian
-                # word boundaries instead of plain substring containment.
-                month_match = _PERSIAN_MONTH_OR_SEASON_RE.search(question)
-                if month_match:
-                    matched = [*matched, month_match.group(0)]
+                # A specific Shamsi month/season name (word-boundary matched —
+                # "دی" is unsafe as a plain substring, e.g. inside "کردیم")
+                # means employee_count_by_hire_month/birth_month can answer
+                # it directly; only the truly generic phrasing ("ماهانه",
+                # "ماه گذشته", no specific month) has no template and stays GAP.
+                if _PERSIAN_MONTH_OR_SEASON_RE.search(question):
+                    continue
             if not matched:
                 continue
             if required_any and not _find_terms(question, required_any):
@@ -1311,7 +1313,10 @@ def _build_data_gap_rules() -> list[JsonDict]:
                 "تبریز",
                 "کرج",
             ],
-            "excluded_any": ["استان"],
+            # "استان" qualifies city as province (handled elsewhere). "شهریور"
+            # (the Shamsi month) contains "شهر" as a plain substring — exclude
+            # it so month-filter questions aren't misclassified as city gaps.
+            "excluded_any": ["استان", "شهریور"],
             "severity": "medium",
             "message_fa": "در داده MVP فعلی، اطلاعات شهر قابل اتکا نیست و باید به عنوان Data Gap ثبت شود.",
         },
@@ -1356,12 +1361,10 @@ def _build_data_gap_rules() -> list[JsonDict]:
                 "ماه پیش",
             ],
             "required_any": ["جذب", "استخدام", "نیرو"],
-            # Count-style questions naming a specific Shamsi month/season
-            # ("چند نفر خرداد استخدام شدن؟") are answered by
-            # employee_count_by_hire_month via hr_mvp.shamsi_month() — let
-            # those proceed to intent_parser. Generic "ماهانه/هر ماه" trend
-            # requests (no specific month) still have no template and stay GAP.
-            "excluded_any": ["چند نفر", "تعداد"],
+            # A specific Shamsi month/season name is handled by the
+            # word-boundary `continue` check above (employee_count_by_hire_month
+            # answers it directly). This rule only fires for truly generic
+            # "ماهانه/هر ماه/ماه گذشته" phrasing with no specific month.
             "severity": "medium",
             "message_fa": "تحلیل روند ماهانه جذب در MVP فعلی قابل اتکا نیست؛ فقط شمارش بر اساس یک ماه/فصل شمسی خاص پشتیبانی می‌شود.",
         },
@@ -1370,9 +1373,6 @@ def _build_data_gap_rules() -> list[JsonDict]:
             "gap_key": "birth_month_analysis",
             "terms": [],
             "required_any": ["متولد", "تولد", "به دنیا"],
-            # See QVAL_GAP_MONTHLY_HIRING above — count-style questions for a
-            # specific month/season are answered by employee_count_by_birth_month.
-            "excluded_any": ["چند نفر", "تعداد"],
             "severity": "medium",
             "message_fa": (
                 "روند یا فهرست دقیق تاریخ تولد قابل نمایش نیست؛"
