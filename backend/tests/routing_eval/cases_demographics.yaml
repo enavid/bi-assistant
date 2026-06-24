@@ -192,6 +192,33 @@ cases:
       route: SQL
       intent: average_age
 
+  # ── dem-034: median age (distinct metric from average_age) ─────────────────
+
+  - id: dem-034v1
+    question: "میانه سن کارکنان چقدره؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: median_age
+      must_include_sql: ["PERCENTILE_CONT"]
+
+  - id: dem-034v2
+    question: "سن میانه نیروهای سازمان چنده؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: median_age
+      must_include_sql: ["PERCENTILE_CONT"]
+
+  - id: dem-034v3
+    # Distractor: plain "average" phrasing must still route to average_age, not median_age.
+    question: "میانگین سن کارکنان چقدره؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: average_age
+      must_not_include_sql: ["PERCENTILE_CONT"]
+
   # ── dem-008: age gap between male and female ────────────────────────────────
 
   - id: dem-008v1

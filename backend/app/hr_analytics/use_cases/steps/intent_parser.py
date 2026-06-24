@@ -861,6 +861,7 @@ class IntentParser:
                     question, ["درصد", "سهم", "نسبت", "چه مقدار", "چند درصد"]
                 ),
                 "asks_average": self._has_any(question, ["میانگین", "متوسط", "اختلاف میانگین"]),
+                "asks_median": self._has_any(question, ["میانه"]),
                 "asks_stddev": self._has_any(question, ["انحراف معیار", "واریانس", "پراکندگی"]),
                 "asks_distribution": self._has_any(
                     question, ["تفکیک", "بر اساس", "به تفکیک", "توزیع", "سهم هر", "در هر"]
@@ -1373,7 +1374,9 @@ class IntentParser:
         ):
             add(("age_min_max", 96, "age_min_max_combined"))
 
-        if f.get("asks_average") and f.get("explicit_age"):
+        if f.get("asks_median") and f.get("explicit_age"):
+            add(("median_age", 92, "median_age"))
+        elif f.get("asks_average") and f.get("explicit_age"):
             if f.get("explicit_department"):
                 add(("avg_age_by_department", 85, "avg_age_by_department"))
             else:
@@ -1687,6 +1690,8 @@ class IntentParser:
         if f.get("explicit_service_years"):
             if f.get("service_years_filter"):
                 add(("employee_count_by_service_years_filter", 80, "service_years_range_filter"))
+            elif f.get("asks_median"):
+                add(("median_service_years", 92, "median_service_years"))
             elif f.get("asks_zero_service"):
                 if f.get("explicit_service_domain") or f.get("explicit_department"):
                     # "which domain has the most zero-service employees?" → rank by zero-service
@@ -2066,7 +2071,7 @@ class IntentParser:
                 required_columns.append("education_title")
             required_columns.extend(["age", "employee_id", "is_active", *group_by])
 
-        elif best_intent_id in {"max_age", "min_age", "stddev_age", "age_min_max"}:
+        elif best_intent_id in {"max_age", "min_age", "stddev_age", "age_min_max", "median_age"}:
             required_columns.extend(["age", "employee_id", "is_active"])
 
         elif best_intent_id in {
@@ -2334,7 +2339,7 @@ class IntentParser:
             group_by = ["contract_type"]
             required_columns.extend(["contract_type", "hire_year", "employee_id", "is_active"])
 
-        elif best_intent_id == "average_service_years":
+        elif best_intent_id in {"average_service_years", "median_service_years"}:
             required_columns.extend(["service_years", "employee_id", "is_active"])
 
         elif best_intent_id == "employee_count_without_service_years":

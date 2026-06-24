@@ -210,3 +210,30 @@ cases:
     expect:
       route: SQL
       intent: employee_count_without_service_years
+
+  # ── sen-167: median service years (distinct metric from average_service_years) ──
+
+  - id: sen-167v1
+    question: "میانه سابقه کارکنان چقدره؟"
+    category: seniority
+    expect:
+      route: SQL
+      intent: median_service_years
+      must_include_sql: ["PERCENTILE_CONT"]
+
+  - id: sen-167v2
+    question: "سابقه میانه نیروهای سازمان چنده؟"
+    category: seniority
+    expect:
+      route: SQL
+      intent: median_service_years
+      must_include_sql: ["PERCENTILE_CONT"]
+
+  - id: sen-167v3
+    # Distractor: plain "average" phrasing must still route to average_service_years.
+    question: "میانگین سابقه کارکنان سازمان چنده؟"
+    category: seniority
+    expect:
+      route: SQL
+      intent: average_service_years
+      must_not_include_sql: ["PERCENTILE_CONT"]

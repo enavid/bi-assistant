@@ -278,6 +278,42 @@ intents:
     WHERE v.is_active = TRUE;
 
     '
+- intent_id: median_age
+  title_fa: میانه سن کارکنان
+  description_fa: میانه (پرسنتایل ۵۰) سن کارکنان فعال
+  route: SQL
+  status: supported
+  question_type: statistical
+  priority: medium
+  supported_in_phase2: true
+  demo_ready: true
+  user_examples:
+  - میانه سن کارکنان چقدره؟
+  - سن میانه نیروهای سازمان چنده؟
+  trigger_terms_fa:
+  - میانه سن
+  - سن میانه
+  metrics:
+  - name: median_age
+    title_fa: میانه سن
+    expression: ROUND(PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY v.age), 2)
+  required_columns:
+  - age
+  - is_active
+  default_filters:
+  - column: is_active
+    operator: '='
+    value: true
+  output_type: single_metric
+  recommended_visualization: kpi_card
+  sql_template_id: TPL_MEDIAN_AGE
+  sql_hint: 'SELECT ROUND(PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY v.age), 2) AS median_age
+
+    FROM hr_mvp.vw_hr_employee_analytics v
+
+    WHERE v.is_active = TRUE;
+
+    '
 - intent_id: max_age
   title_fa: بیشترین سن کارکنان
   description_fa: حداکثر سن در بین کارکنان فعال
@@ -1665,6 +1701,42 @@ intents:
   output_type: single_or_grouped_metric
   recommended_visualization: kpi_card
   sql_hint: 'SELECT ROUND(AVG(v.service_years), 2) AS average_service_years
+
+    FROM hr_mvp.vw_hr_employee_analytics v
+
+    WHERE v.is_active = TRUE;
+
+    '
+- intent_id: median_service_years
+  title_fa: میانه سابقه کارکنان
+  description_fa: میانه (پرسنتایل ۵۰) سابقه خدمت کارکنان فعال
+  route: SQL
+  status: supported
+  question_type: statistical
+  priority: medium
+  supported_in_phase2: true
+  demo_ready: true
+  user_examples:
+  - میانه سابقه کارکنان چقدره؟
+  - سابقه میانه نیروهای سازمان چنده؟
+  trigger_terms_fa:
+  - میانه سابقه
+  - سابقه میانه
+  metrics:
+  - name: median_service_years
+    title_fa: میانه سابقه
+    expression: ROUND(PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY v.service_years), 2)
+  required_columns:
+  - service_years
+  - is_active
+  default_filters:
+  - column: is_active
+    operator: '='
+    value: true
+  output_type: single_metric
+  recommended_visualization: kpi_card
+  sql_template_id: TPL_MEDIAN_SERVICE_YEARS
+  sql_hint: 'SELECT ROUND(PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY v.service_years), 2) AS median_service_years
 
     FROM hr_mvp.vw_hr_employee_analytics v
 

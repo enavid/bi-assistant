@@ -132,6 +132,7 @@ allowed_sql:
     - AVG
     - MIN
     - MAX
+    - PERCENTILE_CONT
     numeric:
     - ROUND
     - CAST

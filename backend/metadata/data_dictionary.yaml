@@ -264,10 +264,13 @@ columns:
   - MIN
   - MAX
   - FILTER_RANGE
+  - PERCENTILE_CONT
   semantic_terms_fa:
   - سن
   - میانگین سن
   - متوسط سن
+  - میانه سن
+  - سن میانه
   - زیر ۳۰ سال
   - کمتر از ۳۰ سال
   - بالای ۶۰ سال
@@ -275,6 +278,7 @@ columns:
   - بازه سنی
   sql_usage_notes_fa:
   - 'برای میانگین سن: ROUND(AVG(v.age), 2)'
+  - 'برای میانه سن: ROUND(PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY v.age), 2)'
   - 'برای زیر ۳۰ سال: v.age < 30'
   - 'برای ۶۰ سال به بالا: v.age >= 60'
   - سن فردی نباید در خروجی ردیفی نمایش داده شود.
@@ -393,14 +397,18 @@ columns:
   - MIN
   - MAX
   - FILTER_RANGE
+  - PERCENTILE_CONT
   semantic_terms_fa:
   - سابقه
   - سنوات
   - سنوات خدمت
   - میانگین سابقه
+  - میانه سابقه
+  - سابقه میانه
   - بدون سابقه
   sql_usage_notes_fa:
   - 'برای میانگین سابقه: ROUND(AVG(v.service_years), 2)'
+  - 'برای میانه سابقه: ROUND(PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY v.service_years), 2)'
   - برای بدون سابقه در صورت نیاز از v.service_years = 0 استفاده شود.
 - name: department_id
   title_fa: شناسه واحد سازمانی
