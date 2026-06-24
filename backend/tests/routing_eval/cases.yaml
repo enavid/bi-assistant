@@ -303,6 +303,26 @@ cases:
         - "education"
         - "LIMIT"
 
+  - id: edu-030v2
+    question: "نادرترین مدرک تحصیلی در سازمان کدومه؟"
+    category: education
+    expect:
+      route: SQL
+      intent: least_common_education
+      must_include_sql:
+        - "education"
+        - "LIMIT"
+
+  - id: edu-030v3
+    question: "کم‌تکرارترین مدرک تحصیلی بین کارکنان چیه؟"
+    category: education
+    expect:
+      route: SQL
+      intent: least_common_education
+      must_include_sql:
+        - "education"
+        - "LIMIT"
+
   - id: edu-031
     question: "تعداد کارکنان دارای مدرک دیپلم چند نفر است؟"
     category: education

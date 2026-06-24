@@ -829,6 +829,72 @@ cases:
         - "MIN(v.age)"
         - "MAX(v.age)"
 
+  - id: dem-030v8
+    question: "بیشترین سن کارکنان چقدره؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: max_age
+      must_include_sql:
+        - "MAX(v.age)"
+
+  - id: dem-030v9
+    question: "حداکثر سن کارکنان چنده؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: max_age
+      must_include_sql:
+        - "MAX(v.age)"
+
+  # Superlative joined with an ordinary space instead of ZWNJ, and phrased
+  # without "کارمند" — regression guard for the fragile catalog-trigger-only
+  # routing that previously sent this to ambiguous_hr_question.
+  - id: dem-030v10
+    question: "مسن ترین فرد سازمان چند سالشه؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: max_age
+      must_include_sql:
+        - "MAX(v.age)"
+
+  - id: dem-030v11
+    question: "پیرترین کارمند چند سالشه؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: max_age
+      must_include_sql:
+        - "MAX(v.age)"
+
+  - id: dem-030v12
+    question: "کمترین سن کارکنان چقدره؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: min_age
+      must_include_sql:
+        - "MIN(v.age)"
+
+  - id: dem-030v13
+    question: "حداقل سن کارکنان چنده؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: min_age
+      must_include_sql:
+        - "MIN(v.age)"
+
+  - id: dem-030v14
+    question: "کم سن‌ترین کارمند چند سالشه؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: min_age
+      must_include_sql:
+        - "MIN(v.age)"
+
   # ---------------------------------------------------------------------------
   # dem-031: standard deviation of employee age (stddev_age)
   # Trigger: asks_stddev (انحراف معیار / واریانس / پراکندگی) + explicit_age

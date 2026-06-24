@@ -1371,12 +1371,43 @@ class IntentParser:
             else:
                 # Boost to beat contractor_share (75) when question asks avg age of contractors
                 add(("average_age", 92, "average_age"))
-        if f.get("asks_most") and f.get("explicit_age") and not f.get("age_filter"):
+        # "مسن‌ترین"/"پیرترین" (oldest) and "جوان‌ترین"/"کم‌سن‌ترین" (youngest) are
+        # synonyms for asks_most/asks_least that are specific to age and were
+        # previously only caught by weak catalog trigger/example-overlap scoring
+        # (score ~7), making max_age/min_age fragile to small phrasing changes.
+        # Recognizing them directly as a manual rule (score 75) makes routing
+        # robust, matching the precision of every other rule in this method.
+        _oldest_age_terms = ["مسن‌ترین", "مسن ترین", "پیرترین"]
+        _youngest_age_terms = [
+            "جوان‌ترین",
+            "جوان ترین",
+            "جوون‌ترین",
+            "جوون ترین",
+            "کم‌سن‌ترین",
+            "کم سن ترین",
+        ]
+        # Domain/department-scoped questions (e.g. "پیرترین حوزه از نظر کارکنان
+        # کدومه؟") ask which org unit has the oldest workforce — a different
+        # intent (employee_count_by_age_filter) than the single global max/min
+        # age value this rule answers, so they are excluded here.
+        if (
+            (f.get("asks_most") or self._has_any(question, _oldest_age_terms))
+            and f.get("explicit_age")
+            and not f.get("age_filter")
+            and not f.get("explicit_service_domain")
+            and not f.get("explicit_department")
+        ):
             if self._has_any(question, ["گروه سنی", "رنج سنی", "بازه سنی"]):
                 add(("most_populated_age_group", 90, "most_age_group"))
             else:
                 add(("max_age", 75, "max_age"))
-        if f.get("asks_least") and f.get("explicit_age") and not f.get("age_filter"):
+        if (
+            (f.get("asks_least") or self._has_any(question, _youngest_age_terms))
+            and f.get("explicit_age")
+            and not f.get("age_filter")
+            and not f.get("explicit_service_domain")
+            and not f.get("explicit_department")
+        ):
             if self._has_any(question, ["گروه سنی", "رنج سنی", "بازه سنی"]):
                 add(("least_populated_age_group", 90, "least_age_group"))
             else:
@@ -1447,7 +1478,10 @@ class IntentParser:
             ):
                 add(("most_common_education", 70, "most_common_education"))
             elif (
-                f.get("asks_least") or self._has_any(question, ["کمتر داریم", "کمتره"])
+                f.get("asks_least")
+                or self._has_any(
+                    question, ["کمتر داریم", "کمتره", "نادرترین", "کم‌تکرارترین", "کم تکرارترین"]
+                )
             ) and not f.get("age_filter"):
                 add(("least_common_education", 70, "least_common_education"))
             elif (

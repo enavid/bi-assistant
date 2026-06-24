@@ -613,6 +613,24 @@ cases:
       must_not_include_sql:
         - "v.contract_end_date AS"
 
+  - id: emp-079v4
+    question: "روند اتمام قرارداد طی سال‌های اخیر چطور بوده؟"
+    category: employment_type
+    expect:
+      route: SQL
+      intent: contract_ending_trend_annual
+      must_not_include_sql:
+        - "v.contract_end_date AS"
+
+  - id: emp-079v5
+    question: "روند سالانه پایان قرارداد کارکنان چگونه است؟"
+    category: employment_type
+    expect:
+      route: SQL
+      intent: contract_ending_trend_annual
+      must_not_include_sql:
+        - "v.contract_end_date AS"
+
   # ---------------------------------------------------------------------------
   # emp-080: employment type distribution per department
   # (employment_type_by_department)
