@@ -192,7 +192,6 @@ template_index:
     employee_count_by_gender_age_filter:
     - TPL_GENDER_BY_AGE_GROUP
     education_distribution_by_service_domain: TPL_EDUCATION_BY_SERVICE_DOMAIN
-    education_by_service_domain: TPL_EDUCATION_BY_SERVICE_DOMAIN
     monthly_hiring_trend: TPL_DATA_GAP
     least_populated_department:
     - TPL_LEAST_POPULATED_DEPARTMENT

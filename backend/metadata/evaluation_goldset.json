@@ -2254,7 +2254,7 @@
       "category": "education",
       "question": "توزیع تحصیلات در هر حوزه چطور است؟",
       "expected_domain": "HR",
-      "expected_intent": "education_by_service_domain",
+      "expected_intent": "education_distribution_by_service_domain",
       "expected_route": "SQL",
       "expected_report_id": null,
       "expected_sql_template_id": "TPL_EDUCATION_BY_SERVICE_DOMAIN",

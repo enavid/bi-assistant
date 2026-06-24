@@ -2344,44 +2344,6 @@ intents:
   report_id: RPT_HR_042
   sql_template_id: TPL_EDUCATION_BY_SERVICE_DOMAIN
   sql_hint: Use TPL_EDUCATION_BY_SERVICE_DOMAIN.
-- intent_id: education_by_service_domain
-  title_fa: تحصیلات به تفکیک حوزه خدمت
-  description_fa: Alias سازگار برای education_distribution_by_service_domain.
-  route: SQL
-  status: supported
-  question_type: statistical
-  priority: medium
-  supported_in_phase2: true
-  demo_ready: false
-  alias_of: education_distribution_by_service_domain
-  user_examples:
-  - تحصیلات هر حوزه را بده
-  - مدرک تحصیلی به تفکیک حوزه
-  trigger_terms_fa:
-  - تحصیلات هر حوزه
-  - مدرک هر حوزه
-  metrics:
-  - name: employee_count
-    title_fa: تعداد کارکنان
-    expression: COUNT(v.employee_id)
-  required_columns:
-  - employee_id
-  - service_domain
-  - education_title
-  - education_rank
-  - is_active
-  default_filters:
-  - column: is_active
-    operator: '='
-    value: true
-  group_by:
-  - service_domain
-  - education_title
-  output_type: table
-  recommended_visualization: table
-  report_id: RPT_HR_042
-  sql_template_id: TPL_EDUCATION_BY_SERVICE_DOMAIN
-  sql_hint: Use TPL_EDUCATION_BY_SERVICE_DOMAIN.
 - intent_id: terminated_employee_analysis
   title_fa: تحلیل کارکنان خروجی (اخراج/بازنشسته/ترک خدمت)
   description_fa: سؤال درباره کارکنان اخراجی، بازنشسته، غیرفعال یا ترک‌خدمت؛ View فعلی فقط کارکنان فعال را دارد.

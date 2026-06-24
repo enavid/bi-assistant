@@ -786,13 +786,6 @@ intent_visualization_map:
   metrics: []
   default_title_fa: سؤال مبهم
   fallback_visualization: null
-- intent: education_by_service_domain
-  primary_visualization: table
-  dimension: service_domain
-  metrics:
-  - employee_count
-  default_title_fa: تحصیلات به تفکیک حوزه
-  fallback_visualization: null
 - intent: monthly_hiring_trend
   primary_visualization: status_message
   dimension: null
