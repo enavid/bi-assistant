@@ -828,3 +828,142 @@ cases:
       must_include_sql:
         - "MIN(v.age)"
         - "MAX(v.age)"
+
+  # ---------------------------------------------------------------------------
+  # dem-031: standard deviation of employee age (stddev_age)
+  # Trigger: asks_stddev (انحراف معیار / واریانس / پراکندگی) + explicit_age
+  # ---------------------------------------------------------------------------
+
+  - id: dem-031v1
+    question: "انحراف معیار سن کارکنان چقدر است؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: stddev_age
+      must_include_sql:
+        - "STDDEV"
+
+  - id: dem-031v2
+    question: "واریانس سنی پرسنل سازمان چنده؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: stddev_age
+      must_include_sql:
+        - "STDDEV"
+
+  - id: dem-031v3
+    question: "سن نیروهای انسانی چقدر پراکندگی دارد؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: stddev_age
+      must_include_sql:
+        - "STDDEV"
+
+  - id: dem-031v4
+    question: "چقدر انحراف معیار در سن کارکنان داریم؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: stddev_age
+      must_include_sql:
+        - "STDDEV"
+
+  - id: dem-031v5
+    question: "پراکندگی سنی کارمندان سازمان را محاسبه کن"
+    category: demographics
+    expect:
+      route: SQL
+      intent: stddev_age
+      must_include_sql:
+        - "STDDEV"
+
+  # ---------------------------------------------------------------------------
+  # dem-032: gender distribution across age groups (employee_count_by_gender_age_filter)
+  # Trigger: explicit_gender + explicit_age + age_filter
+  # ---------------------------------------------------------------------------
+
+  - id: dem-032v1
+    question: "در گروه سنی زیر ۳۰ سال چند زن و مرد داریم؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: employee_count_by_gender_age_filter
+      must_include_sql:
+        - "age_group_title"
+        - "gender"
+
+  - id: dem-032v2
+    question: "کارمندان بالای ۴۰ سال به تفکیک جنسیت چند نفرند؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: employee_count_by_gender_age_filter
+      must_include_sql:
+        - "age_group_title"
+        - "gender"
+
+  - id: dem-032v3
+    question: "در هر گروه سنی چند نفر زن و چند نفر مرد داریم؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: employee_count_by_gender_age_filter
+      must_include_sql:
+        - "age_group_title"
+        - "gender"
+
+  - id: dem-032v4
+    question: "تعداد کارکنان زیر ۳۵ سال به تفکیک جنسیت چنده؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: employee_count_by_gender_age_filter
+      must_include_sql:
+        - "age_group_title"
+        - "gender"
+
+  # ---------------------------------------------------------------------------
+  # dem-033: age-filtered count broken down by department
+  # (employee_count_by_age_filter_by_department)
+  # Trigger: explicit_age + age_filter + explicit_department
+  # ---------------------------------------------------------------------------
+
+  - id: dem-033v1
+    question: "در هر دپارتمان چند نفر بالای ۴۵ سال کار می‌کنند؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: employee_count_by_age_filter_by_department
+      must_include_sql:
+        - "department_name"
+      must_not_include_sql:
+        - "age_group_title"
+
+  - id: dem-033v2
+    question: "کارکنان میانسال بالای ۴۰ سال در هر بخش سازمان چند نفرند؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: employee_count_by_age_filter_by_department
+      must_include_sql:
+        - "department_name"
+
+  - id: dem-033v3
+    question: "نیروهای جوان زیر ۳۵ سال در هر بخش سازمانی چند نفرند؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: employee_count_by_age_filter_by_department
+      must_include_sql:
+        - "department_name"
+
+  - id: dem-033v4
+    question: "در کدام دپارتمان بیشترین کارمند زیر ۳۰ سال داریم؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: employee_count_by_age_filter_by_department
+      must_include_sql:
+        - "department_name"

@@ -667,3 +667,54 @@ cases:
     expect:
       route: SQL
       intent: most_or_least_hiring_year
+
+  # ---------------------------------------------------------------------------
+  # rec-163: headcount of employees hired in a specific Shamsi year
+  # (employee_count_by_hire_year)
+  # Trigger: hire_year_filter is not None — a named year in the question
+  # ---------------------------------------------------------------------------
+
+  - id: rec-163v1
+    question: "در سال ۱۳۹۵ چند نفر استخدام شدند؟"
+    category: recruitment
+    expect:
+      route: SQL
+      intent: employee_count_by_hire_year
+      must_include_sql:
+        - "hire_year"
+
+  - id: rec-163v2
+    question: "تعداد جذب نیرو در سال ۱۴۰۰ چقدر بوده؟"
+    category: recruitment
+    expect:
+      route: SQL
+      intent: employee_count_by_hire_year
+      must_include_sql:
+        - "hire_year"
+
+  - id: rec-163v3
+    question: "چند نفر سال ۱۳۹۸ به سازمان اضافه شدن؟"
+    category: recruitment
+    expect:
+      route: SQL
+      intent: employee_count_by_hire_year
+      must_include_sql:
+        - "hire_year"
+
+  - id: rec-163v4
+    question: "آمار استخدام سال ۱۳۹۰ چنده؟"
+    category: recruitment
+    expect:
+      route: SQL
+      intent: employee_count_by_hire_year
+      must_include_sql:
+        - "hire_year"
+
+  - id: rec-163v5
+    question: "در سال ۱۴۰۲ چند نفر وارد سازمان شدن؟"
+    category: recruitment
+    expect:
+      route: SQL
+      intent: employee_count_by_hire_year
+      must_include_sql:
+        - "hire_year"

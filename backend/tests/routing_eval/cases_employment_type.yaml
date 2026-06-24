@@ -612,3 +612,49 @@ cases:
       intent: contract_ending_trend_annual
       must_not_include_sql:
         - "v.contract_end_date AS"
+
+  # ---------------------------------------------------------------------------
+  # emp-080: employment type distribution per department
+  # (employment_type_by_department)
+  # Trigger: explicit_employment_type + explicit_department
+  # ---------------------------------------------------------------------------
+
+  - id: emp-080v1
+    question: "در هر دپارتمان نوع استخدام کارمندان چگونه است؟"
+    category: employment_type
+    expect:
+      route: SQL
+      intent: employment_type_by_department
+      must_include_sql:
+        - "department_name"
+        - "employment_type"
+
+  - id: emp-080v2
+    question: "توزیع استخدام رسمی و قراردادی در بخش‌های مختلف سازمان؟"
+    category: employment_type
+    expect:
+      route: SQL
+      intent: employment_type_by_department
+      must_include_sql:
+        - "department_name"
+        - "employment_type"
+
+  - id: emp-080v3
+    question: "نوع استخدام کارمندان در هر واحد سازمانی چیه؟"
+    category: employment_type
+    expect:
+      route: SQL
+      intent: employment_type_by_department
+      must_include_sql:
+        - "department_name"
+        - "employment_type"
+
+  - id: emp-080v4
+    question: "نوع استخدام کارکنان به تفکیک دپارتمان چطوره؟"
+    category: employment_type
+    expect:
+      route: SQL
+      intent: employment_type_by_department
+      must_include_sql:
+        - "department_name"
+        - "employment_type"

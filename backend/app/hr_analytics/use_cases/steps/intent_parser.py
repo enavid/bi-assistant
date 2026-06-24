@@ -1311,6 +1311,10 @@ class IntentParser:
             add(("workforce_aging_trend_analysis", 80, "aging_analysis_gap"))
         if self._has_any(question, ["نیاز آموزشی", "دوره تخصصی", "کمبود تخصص"]):
             add(("education_training_need_analysis", 80, "training_need_gap"))
+        if self._has_any(question, ["ثبات سازمان", "ثبات شغلی", "ثبات نیروی انسانی"]):
+            # High score overrides employment_type/contract routing that fires on the
+            # same vocabulary ("رسمی/پیمانی").
+            add(("employment_stability_impact_analysis", 200, "employment_stability_gap"))
 
         # Very common HR statistical intents.
         if self._has_any(
@@ -1333,7 +1337,13 @@ class IntentParser:
             ):
                 add(("gender_percentage", 65, "gender_percentage_phrase"))
             elif f.get("explicit_age") and f.get("age_filter"):
-                add(("employee_count_by_gender_age_filter", 55, "gender_age_filter"))
+                # Boost to 65 (above age_filter=60) only when gender is the primary
+                # dimension ("به تفکیک جنسیت", "زن و مرد") — not a single-gender filter
+                # like "چند زن زیر ۳۰" where age_filter is the right intent.
+                if self._has_any(question, ["تفکیک جنسیت", "به تفکیک جنس", "زن و مرد"]):
+                    add(("employee_count_by_gender_age_filter", 65, "gender_age_filter_dim"))
+                else:
+                    add(("employee_count_by_gender_age_filter", 55, "gender_age_filter"))
             else:
                 add(("employee_count_by_gender", 45, "gender_distribution"))
 
@@ -1410,6 +1420,15 @@ class IntentParser:
                 question, ["کم‌نفر", "کم نفر", "از همه کمتر", "کمترین نیرو"]
             ):
                 add(("least_populated_age_group", 90, "least_age_group_vocab"))
+            elif f.get("explicit_gender") and (
+                self._has_any(question, ["تفکیک جنسیت", "زن و مرد", "مرد و زن"])
+                or (
+                    self._term_in_question(question, "زن")
+                    and self._term_in_question(question, "مرد")
+                )
+            ):
+                # Both genders present → gender × age_group distribution (TPL_GENDER_BY_AGE_GROUP)
+                add(("employee_count_by_gender_age_filter", 80, "gender_by_age_group_vocab"))
             else:
                 add(("employee_count_by_age_group", 60, "age_group"))
 

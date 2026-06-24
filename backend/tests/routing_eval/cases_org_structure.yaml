@@ -816,3 +816,93 @@ cases:
         - "v.service_domain = 'فنی و شبکه'"
       must_not_include_sql:
         - "GROUP BY"
+
+  # ---------------------------------------------------------------------------
+  # org-126: education distribution per department (employee_count_by_department_education)
+  # Trigger: explicit_education + explicit_department
+  # ---------------------------------------------------------------------------
+
+  - id: org-126v1
+    question: "در هر دپارتمان چه مدارک تحصیلی داریم؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: employee_count_by_department_education
+      must_include_sql:
+        - "department_name"
+        - "education_title"
+
+  - id: org-126v2
+    question: "توزیع تحصیلی کارمندان هر بخش سازمان؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: employee_count_by_department_education
+      must_include_sql:
+        - "department_name"
+        - "education_title"
+
+  - id: org-126v3
+    question: "وضعیت تحصیلات کارکنان دپارتمان‌های مختلف چطوره؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: employee_count_by_department_education
+      must_include_sql:
+        - "department_name"
+        - "education_title"
+
+  - id: org-126v4
+    question: "در هر بخش سازمانی چند نفر لیسانس و فوق لیسانس دارند؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: employee_count_by_department_education
+      must_include_sql:
+        - "department_name"
+        - "education_title"
+
+  # ---------------------------------------------------------------------------
+  # org-127: contractor share per department (contractor_share_by_department)
+  # Trigger: explicit_contractor + (explicit_department or "به تفکیک بخش")
+  # ---------------------------------------------------------------------------
+
+  - id: org-127v1
+    question: "در هر دپارتمان چند درصد از کارکنان پیمانکار هستند؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: contractor_share_by_department
+      must_include_sql:
+        - "department_name"
+        - "contractor_percentage"
+
+  - id: org-127v2
+    question: "سهم پیمانکاری در هر بخش سازمان چقدر است؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: contractor_share_by_department
+      must_include_sql:
+        - "department_name"
+        - "contractor_percentage"
+
+  - id: org-127v3
+    question: "نسبت پیمانکار به کل کارکنان به تفکیک دپارتمان؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: contractor_share_by_department
+      must_include_sql:
+        - "department_name"
+        - "contractor_percentage"
+
+  - id: org-127v4
+    question: "در کدام بخش بیشترین درصد پیمانکار داریم؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: contractor_share_by_department
+      must_include_sql:
+        - "department_name"
+        - "contractor_percentage"

@@ -329,3 +329,147 @@ cases:
     expect:
       route: SQL
       intent: near_retirement_analysis
+
+  # ---------------------------------------------------------------------------
+  # anl-215: terminated / exited employees — DATA_GAP (no inactive records in view)
+  # Trigger: _terminated_terms list: "اخراج", "ترک خدمت", "خروج از سازمان", "بازنشستگان"
+  # ---------------------------------------------------------------------------
+
+  - id: anl-215v1
+    question: "چند نفر از سازمان اخراج شده‌اند؟"
+    category: analytical
+    expect:
+      route: GAP
+      status: DATA_GAP
+
+  - id: anl-215v2
+    question: "تعداد کارمندانی که ترک خدمت کرده‌اند چنده؟"
+    category: analytical
+    expect:
+      route: GAP
+      status: DATA_GAP
+
+  - id: anl-215v3
+    question: "چند نفر خروج از سازمان داشته‌اند؟"
+    category: analytical
+    expect:
+      route: GAP
+      status: DATA_GAP
+
+  - id: anl-215v4
+    question: "بازنشستگان سازمان چند نفرند؟"
+    category: analytical
+    expect:
+      route: GAP
+      status: DATA_GAP
+
+  # ---------------------------------------------------------------------------
+  # anl-216: monthly hiring trend — DATA_GAP (no monthly hire_date breakdown)
+  # Trigger: explicit_hiring + explicit_monthly ("ماهانه", "هر ماه", "در هر ماه")
+  # ---------------------------------------------------------------------------
+
+  - id: anl-216v1
+    question: "روند جذب ماهانه در سازمان چطور بوده؟"
+    category: analytical
+    expect:
+      route: GAP
+      status: DATA_GAP
+
+  - id: anl-216v2
+    question: "هر ماه چند نفر استخدام می‌شوند؟"
+    category: analytical
+    expect:
+      route: GAP
+      status: DATA_GAP
+
+  - id: anl-216v3
+    question: "آمار جذب در هر ماه چقدره؟"
+    category: analytical
+    expect:
+      route: GAP
+      status: DATA_GAP
+
+  - id: anl-216v4
+    question: "روند ماهانه استخدام نیرو در سال جاری؟"
+    category: analytical
+    expect:
+      route: GAP
+      status: DATA_GAP
+
+  # ---------------------------------------------------------------------------
+  # anl-217: service years distribution — DATA_GAP (no bucketed dimension in view)
+  # Trigger: "توزیع سابقه", "توزیع سابقه خدمت", "تفکیک سابقه خدمت"
+  # ---------------------------------------------------------------------------
+
+  - id: anl-217v1
+    question: "توزیع سابقه خدمت کارکنان به چه صورته؟"
+    category: analytical
+    expect:
+      route: GAP
+      status: DATA_GAP
+
+  - id: anl-217v2
+    question: "تفکیک سابقه خدمت نیروها در بازه‌های مختلف؟"
+    category: analytical
+    expect:
+      route: GAP
+      status: DATA_GAP
+
+  - id: anl-217v3
+    question: "توزیع سابقه پرسنل در گروه‌های زمانی مختلف چطوره؟"
+    category: analytical
+    expect:
+      route: GAP
+      status: DATA_GAP
+
+  # ---------------------------------------------------------------------------
+  # anl-218: employment stability impact — ANALYTICAL_GAP (no methodology defined)
+  # Trigger: catalog scoring on "ثبات سازمان" / "ترکیب نوع استخدام" examples
+  # ---------------------------------------------------------------------------
+
+  - id: anl-218v1
+    question: "سهم کارکنان رسمی و پیمانی چگونه بر ثبات سازمان تأثیر می‌گذارد؟"
+    category: analytical
+    expect:
+      route: GAP
+      status: ANALYTICAL_GAP
+
+  - id: anl-218v2
+    question: "ترکیب نوع استخدام چه اثری بر ثبات سازمان دارد؟"
+    category: analytical
+    expect:
+      route: GAP
+      status: ANALYTICAL_GAP
+
+  - id: anl-218v3
+    question: "ثبات سازمان از نظر نوع استخدام را تحلیل کن"
+    category: analytical
+    expect:
+      route: GAP
+      status: ANALYTICAL_GAP
+
+  # ---------------------------------------------------------------------------
+  # anl-219: public recruitment channel analysis — DATA_GAP (hire_source not in view)
+  # Trigger: "جذب عمومی", "آزمون استخدامی", "منبع جذب"
+  # ---------------------------------------------------------------------------
+
+  - id: anl-219v1
+    question: "جذب عمومی چند درصد از نیروها رو تشکیل میده؟"
+    category: analytical
+    expect:
+      route: GAP
+      status: DATA_GAP
+
+  - id: anl-219v2
+    question: "چه درصدی از کارکنان از طریق آزمون استخدامی جذب شدن؟"
+    category: analytical
+    expect:
+      route: GAP
+      status: DATA_GAP
+
+  - id: anl-219v3
+    question: "منبع جذب کارمندان سازمان چی بوده؟"
+    category: analytical
+    expect:
+      route: GAP
+      status: DATA_GAP
