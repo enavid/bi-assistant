@@ -180,6 +180,7 @@ DEFAULT_TEMPLATE_BY_INTENT: dict[str, str] = {
     "least_populated_employment_type": "TPL_LEAST_POPULATED_EMPLOYMENT_TYPE",
     "least_populated_contract_type": "TPL_LEAST_POPULATED_CONTRACT_TYPE",
     "employee_count_by_criticality_level": "TPL_EMPLOYEE_COUNT_BY_CRITICALITY_LEVEL",
+    "employee_count_by_department_level": "TPL_EMPLOYEE_COUNT_BY_DEPARTMENT_LEVEL",
     "hiring_by_contract_type_recent_year": "TPL_HIRING_BY_CONTRACT_TYPE_RECENT_YEAR",
     "average_service_years": "TPL_AVERAGE_SERVICE_YEARS",
     "employee_count_without_service_years": "TPL_EMPLOYEE_COUNT_WITHOUT_SERVICE_YEARS",
@@ -1085,7 +1086,14 @@ class IntentParser:
                 ),
                 "explicit_org_level": self._has_any(
                     question,
-                    ["سطح سازمانی", "سطح حساسیت", "سطح دپارتمان", "سطح واحد"],
+                    [
+                        "سطح سازمانی",
+                        "سطح حساسیت",
+                        "سطح دپارتمان",
+                        "سطح واحد",
+                        "لایه سازمانی",
+                        "سطح بخش",
+                    ],
                 ),
                 "explicit_specific_org_level": self._has_any(
                     question,
@@ -1640,14 +1648,16 @@ class IntentParser:
         if f.get("explicit_specific_org_level"):
             add(("total_employee_count", 65, "specific_org_level_filter"))
 
-        # Org-level grouping dimension: ranking → total_employee_count; distribution → by_department.
-        if f.get("explicit_org_level"):
+        # Org-level grouping dimension ("سطح سازمانی"/"سطح دپارتمان"/"سطح واحد"/...) maps to the
+        # real department_level column. Skip when explicit_criticality_level already claimed
+        # it above (criticality_level is a distinct column sharing the "سطح حساسیت" wording).
+        if f.get("explicit_org_level") and not f.get("explicit_criticality_level"):
             if "کدوم" in question or f.get("asks_most") or f.get("asks_least"):
-                add(("total_employee_count", 65, "org_level_ranking"))
+                add(("employee_count_by_department_level", 95, "org_level_ranking"))
             elif self._has_any(question, ["به کل", "از کل", "نسبت", "درصد"]):
-                add(("total_employee_count", 75, "org_level_ratio"))
+                add(("employee_count_by_department_level", 95, "org_level_ratio"))
             else:
-                add(("employee_count_by_department", 65, "org_level_distribution"))
+                add(("employee_count_by_department_level", 95, "org_level_distribution"))
 
         # Job position context (پست سازمانی, سطح پست, etc.) → grouped by position, not total count.
         if f.get("explicit_job_position") and not f.get("explicit_education"):
@@ -2161,6 +2171,10 @@ class IntentParser:
             group_by = self._ensure_group_by(group_by, "criticality_level")
             required_columns.extend(["criticality_level", "employee_id", "is_active"])
 
+        elif best_intent_id == "employee_count_by_department_level":
+            group_by = self._ensure_group_by(group_by, "department_level")
+            required_columns.extend(["department_level", "employee_id", "is_active"])
+
         elif best_intent_id == "employee_count_contract_ending_soon":
             required_columns.extend(["contract_end_date", "employee_id", "is_active"])
 
@@ -2377,6 +2391,7 @@ class IntentParser:
             "employee_count_by_employment_type",
             "employee_count_by_work_location",
             "employee_count_by_criticality_level",
+            "employee_count_by_department_level",
         }
         if best_intent_id in _SUPERLATIVE_SORTABLE_INTENTS and (
             query_features.get("asks_most") or query_features.get("asks_least")

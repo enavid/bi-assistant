@@ -1116,9 +1116,9 @@ cases:
     category: org_structure
     expect:
       route: SQL
-      intent: employee_count_by_department
+      intent: employee_count_by_department_level
       must_include_sql:
-        - "department_name"
+        - "department_level"
         - "GROUP BY"
 
   - id: org-112
@@ -1156,9 +1156,9 @@ cases:
     category: org_structure
     expect:
       route: SQL
-      intent: total_employee_count
+      intent: employee_count_by_department_level
       must_include_sql:
-        - "COUNT"
+        - "percentage"
         - "is_active"
 
   - id: org-116

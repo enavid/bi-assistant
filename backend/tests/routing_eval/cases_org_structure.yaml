@@ -397,27 +397,31 @@ cases:
       intent: avg_age_by_department
 
   # ── org-111: employee count by department level ───────────────────────────
+  # Previously fell back to the generic employee_count_by_department intent
+  # because no department_level-specific intent existed. Now that
+  # employee_count_by_department_level is implemented (real GROUP BY
+  # v.department_level), these route to the precise intent instead.
 
   - id: org-111v1
     question: "هر سطح سازمانی چند نفر کارمند داره؟"
     category: org_structure
     expect:
       route: SQL
-      intent: employee_count_by_department
+      intent: employee_count_by_department_level
 
   - id: org-111v2
     question: "تعداد پرسنل به تفکیک سطح واحد؟"
     category: org_structure
     expect:
       route: SQL
-      intent: employee_count_by_department
+      intent: employee_count_by_department_level
 
   - id: org-111v3
     question: "توزیع کارکنان بر اساس سطح دپارتمان؟"
     category: org_structure
     expect:
       route: SQL
-      intent: employee_count_by_department
+      intent: employee_count_by_department_level
 
   # ── org-112: employees at org level 1 ────────────────────────────────────
 
@@ -489,27 +493,36 @@ cases:
       intent: total_employee_count
 
   # ── org-115: share of each department level ───────────────────────────────
+  # Previously fell back to total_employee_count because no department_level
+  # intent existed. The new employee_count_by_department_level template
+  # computes a per-level percentage column, so these now route there.
 
   - id: org-115v1
     question: "هر سطح سازمانی چند درصد از کل کارکنانه؟"
     category: org_structure
     expect:
       route: SQL
-      intent: total_employee_count
+      intent: employee_count_by_department_level
+      must_include_sql:
+        - "percentage"
 
   - id: org-115v2
     question: "نسبت کارکنان هر سطح دپارتمان به کل؟"
     category: org_structure
     expect:
       route: SQL
-      intent: total_employee_count
+      intent: employee_count_by_department_level
+      must_include_sql:
+        - "percentage"
 
   - id: org-115v3
     question: "درصد پرسنل به تفکیک سطح واحد سازمانی؟"
     category: org_structure
     expect:
       route: SQL
-      intent: total_employee_count
+      intent: employee_count_by_department_level
+      must_include_sql:
+        - "percentage"
 
   # ── org-116: employee count by job position ───────────────────────────────
 
@@ -906,3 +919,60 @@ cases:
       must_include_sql:
         - "department_name"
         - "contractor_percentage"
+
+  # ---------------------------------------------------------------------------
+  # org-128: employee count by org/department level (employee_count_by_department_level)
+  # Trigger: explicit_department_level ("سطح سازمانی"/"سطح دپارتمان"/"سطح واحد"/...)
+  # Must take priority over the generic explicit_department rule even when the
+  # question also contains the word "واحد".
+  # ---------------------------------------------------------------------------
+
+  - id: org-128v1
+    question: "هر سطح سازمانی چند نفر کارمند داره؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: employee_count_by_department_level
+
+  - id: org-128v2
+    question: "توزیع کارکنان بر اساس سطح دپارتمان چطوره؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: employee_count_by_department_level
+
+  - id: org-128v3
+    question: "کارکنان رو به تفکیک سطح واحد سازمانی نشون بده"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: employee_count_by_department_level
+      must_include_sql:
+        - "department_level"
+
+  - id: org-128v4
+    question: "کدوم سطح سازمانی بیشترین نیرو رو داره؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: employee_count_by_department_level
+      must_include_sql:
+        - "department_level"
+        - "DESC"
+
+  - id: org-128v5
+    question: "تعداد کارکنان به تفکیک لایه سازمانی چقدره؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: employee_count_by_department_level
+
+  # Distractor: plain department mention without "level" wording must still
+  # route to the existing generic department-distribution intent, not be
+  # hijacked by the new department_level rule.
+  - id: org-128v6
+    question: "این واحد چند نفر کارمند دارد؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: employee_count_by_department

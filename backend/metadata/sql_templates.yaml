@@ -203,6 +203,8 @@ template_index:
     - TPL_LEAST_POPULATED_CONTRACT_TYPE
     employee_count_by_criticality_level:
     - TPL_EMPLOYEE_COUNT_BY_CRITICALITY_LEVEL
+    employee_count_by_department_level:
+    - TPL_EMPLOYEE_COUNT_BY_DEPARTMENT_LEVEL
     service_years_distribution_analysis: TPL_DATA_GAP
     employee_count_by_position:
     - TPL_EMPLOYEE_COUNT_BY_POSITION
@@ -520,6 +522,32 @@ templates:
     type: integer
     title_fa: تعداد کارکنان
   sql: "SELECT\n    v.criticality_level,\n    COUNT(v.employee_id) AS employee_count\nFROM hr_mvp.vw_hr_employee_analytics v\nWHERE v.is_active = TRUE\nGROUP BY v.criticality_level\nORDER BY employee_count DESC\nLIMIT {result_limit};\n"
+- template_id: TPL_EMPLOYEE_COUNT_BY_DEPARTMENT_LEVEL
+  intent: employee_count_by_department_level
+  title_fa: تعداد کارکنان به تفکیک سطح سازمانی
+  route: SQL
+  status: ready_for_demo
+  output_type: table_or_bar_chart
+  required_columns:
+  - employee_id
+  - department_level
+  - is_active
+  parameters:
+  - name: result_limit
+    type: integer_or_NULL
+    required: false
+    default: 'NULL'
+  result_columns:
+  - name: department_level
+    type: integer
+    title_fa: سطح سازمانی
+  - name: employee_count
+    type: integer
+    title_fa: تعداد کارکنان
+  - name: percentage
+    type: numeric
+    title_fa: درصد از کل
+  sql: "SELECT\n    v.department_level,\n    COUNT(v.employee_id) AS employee_count,\n    ROUND(\n        COUNT(v.employee_id) * 100.0\n        / NULLIF(SUM(COUNT(v.employee_id)) OVER (), 0),\n        2\n    ) AS percentage\nFROM hr_mvp.vw_hr_employee_analytics v\nWHERE v.is_active = TRUE\nGROUP BY v.department_level\nORDER BY employee_count DESC\nLIMIT {result_limit};\n"
 - template_id: TPL_MAX_AGE
   intent: max_age
   title_fa: بیشترین سن کارکنان
