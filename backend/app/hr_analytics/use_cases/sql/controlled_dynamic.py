@@ -24,9 +24,10 @@ _COLUMN_MAP: dict[str, str] = {
     "marital_status": "v.marital_status",
     "hire_year": "v.hire_year",
     "department_name": "v.department_name",
+    "service_domain": "v.service_domain",
 }
 
-_SAFE_OPS: frozenset[str] = frozenset({"=", "!=", "<", "<=", ">", ">="})
+_SAFE_OPS: frozenset[str] = frozenset({"=", "!=", "<", "<=", ">", ">=", "IN"})
 _SKIP_SOURCES: frozenset[str] = frozenset({"default_rule"})
 
 
@@ -51,6 +52,19 @@ def _build_clause(f: dict) -> str | None:
         return None
 
     db_col = _COLUMN_MAP[col]
+
+    if op == "IN":
+        if not isinstance(val, (list, tuple)) or not val:
+            return None
+        quoted: list[str] = []
+        for item in val:
+            if isinstance(item, str):
+                quoted.append("'" + item.replace("'", "''") + "'")
+            elif isinstance(item, (int, float)) and not isinstance(item, bool):
+                quoted.append(str(item))
+            else:
+                return None
+        return f"{db_col} IN ({', '.join(quoted)})"
 
     if isinstance(val, bool):
         return f"{db_col} = {'TRUE' if val else 'FALSE'}"

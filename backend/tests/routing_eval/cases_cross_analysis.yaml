@@ -604,3 +604,74 @@ cases:
     expect:
       route: SQL
       intent: education_distribution_by_service_domain
+
+  # ── cross-192: female ratio WITHIN each department, not share of all women ─
+
+  - id: cross-192v1
+    question: "سهم زنان در چه بخش‌هایی کم تر است؟"
+    category: cross_analysis
+    expect:
+      route: SQL
+      intent: gender_share_by_department_lowest
+      must_include_sql:
+        - "ASC"
+      must_not_include_sql:
+        - "OVER ()"
+
+  - id: cross-192v2
+    question: "کدام دپارتمان کمترین نسبت زنان را دارد؟"
+    category: cross_analysis
+    expect:
+      route: SQL
+      intent: gender_share_by_department_lowest
+      must_include_sql:
+        - "ASC"
+
+  - id: cross-192v3
+    question: "در کدام بخش سهم زنان از همه کمتره؟"
+    category: cross_analysis
+    expect:
+      route: SQL
+      intent: gender_share_by_department_lowest
+      must_include_sql:
+        - "ASC"
+
+  - id: cross-192v4
+    question: "سهم زنان به تفکیک دپارتمان چقدره؟"
+    category: cross_analysis
+    expect:
+      route: SQL
+      intent: gender_share_by_department_lowest
+
+  - id: cross-192v5
+    question: "درصد زنان در هر دپارتمان چقدر است؟"
+    category: cross_analysis
+    expect:
+      route: SQL
+      intent: gender_share_by_department_lowest
+
+  - id: cross-192v6
+    question: "کدام دپارتمان بیشترین نسبت زنان را دارد؟"
+    category: cross_analysis
+    expect:
+      route: SQL
+      intent: gender_share_by_department_highest
+      must_include_sql:
+        - "DESC"
+
+  - id: cross-192v7
+    question: "نسبت جنسیتی زنان در هر دپارتمان چطوره؟"
+    category: cross_analysis
+    expect:
+      route: SQL
+      intent: gender_share_by_department_lowest
+
+  - id: cross-192v8
+    question: "سهم مردان در کدام دپارتمان‌ها بیشتر است؟"
+    category: cross_analysis
+    expect:
+      route: SQL
+      intent: gender_share_by_department_highest
+      must_include_sql:
+        - "v.gender = 'مرد'"
+        - "DESC"

@@ -726,3 +726,93 @@ cases:
       must_include_sql:
         - criticality_level
         - DESC
+
+  # ── org-125: named department/domain count — must filter, not break down ───
+
+  - id: org-125v1
+    question: "در حوزه مدیر عامل چند پرسنل داریم؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: employee_count_by_specific_department
+      must_include_sql:
+        - "دفتر هیأت مدیره، مدیرعامل، روابط عمومی"
+      must_not_include_sql:
+        - "GROUP BY"
+
+  - id: org-125v2
+    question: "در حوزه پشتیبانی چند پرسنل داریم؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: employee_count_by_specific_department
+      must_include_sql:
+        - "مرکز پشتیبانی مشترکین"
+      must_not_include_sql:
+        - "GROUP BY"
+
+  - id: org-125v3
+    question: "در حوزه فناوری اطلاعات چند نفر کار می‌کنند؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: employee_count_by_specific_department
+      must_include_sql:
+        - "v.service_domain = 'فناوری اطلاعات'"
+      must_not_include_sql:
+        - "GROUP BY"
+
+  - id: org-125v4
+    question: "تعداد کارکنان حوزه منابع انسانی چقدر است؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: employee_count_by_specific_department
+      must_include_sql:
+        - "v.service_domain = 'منابع انسانی'"
+      must_not_include_sql:
+        - "GROUP BY"
+
+  - id: org-125v5
+    question: "چند نفر در دفتر حقوقی کار می‌کنند؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: employee_count_by_specific_department
+      must_include_sql:
+        - "دفتر حقوقی"
+      must_not_include_sql:
+        - "GROUP BY"
+
+  - id: org-125v6
+    question: "تعداد پرسنل اداره خزانه‌داری چند نفر است؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: employee_count_by_specific_department
+      must_include_sql:
+        - "اداره خزانه‌داری"
+      must_not_include_sql:
+        - "GROUP BY"
+
+  - id: org-125v7
+    question: "در بخش پشتیبانی چند کارمند داریم؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: employee_count_by_specific_department
+      must_include_sql:
+        - "مرکز پشتیبانی مشترکین"
+      must_not_include_sql:
+        - "GROUP BY"
+
+  - id: org-125v8
+    question: "حوزه فنی و شبکه چند نفر نیرو دارد؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: employee_count_by_specific_department
+      must_include_sql:
+        - "v.service_domain = 'فنی و شبکه'"
+      must_not_include_sql:
+        - "GROUP BY"

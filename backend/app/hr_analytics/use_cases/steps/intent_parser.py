@@ -193,6 +193,10 @@ DEFAULT_TEMPLATE_BY_INTENT: dict[str, str] = {
     "employee_count_hired_last_month": "TPL_EMPLOYEE_COUNT_HIRED_LAST_MONTH",
     "employee_count_by_birth_month": "TPL_EMPLOYEE_COUNT_BY_BIRTH_SHAMSI_MONTH",
     "employee_count_by_hire_month": "TPL_EMPLOYEE_COUNT_BY_HIRE_SHAMSI_MONTH",
+    "employee_count_by_specific_department": "TPL_TOTAL_EMPLOYEE_COUNT",
+    "age_min_max": "TPL_AGE_MIN_MAX",
+    "gender_share_by_department_lowest": "TPL_GENDER_PCT_BY_DEPARTMENT_ASC",
+    "gender_share_by_department_highest": "TPL_GENDER_PCT_BY_DEPARTMENT_DESC",
 }
 
 TERMINAL_STATUS_TO_INTENT: dict[str, tuple[str, str, str]] = {
@@ -941,7 +945,7 @@ class IntentParser:
                 ),
                 "explicit_service_domain": "حوزه" in question,
                 "explicit_department": self._has_any(
-                    question, ["بخش", "واحد", "اداره", "دپارتمان"]
+                    question, ["بخش", "واحد", "اداره", "دپارتمان", "دفتر"]
                 ),
                 "explicit_province": "استان" in question,
                 "explicit_work_location": self._has_any(question, ["محل خدمت", "سایت", "کجا خدمت"]),
@@ -1156,7 +1160,9 @@ class IntentParser:
             item.reasons.append(reason)
 
         # Manual high-precision rules first.
-        for intent_id, points, reason in self._manual_intent_rules(question, query_features):
+        for intent_id, points, reason in self._manual_intent_rules(
+            question, query_features, service
+        ):
             add(intent_id, points, reason)
 
         # Semantic mapper candidates.
@@ -1202,7 +1208,9 @@ class IntentParser:
         candidates.sort(key=lambda item: (-item.score, item.intent_id))
         return candidates
 
-    def _manual_intent_rules(self, question: str, f: JsonDict) -> list[tuple[str, float, str]]:
+    def _manual_intent_rules(
+        self, question: str, f: JsonDict, service: Any
+    ) -> list[tuple[str, float, str]]:
         rules: list[tuple[str, float, str]] = []
         add = rules.append
 
@@ -1329,6 +1337,24 @@ class IntentParser:
             else:
                 add(("employee_count_by_gender", 45, "gender_distribution"))
 
+        # Combined "youngest AND oldest" wording — must win over the separate
+        # max_age/min_age rules below, which would otherwise only answer half
+        # of a question like "جوان‌ترین و مسن‌ترین کارکنان چند ساله‌اند؟".
+        if self._has_any(
+            question,
+            [
+                "جوان‌ترین و مسن‌ترین",
+                "جوان ترین و مسن ترین",
+                "مسن‌ترین و جوان‌ترین",
+                "مسن ترین و جوان ترین",
+                "حداقل و حداکثر سن",
+                "حداکثر و حداقل سن",
+                "کمترین و بیشترین سن",
+                "بیشترین و کمترین سن",
+            ],
+        ):
+            add(("age_min_max", 96, "age_min_max_combined"))
+
         if f.get("asks_average") and f.get("explicit_age"):
             if f.get("explicit_department"):
                 add(("avg_age_by_department", 85, "avg_age_by_department"))
@@ -1452,6 +1478,47 @@ class IntentParser:
                 add(("contractor_share_by_service_domain", 80, "contractor_by_service_domain"))
             else:
                 add(("contractor_share", 75, "contractor_share"))
+
+        # A specific, named department/domain (e.g. "حوزه مدیر عامل", "حوزه
+        # فناوری اطلاعات") asks for a single filtered count, not the full
+        # breakdown-by-all-departments distribution.
+        _wants_breakdown = self._has_any(question, ["تفکیک", "به تفکیک"])
+        _dept_kw_match = self._extract_department_keyword_filter(question)
+        _domain_value_match = (
+            self._extract_service_domain_value(question, service)
+            if f.get("explicit_service_domain")
+            else None
+        )
+        if (
+            _dept_kw_match
+            and not _wants_breakdown
+            and not f.get("explicit_gender")
+            and not f.get("asks_gap_or_shortage")
+        ):
+            add(("employee_count_by_specific_department", 92, "specific_department_keyword"))
+        elif (
+            _domain_value_match
+            and not _wants_breakdown
+            and not f.get("explicit_gender")
+            and not f.get("asks_gap_or_shortage")
+        ):
+            add(("employee_count_by_specific_department", 91, "specific_service_domain_value"))
+
+        # Gender share/ratio per department — "سهم زنان در چه بخش‌هایی کمتر
+        # است" wants the female ratio WITHIN each department (not the share of
+        # all women across departments), sorted by direction of "کمتر"/"بیشتر".
+        if (
+            f.get("explicit_gender")
+            and f.get("explicit_department")
+            and f.get("asks_percentage")
+            and not f.get("explicit_service_domain")
+        ):
+            if "کمتر" in question:
+                add(("gender_share_by_department_lowest", 100, "gender_share_dept_lowest"))
+            elif "بیشتر" in question:
+                add(("gender_share_by_department_highest", 100, "gender_share_dept_highest"))
+            else:
+                add(("gender_share_by_department_lowest", 98, "gender_share_dept_default"))
 
         if (
             f.get("explicit_service_domain")
@@ -1936,8 +2003,35 @@ class IntentParser:
                 required_columns.append("education_title")
             required_columns.extend(["age", "employee_id", "is_active", *group_by])
 
-        elif best_intent_id in {"max_age", "min_age", "stddev_age"}:
+        elif best_intent_id in {"max_age", "min_age", "stddev_age", "age_min_max"}:
             required_columns.extend(["age", "employee_id", "is_active"])
+
+        elif best_intent_id in {
+            "gender_share_by_department_lowest",
+            "gender_share_by_department_highest",
+        }:
+            params["gender_value"] = gender_value or "زن"
+            required_columns.extend(["department_name", "gender", "employee_id", "is_active"])
+
+        elif best_intent_id == "employee_count_by_specific_department":
+            # This is a single filtered total, never a breakdown — discard any
+            # group_by the semantic mapper proposed for the bare "حوزه"/"بخش"
+            # word (e.g. implicit_service_domain), or it leaks into coverage
+            # checking and forces an incorrect grouped-fallback SQL.
+            group_by = []
+            dept_kw_match = self._extract_department_keyword_filter(question)
+            if dept_kw_match:
+                _, dept_values = dept_kw_match
+                filters.append(
+                    {"column": "department_name", "operator": "IN", "value": list(dept_values)}
+                )
+            else:
+                domain_value = self._extract_service_domain_value(question, service)
+                if domain_value:
+                    filters.append(
+                        {"column": "service_domain", "operator": "=", "value": domain_value}
+                    )
+            required_columns.extend(["employee_id", "is_active"])
 
         elif best_intent_id == "employee_count_by_education":
             if education_value and not query_features.get("asks_percentage"):
@@ -2466,6 +2560,37 @@ class IntentParser:
             "هر",
         }
     )
+
+    # Free-text department/domain keywords that don't match any single exact
+    # department_name (no allowed_values list exists for the 121-value column)
+    # but resolve unambiguously to one or more known department_name rows.
+    # "پشتیبانی" matches 7 different departments — aggregate across all of them.
+    _DEPARTMENT_KEYWORD_VALUES: dict[str, tuple[str, ...]] = {
+        "مدیر عامل": ("دفتر هیأت مدیره، مدیرعامل، روابط عمومی",),
+        "خزانه‌داری": ("اداره خزانه‌داری",),
+        "خزانه داری": ("اداره خزانه‌داری",),
+        "حقوقی": ("دفتر حقوقی",),
+        "پشتیبانی": (
+            "اداره شبکه، سخت افزار و پشتیبانی کاربران",
+            "اداره توسعه، نگهداری و پشتیبانی سامانه های کسب و کار Billing & CRM",
+            "اداره نگهداری و پشتیبانی مراکز داده",
+            "مرکز پشتیبانی مشترکین",
+            "اداره پشتیبانی فنی تجهیزات نیرو",
+            "اداره خرید خدمات فنی، پشتیبانی و مشاوره",
+            "اداره توسعه و پشتیبانی سامانه های عملیات شبکه",
+        ),
+    }
+
+    def _extract_department_keyword_filter(
+        self, question: str
+    ) -> tuple[str, tuple[str, ...]] | None:
+        for keyword in sorted(self._DEPARTMENT_KEYWORD_VALUES, key=len, reverse=True):
+            if keyword in question:
+                return keyword, self._DEPARTMENT_KEYWORD_VALUES[keyword]
+        return None
+
+    def _extract_service_domain_value(self, question: str, service: Any) -> str | None:
+        return self._extract_allowed_value(question, service, "service_domain")
 
     def _extract_province_value(self, question: str) -> str | None:
         m = re.search(r"استان\s+([^\s،,?؟]+)(?:\s+([^\s،,?؟]+))?", question)

@@ -558,6 +558,10 @@ def _build_hr_terms() -> list[WeightedTerm]:
         "جذب نیرو",
         "جذب سالانه",
         "سال جذب",
+        # "جذب" alone (hiring/recruitment) is a strong HR anchor on its own —
+        # phrasing like "کمترین جذب مربوط به کدام سال" doesn't reuse any of the
+        # compound phrases above, so it must score on the bare word.
+        "جذب",
         "سابقه کارکنان",
         "سابقه خدمت",
         "مدرک تحصیلی",

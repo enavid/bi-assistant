@@ -117,6 +117,14 @@ template_index:
   by_intent:
     total_employee_count:
     - TPL_TOTAL_EMPLOYEE_COUNT
+    employee_count_by_specific_department:
+    - TPL_TOTAL_EMPLOYEE_COUNT
+    age_min_max:
+    - TPL_AGE_MIN_MAX
+    gender_share_by_department_lowest:
+    - TPL_GENDER_PCT_BY_DEPARTMENT_ASC
+    gender_share_by_department_highest:
+    - TPL_GENDER_PCT_BY_DEPARTMENT_DESC
     employee_count_by_gender:
     - TPL_EMPLOYEE_COUNT_BY_GENDER
     gender_percentage:
@@ -541,6 +549,23 @@ templates:
     type: integer
     title_fa: کمترین سن
   sql: "SELECT MIN(v.age) AS min_age\nFROM hr_mvp.vw_hr_employee_analytics v\nWHERE v.is_active = TRUE;\n"
+- template_id: TPL_AGE_MIN_MAX
+  intent: age_min_max
+  title_fa: کمترین و بیشترین سن کارکنان
+  route: SQL
+  status: ready_for_demo
+  output_type: kpi_card
+  required_columns:
+  - age
+  - is_active
+  result_columns:
+  - name: min_age
+    type: integer
+    title_fa: کمترین سن
+  - name: max_age
+    type: integer
+    title_fa: بیشترین سن
+  sql: "SELECT MIN(v.age) AS min_age, MAX(v.age) AS max_age\nFROM hr_mvp.vw_hr_employee_analytics v\nWHERE v.is_active = TRUE;\n"
 - template_id: TPL_STDDEV_AGE
   intent: stddev_age
   title_fa: انحراف معیار سن کارکنان
@@ -1368,6 +1393,84 @@ templates:
     \ 100.0\n        / NULLIF(COUNT(v.employee_id), 0),\n        2\n    ) AS target_gender_percentage\n\
     FROM hr_mvp.vw_hr_employee_analytics v\nWHERE v.is_active = TRUE\nGROUP BY v.employment_type\n\
     ORDER BY v.employment_type;\n"
+- template_id: TPL_GENDER_PCT_BY_DEPARTMENT_ASC
+  intent: gender_share_by_department_lowest
+  title_fa: درصد جنسیت هدف به تفکیک واحد (کمترین سهم اول)
+  route: SQL
+  status: ready_for_demo
+  output_type: table_or_bar_chart
+  required_columns:
+  - employee_id
+  - department_name
+  - gender
+  - is_active
+  parameters:
+  - name: gender_value
+    type: string
+    required: false
+    default: "زن"
+  - name: result_limit
+    type: integer_or_NULL
+    required: false
+    default: 'NULL'
+  result_columns:
+  - name: department_name
+    type: text
+    title_fa: واحد سازمانی
+  - name: total_count
+    type: integer
+    title_fa: کل کارکنان
+  - name: target_gender_count
+    type: integer
+    title_fa: تعداد جنسیت هدف
+  - name: target_gender_percentage
+    type: numeric
+    title_fa: درصد جنسیت هدف
+  sql: "SELECT\n    v.department_name,\n    COUNT(v.employee_id) AS total_count,\n\
+    \    COUNT(CASE WHEN v.gender = '{gender_value}' THEN 1 END) AS target_gender_count,\n\
+    \    ROUND(\n        COUNT(CASE WHEN v.gender = '{gender_value}' THEN 1 END) *\
+    \ 100.0\n        / NULLIF(COUNT(v.employee_id), 0),\n        2\n    ) AS target_gender_percentage\n\
+    FROM hr_mvp.vw_hr_employee_analytics v\nWHERE v.is_active = TRUE\nGROUP BY v.department_name\n\
+    ORDER BY target_gender_percentage ASC\nLIMIT {result_limit};\n"
+- template_id: TPL_GENDER_PCT_BY_DEPARTMENT_DESC
+  intent: gender_share_by_department_highest
+  title_fa: درصد جنسیت هدف به تفکیک واحد (بیشترین سهم اول)
+  route: SQL
+  status: ready_for_demo
+  output_type: table_or_bar_chart
+  required_columns:
+  - employee_id
+  - department_name
+  - gender
+  - is_active
+  parameters:
+  - name: gender_value
+    type: string
+    required: false
+    default: "زن"
+  - name: result_limit
+    type: integer_or_NULL
+    required: false
+    default: 'NULL'
+  result_columns:
+  - name: department_name
+    type: text
+    title_fa: واحد سازمانی
+  - name: total_count
+    type: integer
+    title_fa: کل کارکنان
+  - name: target_gender_count
+    type: integer
+    title_fa: تعداد جنسیت هدف
+  - name: target_gender_percentage
+    type: numeric
+    title_fa: درصد جنسیت هدف
+  sql: "SELECT\n    v.department_name,\n    COUNT(v.employee_id) AS total_count,\n\
+    \    COUNT(CASE WHEN v.gender = '{gender_value}' THEN 1 END) AS target_gender_count,\n\
+    \    ROUND(\n        COUNT(CASE WHEN v.gender = '{gender_value}' THEN 1 END) *\
+    \ 100.0\n        / NULLIF(COUNT(v.employee_id), 0),\n        2\n    ) AS target_gender_percentage\n\
+    FROM hr_mvp.vw_hr_employee_analytics v\nWHERE v.is_active = TRUE\nGROUP BY v.department_name\n\
+    ORDER BY target_gender_percentage DESC\nLIMIT {result_limit};\n"
 - template_id: TPL_EMPLOYEE_COUNT_BY_AGE_FILTER_AND_SERVICE_DOMAIN
   intent: employee_count_by_age_filter
   title_fa: تعداد کارکنان با فیلتر سنی به تفکیک حوزه سازمانی

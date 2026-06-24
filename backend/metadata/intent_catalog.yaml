@@ -334,6 +334,39 @@ intents:
   output_type: kpi_card
   recommended_visualization: kpi_card
   sql_template_id: TPL_MIN_AGE
+- intent_id: age_min_max
+  title_fa: کمترین و بیشترین سن کارکنان
+  description_fa: حداقل و حداکثر سن به‌صورت همزمان در بین کارکنان فعال
+  route: SQL
+  status: supported
+  question_type: statistical
+  priority: high
+  supported_in_phase2: true
+  demo_ready: true
+  user_examples:
+  - جوان‌ترین و مسن‌ترین کارکنان چند ساله‌اند؟
+  - حداقل و حداکثر سن کارکنان چقدر است؟
+  - کمترین و بیشترین سن پرسنل چقدره؟
+  trigger_terms_fa:
+  - جوان‌ترین و مسن‌ترین
+  - مسن‌ترین و جوان‌ترین
+  - حداقل و حداکثر سن
+  - کمترین و بیشترین سن
+  - حداکثر و حداقل سن
+  - بیشترین و کمترین سن
+  metrics:
+  - name: min_age
+    title_fa: کمترین سن
+    expression: MIN(v.age)
+  - name: max_age
+    title_fa: بیشترین سن
+    expression: MAX(v.age)
+  required_columns:
+  - age
+  - is_active
+  output_type: kpi_card
+  recommended_visualization: kpi_card
+  sql_template_id: TPL_AGE_MIN_MAX
 - intent_id: stddev_age
   title_fa: انحراف معیار سن کارکنان
   description_fa: پراکندگی سنی کارکنان فعال
@@ -918,6 +951,82 @@ intents:
     ORDER BY employee_count DESC;
 
     '
+- intent_id: employee_count_by_specific_department
+  title_fa: تعداد کارکنان یک واحد یا حوزه مشخص
+  description_fa: تعداد کارکنان یک حوزه خدمت یا واحد سازمانی مشخص که با نام آن خوانده شده باشد
+    (نه تفکیک کلی همه واحدها).
+  route: SQL
+  status: supported
+  question_type: statistical
+  priority: medium
+  supported_in_phase2: true
+  demo_ready: true
+  user_examples:
+  - در حوزه مدیر عامل چند پرسنل داریم؟
+  - در حوزه پشتیبانی چند پرسنل داریم؟
+  - در حوزه فناوری اطلاعات چند نفر کار می‌کنند؟
+  - چند نفر در دفتر حقوقی کار می‌کنند؟
+  - تعداد پرسنل اداره خزانه‌داری چند نفر است؟
+  trigger_terms_fa:
+  - مدیر عامل
+  - پشتیبانی
+  - دفتر حقوقی
+  - خزانه‌داری
+  required_columns:
+  - employee_id
+  - is_active
+  output_type: kpi_card
+  recommended_visualization: kpi_card
+  sql_template_id: TPL_TOTAL_EMPLOYEE_COUNT
+- intent_id: gender_share_by_department_lowest
+  title_fa: کمترین سهم جنسیتی به تفکیک واحد
+  description_fa: واحدهای سازمانی که نسبت یک جنسیت مشخص (پیش‌فرض زن) در آن‌ها کمتر است،
+    بر اساس نسبت آن جنسیت به کل کارکنان همان واحد (نه سهم از کل آن جنسیت در سازمان).
+  route: SQL
+  status: supported
+  question_type: statistical
+  priority: medium
+  supported_in_phase2: true
+  demo_ready: true
+  user_examples:
+  - سهم زنان در چه بخش‌هایی کم تر است؟
+  - کدام دپارتمان کمترین نسبت زنان را دارد؟
+  - در کدام بخش سهم زنان از همه کمتره؟
+  trigger_terms_fa:
+  - سهم زنان کمتر
+  - نسبت زنان کمترین
+  required_columns:
+  - employee_id
+  - department_name
+  - gender
+  - is_active
+  output_type: table_or_bar_chart
+  recommended_visualization: horizontal_bar_chart_or_table
+  sql_template_id: TPL_GENDER_PCT_BY_DEPARTMENT_ASC
+- intent_id: gender_share_by_department_highest
+  title_fa: بیشترین سهم جنسیتی به تفکیک واحد
+  description_fa: واحدهای سازمانی که نسبت یک جنسیت مشخص (پیش‌فرض زن) در آن‌ها بیشتر
+    است، بر اساس نسبت آن جنسیت به کل کارکنان همان واحد.
+  route: SQL
+  status: supported
+  question_type: statistical
+  priority: medium
+  supported_in_phase2: true
+  demo_ready: true
+  user_examples:
+  - کدام دپارتمان بیشترین نسبت زنان را دارد؟
+  - سهم مردان در کدام دپارتمان‌ها بیشتر است؟
+  trigger_terms_fa:
+  - سهم زنان بیشتر
+  - نسبت زنان بیشترین
+  required_columns:
+  - employee_id
+  - department_name
+  - gender
+  - is_active
+  output_type: table_or_bar_chart
+  recommended_visualization: horizontal_bar_chart_or_table
+  sql_template_id: TPL_GENDER_PCT_BY_DEPARTMENT_DESC
 - intent_id: employee_count_by_position
   title_fa: تعداد کارکنان به تفکیک پست سازمانی
   description_fa: تعداد کارکنان به تفکیک پست سازمانی

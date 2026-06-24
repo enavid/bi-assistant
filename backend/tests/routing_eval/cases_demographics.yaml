@@ -758,3 +758,73 @@ cases:
       intent: employee_count_by_birth_month
       must_include_sql:
         - "BETWEEN 8 AND 8"
+
+  # ── dem-030: age extremes — single direction (control) and combined ────────
+
+  - id: dem-030v1
+    question: "مسن‌ترین کارمند چند سال دارد؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: max_age
+      must_include_sql:
+        - "MAX(v.age)"
+
+  - id: dem-030v2
+    question: "جوان‌ترین کارمند چند سالشه؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: min_age
+      must_include_sql:
+        - "MIN(v.age)"
+
+  - id: dem-030v3
+    question: "جوان‌ترین و مسن‌ترین کارکنان چند ساله‌اند؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: age_min_max
+      must_include_sql:
+        - "MIN(v.age)"
+        - "MAX(v.age)"
+
+  - id: dem-030v4
+    question: "حداقل و حداکثر سن کارکنان چقدر است؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: age_min_max
+      must_include_sql:
+        - "MIN(v.age)"
+        - "MAX(v.age)"
+
+  - id: dem-030v5
+    question: "کمترین و بیشترین سن پرسنل چقدره؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: age_min_max
+      must_include_sql:
+        - "MIN(v.age)"
+        - "MAX(v.age)"
+
+  - id: dem-030v6
+    question: "سن جوان‌ترین و مسن‌ترین کارمند چقدره؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: age_min_max
+      must_include_sql:
+        - "MIN(v.age)"
+        - "MAX(v.age)"
+
+  - id: dem-030v7
+    question: "کمترین و بیشترین سن کارمند چقدره؟"
+    category: demographics
+    expect:
+      route: SQL
+      intent: age_min_max
+      must_include_sql:
+        - "MIN(v.age)"
+        - "MAX(v.age)"

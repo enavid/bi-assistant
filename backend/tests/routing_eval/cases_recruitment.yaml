@@ -614,3 +614,56 @@ cases:
       intent: employee_count_by_hire_month
       must_include_sql:
         - "BETWEEN 12 AND 12"
+
+  # ── rec-162: least/most hiring year — bare "جذب" without compound phrase ───
+  # Regression for: DomainClassifier scored bare "جذب" too low (<2.0 threshold),
+  # rejecting these as OUT_OF_SCOPE before intent_parser ever ran.
+
+  - id: rec-162v1
+    question: "کمترین جذب مربوط به کدام سال است؟"
+    category: recruitment
+    expect:
+      route: SQL
+      intent: most_or_least_hiring_year
+
+  - id: rec-162v2
+    question: "بیشترین جذب در کدام سال بوده؟"
+    category: recruitment
+    expect:
+      route: SQL
+      intent: most_or_least_hiring_year
+
+  - id: rec-162v3
+    question: "کدام سال بیشترین جذب نیرو را داشتیم؟"
+    category: recruitment
+    expect:
+      route: SQL
+      intent: most_or_least_hiring_year
+
+  - id: rec-162v4
+    question: "سالی که کمترین جذب انجام شده کدام است؟"
+    category: recruitment
+    expect:
+      route: SQL
+      intent: most_or_least_hiring_year
+
+  - id: rec-162v5
+    question: "در چه سالی کمترین تعداد جذب داشتیم؟"
+    category: recruitment
+    expect:
+      route: SQL
+      intent: most_or_least_hiring_year
+
+  - id: rec-162v6
+    question: "بیشترین جذب نیرو در کدام سال بود؟"
+    category: recruitment
+    expect:
+      route: SQL
+      intent: most_or_least_hiring_year
+
+  - id: rec-162v7
+    question: "سال کمترین جذب نیرو چه سالی بوده؟"
+    category: recruitment
+    expect:
+      route: SQL
+      intent: most_or_least_hiring_year
