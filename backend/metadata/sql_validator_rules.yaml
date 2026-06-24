@@ -142,6 +142,7 @@ allowed_sql:
     - NULLIF
     window:
     - OVER
+    - LAG
     date:
     - EXTRACT
     - AGE

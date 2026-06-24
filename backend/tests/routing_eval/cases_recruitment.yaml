@@ -718,3 +718,42 @@ cases:
       intent: employee_count_by_hire_year
       must_include_sql:
         - "hire_year"
+
+  # ── rec-164: year-over-year hiring growth rate (distinct from plain trend) ──
+
+  - id: rec-164v1
+    question: "نرخ رشد جذب نیرو نسبت به سال قبل چقدره؟"
+    category: recruitment
+    expect:
+      route: SQL
+      intent: hiring_trend_yoy_growth
+      must_include_sql:
+        - "LAG"
+
+  - id: rec-164v2
+    question: "جذب نیرو چند درصد رشد یا کاهش داشته؟"
+    category: recruitment
+    expect:
+      route: SQL
+      intent: hiring_trend_yoy_growth
+      must_include_sql:
+        - "LAG"
+
+  - id: rec-164v3
+    question: "درصد رشد جذب در هر سال نسبت به سال قبل چقدر بوده؟"
+    category: recruitment
+    expect:
+      route: SQL
+      intent: hiring_trend_yoy_growth
+      must_include_sql:
+        - "LAG"
+
+  - id: rec-164v4
+    # Distractor: plain trend phrasing (no growth-rate language) must still route to hiring_trend_annual.
+    question: "روند جذب نیرو در طول سال‌ها چطور بوده؟"
+    category: recruitment
+    expect:
+      route: SQL
+      intent: hiring_trend_annual
+      must_not_include_sql:
+        - "LAG"

@@ -1545,6 +1545,63 @@ intents:
     ORDER BY v.hire_year ASC;
 
     '
+- intent_id: hiring_trend_yoy_growth
+  title_fa: نرخ رشد جذب نسبت به سال قبل
+  description_fa: درصد رشد یا کاهش جذب نیرو در هر سال نسبت به سال قبل
+  route: SQL
+  status: supported
+  question_type: trend
+  priority: medium
+  supported_in_phase2: true
+  demo_ready: true
+  user_examples:
+  - نرخ رشد جذب نیرو نسبت به سال قبل چقدره؟
+  - جذب نیرو چند درصد رشد یا کاهش داشته؟
+  - درصد رشد جذب در هر سال نسبت به سال قبل چقدر بوده؟
+  trigger_terms_fa:
+  - نرخ رشد جذب
+  - درصد رشد جذب
+  - درصد کاهش جذب
+  - نرخ کاهش جذب
+  metrics: *id001
+  required_columns:
+  - employee_id
+  - hire_year
+  - is_active
+  default_filters:
+  - column: is_active
+    operator: '='
+    value: true
+  group_by:
+  - hire_year
+  output_type: time_series
+  recommended_visualization: line_chart
+  report_id: RPT_HR_046
+  sql_template_id: TPL_HIRING_TREND_YOY_GROWTH
+  sql_hint: 'WITH yearly_hires AS (
+
+    SELECT v.hire_year, COUNT(v.employee_id) AS employee_count
+
+    FROM hr_mvp.vw_hr_employee_analytics v
+
+    WHERE v.is_active = TRUE
+
+    GROUP BY v.hire_year
+
+    )
+
+    SELECT hire_year, employee_count,
+
+    LAG(employee_count) OVER (ORDER BY hire_year) AS prior_year_count,
+
+    ROUND((employee_count - LAG(employee_count) OVER (ORDER BY hire_year)) * 100.0
+    / NULLIF(LAG(employee_count) OVER (ORDER BY hire_year), 0), 2) AS yoy_growth_pct
+
+    FROM yearly_hires
+
+    ORDER BY hire_year ASC;
+
+    '
 - intent_id: hiring_last_15_years
   title_fa: روند یا تعداد جذب ۱۵ سال اخیر
   description_fa: روند یا تعداد جذب ۱۵ سال اخیر

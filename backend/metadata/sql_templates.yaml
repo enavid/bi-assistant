@@ -114,6 +114,7 @@ template_index:
     RPT_HR_043: TPL_EMPLOYEE_COUNT_BY_POSITION
     RPT_HR_044: TPL_MOST_POPULATED_POSITION
     RPT_HR_045: TPL_EMPLOYEE_COUNT_BY_POSITION_LEVEL
+    RPT_HR_046: TPL_HIRING_TREND_YOY_GROWTH
   by_intent:
     total_employee_count:
     - TPL_TOTAL_EMPLOYEE_COUNT
@@ -178,6 +179,8 @@ template_index:
     - TPL_EMPLOYEE_COUNT_BY_WORK_LOCATION
     hiring_trend_annual:
     - TPL_HIRING_TREND_ANNUAL
+    hiring_trend_yoy_growth:
+    - TPL_HIRING_TREND_YOY_GROWTH
     hiring_last_15_years:
     - TPL_HIRING_LAST_15_YEARS
     most_or_least_hiring_year:
@@ -1066,6 +1069,24 @@ templates:
   business_rules_fa: hire_year سال شمسی است و برای روند سالانه باید مرتب‌سازی صعودی شود.
   sql: "SELECT\n    v.hire_year,\n    COUNT(v.employee_id) AS employee_count\nFROM hr_mvp.vw_hr_employee_analytics v\nWHERE\
     \ v.is_active = TRUE\nGROUP BY v.hire_year\nORDER BY v.hire_year ASC;\n"
+- template_id: TPL_HIRING_TREND_YOY_GROWTH
+  report_id: RPT_HR_046
+  intent: hiring_trend_yoy_growth
+  title_fa: نرخ رشد جذب نسبت به سال قبل
+  route: SQL
+  status: ready_for_demo
+  output_type: table_or_line_chart
+  required_columns:
+  - employee_id
+  - hire_year
+  - is_active
+  business_rules_fa: 'سال اول روند مقدار prior_year_count و yoy_growth_pct آن NULL است، چون سال قبلی در داده موجود نیست.'
+  sql: "WITH yearly_hires AS (\n    SELECT v.hire_year, COUNT(v.employee_id) AS employee_count\n\
+    \    FROM hr_mvp.vw_hr_employee_analytics v\n    WHERE v.is_active = TRUE\n    GROUP BY v.hire_year\n\
+    )\nSELECT\n    hire_year,\n    employee_count,\n    LAG(employee_count) OVER (ORDER BY hire_year)\
+    \ AS prior_year_count,\n    ROUND((employee_count - LAG(employee_count) OVER (ORDER BY hire_year))\
+    \ * 100.0 / NULLIF(LAG(employee_count) OVER (ORDER BY hire_year), 0), 2) AS yoy_growth_pct\n\
+    FROM yearly_hires\nORDER BY hire_year ASC;\n"
 - template_id: TPL_HIRING_LAST_15_YEARS
   report_id: RPT_HR_011
   intent: hiring_last_15_years

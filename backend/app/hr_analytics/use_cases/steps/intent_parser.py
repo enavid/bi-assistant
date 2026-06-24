@@ -862,6 +862,9 @@ class IntentParser:
                 ),
                 "asks_average": self._has_any(question, ["میانگین", "متوسط", "اختلاف میانگین"]),
                 "asks_median": self._has_any(question, ["میانه"]),
+                "asks_growth_rate": self._has_any(
+                    question, ["نرخ رشد", "درصد رشد", "درصد کاهش", "نرخ کاهش"]
+                ),
                 "asks_stddev": self._has_any(question, ["انحراف معیار", "واریانس", "پراکندگی"]),
                 "asks_distribution": self._has_any(
                     question, ["تفکیک", "بر اساس", "به تفکیک", "توزیع", "سهم هر", "در هر"]
@@ -1680,6 +1683,8 @@ class IntentParser:
                 add(("monthly_hiring_trend", 92, "monthly_hiring_data_gap"))
             elif f.get("asks_last_15_years"):
                 add(("hiring_last_15_years", 85, "last_15_years_hiring"))
+            elif f.get("asks_growth_rate"):
+                add(("hiring_trend_yoy_growth", 92, "hiring_trend_yoy_growth"))
             elif f.get("asks_most") or f.get("asks_least"):
                 add(("most_or_least_hiring_year", 75, "most_or_least_hiring_year"))
             elif f.get("explicit_contract_type") or f.get("asks_recent_year"):
@@ -2308,7 +2313,7 @@ class IntentParser:
             group_by = self._ensure_group_by(group_by, "site_name")
             required_columns.extend(["site_name", "province", "employee_id", "is_active"])
 
-        elif best_intent_id == "hiring_trend_annual":
+        elif best_intent_id in {"hiring_trend_annual", "hiring_trend_yoy_growth"}:
             group_by = ["hire_year"]
             order_by = ["hire_year ASC"]
             required_columns.extend(["hire_year", "employee_id", "is_active"])
