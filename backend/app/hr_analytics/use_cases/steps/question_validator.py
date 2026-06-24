@@ -668,9 +668,16 @@ class QuestionValidator:
                 # "دی" is unsafe as a plain substring, e.g. inside "کردیم")
                 # means employee_count_by_hire_month/birth_month can answer
                 # it directly; only the truly generic phrasing ("ماهانه",
-                # "ماه گذشته", no specific month) has no template and stays GAP.
+                # no specific month) has no template and stays GAP.
                 if _PERSIAN_MONTH_OR_SEASON_RE.search(question):
                     continue
+            if rule_id == "QVAL_GAP_MONTHLY_HIRING" and _find_terms(
+                question, ["ماه گذشته", "ماه پیش"]
+            ):
+                # employee_count_hired_last_month computes the range
+                # dynamically relative to CURRENT_DATE — no specific month
+                # name needed.
+                continue
             if not matched:
                 continue
             if required_any and not _find_terms(question, required_any):

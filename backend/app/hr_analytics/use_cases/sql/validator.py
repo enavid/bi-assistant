@@ -834,8 +834,12 @@ class SQLValidator:
         issues: list[SQLValidationIssue] = []
         question_norm = self._normalize_persian_text(question or "")
 
+        # "شهریور" (the Shamsi month) contains "شهر" (city) as a plain
+        # substring — strip it out before the city-term check so month-filter
+        # questions aren't misclassified as city-level data gaps.
+        question_norm_no_month = question_norm.replace("شهریور", "")
         if re.search(r"\bv\s*\.\s*city\b", sql, flags=re.IGNORECASE) or self._text_contains_any(
-            question_norm, self.DATA_GAP_QUESTION_PATTERNS["city_level_analysis"]
+            question_norm_no_month, self.DATA_GAP_QUESTION_PATTERNS["city_level_analysis"]
         ):
             issues.append(
                 SQLValidationIssue(

@@ -1182,6 +1182,41 @@ intents:
     ORDER BY 1 ASC;
 
     '
+- intent_id: employee_count_hired_last_month
+  title_fa: تعداد کارکنان جذب‌شده در ماه شمسی گذشته
+  description_fa: تعداد کارکنانی که در ماه شمسی قبل از ماه جاری استخدام شده‌اند
+    (بازه به‌صورت پویا نسبت به تاریخ امروز محاسبه می‌شود)
+  route: SQL
+  status: supported
+  question_type: statistical
+  priority: medium
+  supported_in_phase2: true
+  demo_ready: true
+  user_examples:
+  - جذب نیروی ماه گذشته چقدر بوده؟
+  - چند نفر ماه پیش استخدام شدن؟
+  metrics: *id001
+  required_columns:
+  - employee_id
+  - hire_date
+  - is_active
+  default_filters:
+  - column: is_active
+    operator: '='
+    value: true
+  output_type: kpi_card
+  recommended_visualization: kpi_card
+  sql_hint: 'SELECT COUNT(v.employee_id) AS employee_count
+
+    FROM hr_mvp.vw_hr_employee_analytics v
+
+    WHERE v.is_active = TRUE
+
+      AND v.hire_date >= hr_mvp.shamsi_to_gregorian(CASE WHEN hr_mvp.shamsi_month(CURRENT_DATE) = 1 THEN hr_mvp.shamsi_year(CURRENT_DATE) - 1 ELSE hr_mvp.shamsi_year(CURRENT_DATE) END, CASE WHEN hr_mvp.shamsi_month(CURRENT_DATE) = 1 THEN 12 ELSE hr_mvp.shamsi_month(CURRENT_DATE) - 1 END, 1)
+
+      AND v.hire_date < hr_mvp.shamsi_to_gregorian(hr_mvp.shamsi_year(CURRENT_DATE), hr_mvp.shamsi_month(CURRENT_DATE), 1);
+
+    '
 - intent_id: headcount_gap_by_department
   title_fa: اختلاف نیروی موجود با چارت مصوب
   description_fa: اختلاف نیروی موجود با چارت مصوب

@@ -190,6 +190,7 @@ DEFAULT_TEMPLATE_BY_INTENT: dict[str, str] = {
     "employee_count_by_marital_status": "TPL_EMPLOYEE_COUNT_BY_MARITAL_STATUS",
     "employee_count_contract_ending_soon": "TPL_EMPLOYEE_COUNT_CONTRACT_ENDING_SOON",
     "contract_ending_trend_annual": "TPL_CONTRACT_ENDING_TREND_ANNUAL",
+    "employee_count_hired_last_month": "TPL_EMPLOYEE_COUNT_HIRED_LAST_MONTH",
     "employee_count_by_birth_month": "TPL_EMPLOYEE_COUNT_BY_BIRTH_SHAMSI_MONTH",
     "employee_count_by_hire_month": "TPL_EMPLOYEE_COUNT_BY_HIRE_SHAMSI_MONTH",
 }
@@ -1238,6 +1239,13 @@ class IntentParser:
                 add(("employee_count_by_birth_month", 90, "birth_month_filter"))
             elif self._has_any(question, ["استخدام", "جذب"]):
                 add(("employee_count_by_hire_month", 90, "hire_month_filter"))
+        elif self._has_any(question, ["ماه گذشته", "ماه پیش"]) and self._has_any(
+            question, ["استخدام", "جذب"]
+        ):
+            # No specific month named ("ماه گذشته"/"ماه پیش") — compute the
+            # range dynamically relative to CURRENT_DATE via
+            # hr_mvp.shamsi_to_gregorian(), the reverse of shamsi_month()/year().
+            add(("employee_count_hired_last_month", 90, "hired_last_month"))
 
         if f.get("explicit_city"):
             add(("city_level_analysis", 90, "city_level_data_gap"))
@@ -2011,6 +2019,9 @@ class IntentParser:
 
         elif best_intent_id == "contract_ending_trend_annual":
             required_columns.extend(["contract_end_date", "employee_id", "is_active"])
+
+        elif best_intent_id == "employee_count_hired_last_month":
+            required_columns.extend(["hire_date", "employee_id", "is_active"])
 
         elif best_intent_id in {"employee_count_by_birth_month", "employee_count_by_hire_month"}:
             month_range = _extract_shamsi_month_range(question) or (1, 12)

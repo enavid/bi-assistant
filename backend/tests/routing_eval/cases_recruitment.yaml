@@ -520,14 +520,22 @@ cases:
       route: SQL
       intent: employee_count_by_hire_month
 
-  # rec-159v5: generic "ماه گذشته" (last month) has no specific Shamsi month
-  # name, so there is still no template for it — stays Data Gap.
+  # rec-159v5: generic "ماه گذشته" (last month) has no specific month name,
+  # but employee_count_hired_last_month computes the range dynamically
+  # relative to CURRENT_DATE via hr_mvp.shamsi_to_gregorian().
   - id: rec-159v5
     question: "جذب نیروی ماه گذشته چقدر بوده؟"
     category: recruitment
     expect:
-      route: GAP
-      status: DATA_GAP
+      route: SQL
+      intent: employee_count_hired_last_month
+
+  - id: rec-159v6
+    question: "چند نفر ماه پیش استخدام شدن؟"
+    category: recruitment
+    expect:
+      route: SQL
+      intent: employee_count_hired_last_month
 
   # ── rec-160: hire-month RANGE (two months spanning a range) — same fix as
   # dem-028, applied to hire_date instead of birth_date.

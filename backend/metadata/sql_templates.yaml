@@ -211,6 +211,8 @@ template_index:
     - TPL_EMPLOYEE_COUNT_BY_HIRE_SHAMSI_MONTH
     contract_ending_trend_annual:
     - TPL_CONTRACT_ENDING_TREND_ANNUAL
+    employee_count_hired_last_month:
+    - TPL_EMPLOYEE_COUNT_HIRED_LAST_MONTH
 templates:
 - template_id: TPL_TOTAL_EMPLOYEE_COUNT
   report_id: RPT_HR_001
@@ -1702,6 +1704,27 @@ status_templates:
   sql: "SELECT\n    hr_mvp.shamsi_year(v.contract_end_date) AS contract_end_shamsi_year,\n\
     \    COUNT(v.employee_id) AS employee_count\nFROM hr_mvp.vw_hr_employee_analytics\
     \ v\nWHERE v.is_active = TRUE\n  AND v.contract_end_date IS NOT NULL\nGROUP BY 1\nORDER BY 1 ASC;\n"
+- template_id: TPL_EMPLOYEE_COUNT_HIRED_LAST_MONTH
+  intent: employee_count_hired_last_month
+  title_fa: تعداد کارکنان جذب‌شده در ماه شمسی گذشته
+  route: SQL
+  status: supported
+  output_type: kpi_card
+  required_columns:
+  - employee_id
+  - hire_date
+  - is_active
+  notes_fa: بازه‌ی ماه شمسی قبل از ماه جاری با hr_mvp.shamsi_year/shamsi_month
+    (روی CURRENT_DATE) محاسبه و با hr_mvp.shamsi_to_gregorian (تابع برعکس) به
+    بازه‌ی تاریخ میلادی تبدیل می‌شود؛ hire_date فقط به‌صورت فیلتر استفاده می‌شود.
+    بدون JOIN/CTE نوشته شده چون SQLValidator هرگونه JOIN را مسدود می‌کند.
+  sql: "SELECT\n    COUNT(v.employee_id) AS employee_count\nFROM hr_mvp.vw_hr_employee_analytics\
+    \ v\nWHERE v.is_active = TRUE\n  AND v.hire_date >= hr_mvp.shamsi_to_gregorian(\n\
+    \        CASE WHEN hr_mvp.shamsi_month(CURRENT_DATE) = 1 THEN hr_mvp.shamsi_year(CURRENT_DATE)\
+    \ - 1 ELSE hr_mvp.shamsi_year(CURRENT_DATE) END,\n        CASE WHEN hr_mvp.shamsi_month(CURRENT_DATE)\
+    \ = 1 THEN 12 ELSE hr_mvp.shamsi_month(CURRENT_DATE) - 1 END,\n        1)\n  AND\
+    \ v.hire_date < hr_mvp.shamsi_to_gregorian(hr_mvp.shamsi_year(CURRENT_DATE), hr_mvp.shamsi_month(CURRENT_DATE),\
+    \ 1);\n"
 gap_and_reject_mapping:
   city_level_analysis: TPL_DATA_GAP
 

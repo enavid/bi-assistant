@@ -173,3 +173,31 @@ def test_validator_does_not_duplicate_is_active_when_already_present(metadata_se
     result = validate(sql, metadata_service)
     assert result["is_valid"] is True
     assert result.get("sql", "").upper().count("IS_ACTIVE") == 1
+
+
+def test_validator_does_not_flag_shahrivar_as_city_level_gap(metadata_service):
+    """ "شهریور" (the Shamsi month) contains "شهر" (city) as a plain substring.
+    A question naming Shahrivar must not be misclassified as a city-level
+    data gap when the SQL itself never references a city column."""
+    sql = """
+    SELECT COUNT(v.employee_id) AS employee_count
+    FROM hr_mvp.vw_hr_employee_analytics v
+    WHERE v.is_active = TRUE
+      AND hr_mvp.shamsi_month(v.hire_date) BETWEEN 4 AND 6;
+    """
+    result = validate(sql, metadata_service, question="تعداد جذب از تیر تا شهریور چقدره")
+    assert result["is_valid"] is True
+    assert result["status"] in {"OK", "VALID"}
+
+
+def test_validator_still_flags_real_city_level_question(metadata_service):
+    """Regression guard for the fix above: an actual city-level question
+    must still be flagged as a data gap."""
+    sql = """
+    SELECT COUNT(v.employee_id) AS employee_count
+    FROM hr_mvp.vw_hr_employee_analytics v
+    WHERE v.is_active = TRUE;
+    """
+    result = validate(sql, metadata_service, question="تعداد کارکنان شهر تهران چند نفر است؟")
+    assert result["is_valid"] is False
+    assert result["status"] == "DATA_GAP"
