@@ -171,6 +171,7 @@ DEFAULT_TEMPLATE_BY_INTENT: dict[str, str] = {
     "least_common_education": "TPL_LEAST_COMMON_EDUCATION",
     "low_education_in_expert_roles": "TPL_LOW_EDUCATION_IN_EXPERT_ROLES",
     "employee_count_by_department": "TPL_EMPLOYEE_COUNT_BY_DEPARTMENT",
+    "top_department_per_service_domain": "TPL_TOP_DEPARTMENT_PER_SERVICE_DOMAIN",
     "employee_count_by_work_location": "TPL_EMPLOYEE_COUNT_BY_WORK_LOCATION",
     "employee_count_by_position": "TPL_EMPLOYEE_COUNT_BY_POSITION",
     "most_populated_position": "TPL_MOST_POPULATED_POSITION",
@@ -1587,6 +1588,31 @@ class IntentParser:
             else:
                 add(("gender_share_by_department_lowest", 98, "gender_share_dept_default"))
 
+        # Largest department WITHIN each service domain — a within-group top-1
+        # (ROW_NUMBER + PARTITION BY) that the plain distribution intents cannot
+        # express. Requires both a department term and a service-domain term, a
+        # per-domain scope ("هر حوزه"), and a "largest/most" qualifier.
+        _top_per_group_terms = [
+            "پرجمعیت‌ترین",
+            "پرجمعیت ترین",
+            "بزرگ‌ترین",
+            "بزرگترین",
+            "بیشترین",
+            "پرتعدادترین",
+            "پرنفرترین",
+        ]
+        if (
+            f.get("explicit_service_domain")
+            and f.get("explicit_department")
+            and not f.get("asks_least")
+            and not f.get("asks_gap_or_shortage")
+            and not f.get("explicit_gender")
+            and not f.get("explicit_contractor")
+            and "هر حوزه" in question
+            and self._has_any(question, _top_per_group_terms)
+        ):
+            add(("top_department_per_service_domain", 95, "top_dept_per_service_domain"))
+
         if (
             f.get("explicit_service_domain")
             and not f.get("explicit_contractor")
@@ -2266,6 +2292,12 @@ class IntentParser:
         elif best_intent_id == "employee_count_by_department":
             group_by = self._ensure_group_by(group_by, "department_name")
             required_columns.extend(["department_name", "employee_id", "is_active"])
+
+        elif best_intent_id == "top_department_per_service_domain":
+            group_by = ["service_domain", "department_name"]
+            required_columns.extend(
+                ["service_domain", "department_name", "employee_id", "is_active"]
+            )
 
         elif best_intent_id == "employee_count_by_department_education":
             group_by = ["department_name", "education_title"]

@@ -976,3 +976,46 @@ cases:
     expect:
       route: SQL
       intent: employee_count_by_department
+
+  # ── org-129: largest department within each service domain ────────────────
+  # Window ranking (ROW_NUMBER + PARTITION BY): top-1 row per group, which a
+  # plain ORDER BY ... LIMIT cannot express.
+
+  - id: org-129v1
+    question: "در هر حوزهٔ خدمتی، پرجمعیت‌ترین دپارتمان کدام است؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: top_department_per_service_domain
+      must_include_sql:
+        - "ROW_NUMBER"
+        - "PARTITION BY"
+
+  - id: org-129v2
+    question: "بزرگترین دپارتمان هر حوزه کدام است؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: top_department_per_service_domain
+      must_include_sql:
+        - "ROW_NUMBER"
+        - "PARTITION BY"
+
+  - id: org-129v3
+    question: "در هر حوزه خدمتی کدام بخش بیشترین کارمند را دارد؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: top_department_per_service_domain
+      must_include_sql:
+        - "ROW_NUMBER"
+        - "PARTITION BY"
+
+  # Distractor: plain per-domain headcount (no "largest/top" wording) must stay
+  # on the existing distribution intent, not be hijacked by the window-rank rule.
+  - id: org-129v4
+    question: "تعداد کارکنان هر حوزه خدمتی چقدر است؟"
+    category: org_structure
+    expect:
+      route: SQL
+      intent: employee_count_by_service_domain

@@ -170,6 +170,8 @@ template_index:
     - TPL_EMPLOYEE_COUNT_BY_SERVICE_DOMAIN
     employee_count_by_department:
     - TPL_EMPLOYEE_COUNT_BY_DEPARTMENT
+    top_department_per_service_domain:
+    - TPL_TOP_DEPARTMENT_PER_SERVICE_DOMAIN
     headcount_gap_by_department:
     - TPL_HEADCOUNT_GAP_BY_DEPARTMENT
     headcount_gap_by_service_domain: TPL_HEADCOUNT_GAP_BY_SERVICE_DOMAIN
@@ -973,6 +975,49 @@ templates:
   sql: "SELECT\n    v.department_name,\n    COUNT(v.employee_id) AS employee_count,\n    ROUND(\n        COUNT(v.employee_id)\
     \ * 100.0\n        / NULLIF(SUM(COUNT(v.employee_id)) OVER (), 0),\n        2\n    ) AS percentage\nFROM hr_mvp.vw_hr_employee_analytics\
     \ v\nWHERE v.is_active = TRUE\nGROUP BY v.department_name\nORDER BY employee_count DESC\nLIMIT {result_limit};\n"
+- template_id: TPL_TOP_DEPARTMENT_PER_SERVICE_DOMAIN
+  report_id: RPT_HR_047
+  intent: top_department_per_service_domain
+  title_fa: پرجمعیت‌ترین دپارتمان در هر حوزه خدمتی
+  route: SQL
+  status: ready_for_demo
+  output_type: table
+  required_columns:
+  - service_domain
+  - department_name
+  - employee_id
+  - is_active
+  business_rules_fa: برای هر حوزه خدمتی تنها دپارتمان با بیشترین تعداد کارمند فعال
+    برگردانده می‌شود؛ رتبه‌بندی درون‌گروهی با ROW_NUMBER و PARTITION BY انجام می‌شود
+    و در صورت تساوی، یک ردیف به‌صورت قطعی انتخاب می‌گردد.
+  sql: |
+    WITH dept_counts AS (
+        SELECT
+            v.service_domain,
+            v.department_name,
+            COUNT(v.employee_id) AS employee_count
+        FROM hr_mvp.vw_hr_employee_analytics v
+        WHERE v.is_active = TRUE
+        GROUP BY v.service_domain, v.department_name
+    ),
+    ranked AS (
+        SELECT
+            service_domain,
+            department_name,
+            employee_count,
+            ROW_NUMBER() OVER (
+                PARTITION BY service_domain
+                ORDER BY employee_count DESC, department_name ASC
+            ) AS rn
+        FROM dept_counts
+    )
+    SELECT
+        service_domain,
+        department_name,
+        employee_count
+    FROM ranked
+    WHERE rn = 1
+    ORDER BY employee_count DESC;
 - template_id: TPL_HEADCOUNT_GAP_BY_DEPARTMENT
   report_id: RPT_HR_012
   intent: headcount_gap_by_department

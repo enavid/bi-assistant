@@ -143,6 +143,9 @@ allowed_sql:
     window:
     - OVER
     - LAG
+    - RANK
+    - ROW_NUMBER
+    - PARTITION BY
     date:
     - EXTRACT
     - AGE

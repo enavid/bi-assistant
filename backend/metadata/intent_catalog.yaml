@@ -987,6 +987,65 @@ intents:
     ORDER BY employee_count DESC;
 
     '
+- intent_id: top_department_per_service_domain
+  title_fa: پرجمعیت‌ترین دپارتمان در هر حوزه خدمتی
+  description_fa: برای هر حوزه خدمتی، دپارتمان با بیشترین تعداد کارمند فعال (رتبه‌بندی
+    درون‌گروهی با ROW_NUMBER و PARTITION BY)
+  route: SQL
+  status: supported
+  question_type: statistical
+  priority: medium
+  supported_in_phase2: true
+  demo_ready: true
+  user_examples:
+  - در هر حوزهٔ خدمتی، پرجمعیت‌ترین دپارتمان کدام است؟
+  - بزرگترین دپارتمان هر حوزه کدام است؟
+  - در هر حوزه خدمتی کدام بخش بیشترین کارمند را دارد؟
+  trigger_terms_fa:
+  - پرجمعیت‌ترین دپارتمان
+  - بزرگترین دپارتمان هر حوزه
+  - در هر حوزه
+  metrics: *id001
+  required_columns:
+  - employee_id
+  - service_domain
+  - department_name
+  - is_active
+  default_filters:
+  - column: is_active
+    operator: '='
+    value: true
+  group_by:
+  - service_domain
+  - department_name
+  output_type: table
+  recommended_visualization: table
+  report_id: RPT_HR_047
+  sql_template_id: TPL_TOP_DEPARTMENT_PER_SERVICE_DOMAIN
+  sql_hint: 'WITH dept_counts AS (
+
+    SELECT v.service_domain, v.department_name, COUNT(v.employee_id) AS employee_count
+
+    FROM hr_mvp.vw_hr_employee_analytics v
+
+    WHERE v.is_active = TRUE
+
+    GROUP BY v.service_domain, v.department_name
+
+    )
+
+    SELECT service_domain, department_name, employee_count FROM (
+
+    SELECT service_domain, department_name, employee_count,
+
+    ROW_NUMBER() OVER (PARTITION BY service_domain ORDER BY employee_count DESC, department_name
+    ASC) AS rn
+
+    FROM dept_counts) ranked
+
+    WHERE rn = 1 ORDER BY employee_count DESC;
+
+    '
 - intent_id: employee_count_by_specific_department
   title_fa: تعداد کارکنان یک واحد یا حوزه مشخص
   description_fa: تعداد کارکنان یک حوزه خدمت یا واحد سازمانی مشخص که با نام آن خوانده شده باشد
