@@ -14,7 +14,7 @@ from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
-from app.hr_analytics.use_cases.sql.validator import SQLValidator
+from app.hr_analytics.domain.interfaces import ISQLValidator
 from app.infrastructure.metadata.service import get_metadata_service
 
 """
@@ -144,7 +144,7 @@ class QueryExecutor:
         *,
         metadata_service: Any | None = None,
         metadata_dir: str | Path | None = None,
-        sql_validator: Any | None = None,
+        sql_validator: ISQLValidator | None = None,
         engine: Any | None = None,
         connection: Any | None = None,
         connection_factory: Callable[[], Any] | None = None,
@@ -163,10 +163,11 @@ class QueryExecutor:
         else:
             self.metadata = None
 
+        # The validator is injected by the composition root (DIP): the executor
+        # depends on the ISQLValidator abstraction and is duck-typed at call time,
+        # so it never constructs the concrete use_cases validator itself. With no
+        # validator and require_validated_sql=True it fail-safely refuses to run.
         self.validator = sql_validator
-        if self.validator is None and SQLValidator is not None:
-            with suppress(Exception):
-                self.validator = SQLValidator(metadata_service=self.metadata)
 
         self.engine = engine
         self.connection = connection

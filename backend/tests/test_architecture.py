@@ -166,12 +166,10 @@ def test_infrastructure_does_not_import_feature_use_cases():
         bad = [i for i in imports if "hr_analytics.use_cases" in i or "workspace.use_cases" in i]
         if bad:
             violations.append(f"{f.name}: {bad}")
-    # analytics_executor.py imports SQLValidator — note this as acceptable (it's a validator tool)
-    # Filter that known case
-    real_violations = [
-        v for v in violations if "analytics_executor" not in v or "SQLGenerator" in v
-    ]
-    assert not real_violations, f"Infrastructure imports from use_cases: {real_violations}"
+    # No exceptions: infrastructure depends only on domain abstractions. The
+    # analytics_executor previously imported the concrete SQLValidator from
+    # use_cases; it now depends on the ISQLValidator interface (Phase 3.3).
+    assert not violations, f"Infrastructure imports from use_cases: {violations}"
 
 
 # ---------------------------------------------------------------------------

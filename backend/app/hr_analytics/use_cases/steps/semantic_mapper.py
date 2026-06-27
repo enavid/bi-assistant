@@ -8,7 +8,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from app.infrastructure.metadata.service import MetadataService, get_metadata_service
+from app.hr_analytics.domain.interfaces import IMetadataService
+from app.infrastructure.metadata.service import resolve_metadata_service
 
 """
 semantic_mapper.py
@@ -144,36 +145,17 @@ class SemanticMapper:
     """
 
     def __init__(
-        self, metadata_service: Any | None = None, config: SemanticMapperConfig | None = None
+        self,
+        metadata_service: IMetadataService | None = None,
+        config: SemanticMapperConfig | None = None,
     ) -> None:
-        if metadata_service is not None:
-            self.metadata = metadata_service
-        elif get_metadata_service is not None:
-            # strict=False keeps local/dev runs resilient while still returning warnings.
-            self.metadata = get_metadata_service(strict=False)  # type: ignore[misc]
-            # Local smoke tests often keep metadata files beside this module rather than
-            # in backend/metadata. If the singleton did not load metadata, try that folder.
-            try:
-                health = (
-                    self.metadata.health_check().to_dict()
-                    if hasattr(self.metadata, "health_check")
-                    else {}
-                )
-                # type: ignore[comparison-overlap]
-                if not health.get("ok") and MetadataService is not Any:
-                    local_dir = Path(__file__).resolve().parent
-                    if (local_dir / "Template_03_semantic_layer.yaml").exists() or (
-                        local_dir / "semantic_layer.yaml"
-                    ).exists():
-                        self.metadata = MetadataService(
-                            # type: ignore[operator]
-                            metadata_dir=local_dir,
-                            strict=False,
-                        )
-            except Exception:
-                pass
-        else:
-            self.metadata = None
+        # Local smoke tests often keep metadata files beside this module rather
+        # than in backend/metadata; the resolver falls back to that folder.
+        self.metadata = resolve_metadata_service(
+            metadata_service,
+            local_dir=Path(__file__).resolve().parent,
+            probe_files=("Template_03_semantic_layer.yaml", "semantic_layer.yaml"),
+        )
         self.config = config or SemanticMapperConfig()
 
     # ------------------------------------------------------------------

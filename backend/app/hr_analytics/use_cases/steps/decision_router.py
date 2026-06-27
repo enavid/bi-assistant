@@ -10,7 +10,8 @@ from pathlib import Path
 from typing import Any
 
 from app.core.constants import MIN_GROUP_SIZE_FLOOR
-from app.infrastructure.metadata.service import MetadataService, get_metadata_service
+from app.hr_analytics.domain.interfaces import IMetadataService
+from app.infrastructure.metadata.service import resolve_metadata_service
 
 logger = logging.getLogger(__name__)
 
@@ -156,33 +157,13 @@ class DecisionRouter:
     """
 
     def __init__(
-        self, metadata_service: Any | None = None, config: RouterConfig | None = None
+        self, metadata_service: IMetadataService | None = None, config: RouterConfig | None = None
     ) -> None:
-        if metadata_service is not None:
-            self.metadata = metadata_service
-        elif get_metadata_service is not None:
-            self.metadata = get_metadata_service(strict=False)  # type: ignore[misc]
-            try:
-                health = (
-                    self.metadata.health_check().to_dict()
-                    if hasattr(self.metadata, "health_check")
-                    else {}
-                )
-                # type: ignore[comparison-overlap]
-                if not health.get("ok") and MetadataService is not Any:
-                    local_dir = Path(__file__).resolve().parent
-                    if (local_dir / "Template_00_data_dictionary.yaml").exists() or (
-                        local_dir / "data_dictionary.yaml"
-                    ).exists():
-                        self.metadata = MetadataService(
-                            # type: ignore[operator]
-                            metadata_dir=local_dir,
-                            strict=False,
-                        )
-            except Exception:
-                pass
-        else:
-            self.metadata = None
+        self.metadata = resolve_metadata_service(
+            metadata_service,
+            local_dir=Path(__file__).resolve().parent,
+            probe_files=("Template_00_data_dictionary.yaml", "data_dictionary.yaml"),
+        )
         self.config = config or RouterConfig()
 
     # ------------------------------------------------------------------

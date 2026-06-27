@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from app.core.config import settings
+from app.core.sensitive_columns import resolve_sensitive_columns
 from app.hr_analytics.use_cases.sql.llm_fallback import LLMSQLFallback
 from app.infrastructure.metadata.service import get_metadata_service
 
@@ -89,22 +90,6 @@ DANGEROUS_SQL_TOKENS = {
     "execute",
     "call",
     "merge",
-}
-
-SENSITIVE_COLUMNS = {
-    "national_id",
-    "personnel_number",
-    "first_name",
-    "last_name",
-    "full_name",
-    "phone_number",
-    "mobile",
-    "address",
-    "bank_account",
-    "insurance_number",
-    "salary",
-    "wage",
-    "personal_identifier",
 }
 
 # Conservative mapping used only when upstream intent/semantic results do not
@@ -228,6 +213,9 @@ class SQLGenerator:
             self.metadata = None
 
         self.config = config or SQLGeneratorConfig()
+        # Single source of truth (floor + metadata additions), shared with the
+        # SQL validator and response builder so the blocklist cannot drift.
+        self.sensitive_columns = resolve_sensitive_columns(self.metadata)
         self.llm_sql_fallback = llm_sql_fallback
         if current_shamsi_year is not None:
             self.config.current_shamsi_year = int(current_shamsi_year)
@@ -1269,7 +1257,7 @@ class SQLGenerator:
     def _assert_safe_column(self, column: str, allowed_columns: dict[str, JsonDict]) -> None:
         if not SAFE_COLUMN_RE.fullmatch(column):
             raise SQLGeneratorError(f"Unsafe column name: {column}")
-        if column in SENSITIVE_COLUMNS:
+        if column in self.sensitive_columns:
             raise SQLGeneratorError(f"Sensitive column is not allowed in SQL output: {column}")
         if self.config.reject_unknown_columns and column not in allowed_columns:
             raise SQLGeneratorError(f"Unknown or unavailable View column: {column}")
@@ -1748,7 +1736,7 @@ class SQLGenerator:
         for column in columns:
             if isinstance(column, Mapping) and column.get("name"):
                 name = str(column["name"])
-                if SAFE_COLUMN_RE.fullmatch(name) and name not in SENSITIVE_COLUMNS:
+                if SAFE_COLUMN_RE.fullmatch(name) and name not in self.sensitive_columns:
                     result[name] = deepcopy(dict(column))
         # employee_id is required for COUNT; allow it even if marked restricted.
         result.setdefault("employee_id", {"name": "employee_id", "data_type": "integer"})
@@ -1887,7 +1875,7 @@ class SQLGenerator:
             if table_name in normalized and self.config.main_view.lower() not in table_name:
                 # main_view contains employee_analytics, so this is a true raw table reference.
                 warnings.append(f"Generated SQL appears to reference raw table: {table_name}")
-        for column in SENSITIVE_COLUMNS:
+        for column in self.sensitive_columns:
             if re.search(rf"\b{re.escape(column.lower())}\b", normalized):
                 warnings.append(f"Generated SQL references sensitive column: {column}")
         return warnings

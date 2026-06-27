@@ -10,7 +10,9 @@ from pathlib import Path
 from typing import Any
 
 from app.core.persian_normalizer import normalize as _shared_normalize
-from app.infrastructure.metadata.service import MetadataService, get_metadata_service
+from app.hr_analytics.domain.interfaces import IMetadataService
+from app.hr_analytics.use_cases.steps.intent_scoring import score_to_confidence
+from app.infrastructure.metadata.service import resolve_metadata_service
 
 """
 intent_parser.py
@@ -288,19 +290,6 @@ class IntentCandidate:
 # the first band whose threshold the score meets wins. Kept as a named, ordered
 # table so the precedence model is explicit rather than buried in an if/elif
 # ladder. Scores below the lowest band fall through to a damped linear estimate.
-_CONFIDENCE_BANDS: tuple[tuple[float, float], ...] = (
-    (80, 0.99),
-    (60, 0.96),
-    (35, 0.9),
-    (20, 0.78),
-    (10, 0.62),
-)
-# Below the lowest band: confidence = clamp(score / divisor, floor, ceiling).
-_CONFIDENCE_SUB_BAND_FLOOR = 0.35
-_CONFIDENCE_SUB_BAND_CEILING = 0.6
-_CONFIDENCE_SUB_BAND_DIVISOR = 18
-
-
 class IntentParser:
     """
     Metadata-driven intent parser for Persian HR BI questions.
@@ -316,33 +305,15 @@ class IntentParser:
     """
 
     def __init__(
-        self, metadata_service: Any | None = None, config: IntentParserConfig | None = None
+        self,
+        metadata_service: IMetadataService | None = None,
+        config: IntentParserConfig | None = None,
     ) -> None:
-        if metadata_service is not None:
-            self.metadata = metadata_service
-        elif get_metadata_service is not None:
-            self.metadata = get_metadata_service(strict=False)  # type: ignore[misc]
-            try:
-                health = (
-                    self.metadata.health_check().to_dict()
-                    if hasattr(self.metadata, "health_check")
-                    else {}
-                )
-                # type: ignore[comparison-overlap]
-                if not health.get("ok") and MetadataService is not Any:
-                    local_dir = Path(__file__).resolve().parent
-                    if (local_dir / "Template_01_intent_catalog.yaml").exists() or (
-                        local_dir / "intent_catalog.yaml"
-                    ).exists():
-                        self.metadata = MetadataService(
-                            # type: ignore[operator]
-                            metadata_dir=local_dir,
-                            strict=False,
-                        )
-            except Exception:
-                pass
-        else:
-            self.metadata = None
+        self.metadata = resolve_metadata_service(
+            metadata_service,
+            local_dir=Path(__file__).resolve().parent,
+            probe_files=("Template_01_intent_catalog.yaml", "intent_catalog.yaml"),
+        )
         self.config = config or IntentParserConfig()
 
     # ------------------------------------------------------------------
@@ -2031,15 +2002,8 @@ class IntentParser:
 
     @staticmethod
     def _score_to_confidence(best_score: float, candidates: list[IntentCandidate]) -> float:
-        for threshold, confidence in _CONFIDENCE_BANDS:
-            if best_score >= threshold:
-                return confidence
-        if not candidates:
-            return 0.0
-        return max(
-            _CONFIDENCE_SUB_BAND_FLOOR,
-            min(_CONFIDENCE_SUB_BAND_CEILING, best_score / _CONFIDENCE_SUB_BAND_DIVISOR),
-        )
+        # Thin delegator to the extracted, independently tested scoring module.
+        return score_to_confidence(best_score, has_candidates=bool(candidates))
 
     # ------------------------------------------------------------------
     # Structured extraction

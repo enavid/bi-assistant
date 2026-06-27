@@ -55,8 +55,16 @@ def get_run_query_use_case() -> RunQueryUseCase:
     return RunQueryUseCase(executor=get_query_executor())
 
 
-@lru_cache(maxsize=1)
-def get_hr_bi_orchestrator():
+def build_hr_bi_orchestrator(*, model_name: str | None = None):
+    """Single composition root for the HR-BI orchestrator.
+
+    This is the one place the full pipeline graph is wired. Both the cached
+    request-path getter (:func:`get_hr_bi_orchestrator`) and the evaluation
+    harness call it, so the eval pipeline can never silently diverge from the
+    production pipeline. ``model_name`` overrides the default model (used by the
+    eval harness to score a specific model); when ``None`` the active model is
+    used, reproducing the production wiring exactly.
+    """
     from app.core.config import settings
     from app.hr_analytics.adapters.response_builder import ResponseBuilder
     from app.hr_analytics.use_cases.orchestrator import LLMOrchestrator
@@ -99,7 +107,7 @@ def get_hr_bi_orchestrator():
         gap_service=GapService(metadata_service=metadata),
         response_builder=ResponseBuilder(metadata_service=metadata),
         ollama_client=ollama_client,
-        default_model=get_active_model(),
+        default_model=model_name or get_active_model(),
         default_execute_sql=settings.default_execute_sql,
         current_shamsi_year=settings.current_shamsi_year,
         strict_metadata=True,
@@ -107,3 +115,8 @@ def get_hr_bi_orchestrator():
         use_controlled_dynamic=settings.use_controlled_dynamic,
         force_llm_for_incomplete_template=settings.force_llm_for_incomplete_template,
     )
+
+
+@lru_cache(maxsize=1)
+def get_hr_bi_orchestrator():
+    return build_hr_bi_orchestrator()

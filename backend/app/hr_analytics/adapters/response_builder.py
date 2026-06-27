@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from app.core.constants import MIN_GROUP_SIZE_FLOOR
+from app.core.sensitive_columns import SENSITIVE_COLUMNS_FLOOR, resolve_sensitive_columns
 from app.infrastructure.metadata.service import get_metadata_service
 
 """
@@ -119,25 +120,19 @@ DEFAULT_STATUS_TEMPLATES: dict[str, JsonDict] = {
     },
 }
 
-DEFAULT_SENSITIVE_COLUMNS = {
-    "national_id",
-    "personnel_number",
-    "first_name",
-    "last_name",
-    "full_name",
-    "phone_number",
-    "mobile",
-    "address",
-    "bank_account",
-    "insurance_number",
-    "personal_identifier",
-    "salary",
-    "wage",
-    "birth_date",  # should not be exposed at row level
-    "hire_date",  # should not be exposed at row level
+# Raw date columns are sensitive at row level (they pinpoint individuals) but,
+# unlike the PII floor, are legitimately aggregated upstream (e.g. hire_year), so
+# they are a response-builder-only addition rather than part of the shared floor.
+ROW_LEVEL_DATE_COLUMNS = {
+    "birth_date",
+    "hire_date",
     "contract_start_date",
     "contract_end_date",
 }
+
+# Canonical PII/financial floor (single source) plus this builder's row-level
+# date suppression. Metadata may widen it further in _sanitize_rows.
+DEFAULT_SENSITIVE_COLUMNS = set(SENSITIVE_COLUMNS_FLOOR) | ROW_LEVEL_DATE_COLUMNS
 
 IDENTIFIER_COLUMNS = {
     "employee_id",
@@ -861,10 +856,9 @@ class ResponseBuilder:
     def _sanitize_rows(
         self, rows: list[JsonDict], *, metadata: Any | None
     ) -> tuple[list[JsonDict], list[str]]:
-        sensitive = set(DEFAULT_SENSITIVE_COLUMNS)
-        if metadata is not None:
-            with _suppress_exceptions():
-                sensitive.update(str(col) for col in metadata.get_sensitive_columns())
+        # Single source: floor + metadata additions (fail-safe, logged), plus the
+        # row-level date columns this builder suppresses on top of the PII floor.
+        sensitive = resolve_sensitive_columns(metadata) | ROW_LEVEL_DATE_COLUMNS
 
         allowed_output_columns: set[str] | None = None
         if metadata is not None:

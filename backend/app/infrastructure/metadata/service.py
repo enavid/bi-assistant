@@ -4,7 +4,7 @@ import json
 import logging
 import os
 import re
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from copy import deepcopy
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -1004,6 +1004,59 @@ def reload_metadata(
 ) -> MetadataService:
     """Force reload metadata files from disk."""
     return get_metadata_service(reload=True, metadata_dir=metadata_dir, strict=strict)
+
+
+def resolve_metadata_service(
+    injected: Any | None,
+    *,
+    local_dir: Path | None = None,
+    probe_files: Sequence[str] = (),
+) -> Any:
+    """Resolve the metadata service a pipeline step should use.
+
+    This is the single place the default (non-injected) metadata service is
+    constructed, so pipeline steps depend on the ``IMetadataService`` abstraction
+    and never instantiate the concrete service themselves (Dependency Inversion).
+
+    - DI path: an ``injected`` service is returned unchanged.
+    - Default path: the process-wide singleton is used; if it is unhealthy and a
+      sibling metadata bundle is present next to the caller (``local_dir`` +
+      ``probe_files``), a local-directory service is built as a fallback.
+
+    Every failure is logged (financial-grade auditability) rather than swallowed,
+    and the function always returns a usable service — never raising past the
+    caller for a degraded-metadata condition.
+    """
+    if injected is not None:
+        return injected
+
+    service = get_metadata_service(strict=False)
+    try:
+        health = service.health_check().to_dict() if hasattr(service, "health_check") else {}
+    except Exception:
+        logger.warning("Metadata health check failed; using default singleton as-is", exc_info=True)
+        return service
+
+    if health.get("ok"):
+        return service
+
+    if local_dir is not None and any((local_dir / name).exists() for name in probe_files):
+        try:
+            return MetadataService(metadata_dir=local_dir, strict=False)
+        except Exception:
+            logger.warning(
+                "Local metadata fallback in %s failed; using default singleton",
+                local_dir,
+                exc_info=True,
+            )
+            return service
+
+    logger.warning(
+        "Default metadata service reports unhealthy and no local fallback bundle "
+        "was found (local_dir=%s); proceeding with the degraded singleton",
+        local_dir,
+    )
+    return service
 
 
 # ---------------------------------------------------------------------------

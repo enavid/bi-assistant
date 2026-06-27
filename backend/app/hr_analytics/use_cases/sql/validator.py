@@ -8,6 +8,8 @@ from pathlib import Path
 from typing import Any
 
 from app.core.constants import MIN_GROUP_SIZE_FLOOR
+from app.core.sensitive_columns import SENSITIVE_COLUMNS_FLOOR, resolve_sensitive_columns
+from app.hr_analytics.use_cases.sql.ast_guard import analyze_sql
 from app.infrastructure.metadata.service import get_metadata_service
 
 """
@@ -59,6 +61,8 @@ class SQLValidatorConfig:
     minimum_group_size: int = MIN_GROUP_SIZE_FLOOR
     reject_sql_comments: bool = True
     source_name: str = "sql_validator"
+    # Additive AST parse-tree guard (defense in depth) on top of the regex checks.
+    enable_ast_guard: bool = True
 
 
 @dataclass
@@ -174,26 +178,9 @@ class SQLValidator:
         "pg_catalog",
     }
 
-    DEFAULT_SENSITIVE_COLUMNS = {
-        "national_id",
-        "personnel_number",
-        "first_name",
-        "last_name",
-        "full_name",
-        "phone_number",
-        "mobile",
-        "address",
-        "bank_account",
-        "insurance_number",
-        "birth_certificate_number",
-        "personal_identifier",
-        "email",
-        "salary",
-        "base_salary",
-        "iban",
-        "medical_record",
-        "disciplinary_record",
-    }
+    # Canonical, non-weakenable floor (see app.core.sensitive_columns). Metadata
+    # may widen this set via _load_sensitive_columns; it can never shrink it.
+    DEFAULT_SENSITIVE_COLUMNS = SENSITIVE_COLUMNS_FLOOR
 
     RAW_DATE_COLUMNS = {
         "birth_date",
@@ -304,6 +291,10 @@ class SQLValidator:
         issues.extend(self._validate_basic_safety(normalized_sql))
         issues.extend(self._validate_statement_type(normalized_sql))
         issues.extend(self._validate_blocked_patterns(normalized_sql))
+
+        # 2b) Independent AST parse-tree guard (defense in depth).
+        if self.config.enable_ast_guard:
+            issues.extend(self._validate_ast_structure(normalized_sql))
 
         cte_names = self._extract_cte_names(normalized_sql)
         detected_relations = self._extract_relations(normalized_sql)
@@ -1329,14 +1320,31 @@ class SQLValidator:
         except Exception:
             return self._load_allowed_columns(None)
 
+    def _validate_ast_structure(self, sql: str) -> list[SQLValidationIssue]:
+        """Parse-tree defense-in-depth guard layered on top of the regex checks.
+
+        Mirrors the structural invariants (single SELECT, allowed view only, no
+        stacked statements / set ops / SELECT *) on the sqlglot AST so that
+        subquery/CTE-based evasions the regex layer can miss are still caught.
+        """
+        result = analyze_sql(
+            sql, allowed_view=self.config.main_view, allowed_schema=self.config.schema_name
+        )
+        if result.ok:
+            return []
+        return [
+            SQLValidationIssue(
+                rule_id=violation.rule_id,
+                severity="error",
+                status="SQL_VALIDATION_FAILED",
+                message=violation.message,
+            )
+            for violation in result.violations
+        ]
+
     def _load_sensitive_columns(self, service: Any | None) -> set[str]:
-        values = set(self.DEFAULT_SENSITIVE_COLUMNS)
-        if service is not None:
-            try:
-                values.update(str(col) for col in service.get_sensitive_columns())
-            except Exception:
-                pass
-        return values
+        # Single source: floor plus metadata additions, with fail-safe logging.
+        return resolve_sensitive_columns(service)
 
     def _load_status_sql_values(self, service: Any | None) -> list[str]:
         values = [
