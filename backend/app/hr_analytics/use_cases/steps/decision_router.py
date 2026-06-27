@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import re
 import time
 from collections.abc import Mapping
@@ -9,6 +10,8 @@ from pathlib import Path
 from typing import Any
 
 from app.infrastructure.metadata.service import MetadataService, get_metadata_service
+
+logger = logging.getLogger(__name__)
 
 """
 router.py
@@ -868,12 +871,23 @@ class DecisionRouter:
     def _build_policy_hints(
         self, *, user_role: str, intent_result: JsonDict, service: Any
     ) -> JsonDict:
-        min_group_size = 5
-        try:
-            if service and hasattr(service, "get_min_group_size"):
-                min_group_size = int(service.get_min_group_size(default=5))
-        except Exception:
-            min_group_size = 5
+        default_min_group_size = 5
+        min_group_size = default_min_group_size
+        if service and hasattr(service, "get_min_group_size"):
+            try:
+                min_group_size = int(service.get_min_group_size(default=default_min_group_size))
+            except Exception as exc:
+                # The k-anonymity threshold is a privacy/compliance control. If it
+                # cannot be read from metadata we must still fail safe to the
+                # default, but the fallback has to be auditable — never silent.
+                logger.warning(
+                    "Could not read min_group_size from metadata; "
+                    "falling back to default=%s. error=%s",
+                    default_min_group_size,
+                    exc,
+                    exc_info=True,
+                )
+                min_group_size = default_min_group_size
 
         route = str(intent_result.get("route") or "").upper()
         output_type = str(intent_result.get("output_type") or "")

@@ -6,6 +6,7 @@ Fallback. Only handles known filter columns with safe scalar values.
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 JsonDict = dict[str, Any]
@@ -32,7 +33,14 @@ _SKIP_SOURCES: frozenset[str] = frozenset({"default_rule"})
 
 
 def _col_in_sql(col: str, sql: str) -> bool:
-    return col.upper() in sql.upper()
+    """True only when `col` appears as a standalone column token in `sql`.
+
+    A plain substring check matched `age` inside `AVERAGE`, `PERCENTAGE`, or
+    `age_group_title` and `province` inside `province_name`, which silently
+    dropped the user's filter (the count was then computed without it). Word
+    boundaries make the match token-accurate.
+    """
+    return re.search(rf"\b{re.escape(col)}\b", sql, flags=re.IGNORECASE) is not None
 
 
 def _build_clause(f: dict) -> str | None:

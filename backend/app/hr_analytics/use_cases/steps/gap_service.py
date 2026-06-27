@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
+import logging
 import os
 import re
 import time
@@ -14,6 +15,8 @@ from threading import Lock
 from typing import Any
 
 from app.infrastructure.metadata.service import get_metadata_service
+
+logger = logging.getLogger(__name__)
 
 """
 gap_service.py
@@ -483,7 +486,16 @@ class GapService:
             record = saved_record
             gap_logged = True
         except Exception as exc:
-            # The orchestrator should continue safely even when registry persistence fails.
+            # The orchestrator should continue safely even when registry persistence
+            # fails, but a lost write to the gap audit ledger is a data-integrity
+            # event and must be logged loudly, not just signalled in the payload.
+            logger.error(
+                "Failed to persist gap record to audit registry path=%s gap_id=%s error=%s",
+                self.registry_path,
+                getattr(record, "gap_id", None),
+                exc,
+                exc_info=True,
+            )
             return self._response_payload(
                 record=record,
                 gap_logged=False,
@@ -919,7 +931,15 @@ class GapService:
                             data = json.loads(line)
                             record = GapRecord(**filter_gap_record_fields(data))
                             self._cache_by_id[record.gap_id] = record
-                        except Exception:
+                        except Exception as exc:
+                            # A corrupt ledger line is dropped so loading can proceed,
+                            # but silently losing an audit record is itself a finding.
+                            logger.warning(
+                                "Skipping corrupt gap registry line %d in %s: %s",
+                                i + 1,
+                                self.registry_path,
+                                exc,
+                            )
                             continue
             self._loaded = True
 
@@ -946,10 +966,29 @@ class GapService:
                 self._cache_by_id[record.gap_id] = saved
 
             if self.config.persist_to_jsonl:
-                self.registry_path.parent.mkdir(parents=True, exist_ok=True)
-                with self.registry_path.open("a", encoding="utf-8") as fh:
-                    fh.write(json.dumps(saved.to_dict(), ensure_ascii=False, sort_keys=True) + "\n")
+                self._rewrite_registry()
             return saved, duplicate_of
+
+    def _rewrite_registry(self) -> None:
+        """Atomically rewrite the whole JSONL ledger from the in-memory cache.
+
+        Appending one fresh line per occurrence left multiple stale lines for the
+        same gap_id, so the persisted occurrence_count drifted from the in-memory
+        value and the file grew without bound. Rewriting in place keeps exactly
+        one line per gap and guarantees persisted state == in-memory state.
+
+        The caller (`_save_record`) holds ``self._lock``; the write goes to a
+        temp file and is swapped in with ``os.replace`` so a crash mid-write can
+        never leave a truncated ledger.
+        """
+        self.registry_path.parent.mkdir(parents=True, exist_ok=True)
+        tmp_path = self.registry_path.with_name(self.registry_path.name + ".tmp")
+        with tmp_path.open("w", encoding="utf-8") as fh:
+            for record in self._cache_by_id.values():
+                fh.write(json.dumps(record.to_dict(), ensure_ascii=False, sort_keys=True) + "\n")
+            fh.flush()
+            os.fsync(fh.fileno())
+        os.replace(tmp_path, self.registry_path)
 
     def _make_gap_id(self, normalized_question: str, intent: Any, gap_code: Any) -> str:
         base = "|".join(

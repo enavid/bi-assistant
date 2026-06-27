@@ -11,6 +11,16 @@ _SKIP_SOURCES = {"default_rule"}
 _COUNT_FUNCS = {"COUNT"}
 
 
+def _column_present(col: str, sql_upper: str) -> bool:
+    """True only when `col` appears as a standalone token in the SQL.
+
+    A plain substring check counted `age` as present inside `age_group_title`
+    or `province` inside `province_name`, so coverage reported COMPLETE for SQL
+    that silently dropped the user's real filter. Word boundaries fix that.
+    """
+    return re.search(rf"\b{re.escape(col)}\b", sql_upper, flags=re.IGNORECASE) is not None
+
+
 @dataclass
 class CoverageResult:
     is_complete: bool
@@ -40,7 +50,7 @@ def validate_coverage(intent_result: dict, sql: str) -> CoverageResult:
             continue
         if f.get("source") in _SKIP_SOURCES:
             continue
-        if col.upper() not in sql_upper:
+        if not _column_present(col, sql_upper):
             missing.append(f"filter:{col}")
 
     # --- group_by ---
@@ -48,7 +58,7 @@ def validate_coverage(intent_result: dict, sql: str) -> CoverageResult:
         col = g if isinstance(g, str) else (g.get("column", "") if isinstance(g, dict) else "")
         if not col:
             continue
-        if col.upper() not in sql_upper:
+        if not _column_present(col, sql_upper):
             missing.append(f"group_by:{col}")
 
     # --- metrics — only non-COUNT aggregate functions ---

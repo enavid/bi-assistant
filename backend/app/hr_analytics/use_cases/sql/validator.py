@@ -717,10 +717,36 @@ class SQLValidator:
                 )
         return issues
 
+    _ACTIVE_FILTER_PATTERN = re.compile(
+        r"\bv\s*\.\s*is_active\s*=\s*(TRUE|'true'|1)\b", flags=re.IGNORECASE
+    )
+    _WHERE_CLAUSE_TERMINATORS = ("GROUP BY", "ORDER BY", "HAVING", "LIMIT", "WINDOW")
+
+    @classmethod
+    def _has_active_filter_in_where(cls, sql: str) -> bool:
+        """True only when v.is_active = TRUE appears as a real filter in WHERE.
+
+        A textual match anywhere in the statement is not enough: a projected
+        expression such as `(v.is_active = TRUE) AS flag` in the SELECT list
+        would satisfy a naive check while the query actually runs with no
+        active-employee filter. We scope the match to the WHERE clause body so
+        the guard enforces what it claims.
+        """
+        where_match = re.search(r"\bWHERE\b", sql, flags=re.IGNORECASE)
+        if not where_match:
+            return False
+        where_region = sql[where_match.end() :]
+        end = len(where_region)
+        for keyword in cls._WHERE_CLAUSE_TERMINATORS:
+            terminator = re.search(rf"\b{keyword}\b", where_region, flags=re.IGNORECASE)
+            if terminator:
+                end = min(end, terminator.start())
+        return cls._ACTIVE_FILTER_PATTERN.search(where_region[:end]) is not None
+
     def _validate_active_filter(self, sql: str) -> list[SQLValidationIssue]:
         if not self.config.require_active_filter:
             return []
-        if re.search(r"\bv\s*\.\s*is_active\s*=\s*(TRUE|'true'|1)\b", sql, flags=re.IGNORECASE):
+        if self._has_active_filter_in_where(sql):
             return []
         return [
             SQLValidationIssue(

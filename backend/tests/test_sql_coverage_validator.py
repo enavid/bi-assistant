@@ -354,3 +354,44 @@ def test_status_field_matches_is_complete():
     sql = _BASE_SQL + " AND v.gender = 'زن'"
     result_ok = validate_coverage(intent, sql)
     assert result_ok.status == "COMPLETE"
+
+
+# ---------------------------------------------------------------------------
+# Substring false-positive (data-integrity bug 1.2)
+# ---------------------------------------------------------------------------
+
+
+def test_age_filter_not_satisfied_by_age_group_title_substring():
+    """A requested `age` filter must be flagged missing when the SQL only
+    contains `age_group_title` — the substring 'age' must not count as the
+    real `v.age` filter, otherwise coverage reports COMPLETE for SQL that
+    silently drops the user's age constraint."""
+    sql = (
+        "SELECT v.age_group_title, COUNT(v.employee_id) AS employee_count "
+        "FROM hr_mvp.vw_hr_employee_analytics v "
+        "WHERE v.is_active = TRUE "
+        "GROUP BY v.age_group_title"
+    )
+    intent = _intent(filters=[_active_filter(), {"column": "age", "operator": ">=", "value": 30}])
+    result = validate_coverage(intent, sql)
+    assert result.is_complete is False
+    assert any("age" in m for m in result.missing)
+
+
+def test_province_filter_not_satisfied_by_province_name_substring():
+    """`province` must be flagged missing when only `province_name` is present."""
+    sql = _BASE_SQL + " AND v.province_name = 'تهران'"
+    intent = _intent(
+        filters=[_active_filter(), {"column": "province", "operator": "=", "value": "تهران"}]
+    )
+    result = validate_coverage(intent, sql)
+    assert result.is_complete is False
+    assert any("province" in m for m in result.missing)
+
+
+def test_group_by_age_group_title_substring_does_not_satisfy_age():
+    """A group_by on `age` must not be satisfied by `age_group_title`."""
+    sql = _BASE_SQL + " GROUP BY v.age_group_title"
+    intent = _intent(group_by=["age"])
+    result = validate_coverage(intent, sql)
+    assert result.is_complete is False

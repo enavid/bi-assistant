@@ -703,16 +703,36 @@ class QueryExecutor:
     # ------------------------------------------------------------------
 
     def _configure_dbapi_cursor(self, cursor: Any) -> None:
-        # PostgreSQL-specific hardening. If the DB is not PostgreSQL, failures are ignored.
+        # PostgreSQL-specific hardening. A failure here is non-fatal (the DB may
+        # not be PostgreSQL), but it must be logged: if read-only / statement
+        # timeout did not take effect, the query runs with weaker guarantees and
+        # an operator needs to know.
         if self.config.read_only_transaction:
-            with suppress(Exception):
-                cursor.execute("SET LOCAL TRANSACTION READ ONLY")
-        with suppress(Exception):
-            cursor.execute("SET LOCAL statement_timeout = %s", (self.config.statement_timeout_ms,))
-        with suppress(Exception):
-            cursor.execute(
+            self._apply_hardening(
+                "read-only transaction",
+                lambda: cursor.execute("SET LOCAL TRANSACTION READ ONLY"),
+            )
+        self._apply_hardening(
+            "statement_timeout",
+            lambda: cursor.execute(
+                "SET LOCAL statement_timeout = %s", (self.config.statement_timeout_ms,)
+            ),
+        )
+        self._apply_hardening(
+            "idle_in_transaction_session_timeout",
+            lambda: cursor.execute(
                 "SET LOCAL idle_in_transaction_session_timeout = %s",
                 (self.config.statement_timeout_ms + 2_000,),
+            ),
+        )
+
+    @staticmethod
+    def _apply_hardening(name: str, action: Callable[[], Any]) -> None:
+        try:
+            action()
+        except Exception as exc:
+            logger.warning(
+                "Session hardening '%s' did not take effect: %s", name, exc, exc_info=True
             )
 
     def _configure_sqlalchemy_connection(self, conn: Any) -> None:
@@ -721,31 +741,45 @@ class QueryExecutor:
         except Exception:  # pragma: no cover
             return
         if self.config.read_only_transaction:
-            with suppress(Exception):
-                conn.execute(text("SET LOCAL TRANSACTION READ ONLY"))
-        with suppress(Exception):
-            conn.execute(
-                text(f"SET LOCAL statement_timeout = {int(self.config.statement_timeout_ms)}")
+            self._apply_hardening(
+                "read-only transaction",
+                lambda: conn.execute(text("SET LOCAL TRANSACTION READ ONLY")),
             )
-        with suppress(Exception):
-            conn.execute(
+        self._apply_hardening(
+            "statement_timeout",
+            lambda: conn.execute(
+                text(f"SET LOCAL statement_timeout = {int(self.config.statement_timeout_ms)}")
+            ),
+        )
+        self._apply_hardening(
+            "idle_in_transaction_session_timeout",
+            lambda: conn.execute(
                 text(
                     f"SET LOCAL idle_in_transaction_session_timeout = {int(self.config.statement_timeout_ms + 2000)}"
                 )
-            )
+            ),
+        )
 
     async def _configure_asyncpg_connection(self, conn: Any) -> None:
+        async def _apply(name: str, statement: str) -> None:
+            try:
+                await conn.execute(statement)
+            except Exception as exc:
+                logger.warning(
+                    "Session hardening '%s' did not take effect: %s", name, exc, exc_info=True
+                )
+
         if self.config.read_only_transaction:
-            with suppress(Exception):
-                await conn.execute("SET LOCAL TRANSACTION READ ONLY")
-        with suppress(Exception):
-            await conn.execute(
-                f"SET LOCAL statement_timeout = {int(self.config.statement_timeout_ms)}"
-            )
-        with suppress(Exception):
-            await conn.execute(
-                f"SET LOCAL idle_in_transaction_session_timeout = {int(self.config.statement_timeout_ms + 2000)}"
-            )
+            await _apply("read-only transaction", "SET LOCAL TRANSACTION READ ONLY")
+        await _apply(
+            "statement_timeout",
+            f"SET LOCAL statement_timeout = {int(self.config.statement_timeout_ms)}",
+        )
+        await _apply(
+            "idle_in_transaction_session_timeout",
+            f"SET LOCAL idle_in_transaction_session_timeout = "
+            f"{int(self.config.statement_timeout_ms + 2000)}",
+        )
 
     def _sqlalchemy_connect_args(self) -> JsonDict:
         # asyncpg does not accept application_name via connect_args; use normalized sync URL instead.

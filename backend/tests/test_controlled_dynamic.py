@@ -332,3 +332,51 @@ def test_patches_province_filter_coverage_guided():
 
     assert result["status"] == "OK"
     assert "اصفهان" in result["sql"]
+
+
+# ---------------------------------------------------------------------------
+# Substring false-positive (data-integrity bug 1.1)
+# ---------------------------------------------------------------------------
+
+_BASE_AGE_GROUP_SQL = """\
+SELECT v.age_group_title, COUNT(v.employee_id) AS employee_count
+FROM hr_mvp.vw_hr_employee_analytics v
+WHERE v.is_active = TRUE
+GROUP BY v.age_group_title
+ORDER BY employee_count DESC"""
+
+
+def test_age_filter_not_dropped_when_age_group_title_present():
+    """`age` must NOT be considered present just because `age_group_title`
+    contains the substring 'age'. The age filter must still be injected,
+    otherwise the count is silently computed without the user's age filter."""
+    intent = {
+        "filters": [
+            {"column": "is_active", "operator": "=", "value": True, "source": "default_rule"},
+            {"column": "age", "operator": ">=", "value": 30},
+        ]
+    }
+    result = apply_controlled_dynamic(_BASE_AGE_GROUP_SQL, intent)
+
+    assert result["status"] == "OK", f"Expected OK, got: {result}"
+    assert "v.age >= 30" in result["sql"]
+    assert "v.age >= 30" in result["patches_applied"]
+
+
+def test_province_filter_not_dropped_when_province_name_present():
+    """`province` and `province_name` are distinct columns. A `province` filter
+    must still be injected when only `province_name` is present in the SQL."""
+    sql_with_province_name = _BASE_COUNT_SQL.replace(
+        "WHERE v.is_active = TRUE",
+        "WHERE v.is_active = TRUE\n  AND v.province_name = 'تهران'",
+    )
+    intent = {
+        "filters": [
+            {"column": "province", "operator": "=", "value": "تهران"},
+        ]
+    }
+    result = apply_controlled_dynamic(sql_with_province_name, intent)
+
+    assert result["status"] == "OK", f"Expected OK, got: {result}"
+    assert "v.province = 'تهران'" in result["sql"]
+    assert "v.province = 'تهران'" in result["patches_applied"]
