@@ -11,7 +11,18 @@ from typing import Any
 
 from app.core.persian_normalizer import normalize as _shared_normalize
 from app.hr_analytics.domain.interfaces import IMetadataService
+from app.hr_analytics.use_cases.steps.intent_rules import (
+    RuleContext,
+)
+from app.hr_analytics.use_cases.steps.intent_rules import (
+    evaluate as evaluate_manual_rules,
+)
 from app.hr_analytics.use_cases.steps.intent_scoring import score_to_confidence
+from app.hr_analytics.use_cases.steps.payload_builders import (
+    PayloadContext,
+    PayloadState,
+    build_payload,
+)
 from app.infrastructure.metadata.service import resolve_metadata_service
 
 """
@@ -1273,638 +1284,16 @@ class IntentParser:
     def _manual_intent_rules(
         self, question: str, f: JsonDict, service: Any
     ) -> list[tuple[str, float, str]]:
-        rules: list[tuple[str, float, str]] = []
-        add = rules.append
+        return evaluate_manual_rules(self._make_rule_context(question, f, service))
 
-        if f.get("asks_individual"):
-            add(("individual_employee_info", 100, "sensitive_or_individual_request"))
-
-        # Annual trend of contract-end Shamsi years. Only the derived year is
-        # exposed (via hr_mvp.shamsi_year()), never the exact date — checked
-        # before the plain "ending soon" count rule so "روند" wins.
-        if (
-            self._has_any(question, ["قرارداد"])
-            and self._has_any(question, ["روند"])
-            and self._has_any(
-                question, ["پایان قرارداد", "تموم میشه", "تموم میشود", "اتمام قرارداد"]
-            )
-        ):
-            add(("contract_ending_trend_annual", 92, "contract_ending_trend"))
-
-        # Aggregate count of contracts ending soon. contract_end_date is used
-        # only as a WHERE filter (never SELECTed/grouped), so this stays
-        # compliant with the "filter_only_if_explicit_and_safe" validator rule.
-        if self._has_any(question, ["قرارداد"]) and self._has_any(
-            question,
-            ["تموم میشه", "تموم میشود", "تمدید", "پایان قرارداد", "اتمام قرارداد"],
-        ):
-            add(("employee_count_contract_ending_soon", 90, "contract_ending_soon"))
-
-        # Aggregate count by Shamsi birth/hire month or season. hire_date/birth_date
-        # are used only as a WHERE filter (via hr_mvp.shamsi_month()), never
-        # SELECTed or grouped directly.
-        _month_range = _extract_shamsi_month_range(question)
-        if _month_range is not None:
-            if self._has_any(question, ["متولد", "تولد", "به دنیا"]):
-                add(("employee_count_by_birth_month", 90, "birth_month_filter"))
-            elif self._has_any(question, ["استخدام", "جذب"]):
-                add(("employee_count_by_hire_month", 90, "hire_month_filter"))
-        elif self._has_any(question, ["ماه گذشته", "ماه پیش"]) and self._has_any(
-            question, ["استخدام", "جذب"]
-        ):
-            # No specific month named ("ماه گذشته"/"ماه پیش") — compute the
-            # range dynamically relative to CURRENT_DATE via
-            # hr_mvp.shamsi_to_gregorian(), the reverse of shamsi_month()/year().
-            add(("employee_count_hired_last_month", 90, "hired_last_month"))
-
-        if f.get("explicit_city"):
-            add(("city_level_analysis", 90, "city_level_data_gap"))
-
-        if self._has_any(question, ["جذب عمومی", "آزمون استخدامی", "منبع جذب"]):
-            add(("public_recruitment_channel_analysis", 92, "no_hire_source_column"))
-        _terminated_terms = [
-            "اخراج",
-            "اخراجی",
-            "اخراج شده",
-            "اخراجی‌ها",
-            "غیرفعال",
-            "ترک خدمت",
-            "ترک کرده",
-            "پایان کار",
-            "خروج از سازمان",
-            "بازنشستگان",
-        ]
-        _near_retirement_indicators = [
-            "آستانه بازنشستگی",
-            "نزدیک بازنشستگی",
-            "در شرف بازنشستگی",
-            "بازنشسته می‌شوند",
-            "بازنشسته میشوند",
-            "بازنشسته می‌شود",
-            "بازنشسته میشود",
-            "بازنشسته خواهند",
-            "سال آینده بازنشسته",
-            "ریسک بازنشستگی",
-            "به زودی بازنشسته",
-        ]
-        if self._has_any(question, _terminated_terms) or (
-            "بازنشسته" in question and not self._has_any(question, _near_retirement_indicators)
-        ):
-            add(("terminated_employee_analysis", 200, "terminated_employee_data_gap"))
-        if self._has_any(
-            question,
-            ["آستانه بازنشستگی", "نزدیک بازنشستگی", "در شرف بازنشستگی", "بازنشستگی قریب"],
-        ):
-            add(("near_retirement_analysis", 300, "near_future_retirement_keywords"))
-        if self._has_any(
-            question, ["بازنشستگی", "بازنشسته می‌شوند", "بازنشسته میشوند", "بازنشسته خواهند"]
-        ):
-            add(("near_retirement_analysis", 90, "retirement_keywords"))
-        if self._has_any(question, ["بهره وری پیمانکار", "بهره وری پیمانکاری", "عملکرد پیمانکار"]):
-            add(("contractor_productivity_analysis", 90, "contractor_productivity_gap"))
-        if self._has_any(
-            question,
-            ["افزایش کار", "رشد کار", "حجم کار", "گسترش سازمان", "رشد سازمان", "توسعه سازمان"],
-        ):
-            add(("hiring_business_growth_alignment", 80, "business_growth_data_gap"))
-        if "متناسب" in question and self._has_any(question, ["جذب", "استخدام"]):
-            add(("hiring_business_growth_alignment", 75, "growth_alignment_gap"))
-        if self._has_any(question, ["سالخوردگی", "پیر شدن", "به سمت سالخوردگی"]):
-            add(("workforce_aging_trend_analysis", 80, "aging_analysis_gap"))
-        if self._has_any(question, ["نیاز آموزشی", "دوره تخصصی", "کمبود تخصص"]):
-            add(("education_training_need_analysis", 80, "training_need_gap"))
-        if self._has_any(question, ["ثبات سازمان", "ثبات شغلی", "ثبات نیروی انسانی"]):
-            # High score overrides employment_type/contract routing that fires on the
-            # same vocabulary ("رسمی/پیمانی").
-            add(("employment_stability_impact_analysis", 200, "employment_stability_gap"))
-
-        # Very common HR statistical intents.
-        if self._has_any(
-            question,
-            [
-                "تعداد کل کارکنان",
-                "کل کارکنان",
-                "کل پرسنل",
-                "چند نفر نیرو داریم",
-                "تعداد پرسنل فعال",
-            ],
-        ):
-            add(("total_employee_count", 60, "total_headcount_phrase"))
-
-        if f.get("explicit_gender"):
-            if f.get("explicit_department"):
-                add(("employee_count_by_department_gender", 88, "department_gender_2d"))
-            elif f.get("asks_percentage") and not self._has_any(
-                question, ["زن و مرد", "تفکیک جنسیت"]
-            ):
-                add(("gender_percentage", 65, "gender_percentage_phrase"))
-            elif f.get("explicit_age") and f.get("age_filter"):
-                # Boost to 65 (above age_filter=60) only when gender is the primary
-                # dimension ("به تفکیک جنسیت", "زن و مرد") — not a single-gender filter
-                # like "چند زن زیر ۳۰" where age_filter is the right intent.
-                if self._has_any(question, ["تفکیک جنسیت", "به تفکیک جنس", "زن و مرد"]):
-                    add(("employee_count_by_gender_age_filter", 65, "gender_age_filter_dim"))
-                else:
-                    add(("employee_count_by_gender_age_filter", 55, "gender_age_filter"))
-            else:
-                add(("employee_count_by_gender", 45, "gender_distribution"))
-
-        # Combined "youngest AND oldest" wording — must win over the separate
-        # max_age/min_age rules below, which would otherwise only answer half
-        # of a question like "جوان‌ترین و مسن‌ترین کارکنان چند ساله‌اند؟".
-        if self._has_any(
-            question,
-            [
-                "جوان‌ترین و مسن‌ترین",
-                "جوان ترین و مسن ترین",
-                "مسن‌ترین و جوان‌ترین",
-                "مسن ترین و جوان ترین",
-                "حداقل و حداکثر سن",
-                "حداکثر و حداقل سن",
-                "کمترین و بیشترین سن",
-                "بیشترین و کمترین سن",
-            ],
-        ):
-            add(("age_min_max", 96, "age_min_max_combined"))
-
-        if f.get("asks_median") and f.get("explicit_age"):
-            add(("median_age", 92, "median_age"))
-        elif f.get("asks_average") and f.get("explicit_age"):
-            if f.get("explicit_department"):
-                add(("avg_age_by_department", 85, "avg_age_by_department"))
-            else:
-                # Boost to beat contractor_share (75) when question asks avg age of contractors
-                add(("average_age", 92, "average_age"))
-        # "مسن‌ترین"/"پیرترین" (oldest) and "جوان‌ترین"/"کم‌سن‌ترین" (youngest) are
-        # synonyms for asks_most/asks_least that are specific to age and were
-        # previously only caught by weak catalog trigger/example-overlap scoring
-        # (score ~7), making max_age/min_age fragile to small phrasing changes.
-        # Recognizing them directly as a manual rule (score 75) makes routing
-        # robust, matching the precision of every other rule in this method.
-        _oldest_age_terms = ["مسن‌ترین", "مسن ترین", "پیرترین"]
-        _youngest_age_terms = [
-            "جوان‌ترین",
-            "جوان ترین",
-            "جوون‌ترین",
-            "جوون ترین",
-            "کم‌سن‌ترین",
-            "کم سن ترین",
-        ]
-        # Domain/department-scoped questions (e.g. "پیرترین حوزه از نظر کارکنان
-        # کدومه؟") ask which org unit has the oldest workforce — a different
-        # intent (employee_count_by_age_filter) than the single global max/min
-        # age value this rule answers, so they are excluded here.
-        if (
-            (f.get("asks_most") or self._has_any(question, _oldest_age_terms))
-            and f.get("explicit_age")
-            and not f.get("age_filter")
-            and not f.get("explicit_service_domain")
-            and not f.get("explicit_department")
-        ):
-            if self._has_any(question, ["گروه سنی", "رنج سنی", "بازه سنی"]):
-                add(("most_populated_age_group", 90, "most_age_group"))
-            else:
-                add(("max_age", 75, "max_age"))
-        if (
-            (f.get("asks_least") or self._has_any(question, _youngest_age_terms))
-            and f.get("explicit_age")
-            and not f.get("age_filter")
-            and not f.get("explicit_service_domain")
-            and not f.get("explicit_department")
-        ):
-            if self._has_any(question, ["گروه سنی", "رنج سنی", "بازه سنی"]):
-                add(("least_populated_age_group", 90, "least_age_group"))
-            else:
-                add(("min_age", 75, "min_age"))
-        if f.get("asks_stddev") and f.get("explicit_age"):
-            add(("stddev_age", 80, "stddev_age"))
-        if f.get("explicit_age") and f.get("age_filter"):
-            if f.get("explicit_department"):
-                add(("employee_count_by_age_filter_by_department", 85, "age_filter_by_dept"))
-            elif (
-                f.get("explicit_education")
-                and not f.get("explicit_service_domain")
-                and not f.get("explicit_service_years")
-                and not self._has_any(question, ["به تفکیک مدرک", "چه مدرکی", "به تفکیک تحصیل"])
-            ):
-                # age_filter + education without domain: age is the primary filter dimension.
-                # Guard: education-as-grouping phrases or service_years context → education wins.
-                add(("employee_count_by_age_filter", 80, "age_filter_with_education"))
-            else:
-                add(("employee_count_by_age_filter", 60, "age_filter"))
-
-        # Age demographic vocabulary + extracted age_filter (no service_domain/employment_type):
-        # demographic label ("مسن"/"جوان") makes age the primary dimension.
-        # Guards: education-grouping phrases → education is the answer, age is just a filter.
-        #         province without "under" direction → province is the primary dimension.
-        if (
-            f.get("explicit_age_demographic")
-            and f.get("age_filter")
-            and not f.get("explicit_service_domain")
-            and not f.get("explicit_employment_type")
-            and not self._has_any(question, ["چه مدرکی", "به تفکیک مدرک", "به تفکیک تحصیل"])
-            and not (f.get("explicit_province") and not f.get("explicit_age_lt"))
-        ):
-            add(("employee_count_by_age_filter", 80, "age_demographic_filter"))
-        if f.get("explicit_age") and self._has_any(
-            question, ["گروه سنی", "کدام گروه سنی", "بازه سنی"]
-        ):
-            if f.get("asks_most") or self._has_any(question, ["پرتعداد", "پر تعداد", "پرنفر"]):
-                add(("most_populated_age_group", 90, "most_age_group_vocab"))
-            elif f.get("asks_least") or self._has_any(
-                question, ["کم‌نفر", "کم نفر", "از همه کمتر", "کمترین نیرو"]
-            ):
-                add(("least_populated_age_group", 90, "least_age_group_vocab"))
-            elif f.get("explicit_gender") and (
-                self._has_any(question, ["تفکیک جنسیت", "زن و مرد", "مرد و زن"])
-                or (
-                    self._term_in_question(question, "زن")
-                    and self._term_in_question(question, "مرد")
-                )
-            ):
-                # Both genders present → gender × age_group distribution (TPL_GENDER_BY_AGE_GROUP)
-                add(("employee_count_by_gender_age_filter", 80, "gender_by_age_group_vocab"))
-            else:
-                add(("employee_count_by_age_group", 60, "age_group"))
-
-        if f.get("explicit_education"):
-            if f.get("explicit_department"):
-                add(("employee_count_by_department_education", 88, "department_education_2d"))
-            elif f.get("explicit_service_domain"):
-                add(("education_distribution_by_service_domain", 82, "education_by_service_domain"))
-            elif (
-                f.get("asks_most")
-                or self._has_any(
-                    question,
-                    ["بیشتر داریم", "بیشتره", "بیشتر دیده", "بیشتر چه مدرک", "بیشتر چه تحصیل"],
-                )
-                or ("بیشتر" in question and "چه مدرک" in question)
-            ):
-                add(("most_common_education", 70, "most_common_education"))
-            elif (
-                f.get("asks_least")
-                or self._has_any(
-                    question, ["کمتر داریم", "کمتره", "نادرترین", "کم‌تکرارترین", "کم تکرارترین"]
-                )
-            ) and not f.get("age_filter"):
-                add(("least_common_education", 70, "least_common_education"))
-            elif (
-                self._has_any(question, ["نیاز پست", "مدرک لازم", "تحصیلات پایین"])
-                or ("پایین تر" in question and self._has_any(question, ["نیاز", "پست", "کارشناسی"]))
-                or (
-                    "پست کارشناسی" in question
-                    and self._has_any(question, ["ولی", "اما", "دیپلم", "پایین"])
-                )
-            ):
-                add(("low_education_in_expert_roles", 60, "low_education_expert_roles"))
-            else:
-                # Boost over total_employee_count (60) triggered by "کل کارکنان" in phrasing
-                add(("employee_count_by_education", 72, "education_distribution_or_filter"))
-
-        if f.get("explicit_employment_type"):
-            if f.get("explicit_department"):
-                add(("employment_type_by_department", 85, "employment_type_by_dept"))
-            elif f.get("asks_least"):
-                add(("least_populated_employment_type", 90, "least_employment_type"))
-            else:
-                add(("employee_count_by_employment_type", 70, "employment_type"))
-        if f.get("explicit_contract_type"):
-            if (
-                f.get("explicit_hiring")
-                or f.get("asks_recent_year")
-                or self._has_any(question, ["هر سال", "بسته شده", "سالانه"])
-            ):
-                add(("hiring_by_contract_type_recent_year", 70, "recent_hiring_contract_type"))
-            elif f.get("asks_least"):
-                add(("least_populated_contract_type", 90, "least_contract_type"))
-            else:
-                add(("employee_count_by_contract_type", 70, "contract_type"))
-        if self._has_any(question, ["رسمی", "قراردادی", "پیمانی", "شاغل در پیمانکاری"]):
-            if f.get("explicit_contract_type"):
-                add(("employee_count_by_contract_type", 35, "contract_type_value"))
-            else:
-                add(("employee_count_by_employment_type", 35, "employment_type_value"))
-
-        if f.get("explicit_contractor"):
-            if f.get("explicit_department") or self._has_any(
-                question,
-                ["در هر بخش", "در هر واحد", "به تفکیک بخش", "به تفکیک واحد", "به تفکیک دپارتمان"],
-            ):
-                add(("contractor_share_by_department", 84, "contractor_by_department"))
-            elif f.get("explicit_service_domain") or "در هر حوزه" in question:
-                add(("contractor_share_by_service_domain", 80, "contractor_by_service_domain"))
-            else:
-                add(("contractor_share", 75, "contractor_share"))
-
-        # A specific, named department/domain (e.g. "حوزه مدیر عامل", "حوزه
-        # فناوری اطلاعات") asks for a single filtered count, not the full
-        # breakdown-by-all-departments distribution.
-        _wants_breakdown = self._has_any(question, ["تفکیک", "به تفکیک"])
-        _dept_kw_match = self._extract_department_keyword_filter(question)
-        _domain_value_match = (
-            self._extract_service_domain_value(question, service)
-            if f.get("explicit_service_domain")
-            else None
+    def _make_rule_context(self, question: str, features: JsonDict, service: Any) -> RuleContext:
+        return RuleContext(
+            question=question,
+            features=features,
+            service=service,
+            parser=self,
+            month_range_fn=_extract_shamsi_month_range,
         )
-        if (
-            _dept_kw_match
-            and not _wants_breakdown
-            and not f.get("explicit_gender")
-            and not f.get("asks_gap_or_shortage")
-        ):
-            add(("employee_count_by_specific_department", 92, "specific_department_keyword"))
-        elif (
-            _domain_value_match
-            and not _wants_breakdown
-            and not f.get("explicit_gender")
-            and not f.get("asks_gap_or_shortage")
-        ):
-            add(("employee_count_by_specific_department", 91, "specific_service_domain_value"))
-
-        # Gender share/ratio per department — "سهم زنان در چه بخش‌هایی کمتر
-        # است" wants the female ratio WITHIN each department (not the share of
-        # all women across departments), sorted by direction of "کمتر"/"بیشتر".
-        if (
-            f.get("explicit_gender")
-            and f.get("explicit_department")
-            and f.get("asks_percentage")
-            and not f.get("explicit_service_domain")
-        ):
-            if "کمتر" in question:
-                add(("gender_share_by_department_lowest", 100, "gender_share_dept_lowest"))
-            elif "بیشتر" in question:
-                add(("gender_share_by_department_highest", 100, "gender_share_dept_highest"))
-            else:
-                add(("gender_share_by_department_lowest", 98, "gender_share_dept_default"))
-
-        # Largest department WITHIN each service domain — a within-group top-1
-        # (ROW_NUMBER + PARTITION BY) that the plain distribution intents cannot
-        # express. Requires both a department term and a service-domain term, a
-        # per-domain scope ("هر حوزه"), and a "largest/most" qualifier.
-        _top_per_group_terms = [
-            "پرجمعیت‌ترین",
-            "پرجمعیت ترین",
-            "بزرگ‌ترین",
-            "بزرگترین",
-            "بیشترین",
-            "پرتعدادترین",
-            "پرنفرترین",
-        ]
-        if (
-            f.get("explicit_service_domain")
-            and f.get("explicit_department")
-            and not f.get("asks_least")
-            and not f.get("asks_gap_or_shortage")
-            and not f.get("explicit_gender")
-            and not f.get("explicit_contractor")
-            and "هر حوزه" in question
-            and self._has_any(question, _top_per_group_terms)
-        ):
-            add(("top_department_per_service_domain", 95, "top_dept_per_service_domain"))
-
-        if (
-            f.get("explicit_service_domain")
-            and not f.get("explicit_contractor")
-            and not f.get("explicit_education")
-        ):
-            if f.get("asks_gap_or_shortage"):
-                add(("headcount_gap_by_service_domain", 82, "headcount_gap_service_domain"))
-            elif f.get("explicit_gender"):
-                # Gender breakdown by service domain — boost to beat gender_percentage (65)
-                add(("employee_count_by_service_domain", 85, "gender_by_service_domain"))
-            elif f.get("asks_least"):
-                # "least" must rank ascending to a single answer — the plain distribution
-                # template is ORDER BY employee_count DESC, the wrong direction for "least".
-                add(("least_populated_service_domain", 90, "least_service_domain"))
-            else:
-                add(("employee_count_by_service_domain", 60, "service_domain_distribution"))
-        if f.get("explicit_criticality_level"):
-            # criticality_level is a real column — takes priority over generic dept routing
-            add(("employee_count_by_criticality_level", 90, "criticality_level_distribution"))
-        elif f.get("explicit_department"):
-            if f.get("asks_gap_or_shortage"):
-                add(("headcount_gap_by_department", 75, "headcount_gap_department"))
-            elif f.get("asks_least"):
-                add(("least_populated_department", 90, "least_department"))
-            else:
-                add(("employee_count_by_department", 55, "department_distribution"))
-        # Only add province distribution when not already covered by a service_domain or dept filter
-        if f.get("explicit_province") and not f.get("explicit_service_domain"):
-            add(("employee_count_by_province", 60, "province_distribution"))
-
-        # Age context (demographic label, numeric filter, or explicit_age) + service_domain:
-        # the age dimension is the primary focus, service_domain is used for grouping.
-        _age_ctx = (
-            f.get("explicit_age_demographic")
-            or (f.get("age_filter") and not f.get("explicit_service_years"))
-            or (f.get("explicit_age") and not f.get("explicit_service_years"))
-        )
-        if (
-            _age_ctx
-            and f.get("explicit_service_domain")
-            and not f.get("explicit_employment_type")
-            and not f.get("explicit_education")
-            and not f.get("explicit_contractor")
-        ):
-            add(("employee_count_by_age_filter", 80, "age_context_service_domain"))
-
-        # "Under N" + province: young-worker filter wins over province grouping.
-        if (
-            f.get("explicit_age_lt")
-            and f.get("explicit_province")
-            and (f.get("age_filter") or f.get("explicit_age"))
-            and not f.get("explicit_service_years")
-            and not f.get("explicit_employment_type")
-        ):
-            add(("employee_count_by_age_filter", 75, "age_lt_province"))
-
-        if f.get("explicit_work_location"):
-            add(("employee_count_by_work_location", 55, "work_location_distribution"))
-
-        # Org chart alignment question → headcount gap vs approved chart.
-        if self._has_any(question, ["چارت سازمانی"]):
-            add(("headcount_gap_by_department", 70, "org_chart_alignment"))
-
-        # Specific org sensitivity level (e.g. "سطح ۱") → filtered total count.
-        if f.get("explicit_specific_org_level"):
-            add(("total_employee_count", 65, "specific_org_level_filter"))
-
-        # Org-level grouping dimension ("سطح سازمانی"/"سطح دپارتمان"/"سطح واحد"/...) maps to the
-        # real department_level column. Skip when explicit_criticality_level already claimed
-        # it above (criticality_level is a distinct column sharing the "سطح حساسیت" wording).
-        if f.get("explicit_org_level") and not f.get("explicit_criticality_level"):
-            if "کدوم" in question or f.get("asks_most") or f.get("asks_least"):
-                add(("employee_count_by_department_level", 95, "org_level_ranking"))
-            elif self._has_any(question, ["به کل", "از کل", "نسبت", "درصد"]):
-                add(("employee_count_by_department_level", 95, "org_level_ratio"))
-            else:
-                add(("employee_count_by_department_level", 95, "org_level_distribution"))
-
-        # Job position context (پست سازمانی, سطح پست, etc.) → grouped by position, not total count.
-        if f.get("explicit_job_position") and not f.get("explicit_education"):
-            is_ranking = "کدوم" in question or f.get("asks_most") or f.get("asks_least")
-            if "سطح پست" in question:
-                add(("employee_count_by_position_level", 65, "position_level_distribution"))
-            elif is_ranking:
-                add(("most_populated_position", 65, "job_position_ranking"))
-            else:
-                add(("employee_count_by_position", 60, "job_position_distribution"))
-
-        if f.get("hire_year_filter") is not None:
-            add(("employee_count_by_hire_year", 85, "hire_year_exact_filter"))
-
-        if f.get("explicit_hiring") and f.get("hire_year_filter") is None:
-            if f.get("explicit_monthly"):
-                add(("monthly_hiring_trend", 92, "monthly_hiring_data_gap"))
-            elif f.get("asks_last_15_years"):
-                add(("hiring_last_15_years", 85, "last_15_years_hiring"))
-            elif f.get("asks_growth_rate"):
-                add(("hiring_trend_yoy_growth", 92, "hiring_trend_yoy_growth"))
-            elif f.get("asks_most") or f.get("asks_least"):
-                add(("most_or_least_hiring_year", 75, "most_or_least_hiring_year"))
-            elif f.get("explicit_contract_type") or f.get("asks_recent_year"):
-                add(("hiring_by_contract_type_recent_year", 70, "recent_hiring_by_contract_type"))
-            else:
-                add(("hiring_trend_annual", 70, "annual_hiring_trend"))
-
-        if f.get("explicit_service_years"):
-            if f.get("service_years_filter"):
-                add(("employee_count_by_service_years_filter", 80, "service_years_range_filter"))
-            elif f.get("asks_median"):
-                add(("median_service_years", 92, "median_service_years"))
-            elif f.get("asks_zero_service"):
-                if f.get("explicit_service_domain") or f.get("explicit_department"):
-                    # "which domain has the most zero-service employees?" → rank by zero-service
-                    if f.get("asks_most") or f.get("asks_least"):
-                        add(
-                            (
-                                "employee_count_without_service_years",
-                                85,
-                                "zero_service_most_by_domain",
-                            )
-                        )
-                    # else: service_domain/department intent handles the breakdown (rec-152 pattern)
-                else:
-                    add(("employee_count_without_service_years", 80, "without_service_years"))
-            elif f.get("asks_average") and not f.get("explicit_employment_type"):
-                add(("average_service_years", 85, "average_service_years"))
-            elif f.get("asks_most") or f.get("asks_least"):
-                # "which domain has the most/least service years?" → average to rank
-                add(("average_service_years", 80, "service_years_most_least"))
-            elif f.get("explicit_gender"):
-                # gender comparison on service years → average service years per group
-                add(("average_service_years", 75, "service_years_gender_comparison"))
-            elif (
-                f.get("age_filter")
-                and not f.get("explicit_age")
-                and not f.get("explicit_age_demographic")
-            ):
-                # numeric filter extracted but age context absent → treat as service_years filter
-                add(
-                    (
-                        "employee_count_by_service_years_filter",
-                        85,
-                        "service_years_via_numeric_filter",
-                    )
-                )
-            elif self._has_any(question, ["توزیع سابقه", "توزیع سابقه خدمت", "تفکیک سابقه خدمت"]):
-                # No bucketed service_years dimension exists in the MVP view — answering
-                # with average_service_years would silently mismatch what was asked.
-                add(("service_years_distribution_analysis", 90, "service_years_distribution_gap"))
-            else:
-                add(("average_service_years", 25, "service_years_default"))
-
-        if f.get("explicit_marital"):
-            add(("employee_count_by_marital_status", 60, "marital_status"))
-
-        if f.get("asks_gap_or_shortage") and not f.get("explicit_department"):
-            add(("headcount_gap_by_department", 35, "general_headcount_gap"))
-
-        # High-confidence chart-based headcount gap phrases dominate catalog triggers.
-        _chart_gap_phrases = [
-            "چارت مصوب",
-            "نسبت به چارت",
-            "تکمیل چارت",
-            "تحقق چارت",
-            "پر شدن چارت",
-            "چارتش",
-            "چارتشون",
-        ]
-        if self._has_any(question, _chart_gap_phrases):
-            if f.get("explicit_service_domain"):
-                add(("headcount_gap_by_service_domain", 95, "chart_gap_service_domain"))
-            else:
-                add(("headcount_gap_by_department", 95, "chart_gap_department"))
-
-        # Colloquial age comparison ("they are younger/older") → average_age.
-        # Only verb/copula forms (ن suffix) to avoid matching filter adjectives
-        # like "جوان‌تر از ۳۰ سال" or "کارکنان جوان‌تر".
-        if self._has_any(question, ["جوون ترن", "جوان ترن", "مسن ترن"]):
-            add(("average_age", 80, "age_comparison_colloquial"))
-
-        # Colloquial zero-service phrasing with copula "صفره" or negation "ندارن/ندارند".
-        # Yield to service_domain/department context — those intents apply the zero-service filter.
-        if (
-            f.get("explicit_service_years")
-            and self._has_any(question, ["صفره", "ندارن", "ندارند", "ندارد", "بی سابقه"])
-            and not f.get("service_years_filter")
-            and not f.get("explicit_service_domain")
-            and not f.get("explicit_department")
-        ):
-            add(("employee_count_without_service_years", 88, "zero_service_colloquial"))
-
-        # When explicit_service_years is set and an age-like numeric filter was extracted
-        # but no service_years_filter was found, the numeric threshold is a seniority filter.
-        # This handles "باسابقه (بالای ۲۰ سال)" where extractor sees age but context is seniority.
-        if (
-            f.get("explicit_service_years")
-            and f.get("age_filter")
-            and not f.get("service_years_filter")
-        ):
-            add(("employee_count_by_service_years_filter", 88, "service_years_via_age_filter"))
-
-        # "تازه وارد" (newly joined) implies a very short service_years window → service_years_filter.
-        if "تازه وارد" in question:
-            add(("employee_count_by_service_years_filter", 85, "newly_joined_service_filter"))
-
-        # contractor + education + gender OR "به تفکیک" → education distribution, not contractor share.
-        if (
-            f.get("explicit_contractor")
-            and f.get("explicit_education")
-            and (f.get("explicit_gender") or "به تفکیک" in question)
-        ):
-            add(("employee_count_by_education", 88, "contractor_education_by_gender_or_breakdown"))
-
-        # contractor + explicit hiring context → prefer hiring intents over contractor_share.
-        # Exception: "سهم/نسبت/درصد" phrases ask for contractor SHARE of hiring → keep contractor_share.
-        _is_share_query = self._has_any(question, ["سهم", "نسبت", "درصد"])
-        if f.get("explicit_contractor") and f.get("explicit_hiring") and not _is_share_query:
-            if f.get("asks_last_15_years"):
-                add(("hiring_last_15_years", 90, "contractor_hiring_last_15"))
-            elif f.get("asks_most") or f.get("asks_least"):
-                add(("most_or_least_hiring_year", 90, "contractor_most_least_hiring_year"))
-            elif f.get("explicit_monthly"):
-                add(("monthly_hiring_trend", 88, "contractor_monthly_hiring"))
-            else:
-                add(("hiring_trend_annual", 88, "contractor_annual_hiring_trend"))
-
-        # "استخدام" keyword in non-employment-type context → hiring intents.
-        # Skip when contractor+share context: those are contractor_share questions, not hiring trends.
-        if (
-            "استخدام" in question
-            and not f.get("explicit_employment_type")
-            and not (f.get("explicit_contractor") and _is_share_query)
-        ):
-            if f.get("asks_most") or f.get("asks_least"):
-                add(("most_or_least_hiring_year", 75, "hiring_year_from_استخدام"))
-            elif f.get("asks_last_15_years"):
-                add(("hiring_last_15_years", 80, "last15_from_استخدام"))
-            elif self._has_any(question, ["هر سال", "سالانه", "روند"]):
-                add(("hiring_trend_annual", 75, "trend_from_استخدام"))
-            elif f.get("asks_recent_year") or "امسال" in question:
-                add(("hiring_by_contract_type_recent_year", 72, "recent_year_from_استخدام"))
-
-        return rules
 
     @staticmethod
     def _term_in_question(question: str, term: str) -> bool:
@@ -2030,439 +1419,38 @@ class IntentParser:
             if isinstance(semantic_result.get("group_by"), list)
             else []
         )
-        filters = self._normalize_filter_list(semantic_filters)
-        group_by = self._normalize_group_by_list(semantic_group_by)
-        params: JsonDict = {}
-        entities: JsonDict = {}
-        warnings: list[str] = []
-        order_by: list[str] = []
-        required_columns: list[str] = []
-
-        # Dimension extraction from wording.
-        gender_value = self._extract_gender_value(question)
-        education_value = self._extract_allowed_value(question, service, "education_title")
-        employment_value = self._extract_employment_value(
-            question, service, explicit_contract=False
+        state = PayloadState(
+            filters=self._normalize_filter_list(semantic_filters),
+            group_by=self._normalize_group_by_list(semantic_group_by),
         )
-        contract_value = self._extract_contract_value(question, service)
-        age_filter = query_features.get("age_filter") or self._extract_age_filter(question)
 
-        if gender_value:
-            entities["gender"] = gender_value
-        if education_value:
-            entities["education_title"] = education_value
-        if employment_value:
-            entities["employment_type"] = employment_value
-        if contract_value:
-            entities["contract_type"] = contract_value
-        if age_filter:
-            entities["age_filter"] = age_filter
+        ctx = self._make_payload_context(
+            question=question,
+            intent=intent,
+            best_intent_id=best_intent_id,
+            semantic_result=semantic_result,
+            query_features=query_features,
+            current_shamsi_year=current_shamsi_year,
+            service=service,
+        )
 
-        # Intent-specific structured output.
-        if best_intent_id == "gender_percentage":
-            params["gender_value"] = gender_value or (
-                "زن" if "زن" in question else "مرد" if "مرد" in question else None
-            )
-            if params["gender_value"]:
-                filters.append(
-                    {"column": "gender", "operator": "=", "value": params["gender_value"]}
-                )
-                required_columns.extend(["gender", "employee_id", "is_active"])
-            else:
-                warnings.append(
-                    "gender_percentage requires gender_value; fallback clarification may be needed."
-                )
+        # Dimension extraction from wording (echoed back as recognized entities).
+        entities: JsonDict = {}
+        if ctx.gender_value:
+            entities["gender"] = ctx.gender_value
+        if ctx.education_value:
+            entities["education_title"] = ctx.education_value
+        if ctx.employment_value:
+            entities["employment_type"] = ctx.employment_value
+        if ctx.contract_value:
+            entities["contract_type"] = ctx.contract_value
+        if ctx.age_filter:
+            entities["age_filter"] = ctx.age_filter
 
-        elif best_intent_id == "employee_count_by_age_filter":
-            age_params = self._age_filter_to_params(age_filter)
-            params.update(age_params)
-            if age_filter:
-                filters.append(age_filter)
-            if query_features.get("explicit_service_domain"):
-                group_by = self._ensure_group_by(group_by, "service_domain")
-                required_columns.extend(["service_domain"])
-            # A bare employment-status value (رسمی/قراردادی/پیمانی) alongside an
-            # age filter must not be silently dropped. Two such values present
-            # ("بیشتر رسمین یا قراردادی") means a comparison — group by instead
-            # of picking one as a filter.
-            _status_terms = [t for t in ("رسمی", "قراردادی", "پیمانی") if t in question]
-            if len(_status_terms) >= 2:
-                group_by = self._ensure_group_by(group_by, "employment_type")
-                required_columns.append("employment_type")
-            elif employment_value:
-                params["employment_type"] = employment_value
-                filters.append(
-                    {"column": "employment_type", "operator": "=", "value": employment_value}
-                )
-                required_columns.append("employment_type")
-            elif contract_value:
-                params["contract_type"] = contract_value
-                filters.append(
-                    {"column": "contract_type", "operator": "=", "value": contract_value}
-                )
-                required_columns.append("contract_type")
-            required_columns.extend(["age", "employee_id", "is_active"])
+        # Intent-specific structured output (one builder, or none).
+        build_payload(ctx, state)
 
-        elif best_intent_id == "employee_count_by_gender_age_filter":
-            if age_filter:
-                filters.append(age_filter)
-            group_by = self._ensure_group_by(group_by, "gender")
-            required_columns.extend(["gender", "age", "employee_id", "is_active"])
-
-        elif best_intent_id == "employee_count_by_age_group":
-            group_by = self._ensure_group_by(group_by, "age_group_title")
-            required_columns.extend(["age_group_title", "employee_id", "is_active"])
-
-        elif best_intent_id in {"most_populated_age_group", "least_populated_age_group"}:
-            group_by = self._ensure_group_by(group_by, "age_group_title")
-            required_columns.extend(["age_group_title", "employee_id", "is_active"])
-
-        elif best_intent_id == "average_age":
-            if "زن و مرد" in question or "تفکیک جنسیت" in question:
-                group_by = ["gender"]
-            elif "هر حوزه" in question or "به تفکیک حوزه" in question:
-                group_by = ["service_domain"]
-            elif self._has_any(question, ["هر دپارتمان", "هر بخش", "هر واحد", "هر اداره"]):
-                group_by = ["department_name"]
-            else:
-                group_by = []
-            # Secondary WHERE filters — kept separate from group_by dimensions
-            if query_features.get("explicit_contractor"):
-                filters.append({"column": "is_contractor", "operator": "=", "value": True})
-                required_columns.append("is_contractor")
-            if gender_value and "gender" not in group_by:
-                filters.append({"column": "gender", "operator": "=", "value": gender_value})
-                required_columns.append("gender")
-            if education_value:
-                filters.append(
-                    {"column": "education_title", "operator": "=", "value": education_value}
-                )
-                required_columns.append("education_title")
-            required_columns.extend(["age", "employee_id", "is_active", *group_by])
-
-        elif best_intent_id in {"max_age", "min_age", "stddev_age", "age_min_max", "median_age"}:
-            required_columns.extend(["age", "employee_id", "is_active"])
-
-        elif best_intent_id in {
-            "gender_share_by_department_lowest",
-            "gender_share_by_department_highest",
-        }:
-            params["gender_value"] = gender_value or "زن"
-            required_columns.extend(["department_name", "gender", "employee_id", "is_active"])
-
-        elif best_intent_id == "employee_count_by_specific_department":
-            # This is a single filtered total, never a breakdown — discard any
-            # group_by the semantic mapper proposed for the bare "حوزه"/"بخش"
-            # word (e.g. implicit_service_domain), or it leaks into coverage
-            # checking and forces an incorrect grouped-fallback SQL.
-            group_by = []
-            dept_kw_match = self._extract_department_keyword_filter(question)
-            if dept_kw_match:
-                _, dept_values = dept_kw_match
-                filters.append(
-                    {"column": "department_name", "operator": "IN", "value": list(dept_values)}
-                )
-            else:
-                domain_value = self._extract_service_domain_value(question, service)
-                if domain_value:
-                    filters.append(
-                        {"column": "service_domain", "operator": "=", "value": domain_value}
-                    )
-            required_columns.extend(["employee_id", "is_active"])
-
-        elif best_intent_id == "employee_count_by_education":
-            if education_value and not query_features.get("asks_percentage"):
-                params["education_title"] = education_value
-                filters.append(
-                    {"column": "education_title", "operator": "=", "value": education_value}
-                )
-            else:
-                group_by = self._ensure_group_by(group_by, "education_title")
-            required_columns.extend(["education_title", "employee_id", "is_active"])
-
-        elif best_intent_id in {"most_common_education", "least_common_education"}:
-            group_by = ["education_title"]
-            order_by = [
-                "employee_count DESC"
-                if best_intent_id == "most_common_education"
-                else "employee_count ASC"
-            ]
-            required_columns.extend(["education_title", "employee_id", "is_active"])
-
-        elif best_intent_id == "low_education_in_expert_roles":
-            filters.append(
-                {"column": "education_rank", "operator": "<", "value_column": "min_education_rank"}
-            )
-            required_columns.extend(
-                [
-                    "education_rank",
-                    "min_education_rank",
-                    "is_expert_role",
-                    "employee_id",
-                    "is_active",
-                ]
-            )
-
-        elif best_intent_id == "employee_count_by_employment_type":
-            if employment_value:
-                params["employment_type"] = employment_value
-                filters.append(
-                    {"column": "employment_type", "operator": "=", "value": employment_value}
-                )
-            else:
-                group_by = self._ensure_group_by(group_by, "employment_type")
-            if gender_value and not employment_value:
-                # "درصد زنان در هر نوع استخدام" — gender as a percentage dimension, not a filter
-                filters.append({"column": "gender", "operator": "=", "value": gender_value})
-                required_columns.append("gender")
-            # An age filter alongside an explicit employment_type phrase
-            # ("استخدام قراردادی زیر ۳۰ سال") must not be dropped just because
-            # the employment_type phrase won the intent race.
-            if age_filter and employment_value:
-                age_params = self._age_filter_to_params(age_filter)
-                params.update(age_params)
-                filters.append(age_filter)
-                required_columns.append("age")
-            required_columns.extend(["employment_type", "employee_id", "is_active"])
-
-        elif best_intent_id == "employee_count_by_contract_type":
-            if contract_value:
-                params["contract_type"] = contract_value
-                filters.append(
-                    {"column": "contract_type", "operator": "=", "value": contract_value}
-                )
-            else:
-                group_by = self._ensure_group_by(group_by, "contract_type")
-            required_columns.extend(["contract_type", "employee_id", "is_active"])
-
-        elif best_intent_id in {
-            "least_populated_employment_type",
-            "least_populated_contract_type",
-        }:
-            required_columns.extend(["employee_id", "is_active"])
-
-        elif best_intent_id == "employee_count_by_criticality_level":
-            group_by = self._ensure_group_by(group_by, "criticality_level")
-            required_columns.extend(["criticality_level", "employee_id", "is_active"])
-
-        elif best_intent_id == "employee_count_by_department_level":
-            group_by = self._ensure_group_by(group_by, "department_level")
-            required_columns.extend(["department_level", "employee_id", "is_active"])
-
-        elif best_intent_id == "employee_count_contract_ending_soon":
-            required_columns.extend(["contract_end_date", "employee_id", "is_active"])
-
-        elif best_intent_id == "contract_ending_trend_annual":
-            required_columns.extend(["contract_end_date", "employee_id", "is_active"])
-
-        elif best_intent_id == "employee_count_hired_last_month":
-            required_columns.extend(["hire_date", "employee_id", "is_active"])
-
-        elif best_intent_id in {"employee_count_by_birth_month", "employee_count_by_hire_month"}:
-            month_range = _extract_shamsi_month_range(question) or (1, 12)
-            params["shamsi_month_min"], params["shamsi_month_max"] = month_range
-            date_column = (
-                "birth_date" if best_intent_id == "employee_count_by_birth_month" else "hire_date"
-            )
-            required_columns.extend([date_column, "employee_id", "is_active"])
-
-        elif best_intent_id == "contractor_share":
-            filters.append(
-                {"column": "is_contractor", "operator": "=", "value": True, "scope": "numerator"}
-            )
-            required_columns.extend(["is_contractor", "employee_id", "is_active"])
-
-        elif best_intent_id == "contractor_share_by_service_domain":
-            filters.append(
-                {"column": "is_contractor", "operator": "=", "value": True, "scope": "numerator"}
-            )
-            group_by = self._ensure_group_by(group_by, "service_domain")
-            required_columns.extend(["is_contractor", "service_domain", "employee_id", "is_active"])
-
-        elif best_intent_id == "contractor_share_by_department":
-            filters.append(
-                {"column": "is_contractor", "operator": "=", "value": True, "scope": "numerator"}
-            )
-            group_by = self._ensure_group_by(group_by, "department_name")
-            required_columns.extend(
-                ["is_contractor", "department_name", "employee_id", "is_active"]
-            )
-
-        elif best_intent_id in {
-            "education_distribution_by_service_domain",
-            "education_by_service_domain",
-        }:
-            group_by = ["service_domain", "education_title"]
-            required_columns.extend(
-                ["service_domain", "education_title", "education_rank", "employee_id", "is_active"]
-            )
-
-        elif best_intent_id == "employee_count_by_service_domain":
-            group_by = self._ensure_group_by(group_by, "service_domain")
-            # Gender as WHERE filter (not group_by) so controlled_dynamic can inject it
-            if gender_value:
-                filters.append({"column": "gender", "operator": "=", "value": gender_value})
-                required_columns.append("gender")
-            elif query_features.get("explicit_gender"):
-                # "ترکیب جنسیتی هر حوزه" — no specific gender value named, so this
-                # is a composition/breakdown request, not a filter.
-                group_by = self._ensure_group_by(group_by, "gender")
-                required_columns.append("gender")
-            # Employment/contract type as WHERE filters
-            if employment_value:
-                filters.append(
-                    {"column": "employment_type", "operator": "=", "value": employment_value}
-                )
-                required_columns.append("employment_type")
-            elif contract_value:
-                filters.append(
-                    {"column": "contract_type", "operator": "=", "value": contract_value}
-                )
-                required_columns.append("contract_type")
-            if query_features.get("explicit_province"):
-                province_val = self._extract_province_value(question)
-                if province_val:
-                    filters.append({"column": "province", "operator": "=", "value": province_val})
-                    required_columns.extend(["province"])
-                    group_by = [col for col in group_by if col != "province"]
-            required_columns.extend(["service_domain", "employee_id", "is_active"])
-
-        elif best_intent_id == "employee_count_by_department":
-            group_by = self._ensure_group_by(group_by, "department_name")
-            required_columns.extend(["department_name", "employee_id", "is_active"])
-
-        elif best_intent_id == "top_department_per_service_domain":
-            group_by = ["service_domain", "department_name"]
-            required_columns.extend(
-                ["service_domain", "department_name", "employee_id", "is_active"]
-            )
-
-        elif best_intent_id == "employee_count_by_department_education":
-            group_by = ["department_name", "education_title"]
-            required_columns.extend(
-                ["department_name", "education_title", "employee_id", "is_active"]
-            )
-
-        elif best_intent_id == "employee_count_by_department_gender":
-            group_by = ["department_name", "gender"]
-            required_columns.extend(["department_name", "gender", "employee_id", "is_active"])
-
-        elif best_intent_id == "headcount_gap_by_department":
-            group_by = ["department_id", "department_name"]
-            required_columns.extend(
-                [
-                    "department_id",
-                    "department_name",
-                    "department_approved_headcount",
-                    "employee_id",
-                    "is_active",
-                ]
-            )
-
-        elif best_intent_id == "headcount_gap_by_service_domain":
-            group_by = ["service_domain"]
-            required_columns.extend(
-                [
-                    "department_id",
-                    "department_name",
-                    "service_domain",
-                    "department_approved_headcount",
-                    "employee_id",
-                    "is_active",
-                ]
-            )
-
-        elif best_intent_id == "monthly_hiring_trend":
-            required_columns.extend(["hire_date", "hire_year", "employee_id", "is_active"])
-
-        elif best_intent_id == "employee_count_by_province":
-            group_by = self._ensure_group_by(group_by, "province")
-            required_columns.extend(["province", "employee_id", "is_active"])
-
-        elif best_intent_id == "employee_count_by_work_location":
-            group_by = self._ensure_group_by(group_by, "site_name")
-            required_columns.extend(["site_name", "province", "employee_id", "is_active"])
-
-        elif best_intent_id in {"hiring_trend_annual", "hiring_trend_yoy_growth"}:
-            group_by = ["hire_year"]
-            order_by = ["hire_year ASC"]
-            required_columns.extend(["hire_year", "employee_id", "is_active"])
-
-        elif best_intent_id == "hiring_last_15_years":
-            params["current_shamsi_year"] = current_shamsi_year
-            filters.append(
-                {
-                    "column": "hire_year",
-                    "operator": ">=",
-                    "value_expression": f"{current_shamsi_year} - 15",
-                }
-            )
-            group_by = ["hire_year"]
-            order_by = ["hire_year ASC"]
-            required_columns.extend(["hire_year", "employee_id", "is_active"])
-
-        elif best_intent_id == "most_or_least_hiring_year":
-            group_by = ["hire_year"]
-            order_by = [
-                "employee_count ASC" if query_features.get("asks_least") else "employee_count DESC"
-            ]
-            required_columns.extend(["hire_year", "employee_id", "is_active"])
-
-        elif best_intent_id == "hiring_by_contract_type_recent_year":
-            params["current_shamsi_year"] = current_shamsi_year
-            filters.append({"column": "hire_year", "operator": "=", "value": current_shamsi_year})
-            group_by = ["contract_type"]
-            required_columns.extend(["contract_type", "hire_year", "employee_id", "is_active"])
-
-        elif best_intent_id in {"average_service_years", "median_service_years"}:
-            required_columns.extend(["service_years", "employee_id", "is_active"])
-
-        elif best_intent_id == "employee_count_without_service_years":
-            filters.append({"column": "service_years", "operator": "=", "value": 0})
-            required_columns.extend(["service_years", "employee_id", "is_active"])
-
-        elif best_intent_id == "employee_count_by_service_years_filter":
-            sy_filter = query_features.get(
-                "service_years_filter"
-            ) or self._extract_service_years_filter(question)
-            if sy_filter:
-                filters.append(sy_filter)
-                op = sy_filter.get("operator", "")
-                value = sy_filter.get("value")
-                if op in {">=", ">"}:
-                    params["service_years_min"] = int(value)
-                elif op == "<":
-                    params["service_years_max_exclusive"] = int(value)
-                elif op == "<=":
-                    params["service_years_max_inclusive"] = int(value)
-                elif op == "BETWEEN" and isinstance(value, list) and len(value) == 2:
-                    params["service_years_min"] = int(value[0])
-                    params["service_years_max_inclusive"] = int(value[1])
-            required_columns.extend(["service_years", "employee_id", "is_active"])
-
-        elif best_intent_id == "employee_count_by_hire_year":
-            year = query_features.get("hire_year_filter") or self._extract_hire_year(question)
-            if year is not None:
-                filters.append({"column": "hire_year", "operator": "=", "value": year})
-                params["hire_year"] = year
-            required_columns.extend(["hire_year", "employee_id", "is_active"])
-
-        elif best_intent_id == "near_retirement_analysis":
-            if query_features.get("explicit_service_domain"):
-                group_by = self._ensure_group_by(group_by, "service_domain")
-                required_columns.extend(["service_domain"])
-            if age_filter:
-                filters.append(age_filter)
-            required_columns.extend(["age", "service_years", "employee_id", "is_active"])
-
-        elif best_intent_id == "employee_count_by_marital_status":
-            group_by = self._ensure_group_by(group_by, "marital_status")
-            if gender_value:
-                filters.append({"column": "gender", "operator": "=", "value": gender_value})
-                required_columns.append("gender")
-            required_columns.extend(["marital_status", "employee_id", "is_active"])
-
-        # Superlative queries ("بیشترین"/"کمترین") on grouped distributions → top-1 only.
+        # Superlative queries ("بیشترین"/"کمترین") on grouped distributions -> top-1 only.
         _SUPERLATIVE_SORTABLE_INTENTS = {
             "employee_count_by_department",
             "employee_count_by_service_domain",
@@ -2476,12 +1464,14 @@ class IntentParser:
         if best_intent_id in _SUPERLATIVE_SORTABLE_INTENTS and (
             query_features.get("asks_most") or query_features.get("asks_least")
         ):
-            params["result_limit"] = 1
+            state.params["result_limit"] = 1
 
         # Always include default active filter as a logical signal. SQL templates
         # already include it, so downstream engines should avoid duplicating it.
-        if not any(item.get("column") == "is_active" for item in filters if isinstance(item, dict)):
-            filters.insert(
+        if not any(
+            item.get("column") == "is_active" for item in state.filters if isinstance(item, dict)
+        ):
+            state.filters.insert(
                 0, {"column": "is_active", "operator": "=", "value": True, "source": "default_rule"}
             )
 
@@ -2489,26 +1479,57 @@ class IntentParser:
 
         # When filtering to a single value (e.g. specific education level), percentage metrics
         # using window SUM are meaningless and break coverage validation for VALUE templates.
-        if best_intent_id == "employee_count_by_education" and params.get("education_title"):
+        if best_intent_id == "employee_count_by_education" and state.params.get("education_title"):
             metrics = [m for m in metrics if "SUM" not in str(m.get("expression", ""))]
 
-        output_type = self._infer_output_type(best_intent_id, intent, group_by, query_features)
+        output_type = self._infer_output_type(
+            best_intent_id, intent, state.group_by, query_features
+        )
         recommended_visualization = self._infer_visualization(
-            best_intent_id, intent, output_type, group_by, query_features
+            best_intent_id, intent, output_type, state.group_by, query_features
         )
 
         return {
-            "filters": self._dedupe_filters(filters),
-            "group_by": self._dedupe_list(group_by),
-            "order_by": self._dedupe_list(order_by),
-            "params": {k: v for k, v in params.items() if v is not None},
+            "filters": self._dedupe_filters(state.filters),
+            "group_by": self._dedupe_list(state.group_by),
+            "order_by": self._dedupe_list(state.order_by),
+            "params": {k: v for k, v in state.params.items() if v is not None},
             "entities": entities,
-            "required_columns": self._dedupe_list(required_columns),
+            "required_columns": self._dedupe_list(state.required_columns),
             "metrics": metrics,
             "output_type": output_type,
             "recommended_visualization": recommended_visualization,
-            "warnings": warnings,
+            "warnings": state.warnings,
         }
+
+    def _make_payload_context(
+        self,
+        *,
+        question: str,
+        intent: JsonDict,
+        best_intent_id: str,
+        semantic_result: JsonDict,
+        query_features: JsonDict,
+        current_shamsi_year: int,
+        service: Any,
+    ) -> PayloadContext:
+        return PayloadContext(
+            parser=self,
+            question=question,
+            service=service,
+            query_features=query_features,
+            current_shamsi_year=current_shamsi_year,
+            intent=intent,
+            best_intent_id=best_intent_id,
+            gender_value=self._extract_gender_value(question),
+            education_value=self._extract_allowed_value(question, service, "education_title"),
+            employment_value=self._extract_employment_value(
+                question, service, explicit_contract=False
+            ),
+            contract_value=self._extract_contract_value(question, service),
+            age_filter=query_features.get("age_filter") or self._extract_age_filter(question),
+            month_range_fn=_extract_shamsi_month_range,
+        )
 
     def _choose_sql_template_id(
         self, intent_id: str, intent: JsonDict, extraction: JsonDict, service: Any
