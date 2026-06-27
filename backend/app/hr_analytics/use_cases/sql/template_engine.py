@@ -10,6 +10,7 @@ from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
+from app.core.config import settings
 from app.infrastructure.metadata.service import get_metadata_service
 
 """
@@ -63,7 +64,7 @@ class SQLTemplateParameterError(SQLTemplateEngineError):
 class SQLTemplateEngineConfig:
     """Runtime configuration for SQLTemplateEngine."""
 
-    current_shamsi_year: int = 1404
+    current_shamsi_year: int = field(default_factory=lambda: settings.current_shamsi_year)
     strict_parameter_validation: bool = True
     allow_status_sql: bool = True
     source_name: str = "sql_template_engine"
@@ -132,7 +133,9 @@ class SQLTemplateEngine:
             self.metadata = None
 
         default_year = (
-            current_shamsi_year or self._read_default_current_shamsi_year(self.metadata) or 1404
+            current_shamsi_year
+            or self._read_default_current_shamsi_year(self.metadata)
+            or settings.current_shamsi_year
         )
         self.config = SQLTemplateEngineConfig(
             current_shamsi_year=int(default_year),

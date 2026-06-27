@@ -28,7 +28,7 @@ def _repo(db: AsyncSession = Depends(get_db)) -> QueryDatabaseRepository:
     return QueryDatabaseRepository(db)
 
 
-@router.get("/system-databases")
+@router.get("/system-databases", summary="List server-side system databases")
 async def get_system_databases() -> dict:
     from app.core.config import settings
 

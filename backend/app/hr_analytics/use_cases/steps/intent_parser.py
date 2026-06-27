@@ -283,6 +283,24 @@ class IntentCandidate:
         }
 
 
+# Confidence bands map the unbounded internal rule score onto the [0, 1]
+# confidence the router uses to choose SQL vs clarification. Ordered high->low;
+# the first band whose threshold the score meets wins. Kept as a named, ordered
+# table so the precedence model is explicit rather than buried in an if/elif
+# ladder. Scores below the lowest band fall through to a damped linear estimate.
+_CONFIDENCE_BANDS: tuple[tuple[float, float], ...] = (
+    (80, 0.99),
+    (60, 0.96),
+    (35, 0.9),
+    (20, 0.78),
+    (10, 0.62),
+)
+# Below the lowest band: confidence = clamp(score / divisor, floor, ceiling).
+_CONFIDENCE_SUB_BAND_FLOOR = 0.35
+_CONFIDENCE_SUB_BAND_CEILING = 0.6
+_CONFIDENCE_SUB_BAND_DIVISOR = 18
+
+
 class IntentParser:
     """
     Metadata-driven intent parser for Persian HR BI questions.
@@ -2013,19 +2031,15 @@ class IntentParser:
 
     @staticmethod
     def _score_to_confidence(best_score: float, candidates: list[IntentCandidate]) -> float:
-        if best_score >= 80:
-            return 0.99
-        if best_score >= 60:
-            return 0.96
-        if best_score >= 35:
-            return 0.9
-        if best_score >= 20:
-            return 0.78
-        if best_score >= 10:
-            return 0.62
+        for threshold, confidence in _CONFIDENCE_BANDS:
+            if best_score >= threshold:
+                return confidence
         if not candidates:
             return 0.0
-        return max(0.35, min(0.6, best_score / 18))
+        return max(
+            _CONFIDENCE_SUB_BAND_FLOOR,
+            min(_CONFIDENCE_SUB_BAND_CEILING, best_score / _CONFIDENCE_SUB_BAND_DIVISOR),
+        )
 
     # ------------------------------------------------------------------
     # Structured extraction

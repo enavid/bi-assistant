@@ -11,7 +11,7 @@ from fastapi_offline import FastAPIOffline
 
 from app.connections.api import ollama_routes as connection_ollama_routes
 from app.connections.api import routes as connection_routes
-from app.core.config import settings
+from app.core.config import APP_VERSION, settings
 from app.core.logging import setup_logging
 from app.evaluation.api import routes as eval_routes
 from app.hr_analytics.api import chat_routes, ollama_routes
@@ -144,7 +144,7 @@ async def _reset_orphaned_eval_runs(
 
 app = FastAPIOffline(
     title="BI Assistant API",
-    version="3.0.0",
+    version=APP_VERSION,
     description="HR analytics assistant — controlled SQL pipeline with metadata, templates and validators.",
     lifespan=lifespan,
 )
@@ -174,4 +174,4 @@ async def _runtime_error_handler(request: Request, exc: RuntimeError) -> JSONRes
 
 @app.get("/health", tags=["system"], summary="Health check")
 async def health() -> dict:
-    return {"status": "ok", "version": "3.0.0", "env": settings.app_env}
+    return {"status": "ok", "version": APP_VERSION, "env": settings.app_env}

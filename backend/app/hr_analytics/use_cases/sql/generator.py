@@ -11,6 +11,7 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
+from app.core.config import settings
 from app.hr_analytics.use_cases.sql.llm_fallback import LLMSQLFallback
 from app.infrastructure.metadata.service import get_metadata_service
 
@@ -144,7 +145,7 @@ class SQLGeneratorError(RuntimeError):
 class SQLGeneratorConfig:
     """Runtime configuration for SQLGenerator."""
 
-    current_shamsi_year: int = 1404
+    current_shamsi_year: int = field(default_factory=lambda: settings.current_shamsi_year)
     main_view: str = DEFAULT_MAIN_VIEW
     alias: str = DEFAULT_ALIAS
     source_name: str = "sql_generator"

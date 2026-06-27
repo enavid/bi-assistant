@@ -9,6 +9,7 @@ from dataclasses import asdict, dataclass, field, is_dataclass
 from pathlib import Path
 from typing import Any
 
+from app.core.constants import MIN_GROUP_SIZE_FLOOR
 from app.infrastructure.metadata.service import MetadataService, get_metadata_service
 
 logger = logging.getLogger(__name__)
@@ -871,11 +872,17 @@ class DecisionRouter:
     def _build_policy_hints(
         self, *, user_role: str, intent_result: JsonDict, service: Any
     ) -> JsonDict:
-        default_min_group_size = 5
+        default_min_group_size = MIN_GROUP_SIZE_FLOOR
         min_group_size = default_min_group_size
         if service and hasattr(service, "get_min_group_size"):
             try:
-                min_group_size = int(service.get_min_group_size(default=default_min_group_size))
+                # Metadata may only raise the privacy threshold; a value at or
+                # below the floor is clamped back up so configuration can never
+                # weaken the k-anonymity guarantee.
+                min_group_size = max(
+                    MIN_GROUP_SIZE_FLOOR,
+                    int(service.get_min_group_size(default=default_min_group_size)),
+                )
             except Exception as exc:
                 # The k-anonymity threshold is a privacy/compliance control. If it
                 # cannot be read from metadata we must still fail safe to the

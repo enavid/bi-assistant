@@ -7,6 +7,7 @@ from dataclasses import asdict, dataclass, field, is_dataclass
 from pathlib import Path
 from typing import Any
 
+from app.core.constants import MIN_GROUP_SIZE_FLOOR
 from app.infrastructure.metadata.service import get_metadata_service
 
 """
@@ -55,7 +56,7 @@ class SQLValidatorConfig:
     allow_status_only_sql: bool = True
     require_active_filter: bool = True
     max_limit: int = 500
-    minimum_group_size: int = 5
+    minimum_group_size: int = MIN_GROUP_SIZE_FLOOR
     reject_sql_comments: bool = True
     source_name: str = "sql_validator"
 
@@ -192,16 +193,6 @@ class SQLValidator:
         "iban",
         "medical_record",
         "disciplinary_record",
-    }
-
-    RESTRICTED_VISIBLE_COLUMNS = {
-        "employee_id",
-        "birth_date",
-        "hire_date",
-        "contract_start_date",
-        "contract_end_date",
-        "location_id",
-        "position_id",
     }
 
     RAW_DATE_COLUMNS = {
@@ -1275,8 +1266,10 @@ class SQLValidator:
             except Exception:
                 pass
             try:
-                config.minimum_group_size = int(
-                    service.get_min_group_size(default=config.minimum_group_size)
+                # Metadata may only raise the privacy threshold above the floor.
+                config.minimum_group_size = max(
+                    MIN_GROUP_SIZE_FLOOR,
+                    int(service.get_min_group_size(default=config.minimum_group_size)),
                 )
             except Exception:
                 pass

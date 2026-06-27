@@ -28,11 +28,6 @@ def get_active_model() -> str | None:
     return _active_model
 
 
-def set_active_model(model_name: str | None) -> None:
-    global _active_model
-    _active_model = model_name
-
-
 def get_model_config(model_name: str) -> dict:
     return _model_configs.get(model_name, {})
 

@@ -90,19 +90,6 @@ SENSITIVE_TERMS = {
     "insurance_number",
 }
 
-OUT_OF_SCOPE_TERMS = {
-    "فروش",
-    "درآمد",
-    "سود",
-    "زیان",
-    "مشتری",
-    "بازاریابی",
-    "انبار",
-    "تولید",
-    "حسابداری",
-    "مالیات",
-}
-
 KNOWN_GAP_RULES: list[JsonDict] = [
     {
         "gap_code": "GAP_CITY_LEVEL_ANALYSIS",

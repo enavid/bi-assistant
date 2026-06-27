@@ -116,7 +116,10 @@ async def test_ollama_connection(body: OllamaTestRequest):
         return OllamaTestResult(success=False, error=str(exc))
 
 
-@router.get("/ollama/{id}/model-info/{model_name:path}")
+@router.get(
+    "/ollama/{id}/model-info/{model_name:path}",
+    summary="Inspect a model's metadata on an Ollama connection",
+)
 async def get_ollama_model_info_by_connection(
     id: str, model_name: str, repo: OllamaConnectionRepository = Depends(_ollama_repo)
 ) -> dict:
@@ -139,7 +142,7 @@ async def get_ollama_model_info_by_connection(
         raise HTTPException(status_code=502, detail=f"Cannot reach Ollama: {exc}") from exc
 
 
-@router.get("/ollama/{id}/models")
+@router.get("/ollama/{id}/models", summary="List models available on an Ollama connection")
 async def get_ollama_models(
     id: str, repo: OllamaConnectionRepository = Depends(_ollama_repo)
 ) -> dict:

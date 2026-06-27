@@ -6,6 +6,11 @@ from urllib.parse import quote_plus
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+# Advertised API version (FastAPI metadata + /health). Single-sourced here so the
+# value is not duplicated across main.py. Distinct from the pyproject package
+# version, which tracks the Python distribution, not the public API contract.
+APP_VERSION = "3.0.0"
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
@@ -43,7 +48,6 @@ class Settings(BaseSettings):
     metadata_dir: str = "./metadata"
     current_shamsi_year: int = 1404
     default_execute_sql: bool = False
-    enable_llm_sql_fallback: bool = True
     validate_sql_before_execution: bool = True
     use_template_engine: bool = True
     use_controlled_dynamic: bool = True

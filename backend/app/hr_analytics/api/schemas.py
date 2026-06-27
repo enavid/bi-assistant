@@ -44,6 +44,14 @@ class ChatSessionUpdate(BaseModel):
     model_name: str | None = None
 
 
+class AddMessageRequest(BaseModel):
+    role: str = "user"
+    content: str = ""
+    sql: str | None = None
+    error: str | None = None
+    query_result: Any | None = None
+
+
 class GenerateRequest(BaseModel):
     question: str
     project_id: str | None = None

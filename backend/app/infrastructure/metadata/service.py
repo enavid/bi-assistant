@@ -10,6 +10,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from app.core.constants import MIN_GROUP_SIZE_FLOOR
 from app.core.persian_normalizer import normalize as _shared_normalize
 
 """
@@ -922,7 +923,8 @@ class MetadataService:
     # Policy helpers
     # ------------------------------------------------------------------
 
-    def get_min_group_size(self, default: int = 5) -> int:
+    def get_min_group_size(self, default: int = MIN_GROUP_SIZE_FLOOR) -> int:
+        resolved = default
         policies = self._raw.get("access_policies", {})
         aggregation_rules = (
             policies.get("aggregation_rules", {})
@@ -932,10 +934,16 @@ class MetadataService:
         for key in ("minimum_group_size", "min_group_size", "min_group_size_default"):
             value = aggregation_rules.get(key)
             if isinstance(value, int):
-                return value
-        global_rules = self._raw.get("visualization_rules", {}).get("global_rules", {}) or {}
-        value = global_rules.get("min_group_size_default")
-        return int(value) if isinstance(value, int | float) else default
+                resolved = value
+                break
+        else:
+            global_rules = self._raw.get("visualization_rules", {}).get("global_rules", {}) or {}
+            value = global_rules.get("min_group_size_default")
+            if isinstance(value, int | float):
+                resolved = int(value)
+        # The privacy floor is non-negotiable: metadata may raise the threshold,
+        # never lower it below the k-anonymity floor.
+        return max(MIN_GROUP_SIZE_FLOOR, resolved)
 
     def get_sensitive_columns(self) -> list[str]:
         blocklist = (

@@ -9,6 +9,7 @@ from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
+from app.core.constants import MIN_GROUP_SIZE_FLOOR
 from app.infrastructure.metadata.service import get_metadata_service
 
 """
@@ -238,7 +239,7 @@ class ResponseBuilderConfig:
     source_name: str = "response_builder"
     locale: str = "fa-IR"
     direction: str = "rtl"
-    min_group_size_default: int = 5
+    min_group_size_default: int = MIN_GROUP_SIZE_FLOOR
     suppress_small_groups: bool = True
     suppress_label_fa: str = "غیرقابل نمایش"
     no_data_status: str = STATUS_NO_DATA
@@ -884,7 +885,7 @@ class ResponseBuilder:
                 if lower_col in sensitive:
                     dropped_columns.add(col)
                     continue
-                if lower_col in IDENTIFIER_COLUMNS and lower_col != "hire_year":
+                if lower_col in IDENTIFIER_COLUMNS:
                     # employee_id/department_id are useful internally but should not be rendered.
                     dropped_columns.add(col)
                     continue

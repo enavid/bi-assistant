@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.dependencies import get_hr_bi_orchestrator, get_run_query_use_case
 from app.hr_analytics.api.schemas import (
+    AddMessageRequest,
     ChatSessionCreate,
     ChatSessionOut,
     ChatSessionUpdate,
@@ -88,14 +89,16 @@ async def delete_session(session_id: str, repo: ChatRepository = Depends(_repo))
     response_model=ChatSessionOut,
     summary="Add message to session",
 )
-async def add_message(session_id: str, body: dict, repo: ChatRepository = Depends(_repo)) -> object:
+async def add_message(
+    session_id: str, body: AddMessageRequest, repo: ChatRepository = Depends(_repo)
+) -> object:
     session = await repo.add_message(
         session_id=session_id,
-        role=body.get("role", "user"),
-        content=body.get("content", ""),
-        sql=body.get("sql"),
-        error=body.get("error"),
-        query_result=body.get("query_result"),
+        role=body.role,
+        content=body.content,
+        sql=body.sql,
+        error=body.error,
+        query_result=body.query_result,
     )
     if session is None:
         raise HTTPException(status_code=404, detail="Session not found")

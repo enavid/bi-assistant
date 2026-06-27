@@ -499,14 +499,6 @@ def normalize_fa_text(text: str) -> str:
     return _shared_normalize(str(text))
 
 
-def translate_digits_to_ascii(text: str) -> str:
-    persian = "۰۱۲۳۴۵۶۷۸۹"
-    arabic = "٠١٢٣٤٥٦٧٨٩"
-    trans = {ord(ch): str(index) for index, ch in enumerate(persian)}
-    trans.update({ord(ch): str(index) for index, ch in enumerate(arabic)})
-    return text.translate(trans)
-
-
 def _contains_term(question: str, term: str) -> bool:
     term = normalize_fa_text(term)
     if not term:

@@ -6,6 +6,8 @@ from collections.abc import Iterable, Mapping
 from dataclasses import asdict, dataclass, field
 from typing import Any
 
+from app.core.constants import MIN_GROUP_SIZE_FLOOR
+
 """
 question_validator.py
 ---------------------
@@ -186,7 +188,7 @@ class QuestionValidator:
         self,
         *,
         min_question_chars: int = 3,
-        min_group_size: int = 5,
+        min_group_size: int = MIN_GROUP_SIZE_FLOOR,
         allow_direct_sql_from_user: bool = False,
         use_context_domain_result: bool = True,
     ) -> None:
