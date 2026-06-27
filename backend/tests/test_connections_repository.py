@@ -149,3 +149,52 @@ async def test_get_active_returns_none_when_none_active(repo):
     await repo.create(name="Inactive", host="h", port=5432, db_name="d", username="u", password="p")
     active = await repo.get_active()
     assert active is None
+
+
+# ---------------------------------------------------------------------------
+# Credential encryption at rest
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_password_is_encrypted_at_rest(repo):
+    conn = await repo.create(
+        name="Secret DB", host="h", port=5432, db_name="d", username="u", password="s3cr3t"
+    )
+    # The stored value must be ciphertext, never the plaintext.
+    assert conn.password != "s3cr3t"
+    assert conn.password.startswith("enc:v1:")
+
+
+@pytest.mark.asyncio
+async def test_get_decrypted_password_roundtrips(repo):
+    conn = await repo.create(
+        name="DB", host="h", port=5432, db_name="d", username="u", password="orig-pass"
+    )
+    assert await repo.get_decrypted_password(conn) == "orig-pass"
+
+
+@pytest.mark.asyncio
+async def test_update_reencrypts_password(repo):
+    conn = await repo.create(
+        name="DB", host="h", port=5432, db_name="d", username="u", password="old"
+    )
+    updated = await repo.update(conn.id, password="new-pass")
+    assert updated is not None
+    assert updated.password.startswith("enc:v1:")
+    assert await repo.get_decrypted_password(updated) == "new-pass"
+
+
+@pytest.mark.asyncio
+async def test_legacy_plaintext_is_lazily_encrypted(repo):
+    # Simulate a row written before encryption was introduced.
+    conn = await repo.create(
+        name="Legacy", host="h", port=5432, db_name="d", username="u", password="x"
+    )
+    conn.password = "legacy-plain"  # bypass create() encryption to mimic an old row
+    await repo._db.flush()
+
+    plaintext = await repo.get_decrypted_password(conn)
+    assert plaintext == "legacy-plain"
+    # After first use it must be upgraded to ciphertext.
+    assert conn.password.startswith("enc:v1:")

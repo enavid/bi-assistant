@@ -23,11 +23,22 @@ from app.connections.api.schemas import (
 )
 from app.connections.repositories.model_config_repository import ModelConfigRepository
 from app.connections.repositories.ollama_repository import OllamaConnectionRepository
+from app.core.config import settings
+from app.core.url_guard import OutboundURLNotAllowed, validate_http_url
 from app.infrastructure.db.session import get_db
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/connections", tags=["connections"])
+
+
+def _guard_ollama_url(base_url: str) -> str:
+    """Enforce the SSRF allow-list before any outbound call to an Ollama endpoint."""
+    try:
+        return validate_http_url(base_url, allowlist=settings.ollama_url_allowlist)
+    except OutboundURLNotAllowed as exc:
+        logger.warning("Blocked outbound Ollama URL: %s", exc)
+        raise HTTPException(status_code=400, detail=f"Ollama URL rejected: {exc}") from exc
 
 
 def _ollama_repo(db: AsyncSession = Depends(get_db)) -> OllamaConnectionRepository:
@@ -93,7 +104,8 @@ async def deactivate_ollama(repo: OllamaConnectionRepository = Depends(_ollama_r
 
 @router.post("/ollama/test", response_model=OllamaTestResult)
 async def test_ollama_connection(body: OllamaTestRequest):
-    tags_url = body.base_url.rstrip("/") + "/api/tags"
+    base_url = _guard_ollama_url(body.base_url)
+    tags_url = base_url.rstrip("/") + "/api/tags"
     try:
         async with httpx.AsyncClient(timeout=5) as client:
             resp = await client.get(tags_url)
@@ -111,7 +123,7 @@ async def get_ollama_model_info_by_connection(
     row = await repo.get(id)
     if not row:
         raise HTTPException(status_code=404, detail="Ollama connection not found")
-    show_url = row.base_url.rstrip("/") + "/api/show"
+    show_url = _guard_ollama_url(row.base_url).rstrip("/") + "/api/show"
     try:
         async with httpx.AsyncClient(timeout=10) as client:
             resp = await client.post(show_url, json={"name": model_name})
@@ -134,7 +146,7 @@ async def get_ollama_models(
     row = await repo.get(id)
     if not row:
         raise HTTPException(status_code=404, detail="Ollama connection not found")
-    tags_url = row.base_url.rstrip("/") + "/api/tags"
+    tags_url = _guard_ollama_url(row.base_url).rstrip("/") + "/api/tags"
     try:
         async with httpx.AsyncClient(timeout=5) as client:
             resp = await client.get(tags_url)
@@ -153,6 +165,7 @@ async def activate_ollama(id: str, repo: OllamaConnectionRepository = Depends(_o
     row = await repo.activate(id)
     if not row:
         raise HTTPException(status_code=404, detail="Ollama connection not found")
+    _guard_ollama_url(row.base_url)
     set_active_ollama_base_url(row.base_url)
     _clear_llm_cache()
     logger.info("Activated Ollama connection: %s (%s)", row.name, row.base_url)

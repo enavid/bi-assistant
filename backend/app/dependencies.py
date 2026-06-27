@@ -41,7 +41,13 @@ def get_llm_client() -> OllamaClient:
 
 @lru_cache(maxsize=1)
 def get_query_executor() -> HRQueryExecutor:
-    return HRQueryExecutor(dsn=_resolve_query_dsn())
+    from app.core.config import settings
+
+    return HRQueryExecutor(
+        dsn=_resolve_query_dsn(),
+        statement_timeout_ms=settings.hr_query_timeout_ms,
+        max_rows=settings.hr_query_max_rows,
+    )
 
 
 @lru_cache(maxsize=1)

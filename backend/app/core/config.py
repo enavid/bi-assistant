@@ -21,8 +21,19 @@ class Settings(BaseSettings):
     db_user: str
     db_password: str
 
+    # Secret used to encrypt stored query-database credentials at rest.
+    # Falls back to db_password when empty (see app.core.crypto.get_credential_cipher).
+    db_credential_secret: str = ""
+
     # CORS
     cors_origins: list[str] = ["http://localhost:5173"]
+
+    # Outbound SSRF guard: hosts permitted for Ollama HTTP calls (deny-by-default).
+    ollama_url_allowlist: list[str] = ["localhost", "127.0.0.1", "::1"]
+
+    # Client SQL execution hardening (chat /query path).
+    hr_query_timeout_ms: int = 10_000
+    hr_query_max_rows: int = 500
 
     # Logging
     log_level: str = "INFO"
@@ -38,7 +49,7 @@ class Settings(BaseSettings):
     use_controlled_dynamic: bool = True
     force_llm_for_incomplete_template: bool = False
 
-    @field_validator("cors_origins", mode="before")
+    @field_validator("cors_origins", "ollama_url_allowlist", mode="before")
     @classmethod
     def parse_cors(cls, v: object) -> list[str]:
         if isinstance(v, list):

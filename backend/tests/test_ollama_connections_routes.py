@@ -116,15 +116,34 @@ def test_deactivate_ollama(client):
     assert all(not c["is_active"] for c in all_conns)
 
 
-def test_test_ollama_bad_url(client):
+def test_test_ollama_allowlisted_but_unreachable(client):
+    # 127.0.0.1 is allow-listed; port 1 is refused, so the call fails gracefully (not blocked).
     resp = client.post(
         "/connections/ollama/test",
-        json={"base_url": "http://totally-nonexistent-host-99999.invalid:11434"},
+        json={"base_url": "http://127.0.0.1:1"},
     )
     assert resp.status_code == 200
     data = resp.json()
     assert data["success"] is False
     assert data["error"]
+
+
+def test_test_ollama_rejects_non_allowlisted_host(client):
+    # SSRF guard: an arbitrary external host must be rejected before any outbound call.
+    resp = client.post(
+        "/connections/ollama/test",
+        json={"base_url": "http://evil.example.com:11434"},
+    )
+    assert resp.status_code == 400
+    assert "rejected" in resp.json()["detail"].lower()
+
+
+def test_test_ollama_rejects_cloud_metadata(client):
+    resp = client.post(
+        "/connections/ollama/test",
+        json={"base_url": "http://169.254.169.254/latest/meta-data/"},
+    )
+    assert resp.status_code == 400
 
 
 # ---------------------------------------------------------------------------
@@ -184,6 +203,13 @@ def test_get_ollama_models_nonexistent_connection(client):
 
 
 def test_get_ollama_models_unreachable(client):
-    conn = _create_ollama(client, base_url="http://totally-nonexistent.invalid:11434").json()
+    # Allow-listed host that refuses the connection -> upstream 502 (not an SSRF block).
+    conn = _create_ollama(client, base_url="http://127.0.0.1:1").json()
     resp = client.get(f"/connections/ollama/{conn['id']}/models")
     assert resp.status_code == 502
+
+
+def test_get_ollama_models_blocks_non_allowlisted_host(client):
+    conn = _create_ollama(client, base_url="http://internal.evil.example:11434").json()
+    resp = client.get(f"/connections/ollama/{conn['id']}/models")
+    assert resp.status_code == 400

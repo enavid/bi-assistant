@@ -16,6 +16,7 @@ from app.connections.api.schemas import (
     TestConnectionResult,
 )
 from app.connections.repositories.database_repository import QueryDatabaseRepository
+from app.core.url_guard import OutboundURLNotAllowed, validate_db_host
 from app.infrastructure.db.session import get_db
 
 logger = logging.getLogger(__name__)
@@ -102,7 +103,13 @@ async def deactivate_databases(repo: QueryDatabaseRepository = Depends(_repo)):
 async def test_connection(body: TestConnectionRequest):
     from urllib.parse import quote_plus
 
-    dsn = f"postgresql+asyncpg://{quote_plus(body.username)}:{quote_plus(body.password)}@{body.host}:{body.port}/{body.db_name}"
+    try:
+        host = validate_db_host(body.host)
+    except OutboundURLNotAllowed as exc:
+        logger.warning("Blocked DB test connection to host: %s", exc)
+        raise HTTPException(status_code=400, detail=f"Database host rejected: {exc}") from exc
+
+    dsn = f"postgresql+asyncpg://{quote_plus(body.username)}:{quote_plus(body.password)}@{host}:{body.port}/{body.db_name}"
     start = time.monotonic()
     try:
         from sqlalchemy.ext.asyncio import create_async_engine
@@ -124,7 +131,8 @@ async def activate_database(id: str, repo: QueryDatabaseRepository = Depends(_re
         raise HTTPException(status_code=404, detail="Database connection not found")
     from urllib.parse import quote_plus
 
-    dsn = f"postgresql+asyncpg://{quote_plus(row.username)}:{quote_plus(row.password)}@{row.host}:{row.port}/{row.db_name}"
+    password = await repo.get_decrypted_password(row)
+    dsn = f"postgresql+asyncpg://{quote_plus(row.username)}:{quote_plus(password)}@{row.host}:{row.port}/{row.db_name}"
     set_active_dsn(dsn)
     _clear_orchestrator_cache()
     logger.info(

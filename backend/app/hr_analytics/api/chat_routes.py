@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -162,7 +163,8 @@ async def run_query(
                     error=f"SQL blocked: {msg}",
                 )
 
-    result = use_case.execute(body.sql)
+    # Run the synchronous psycopg2 query off the event loop so it cannot block other requests.
+    result = await asyncio.to_thread(use_case.execute, body.sql)
 
     experiment_id = None
     if result.success and body.project_id and body.question:

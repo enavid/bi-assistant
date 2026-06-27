@@ -1,14 +1,20 @@
 from __future__ import annotations
 
+import logging
+
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.crypto import CredentialCipher, get_credential_cipher
 from app.infrastructure.db.models import QueryDatabaseORM
+
+logger = logging.getLogger(__name__)
 
 
 class QueryDatabaseRepository:
-    def __init__(self, db: AsyncSession) -> None:
+    def __init__(self, db: AsyncSession, cipher: CredentialCipher | None = None) -> None:
         self._db = db
+        self._cipher = cipher or get_credential_cipher()
 
     async def list(self) -> list[QueryDatabaseORM]:
         result = await self._db.execute(
@@ -36,7 +42,7 @@ class QueryDatabaseRepository:
             port=port,
             db_name=db_name,
             username=username,
-            password=password,
+            password=self._cipher.encrypt(password),
             is_active=False,
         )
         self._db.add(conn)
@@ -48,12 +54,28 @@ class QueryDatabaseRepository:
         conn = await self.get(id)
         if not conn:
             return None
+        if fields.get("password") is not None:
+            fields["password"] = self._cipher.encrypt(fields["password"])
         for key, value in fields.items():
             if hasattr(conn, key) and value is not None:
                 setattr(conn, key, value)
         await self._db.flush()
         await self._db.refresh(conn)
         return conn
+
+    async def get_decrypted_password(self, row: QueryDatabaseORM) -> str:
+        """Return the plaintext password for an active connection.
+
+        Lazily upgrades legacy plaintext rows to ciphertext on first use so the
+        store converges to encrypted-at-rest without a blocking migration.
+        """
+        stored = row.password
+        if not self._cipher.is_encrypted(stored):
+            row.password = self._cipher.encrypt(stored)
+            await self._db.flush()
+            logger.info("Encrypted legacy plaintext credential for connection %s", row.id)
+            return stored
+        return self._cipher.decrypt(stored)
 
     async def delete(self, id: str) -> bool:
         conn = await self.get(id)
