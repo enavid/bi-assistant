@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import re
 import time
 from collections.abc import Iterable, Mapping
@@ -32,6 +33,8 @@ Design principles for Phase 2:
 """
 
 JsonDict = dict[str, Any]
+
+logger = logging.getLogger(__name__)
 
 
 ROUTE_SQL = "SQL"
@@ -407,6 +410,19 @@ class IntentParser:
         # If confidence is too low, ask for clarification instead of guessing.
         confidence = self._score_to_confidence(best.score, candidates)
         if intent.get("route") == ROUTE_SQL and confidence < self.config.min_confidence_for_sql:
+            suggestions = self._build_interpretation_suggestions(candidates, service)
+            # Financial-grade audit trail: an ambiguous question never silently
+            # produces SQL. Record why we asked, the runner-up the parser was torn
+            # between, and exactly which interpretations were offered back.
+            logger.info(
+                "intent ambiguous -> clarification top_intent=%s confidence=%.3f "
+                "min_required=%.3f candidates=%d suggested=%s",
+                best.intent_id,
+                confidence,
+                self.config.min_confidence_for_sql,
+                len(candidates),
+                ",".join(item["intent_id"] for item in suggestions) or "none",
+            )
             return self._terminal_result(
                 intent_id="ambiguous_hr_question",
                 route=ROUTE_CLARIFICATION,
@@ -419,6 +435,7 @@ class IntentParser:
                 candidate_intents=[
                     item.to_dict() for item in candidates[: self.config.max_candidate_intents]
                 ],
+                suggested_interpretations=suggestions,
             )
 
         extraction = self._extract_structured_payload(
@@ -713,6 +730,7 @@ class IntentParser:
         confidence: float = 1.0,
         candidate_intents: list[JsonDict] | None = None,
         semantic_summary: JsonDict | None = None,
+        suggested_interpretations: list[JsonDict] | None = None,
     ) -> JsonDict:
         return {
             "status": status,
@@ -736,6 +754,7 @@ class IntentParser:
             "recommended_visualization": "status_message",
             "candidate_intents": candidate_intents
             or [{"intent": intent_id, "intent_id": intent_id, "score": 999.0, "reasons": [reason]}],
+            "suggested_interpretations": suggested_interpretations or [],
             "semantic_summary": semantic_summary or {},
             "expected_status_sql": self._status_sql_for_route(route, status),
             "duration_ms": round((time.perf_counter() - started) * 1000, 3),
@@ -1220,6 +1239,47 @@ class IntentParser:
         candidates = [item for item in scores.values() if item.score > 0]
         candidates.sort(key=lambda item: (-item.score, item.intent_id))
         return candidates
+
+    def _build_interpretation_suggestions(
+        self,
+        candidates: list[IntentCandidate],
+        service: Any,
+        *,
+        limit: int = 3,
+    ) -> list[JsonDict]:
+        """Turn the top scored — but inconclusive — candidates into concrete,
+        user-facing interpretation suggestions for a NEEDS_CLARIFICATION reply.
+
+        Instead of a bare "please clarify", the assistant can offer the most
+        likely readings of the question, each with a human-readable Farsi title
+        and a draft SQL template the user can pick.
+
+        Only SQL-route intents are surfaced: they are the actionable readings
+        backed by a runnable template. The placeholder ``ambiguous_hr_question``
+        intent, unknown ids, non-SQL (GAP/REJECT) candidates, and duplicates are
+        skipped. ``candidates`` is assumed to be ordered by descending score.
+        """
+        suggestions: list[JsonDict] = []
+        seen: set[str] = set()
+        for candidate in candidates:
+            if len(suggestions) >= limit:
+                break
+            intent_id = candidate.intent_id
+            if intent_id in seen or intent_id == "ambiguous_hr_question":
+                continue
+            intent = self._get_intent(service, intent_id)
+            if not intent or intent.get("route") != ROUTE_SQL:
+                continue
+            seen.add(intent_id)
+            suggestions.append(
+                {
+                    "intent_id": intent_id,
+                    "title_fa": intent.get("title_fa") or intent_id,
+                    "template_id": intent.get("sql_template_id"),
+                    "score": round(candidate.score, 4),
+                }
+            )
+        return suggestions
 
     def _manual_intent_rules(
         self, question: str, f: JsonDict, service: Any

@@ -588,6 +588,10 @@ class ResponseBuilder:
                 notes.append("داده/تعریف موردنیاز: " + "، ".join(str(x) for x in missing_data[:5]))
         if normalized_status == STATUS_ACCESS_DENIED:
             notes.append("خروجی فردی یا شناسه‌های حساس کارکنان نمایش داده نمی‌شود.")
+        if normalized_status == STATUS_NEEDS_CLARIFICATION:
+            note = self._build_interpretation_note(context, status_payload)
+            if note:
+                notes.append(note)
 
         return ResponsePayload(
             route=normalized_route,
@@ -616,6 +620,32 @@ class ResponseBuilder:
                 visualization=visualization,
             ),
         )
+
+    def _build_interpretation_note(self, context: JsonDict, status_payload: JsonDict) -> str | None:
+        """Render the parser's candidate interpretations into a single Farsi note.
+
+        On an ambiguous question the intent parser attaches
+        ``suggested_interpretations`` (the most likely readings, each with a
+        Farsi title). Surface them as a numbered list so the user can refine
+        their question by picking one, instead of guessing what to rephrase.
+        """
+        suggestions = (
+            status_payload.get("suggested_interpretations")
+            or _get_nested(context, "intent_result", "suggested_interpretations")
+            or _get_nested(context, "route_result", "suggested_interpretations")
+            or []
+        )
+        if not isinstance(suggestions, list):
+            return None
+        titles = [
+            str(item.get("title_fa")).strip()
+            for item in suggestions
+            if isinstance(item, dict) and str(item.get("title_fa") or "").strip()
+        ]
+        if not titles:
+            return None
+        numbered = "، ".join(f"{index}) {title}" for index, title in enumerate(titles, start=1))
+        return f"تفسیرهای محتمل: {numbered}"
 
     def _get_status_template(self, status: str, *, metadata: Any | None) -> JsonDict:
         status = status.upper()
